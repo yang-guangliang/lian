@@ -24,7 +24,6 @@ class LangConfig:
 
 LANG_TABLE = [
     LangConfig(name = "c", extension = [".c", ".h", ".i",], parser = c_parser.Parser),
-    LangConfig(name = "cpp", extension = [".cpp", ".cxx", ".cc", ".h", ".hh", ".hpp", ".ii"], parser = cpp_parser.Parser),
     LangConfig(name = "csharp", extension = [".cs"], parser = csharp_parser.Parser),
     LangConfig(name = "go", extension = [".go"], parser = go_parser.Parser),
     LangConfig(name = "java", extension = [".java"], parser = java_parser.Parser),
