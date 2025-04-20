@@ -10,13 +10,13 @@ theme:
     - toc.follow
 
 extra:
-  alternate:
-    - name: English
-      link: /en/
-      lang: en
-    - name: 中文
-      link: /cn/
-      lang: zh
+#   alternate:
+#     - name: English
+#       link: /lian/en/
+#       lang: en
+#     - name: 中文
+#       link: /lian/cn/
+#       lang: zh
 
   generator: false
 
