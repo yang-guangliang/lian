@@ -1,0 +1,67 @@
+site_name: Welcome to LIAN
+site_url: http://yang-guangliang.github.io/lian
+repo_url: https://github.com/yang-guangliang/lian
+
+theme:
+  name: material
+  features:
+    - announce.dismiss
+    - navigation.sections
+    - toc.follow
+
+extra:
+  alternate:
+    - name: English
+      link: /en/
+      lang: en
+    - name: 中文
+      link: /cn/
+      lang: zh
+
+  generator: false
+
+plugins:
+  - tooltips
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight:
+      linenums: true
+      use_pygments: true
+
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - admonition
+  - pymdownx.tabbed:
+      alternate_style: true
+
+
+copyright: <p/>Developed & Maintained by <a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;"> the System Security and Reliability Research group</a>, Fudan University<p/>
+
+
+nav:
+  - Home: en/index.md
+  - Getting Started:
+      - Setup: en/setup.md
+      - Examples: en/examples.md
+      - Commands: en/commands.md
+
+  - Frontends:
+      - Language Parsers: en/lang_parser.md
+      - General IR - GIR: en/gir.md
+
+  - Semantic Analysis:
+      - Basic Analysis: en/basic_analysis.md
+      - Summary Generation: en/summary_generation.md
+      - Global Analysis: en/global_analysis.md
+
+  - Security Analysis:
+      - Todo
+
+  - Underlying Layer:
+      - Plugin: en/plugin.md
+      - Loader: en/loader.md
+      - Environment Handlers: en/environ.md
+

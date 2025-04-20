@@ -1,0 +1,15 @@
+main() {
+  // 加a的var_decl
+  a = 3
+  if a > 10 {
+    // 加b的var_decl
+     b = a + 4
+     if b == 10 {
+           // 加c的var_decl
+            c = 3
+     }
+  } else {
+     // 加c的var_decl
+     c = 3
+  }
+}

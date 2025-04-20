@@ -1,0 +1,13 @@
+a+b+c-123.2
+a++
+c<-144
+vv--
+v+=v
+l%=g+fs
+bzfb^=a+b*c
+a,b,c=1,2,3
+a1,a2,a3[2]=f(v,b,z)
+ag[1],as.vz,*bh=ks()
+agb:=ma["ghafh"]
+aba[gdhs]--
+*b++

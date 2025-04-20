@@ -1,0 +1,1 @@
+declare void @external_func(i32 (i32)* nocapture)
