@@ -192,6 +192,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 continue
 
             resolved_state_indexes = self.resolver.resolve_symbol_states(old_key_state, frame.frame_stack, frame, stmt_id, stmt, status)
+            print("resolve_symbol_states的结果是",resolved_state_indexes)
             util.add_to_dict_with_default_set(frame.method_summary_instance.resolver_result, old_key_state_index, resolved_state_indexes)
             for each_resolved_state_index in resolved_state_indexes:
                 each_resolved_state: State = frame.symbol_state_space[each_resolved_state_index]
@@ -241,7 +242,10 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         old_implicitly_used_symbols = status.implicitly_used_symbols.copy()
         status.in_state_bits = self.collect_in_state_bits(stmt_id, stmt, frame)
         self.unset_states_of_status(stmt_id, frame, status)
-        # print(f"in_state_bits: {frame.state_bit_vector_manager.explain(status.in_state_bits)}")
+        
+        if frame.method_id == 20:
+            print("检查in_states")
+            print(f"in_state_bits: {frame.state_bit_vector_manager.explain(status.in_state_bits)}")
         # collect in state
 
         in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
@@ -250,7 +254,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        # print(f"in_states@after complete_in_states: {in_states}")
+        print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
             print("  DON'T CONTINUE")
             if status.in_state_bits != old_in_state_bits:
@@ -285,7 +289,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
         # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
-        # print(f"out_state_bits: {frame.state_bit_vector_manager.explain(status.out_state_bits)}")
+        if frame.method_id == 20:
+            print("检查out_states")
+            print(f"out_state_bits: {frame.state_bit_vector_manager.explain(status.out_state_bits)}")
 
         return change_flag
 

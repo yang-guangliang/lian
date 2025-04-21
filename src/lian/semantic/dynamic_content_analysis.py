@@ -135,6 +135,7 @@ class DynamicContentAnalysis(StmtStateAnalysis):
             else:
                 continue
             callee_compact_space = callee_compact_space.copy()
+            print("查看第三阶段加载的summary",callee_summary,"\n-----------------\n",callee_compact_space)
             self.apply_callee_semantic_summary(stmt_id, each_callee_id, args, callee_summary, callee_compact_space, this_state_set)
 
         return P2ResultFlag()
