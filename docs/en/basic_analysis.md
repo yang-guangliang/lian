@@ -64,5 +64,3 @@ Functions are classified into four categories:
 4. **`only_dynamic_callees`**: Functions that only call dynamically resolved functions (e.g., via reflection or runtime binding).  
 
 This classification ensures that the second-phase analysis processes functions in the correct order.  
-
-*(Original formatting preserved, translation completed.)*
