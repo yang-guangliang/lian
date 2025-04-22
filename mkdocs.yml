@@ -46,7 +46,6 @@ nav:
   - Getting Started:
       - Setup: en/setup.md
       - Examples: en/examples.md
-      - Commands: en/commands.md
 
   - Frontends:
       - Language Parsers: en/lang_parser.md
