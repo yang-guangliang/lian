@@ -1,4 +1,4 @@
-# **Install & Run**
+## Install & Run
 
 - Environment required：Linux  +  Python3；
 
@@ -21,7 +21,7 @@ pip install -r requirements.txt
 ./scripts/lian.sh -l <language> <filepath>
 ```
 
-# **Command-Line Parameter Configuration**
+## Command-Line Parameter Configuration
 
 LIAN's command-line options include
 
@@ -33,7 +33,7 @@ LIAN's command-line options include
 | -w   | --workspace | the workspace directory (default:lian_workspace) | .\lian.sh <target.py> -w .\output |
 | -f   | --force     | Enable the FORCE mode for rewritting the workspace directory                 | .\lian.sh <target.py> -f          |
 
-# **Result Visualization**
+## Result Visualization
 
 The following command will scan the default workspace and show results in a webpage. Please note that the visualization for large codebase will be slow. 
 

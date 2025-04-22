@@ -1,4 +1,4 @@
-# **Architecture**
+## Architecture
 
 The LIAN system comprises three core modules, as shown in the diagram below:
 
