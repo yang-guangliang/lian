@@ -1,21 +1,21 @@
 # **Install & Run**
 
-1. Environment required：Linux  +  Python3；
+- Environment required：Linux  +  Python3；
 
-2. Download LIAN repository：
+- Download LIAN repository：
 
 ```shell
 git clone https://gitee.com/fdu-ssr/lian.git
 ```
 
-3. Install the requirements of python：
+- Install the requirements of python：
 
 ```shell
 cd lian                  
 pip install -r requirements.txt     
 ```
 
-4. Basic use：
+- Basic use：
 
 ```shell
 ./scripts/lian.sh -l <language> <filepath>

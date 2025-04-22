@@ -10,25 +10,19 @@ To address this challenge, we have developed LIAN Lotus System, a high-precision
 
 - Multi-language support: Compatible with static languages (e.g., Java, C) and dynamic languages (e.g., Python, JavaScript, PHP), as well as mobile bytecode (e.g., Android Dalvik) and intermediate languages (e.g., LLVM).
 
-- Unified intermediate representation ([GIR](gir.md)): LIAN's language frontends convert diverse languages into the Generic Intermediate Representation (GIR) for high-precision semantic analysis.
+- General Intermediate Representation ([GIR](gir.md)): LIAN's language frontends convert diverse languages into the Generic Intermediate Representation (GIR) for high-precision semantic analysis.
 
 - Semantic analysis capabilities:
-
   - Type hierarchy analysis
-
   - File dependency analysis
-
   - Control flow analysis
-
   - Cross-function data flow analysis
 
 - Advanced state computation: Implements context-sensitive, flow-sensitive, field-sensitive, and path-sensitive runtime state tracking to support analyses like taint tracking and call graph construction.
 
 - Result storage: Intermediate and final results are stored in a database for easy querying and utilization.
 
-- Extensible infrastructure:
-
+- Extensible underlying infrastructure:
   - Event-based plugin system for customization
-
   - Memory and file management to prevent memory explosion
 
