@@ -12,17 +12,11 @@ To address this challenge, we have developed LIAN Lotus System, a high-precision
 
 - General Intermediate Representation ([GIR](gir.md)): LIAN's language frontends convert diverse languages into the Generic Intermediate Representation (GIR) for high-precision semantic analysis.
 
-- Semantic analysis capabilities:
-  - Type hierarchy analysis
-  - File dependency analysis
-  - Control flow analysis
-  - Cross-function data flow analysis
+- Semantic analysis capabilities: 1) Type hierarchy analysis; 2) File dependency analysis; 3) Control flow analysis; 4) Interprocedural data flow analysis.
 
 - Advanced state computation: Implements context-sensitive, flow-sensitive, field-sensitive, and path-sensitive runtime state tracking to support analyses like taint tracking and call graph construction.
 
 - Result storage: Intermediate and final results are stored in a database for easy querying and utilization.
 
-- Extensible underlying infrastructure:
-  - Event-based plugin system for customization
-  - Memory and file management to prevent memory explosion
+- Extensible underlying infrastructure: 1) Event-based plugin system for customization; 2) Memory and file management to prevent memory explosion.
 
