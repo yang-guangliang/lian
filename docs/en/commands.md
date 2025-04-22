@@ -10,7 +10,7 @@ This page documents the command-line parameter configuration for Lian, divided i
 | -p   | --print_stmts | Print statements                   | .\lian.sh -p <target.py>        |
 | -l   | --lang        | programming lang              | .\lian.sh -l python <target.py> |
 
-输出参数：
+## Output Parameters
 
 | Parameter | Synonym    | Description                                     | Example                              |
 | ---- | ----------- | ---------------------------------------- | --------------------------------- |
