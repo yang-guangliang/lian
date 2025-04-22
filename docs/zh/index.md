@@ -17,7 +17,7 @@
 ## **架构**
 
 ​		从技术架构来说，LIAN 系统由三大核心模块构成，如下图：
-![架构图](../img/structure_zh.png)
-- [语言前端](https://gitee.com/fdu-ssr/lian/wikis/05.语言前端.md)：将输入代码内容转换为中间表示 GIR，实现对输入的标准化处理；
-- [语义分析引擎](https://gitee.com/fdu-ssr/lian/wikis/06.语义分析引擎.md)：采用分层递进的分析策略，依次进行基础分析、基于函数摘要分析、全局分析，最终生成包含程序控制流、数据流、状态流等多层次语义分析结果；
-- [底层基础设施](https://gitee.com/fdu-ssr/lian/wikis/07.底层基础设施.md)：包括管理内存和文件系统（防止内存不足）、插件系统（易于扩展）。
+<img src="../img/structure_zh.png" width="510px" />
+- [语言前端](lang_parser.md)：将输入代码内容转换为中间表示 [GIR](gir.md)，实现对输入的标准化处理；
+- 语义分析引擎：采用分层递进的分析策略，依次进行[基础分析](basic_analysis.md)、[基于函数摘要分析](summary_generation.md)、[全局分析](global_analysis.md)，最终生成包含程序控制流、数据流、状态流等多层次语义分析结果；
+- 底层基础设施：包括[管理内存和文件系统](loader.md)（防止内存不足）、[插件系统](plugin.md)（易于扩展）。
