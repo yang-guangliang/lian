@@ -1,6 +1,6 @@
 # **Install & Run**
 
-1、Environment required：Linux  +  Python3；
+1. Environment required：Linux  +  Python3；
 
 2. Download LIAN repository：
 
@@ -33,3 +33,10 @@ LIAN's command-line options include
 | -w   | --workspace | the workspace directory (default:lian_workspace) | .\lian.sh <target.py> -w .\output |
 | -f   | --force     | Enable the FORCE mode for rewritting the workspace directory                 | .\lian.sh <target.py> -f          |
 
+# **Result Visualization**
+
+The following command will scan the default workspace and show results in a webpage. Please note that the visualization for large codebase will be slow. 
+
+```shell
+./scripts/dfview.sh 
+```

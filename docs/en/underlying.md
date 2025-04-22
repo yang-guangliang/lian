@@ -2,13 +2,13 @@ The underlying layer provides supports for other modules, including managing mem
 
 ## Memory and File System (Loader)
 
-&emsp;To enhance the management of memory and files, particularly to mitigate memory insufficiency issues, we implemented a two-tier memory management system based on the LRU (Least Recently Used) algorithm, comprising the item layer and the bundle layer. Additionally, the bundle layer facilitates interaction with local hard disk storage, thereby enabling file management.  
+To enhance the management of memory and files, particularly to mitigate memory insufficiency issues, we implemented a two-tier memory management system based on the LRU (Least Recently Used) algorithm, comprising the item layer and the bundle layer. Additionally, the bundle layer facilitates interaction with local hard disk storage, thereby enabling file management.  
 
 ## **Plugin System (app_manager)**
 
-&emsp;The unique characteristics of different programming languages require case-specific analysis and handling—for instance, JavaScript's prototype chain. To ensure the extensibility of the analysis tool, this system incorporates a plugin mechanism. When developers need to add a new plugin, they must first register it in `app_register.py` and `app_manager.py`, prepare the plugin's processing logic, and then trigger the plugin at the appropriate location via `AppManager.notify()`. Once triggered, the plugin returns its output along with its processing status.  
+The unique characteristics of different programming languages require case-specific analysis and handling—for instance, JavaScript's prototype chain. To ensure the extensibility of the analysis tool, this system incorporates a plugin mechanism. When developers need to add a new plugin, they must first register it in `app_register.py` and `app_manager.py`, prepare the plugin's processing logic, and then trigger the plugin at the appropriate location via `AppManager.notify()`. Once triggered, the plugin returns its output along with its processing status.  
 
-&emsp;Taking a JavaScript prototype chain handler plugin as an example, after registering the plugin and preparing its processing logic, developers trigger it at the appropriate location:  
+Taking a JavaScript prototype chain handler plugin as an example, after registering the plugin and preparing its processing logic, developers trigger it at the appropriate location:  
 
 ```python  
 ...  
