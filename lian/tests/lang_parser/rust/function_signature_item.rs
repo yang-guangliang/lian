@@ -1,0 +1,1 @@
+pub unsafe fn abs<T>(input: i32, x: T) -> i32  where T: Clone + Debug;

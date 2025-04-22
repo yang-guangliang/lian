@@ -1,0 +1,1 @@
+int (__stdcall *ptr)(int,float) = &func;

@@ -1,0 +1,9 @@
+setuptools
+tree-sitter
+pandas
+pyarrow
+networkx
+numpy
+line_profiler
+matplotlib
+PyYAML
