@@ -10,6 +10,12 @@ Entry points are determined by the `find_entry_point()` function in `basic_analy
 
 ## 3. **Control Flow Analysis**
 
+Control flow analysis is used to construct control flow graphs (CFGs) for program methods. Its core logic involves traversing statements in the function body and invoking corresponding handler functions based on statement types to build directed graphs representing program execution paths.  
+
+The analyzer first processes the function parameter initialization block, then analyzes the function body while connecting statement nodes. For control structures like if/while/for, it recursively analyzes their inner blocks and handles true/false branches or loop back edges. Special statements such as break/continue are collected and processed uniformly outside the loop body, while return statements are directly linked to the exit node.  
+
+Finally, the analyzer merges duplicate edges and resolves goto-label jumps. This implementation supports various programming constructs, including conditional branches, loops, exception handling, and declaration statements. By maintaining predecessor statement lists and special statement lists, it ensures correct control flow connections, ultimately generating complete CFGs for subsequent analysis.
+
 ## 4. **Instruction-Level Def/Use Analysis**
 
 Definition/use analysis (def/use analysis) tracks the definition and reference relationships of symbols (i.e., identifiers) in each statement of a program. At this stage, def/use analysis is flow-insensitive and performed on individual statements. The analysis proceeds statement by statement following the control flow graph (CFG). After analyzing each statement, it generates semantic information (status) for that statement and stores def/use information in two tables: `symbol_to_defined` and `symbol_to_used`. The functions of these two tables are as follows:
