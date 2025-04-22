@@ -1,11 +1,13 @@
 
 # Function Summary Analysis-Based Approach  
 &emsp;Traditional static analysis work cannot meet the precision requirements of software security analysis. To achieve high-precision semantic analysis, we divide program execution into two layers based on abstract interpretation: 1) the Symbol layer, which includes identifiers such as variables; 2) the runtime state layer (State), which abstractly models the possible contents of Symbols during real execution as a so-called "State" and associates Symbols with their corresponding States. During semantic analysis, we simulate the dynamic execution process of the program, tracking and calculating changes in States to achieve high-precision state analysis.  
- The bottom-up analysis can be roughly divided into three frameworks:  
+ 
+The bottom-up analysis can be roughly divided into three parts:  
 
 ## 1. GIR Instruction Analysis  
 
  In GIR instruction analysis, we process GIR instructions in the current method one by one in control flow order for state-level semantic analysis. For a GIR instruction, its operation field reflects the operation type it belongs to, and based on this field, the GIR instruction is dispatched to the corresponding type-specific processing function. For example, if the operation is "assign_stmt", it is dispatched to the assign_stmt_state function. In the processing function, we calculate and propagate States according to different instruction types.  
+
 
 ## 2. Intraprocedural Analysis  
 
@@ -17,4 +19,4 @@
 
  When applying function summaries, we first associate the caller and callee at the Symbol level (e.g., association between formal and actual parameters, external variables). Then, for each pair of associated Symbols, we retrieve the corresponding States from the caller and States' from the callee's function summary, applying States' to States to maximally ensure that the state semantics from the callee are mapped into the caller.  
 
- &emsp;It should be noted that in the bottom-up analysis process, a single function serves as the analysis boundary, and we do not consider the specific states of external variables and function parameters passed into the function. At this stage, we abstract these external states as "anything", meaning they can take any value. If during analysis we find that these "anything" states flow into sensitive operations, such as *call anything()*, we will mark them as key points and record them in the function summary. In subsequent global analysis, we will resolve the specific states of these key "anything" values from a global perspective.
+It should be noted that in the bottom-up analysis process, a single function serves as the analysis boundary, and we do not consider the specific states of external variables and function parameters passed into the function. At this stage, we abstract these external states as "anything", meaning they can take any value. If during analysis we find that these "anything" states flow into sensitive operations, such as *call anything()*, we will mark them as key points and record them in the function summary. In subsequent global analysis, we will resolve the specific states of these key "anything" values from a global perspective.
