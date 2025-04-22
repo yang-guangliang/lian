@@ -1,0 +1,1 @@
+createarraywithbuffer 0x10, { 3 [ i32:0, i32:1, i32:2, ]}

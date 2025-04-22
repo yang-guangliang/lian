@@ -1,0 +1,9 @@
+lang: java
+rules:
+ - name: android.telephony.TelephonyManager.getImei
+   src: []
+   dst: ["%return"]
+
+ - name: android.telephony.TelephonyManager.getLine1Number
+   src: []
+   dst: ["%return"]

@@ -1,0 +1,1 @@
+pub type Pair<T> = i32;
