@@ -53,15 +53,14 @@ nav:
       - General IR - GIR: en/gir.md
 
   - Semantic Analysis:
+      - design: en/design.md
       - Basic Analysis: en/basic_analysis.md
       - Summary Generation: en/summary_generation.md
       - Global Analysis: en/global_analysis.md
 
-  - Security Analysis:
-      - Todo
+  # - Security Analysis:
+  #     - Todo
 
   - Underlying Layer:
-      - Plugin: en/plugin.md
-      - Loader: en/loader.md
-      - Environment Handlers: en/environ.md
+      - Overview: en/underlying.md
 
