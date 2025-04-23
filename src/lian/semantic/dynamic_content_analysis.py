@@ -97,7 +97,7 @@ class DynamicContentAnalysis(StmtStateAnalysis):
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
             callee_method_def_use_summary:MethodDefUseSummary = self.loader.load_method_def_use_summary(each_callee_id)
             parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
-            if parameter_mapping_list is None:
+            if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
 
@@ -181,7 +181,7 @@ class DynamicContentAnalysis(StmtStateAnalysis):
             elif self.is_state_a_class_decl(each_state):
                 callee_class_ids.add(each_state.value)
                 return self.new_object_stmt_state(stmt_id, stmt, status, in_states)
-            
+
             else:
                 unsolved_callee_ids.add(each_state.value)
 

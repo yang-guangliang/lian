@@ -159,7 +159,7 @@ class ModuleSymbolsLoader:
 
     def parse_import_module_path(self, path):
         def check_return(result):
-            if result is None:
+            if util.is_empty(result):
                 return set()
             return result
 
@@ -836,9 +836,6 @@ class CalleeParameterMapping(MethodLevelAnalysisResultLoader):
 
             parameter_mapping_list.append(
                 ParameterMapping(
-                    caller_id = row.caller_id,
-                    call_stmt_id = row.call_stmt_id,
-                    callee_id = row.callee_id,
                     arg_index_in_space = row.arg_index_in_space,
                     arg_state_id = row.arg_state_id,
                     arg_source_symbol_id = row.arg_source_symbol_id,
@@ -1222,7 +1219,7 @@ class GroupedMethodsLoader:
         return self.grouped_methods
 
     def export(self):
-        if self.grouped_methods is None:
+        if util.is_empty(self.grouped_methods):
             return
         DataModel([self.grouped_methods.to_dict()]).save(self.path)
 
@@ -1676,7 +1673,7 @@ class Loader:
         return self._load_method_body_by_header(method_id, method_decl_stmt)
 
     def _load_method_body_by_header(self, method_id, method_decl_stmt):
-        if method_decl_stmt is None:
+        if util.is_empty(method_decl_stmt):
             return None
 
         if self.method_body_cache.contain(method_id):

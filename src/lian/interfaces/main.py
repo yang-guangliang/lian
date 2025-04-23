@@ -90,7 +90,7 @@ class Lian:
         preparation.run(self.options, self.loader)
         self.extern_system.init()
 
-        if other_init is not None:
+        if util.is_available(other_init):
             other_init(self)
 
         return self

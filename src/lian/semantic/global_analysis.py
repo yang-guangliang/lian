@@ -243,7 +243,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         old_implicitly_used_symbols = status.implicitly_used_symbols.copy()
         status.in_state_bits = self.collect_in_state_bits(stmt_id, stmt, frame)
         self.unset_states_of_status(stmt_id, frame, status)
-        
+
         # collect in state
 
         in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
@@ -253,7 +253,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         if not continue_flag:
-            print("  DON'T CONTINUE")
+            if config.DEBUG_FLAG:
+                print(f"  CONTINUE")
             if status.in_state_bits != old_in_state_bits:
                 self.update_out_states(stmt_id, frame, status, old_index_ceiling, old_status_defined_states)
             self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
@@ -262,7 +263,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
         change_flag: P2ResultFlag = frame.dynamic_content_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
-            print(f"  NO CHANGE")
+            if config.DEBUG_FLAG:
+                print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
@@ -459,7 +461,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                     self.init_compute_frame(frame, frame_stack)
 
             result: P2ResultFlag = self.analyze_stmts(frame)
-            if result is not None and result.interruption_flag:
+            if util.is_available(result) and result.interruption_flag:
                 data: InterruptionData = result.interruption_data
                 new_callee = False
                 for callee_id in data.callee_ids:

@@ -151,7 +151,7 @@ class StmtDefUseAnalysis:
         2. 符号溯源：解析符号的来源信息（单元ID/符号ID）
         3. 空间同步：将符号状态同步到当前计算帧的符号状态空间
         4. 摘要更新：更新方法定义使用摘要中的符号关系
-        
+
         特殊处理：
         - 参数声明时自动绑定临时变量ID
         - 处理THIS/OBJECT等内置符号的特殊映射
@@ -217,7 +217,7 @@ class StmtDefUseAnalysis:
                                 self.unit_id, self.method_id, stmt_id, stmt, defined_symbol,
                                 source_symbol_must_be_global = False
                             )
-                        if source_info is not None:
+                        if util.is_available(source_info):
                             defined_symbol.source_unit_id = source_info.source_unit_id
                             defined_symbol.symbol_id = source_info.symbol_id
 
@@ -227,7 +227,7 @@ class StmtDefUseAnalysis:
                     source_info = self.resolver.resolve_symbol_source(
                         self.unit_id, self.method_id, stmt.stmt_id, stmt, defined_symbol
                     )
-                    if source_info is not None:
+                    if util.is_available(source_info):
                         defined_symbol.source_unit_id = source_info.source_unit_id
                         symbol_id = source_info.symbol_id
                         defined_symbol.symbol_id = symbol_id
@@ -258,7 +258,7 @@ class StmtDefUseAnalysis:
             source_info = self.resolver.resolve_symbol_source(
                 self.unit_id, self.method_id, stmt_id, stmt, used_symbol
             )
-            if source_info is not None:
+            if util.is_available(source_info):
                 if source_info.symbol_id == stmt_id:
                     source_info.symbol_id = self.loader.load_unsolved_symbol_id_by_name(used_symbol.name)
 

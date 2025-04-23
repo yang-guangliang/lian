@@ -71,7 +71,7 @@ class AppManager:
     # def add_handler(self, handler_list, func, langs):
     #     # default_list = handler_list.get(config.ANY_LANG, [])
     #     handler_list.append()
-        
+
     #     for each_lang in langs:
     #         if each_lang not in handler_list:
     #             # handler_list[each_lang] = default_list.copy()
@@ -87,7 +87,7 @@ class AppManager:
 
     def notify(self, data:EventData):
         event_return = er.config_event_unprocessed()
-        all_handlers = self.event_handlers.get(data.event)
+        all_handlers = self.event_handlers.get(data.event, None)
         data.out_data = data.in_data
 
         if all_handlers is None:

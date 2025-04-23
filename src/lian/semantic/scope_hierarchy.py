@@ -62,7 +62,7 @@ class UnitScopeHierarchyAnalysis:
         return self.unit_gir.read_block(block_id)
 
     def init(self):
-        if self.unit_gir is None:
+        if util.is_empty(self.unit_gir):
             # util.error("UnitScopeHierarchyAnalysis.unit_gir is empty")
             return
         for row in self.unit_gir:
@@ -88,7 +88,7 @@ class UnitScopeHierarchyAnalysis:
             return self.stmt_id_to_scope_id_cache[stmt_id]
 
         stmt = self.access_by_stmt_id(stmt_id)
-        if stmt is None:
+        if util.is_empty(stmt):
             return 0
 
         result = stmt.stmt_id

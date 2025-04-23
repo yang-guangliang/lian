@@ -340,7 +340,7 @@ class StmtStateAnalysis:
     def compute_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """根据语句类型分发到对应的状态处理函数进行分析"""
         # print("status.operation:", status.operation)
-        handler = self.state_analysis_handlers.get(stmt.operation)
+        handler = self.state_analysis_handlers.get(stmt.operation, None)
         if handler is None:
             return self.regular_stmt_state(stmt_id, stmt, status, in_states)
         return handler(stmt_id, stmt, status, in_states)
@@ -510,7 +510,7 @@ class StmtStateAnalysis:
             elif receiver_state.state_type == StateTypeKind.ANYTHING:
                 self.tag_key_state(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
 
-                if new_receiver_symbol_index is None:
+                if util.is_empty(new_receiver_symbol_index):
                     new_receiver_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, receiver_symbol)
                     new_receiver_symbol: Symbol = self.frame.symbol_state_space[new_receiver_symbol_index]
 
@@ -608,7 +608,7 @@ class StmtStateAnalysis:
             elif receiver_state.state_type == StateTypeKind.ANYTHING:
                 self.tag_key_state(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
 
-                if new_receiver_symbol_index is None:
+                if util.is_empty(new_receiver_symbol_index):
                     new_receiver_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, receiver_symbol)
                     new_receiver_symbol: Symbol = self.frame.symbol_state_space[new_receiver_symbol_index]
 
@@ -703,7 +703,7 @@ class StmtStateAnalysis:
         REGULAR op ANY = ANY
         """
         symbol_id = defined_symbol.symbol_id
-        if state1 is None or state2 is None:
+        if util.is_empty(state1) or util.is_empty(state2):
             return set()
 
         status = self.frame.stmt_id_to_status[stmt.stmt_id]
@@ -926,7 +926,7 @@ class StmtStateAnalysis:
         if not util.isna(stmt.packed_named_args):
             packed_named_arg_index = status.used_symbols[-1]
             item_index_set = self.read_used_states(packed_named_arg_index, in_states)
-            if item_index_set is not None:
+            if util.is_available(item_index_set):
                 for each_item_index in item_index_set:
                     each_item = self.frame.symbol_state_space[each_item_index]
                     if not (each_item and isinstance(each_item, State) and each_item.fields):
@@ -970,7 +970,7 @@ class StmtStateAnalysis:
         positional_args: list[set] = []
         if not util.isna(stmt.packed_positional_args):
             item_index_set = self.read_used_states(status.used_symbols[1], in_states)
-            if item_index_set is not None:
+            if util.is_available(item_index_set):
                 for each_item_index in item_index_set:
                     each_item = self.frame.symbol_state_space[each_item_index]
                     if not (each_item and isinstance(each_item, State) and each_item.array):
@@ -1139,7 +1139,7 @@ class StmtStateAnalysis:
                             )
 
         elif common_len < positional_arg_len:
-            if parameters.packed_positional_parameter is not None:
+            if util.is_available(parameters.packed_positional_parameter):
                 id = parameters.packed_positional_parameter.symbol_id
                 parameter_index = 0
                 for arg_set in args.positional_args[pos:]:
@@ -1164,7 +1164,7 @@ class StmtStateAnalysis:
 
                     parameter_index += 1
 
-        if parameters.packed_named_parameter is not None:
+        if util.is_available(parameters.packed_named_parameter):
             id = parameters.packed_named_parameter.symbol_id
             if len(args.named_args) > 0:
                 for each_arg_name in args.named_args:
@@ -1315,7 +1315,7 @@ class StmtStateAnalysis:
         self, stmt_id, status: StmtStatus, last_states, old_arg_state_index, old_to_new_arg_state,
         parameter_symbol_id = -1, callee_id = -1, deferred_index_updates = None, old_to_lastest_old_arg_state = None
     ):
-        if old_to_lastest_old_arg_state is None:
+        if util.is_empty(old_to_lastest_old_arg_state):
             old_to_lastest_old_arg_state = {}
 
         if old_arg_state_index not in old_to_new_arg_state:
@@ -1621,7 +1621,7 @@ class StmtStateAnalysis:
         # add necessary state in defined_states
         top_state_index_set = set()
         for each_summary in [callee_summary.parameter_symbols, callee_summary.defined_external_symbols, callee_summary.return_symbols]:
-            if each_summary is None:
+            if util.is_empty(each_summary):
                 continue
             for symbol_id in each_summary:
                 index_pair_set = each_summary[symbol_id]
@@ -1750,11 +1750,11 @@ class StmtStateAnalysis:
 
         args = self.prepare_args(stmt_id, stmt, status, in_states)
         callee_info = self.frame.stmt_id_to_callee_info.get(stmt_id)
-        if callee_info is None:
+        if util.is_empty(callee_info):
             result = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
             )
-            if result is not None:
+            if util.is_available(result):
                 return result
             return P2ResultFlag()
 
@@ -1793,7 +1793,7 @@ class StmtStateAnalysis:
             result = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
             )
-            if result is not None:
+            if util.is_available(result):
                 return result
             return P2ResultFlag()
 
@@ -1822,7 +1822,7 @@ class StmtStateAnalysis:
             new_call_site = (caller_id, stmt_id, each_callee_id)
             callee_method_def_use_summary:MethodDefUseSummary = self.loader.load_method_def_use_summary(each_callee_id)
             parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
-            if parameter_mapping_list is None:
+            if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
 
@@ -1879,13 +1879,13 @@ class StmtStateAnalysis:
 
             # prepare callee summary template and compact space
             callee_summary = self.loader.load_method_summary_template(each_callee_id)
-            if callee_summary is None:
+            if util.is_empty(callee_summary):
                 # print(f"\neach_callee_id: {each_callee_id}")
                 continue
             callee_summary = callee_summary.copy()
 
             callee_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(each_callee_id)
-            if callee_compact_space is None:
+            if util.is_empty(callee_compact_space):
                 continue
             callee_compact_space = callee_compact_space.copy()
 
@@ -2575,7 +2575,7 @@ class StmtStateAnalysis:
             if is_reading_success:
                 continue
 
-            if new_array_symbol_index is None:
+            if util.is_empty(new_array_symbol_index):
                 new_array_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, used_array_symbol)
                 new_array_symbol: Symbol = self.frame.symbol_state_space[new_array_symbol_index]
 
@@ -2893,7 +2893,7 @@ class StmtStateAnalysis:
         return P2ResultFlag()
 
     def assert_field_read_new_receiver_symbol(self, new_receiver_symbol_index, status, stmt_id, receiver_symbol):
-        if new_receiver_symbol_index is None:
+        if util.is_empty(new_receiver_symbol_index):
             new_receiver_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, receiver_symbol)
         return new_receiver_symbol_index
 
@@ -3424,7 +3424,7 @@ class StmtStateAnalysis:
                 continue
 
             # tangping
-            if new_array_symbol_index is None:
+            if util.is_empty(new_array_symbol_index):
                 new_array_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, used_array_symbol)
                 new_array_symbol: Symbol = self.frame.symbol_state_space[new_array_symbol_index]
 

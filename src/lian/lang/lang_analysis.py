@@ -243,7 +243,7 @@ class GIRParser:
             util.error("Failed to read file:", file_path)
             return
 
-        if code is None or len(code) == 0:
+        if util.is_empty(code):
             return
 
         if f"{config.DEFAULT_WORKSPACE}/{config.EXTERNS_DIR}" in file_path:
@@ -303,7 +303,7 @@ class GIRParser:
         1. 为节点添加单元ID标识
         2. 调用加载器持久化存储
         """
-        if flatten_nodes is None or len(flatten_nodes) == 0:
+        if is_empty(flatten_nodes):
             return
 
         unit_id = unit_info.module_id

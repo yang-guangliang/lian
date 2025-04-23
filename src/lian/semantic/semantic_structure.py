@@ -752,7 +752,7 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
             new_indexes = set()
             is_list = False
 
-        if shift_result is not None:
+        if util.is_available(shift_result):
             shift_result.new_indexes = new_indexes
             old_index_to_new_index = shift_result.old_index_to_new_index
             new_index_to_old_index = shift_result.new_index_to_old_index
@@ -791,7 +791,7 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
             all_indexes.add(index)
 
             content = self.space[index]
-            if content is not None:
+            if util.is_available(content):
                 if isinstance(content, State):
                     for each_value in content.fields.values():
                         target_list_copy.update(each_value)
@@ -807,7 +807,7 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
         # copy target elements
         for index in all_indexes:
             content = self.space[index]
-            if content is not None:
+            if util.is_available(content):
                 results.append(content.copy())
                 new_index = len(results) - 1
                 old_index_to_new_index[index] = new_index

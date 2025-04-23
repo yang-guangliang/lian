@@ -52,7 +52,7 @@ class ControlFlowAnalysis:
     @profile
     def analyze(self):
         cfg = self.loader.load_method_cfg(self.method_id)
-        if cfg is not None:
+        if util.is_available(cfg):
             return cfg
 
         # last_stmts_of_init_block = self.analyze_init_block(self.parameter_decls)
@@ -453,7 +453,7 @@ class ControlFlowAnalysis:
                 counter += 1
                 first_init_stmt = True
             else:
-                handler = self.stmt_handlers.get(current.operation)
+                handler = self.stmt_handlers.get(current.operation, None)
                 if first_init_stmt:
                     previous = [CFGNode(previous, ControlFlowKind.PARAMETER_INIT)]
                     first_init_stmt = False
@@ -485,7 +485,7 @@ class ControlFlowAnalysis:
 
         while counter < len(current_block):
             current = current_block.access(counter)
-            handler = self.stmt_handlers.get(current.operation)
+            handler = self.stmt_handlers.get(current.operation, None)
             if handler is None:
                 self.link_parent_stmts_to_current_stmt(previous, current)
                 previous = [current]

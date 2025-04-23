@@ -71,7 +71,7 @@ class Resolver:
         result = []
 
         summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
-        if summary is None:
+        if util.is_empty(summary):
             return result
 
         if class_name not in summary.symbol_name_to_scope_ids:
@@ -126,7 +126,7 @@ class Resolver:
 
             # since this is an import stmt, we need to read import information to find the real symbol_id
             export_symbols = self.loader.load_unit_export_symbols(unit_id)
-            if export_symbols is None:
+            if util.is_empty(export_symbols):
                 return default_return
             import_info = export_symbols.query_first(export_symbols.name == symbol.name)
             if import_info:
@@ -136,7 +136,7 @@ class Resolver:
 
         # default return value
         default_return = SourceSymbolScopeInfo(unit_id, stmt_id)
-        if symbol is None:
+        if util.is_empty(symbol):
             return default_return
 
         summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
@@ -557,7 +557,7 @@ class Resolver:
         """
         if not arg_access_path:
             return source_state_indexes.copy()
-        
+
         # print("get_state_from_path方法")
         # print(f"source_state_indexes: {source_state_indexes}")
         # print(f"arg_access_path: {arg_access_path}")
@@ -695,10 +695,10 @@ class Resolver:
                 latest_source_state_indexes = self.get_latest_source_state_indexes(current_frame, state_symbol_id)
                 current_space = self.get_sub_space(current_frame, latest_source_state_indexes, source_state_indexes)
 
-            if current_space is not None and len(current_space) != 0 :
+            if util.is_available(current_space):
                 break
 
-        if current_space is None:
+        if util.is_empty(current_space):
             return return_indexes
 
         # if config.DEBUG_FLAG:
@@ -737,7 +737,7 @@ class Resolver:
 
 
     def resolve_anything_in_summary_generation(
-            self, state_index, caller_frame: ComputeFrame, stmt_id, callee_id = -1, deferred_index_updates = None, 
+            self, state_index, caller_frame: ComputeFrame, stmt_id, callee_id = -1, deferred_index_updates = None,
             set_to_update = None, parameter_symbol_id = -1
             ):
         '''
@@ -763,20 +763,20 @@ class Resolver:
             pass
             # if isinstance(caller_frame, ComputeFrame):
             #     current_space = self.get_this_state(caller_frame, source_state_indexes)
-        
+
         # 若anything的source是callee参数。
         if self.loader.is_parameter_decl_of_method(state_symbol_id, callee_id):
-            if set_to_update is None or deferred_index_updates is None:
+            if util.is_empty(set_to_update) or util.is_empty(deferred_index_updates):
                 return
             # 收集初始的arg_indexes
             arg_state_indexes = set()
             call_site = (caller_frame.method_id, stmt_id, callee_id)
             parameter_mapping_list = self.loader.load_parameter_mapping(call_site)
-            if parameter_mapping_list is None:
+            if util.is_empty(parameter_mapping_list):
                 return
             for each_mapping in parameter_mapping_list:
                 if each_mapping.parameter_symbol_id == state_symbol_id:
-                    arg_state_indexes.add(each_mapping.arg_index_in_space) 
+                    arg_state_indexes.add(each_mapping.arg_index_in_space)
             # 需要记录对应的集合索引、access_path、arg_state_indexes、set_to_update(要将真正的state更新到哪个集合去)，最后从old_to_new_arg_state里去找就行
             deferred_index_update = DefferedIndexUpdate(
                 state_index = state_index, state_symbol_id = state_symbol_id, stmt_id = stmt_id,
@@ -785,20 +785,20 @@ class Resolver:
             deferred_index_updates.add(deferred_index_update) # 延迟更新。会通过update_deferred_index方法更新
 
             if state_symbol_id != parameter_symbol_id:
-                set_to_update.discard(state_index)  
+                set_to_update.discard(state_index)
                 return
-            # anything_state的src_symbol是parameter自身。说明是a.f=%v1或a.f=a.*的形式 
+            # anything_state的src_symbol是parameter自身。说明是a.f=%v1或a.f=a.*的形式
             else:
-                # print(f"anything_state的src_symbol是parameter自身。说明是a.f=%v1或a.f=a.*的形式 {set_to_update} {id(set_to_update)}") 
+                # print(f"anything_state的src_symbol是parameter自身。说明是a.f=%v1或a.f=a.*的形式 {set_to_update} {id(set_to_update)}")
                 concrete_state_index = self.resolve_anything_with_same_src_symbol_in_summary_generation(
-                    state_index, caller_frame, stmt_id, callee_id, parameter_symbol_id, 
+                    state_index, caller_frame, stmt_id, callee_id, parameter_symbol_id,
                     deferred_index_updates, set_to_update, arg_state_indexes
                 )
                 # print(f"concrete_state是{concrete_state_index} state是{state_index}, set_to_update {set_to_update} {id(set_to_update)}")
                 if concrete_state_index and concrete_state_index != state_index:
                     # print(f"去resolve_same的concrete_state是<{concrete_state_index}>,更新到set_to_update中")
-                    set_to_update.add(concrete_state_index) 
-                    set_to_update.discard(state_index) 
+                    set_to_update.add(concrete_state_index)
+                    set_to_update.discard(state_index)
                 return
 
         if state_symbol_id in caller_frame.symbol_to_define:
@@ -809,9 +809,9 @@ class Resolver:
         if accessed_states:
             set_to_update.discard(state_index)
             set_to_update.update(accessed_states)
-            return 
-    
-    @static_vars(processing_list = set, result_cache = dict)           
+            return
+
+    @static_vars(processing_list = set, result_cache = dict)
     def resolve_anything_with_same_src_symbol_in_summary_generation(
         self, state_index, caller_frame: ComputeFrame, stmt_id, callee_id, parameter_symbol_id = -1,
         deferred_index_updates = None, set_to_update = None, arg_state_indexes = None
@@ -824,12 +824,12 @@ class Resolver:
         # print(f"\nresolve_anything_with_same_src_symbol_in_summary_generation state_index {state_index} id_set_to_update {id(set_to_update)} path {access_path}\nbegin========= ")
 
         state_identifier = id(access_path)
-        # 循环依赖或没有fields或a.f=a 
+        # 循环依赖或没有fields或a.f=a
         if state_identifier in self.resolve_anything_with_same_src_symbol_in_summary_generation.processing_list\
             or not state.fields \
             or len(access_path) == 1:
             # print(set_to_update)
-            set_to_update.discard(state_index) 
+            set_to_update.discard(state_index)
             # if config.DEBUG_FLAG:
             #     if not state.fields:
             #         print("进入的state没有fields(a.f=a.g) 延迟更新")
@@ -837,19 +837,19 @@ class Resolver:
             #         print("出现a.f=a，延迟更新")
             #     else:
             #         print("出现循环依赖 延迟更新 ")
-            if set_to_update is not None: 
+            if util.is_available(set_to_update):
                 deferred_index_update = DefferedIndexUpdate(
                     state_index = state_index, state_symbol_id = parameter_symbol_id, stmt_id = stmt_id,
                     arg_state_indexes = arg_state_indexes, access_path = access_path, set_to_update = set_to_update
-                    )                
+                    )
                 # print(f"rs 添加延迟更新 {deferred_index_update}")
                 deferred_index_updates.add(deferred_index_update)
             return None
         self.resolve_anything_with_same_src_symbol_in_summary_generation.processing_list.add(state_identifier)
 
-        created_state = state.copy(stmt_id)  
+        created_state = state.copy(stmt_id)
         change_flag = False
-        
+
         for field_name, field_indexes in state.fields.items():
             for field_index in field_indexes:
                 field_state = caller_frame.symbol_state_space[field_index]
@@ -866,7 +866,7 @@ class Resolver:
                 else: # v1.g=v2 或 field_state.g=a.*
                     # print(f"遍历该state的fields：field_name为<{field_name}>的anything_state的source还是自己，递归")
                     set_to_update.discard(state_index)
-                    created_state.fields[field_name].discard(field_index) 
+                    created_state.fields[field_name].discard(field_index)
                     new_state_index = self.resolve_anything_with_same_src_symbol_in_summary_generation(
                         field_index, caller_frame, stmt_id, callee_id, parameter_symbol_id,
                         deferred_index_updates, created_state.fields[field_name], arg_state_indexes
@@ -886,13 +886,13 @@ class Resolver:
             self.resolve_anything_with_same_src_symbol_in_summary_generation.processing_list.discard(state_identifier)
             # print("有变化，返回",return_index)
             return return_index
-        else: 
+        else:
             # print("没变化 进来的什么就返回什么",state_index)
             util.add_to_dict_with_default_set(
                 self.resolve_anything_with_same_src_symbol_in_summary_generation.result_cache,
                 state_index,
                 state_index
-                )              
+                )
             self.resolve_anything_with_same_src_symbol_in_summary_generation.processing_list.discard(state_identifier)
             return state_index
 

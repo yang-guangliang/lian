@@ -50,7 +50,7 @@ class ExternSystem:
             if rule.mock_id in (0, -1):
                 return False
         elif rule.kind == RuleKind.MODEL:
-            if rule.model_method is None:
+            if util.is_empty(rule.model_method):
                 return False
 
         return True
@@ -159,7 +159,7 @@ class ExternSystem:
                     results.append(ConfigurationItem(kind=ConfigurationItemKind.RETURN))
                 elif each_split.startswith("%arg"):
                     pos = self.extract_argument_number(each_split)
-                    if pos is not None:
+                    if util.is_available(pos):
                         results.append(ConfigurationItem(kind=ConfigurationItemKind.ARG, arg_pos=index))
                 elif each_split.startswith("%this"):
                     results.append(ConfigurationItem(kind=ConfigurationItemKind.THIS))

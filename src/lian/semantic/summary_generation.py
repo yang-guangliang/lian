@@ -145,7 +145,7 @@ class SemanticSummaryGeneration:
         )
 
         frame.cfg = self.loader.load_method_cfg(method_id)
-        if frame.cfg is None:
+        if util.is_empty(frame.cfg):
             return
 
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
@@ -154,7 +154,7 @@ class SemanticSummaryGeneration:
         # avoid changing the content of the loader
         frame.stmt_id_to_status = copy.deepcopy(self.loader.load_stmt_status_p1(method_id))
         frame.symbol_state_space = self.loader.load_symbol_state_space_p1(method_id).copy()
-        if frame.symbol_state_space is None:
+        if util.is_empty(frame.symbol_state_space):
             return
 
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(
@@ -636,7 +636,7 @@ class SemanticSummaryGeneration:
             )
 
             # print("收集到的current_States是", current_states)
-            if current_states is None or len(current_states) == 0:
+            if util.is_empty(current_states):
                 continue
 
             if used_symbol.states != current_states:
@@ -843,7 +843,7 @@ class SemanticSummaryGeneration:
         """
         # print(f"生成方法{frame.method_id}的summary")
         def_use_summary = frame.method_def_use_summary
-        if def_use_summary is None:
+        if util.is_empty(def_use_summary):
             return
 
         symbol_state_space = frame.symbol_state_space

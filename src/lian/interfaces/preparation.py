@@ -207,7 +207,7 @@ class ModuleSymbolsBuilder:
         return result
 
     def scan_modules(self, module_path, parent_module_id = 0, is_extern = False):
-        if module_path is None:
+        if util.is_empty(module_path):
             return
 
         # Only scan current directory, _not_ recursively
