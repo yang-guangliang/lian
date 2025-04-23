@@ -1408,10 +1408,10 @@ class StmtStateAnalysis:
             for each_field_state_index in field_states:
                 each_field_state = self.frame.symbol_state_space[each_field_state_index]
                 if each_field_state.state_type == StateTypeKind.ANYTHING: 
-                    if config.DEBUG_FLAG:
-                        print(f"\n\napply_parameter时, each_field_state {each_field_state_index} 是anything, field_name是{field_name}")
-                        # pprint.pprint(each_field_state)
-                        print()
+                    # if config.DEBUG_FLAG:
+                    #     print(f"\n\napply_parameter时, each_field_state {each_field_state_index} 是anything, field_name是{field_name}")
+                    #     # pprint.pprint(each_field_state)
+                    #     print()
                     self.resolver.resolve_anything_in_summary_generation(
                         each_field_state_index, self.frame, stmt_id, callee_id, deferred_index_updates, 
                         set_to_update = new_arg_state_fields[field_name], parameter_symbol_id = parameter_symbol_id
@@ -1552,10 +1552,9 @@ class StmtStateAnalysis:
                 stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state, 
                 parameter_symbol_id, callee_id, deferred_index_updates, old_to_lastest_old_arg_state
                 )
-        # 用于测试apply_summary 不要删 可以注释掉
-        print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")
-        pprint.pprint(deferred_index_updates)
-        print(f"old_to_new_arg_state {old_to_new_arg_state}")
+        # print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")
+        # pprint.pprint(deferred_index_updates)
+        # print(f"old_to_new_arg_state {old_to_new_arg_state}")
         self.resolver.update_deferred_index(old_to_new_arg_state, deferred_index_updates, self.frame.symbol_state_space)
 
     def apply_other_semantic_summary(
@@ -1609,12 +1608,12 @@ class StmtStateAnalysis:
             status.implicitly_defined_symbols.append(index_to_add)
 
     def apply_callee_semantic_summary(self, stmt_id, callee_id, args: MethodCallArguments, callee_summary, callee_compact_space: SymbolStateSpace, this_state_set: set = set()):
-        print("---开始apply_callee_semantic_summary---")
-        print("callee_id", callee_id)
-        print("callee_summary")
-        pprint.pprint(callee_summary)
-        print("callee_compact_space")
-        pprint.pprint(callee_compact_space)
+        # print("---开始apply_callee_semantic_summary---")
+        # print("callee_id", callee_id)
+        # print("callee_summary")
+        # pprint.pprint(callee_summary)
+        # print("callee_compact_space")
+        # pprint.pprint(callee_compact_space)
         status = self.frame.stmt_id_to_status[stmt_id]
         # append callee space to caller space
         self.frame.symbol_state_space.append_space_copy(callee_compact_space)
@@ -3003,7 +3002,6 @@ class StmtStateAnalysis:
                     defined_states.update(each_receiver_state.tangping_elements)
 
                 elif len(field_name) == 0 or each_field_state.state_type == StateTypeKind.ANYTHING:
-                    print("field_name: ", field_symbol)
                     if isinstance(field_symbol, Symbol):
                         self.tag_key_state(stmt_id, field_symbol.symbol_id, each_field_state_index)
                         # 不准躺平

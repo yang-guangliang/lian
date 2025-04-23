@@ -154,8 +154,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         返回：更新后的状态索引集合
         """
         # key_dynamic_content = summary.key_dynamic_content
-        if config.DEBUG_FLAG:
-            print(f"collect_external_symbol_states: symbol_id {symbol_id}, old_key_states {old_key_state_indexes}")
+        # if config.DEBUG_FLAG:
+        #     print(f"进入collect_external_symbol_states: symbol_id {symbol_id}, old_key_states {old_key_state_indexes}")
         if frame.stmt_counters[stmt_id] is not config.FIRST_ROUND:
             return old_key_state_indexes
 
@@ -171,8 +171,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         # holds frame.stmt_counters[stmt_id] == config.FIRST_GLOBAL_ROUND
         # holds stmt.operation in self.SENSITIVE_OPERATIONS
-        if config.DEBUG_FLAG:
-            print(f"stmt operation {stmt.operation} is SENSITIVE_OPERATIONS")
+        # if config.DEBUG_FLAG:
+        #     print(f"stmt operation {stmt.operation} is SENSITIVE_OPERATIONS")
         status = frame.stmt_id_to_status[stmt_id]
         old_length = len(frame.symbol_state_space)
         for old_key_state_index in old_key_state_indexes:
@@ -191,6 +191,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             if stmt.operation in CALL_OPERATION and old_key_state.data_type == LianInternal.THIS:
                 continue
 
+            if old_key_state.state_type != StateTypeKind.ANYTHING:
+                continue
             resolved_state_indexes = self.resolver.resolve_symbol_states(old_key_state, frame.frame_stack, frame, stmt_id, stmt, status)
             util.add_to_dict_with_default_set(frame.method_summary_instance.resolver_result, old_key_state_index, resolved_state_indexes)
             for each_resolved_state_index in resolved_state_indexes:
@@ -208,9 +210,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         # update external symbols
         # used_external_symbols[symbol_id] = {IndexMapInSummary(raw_index = index, new_index = -1) for index in new_state_indexes}
-        if config.DEBUG_FLAG:
-            for index in new_state_indexes:
-                print(f"finally collect_external_symbol_states: stmt_id {stmt_id}, symbol_id {symbol_id}, {frame.symbol_state_space[index]}")
+        # if config.DEBUG_FLAG:
+        #     for index in new_state_indexes:
+        #         print(f"finally collect_external_symbol_states: stmt_id {stmt_id}, symbol_id {symbol_id}, {frame.symbol_state_space[index]}")
         return new_state_indexes
 
     def compute_states(self, stmt_id, stmt, frame: ComputeFrame):
@@ -241,7 +243,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         old_implicitly_used_symbols = status.implicitly_used_symbols.copy()
         status.in_state_bits = self.collect_in_state_bits(stmt_id, stmt, frame)
         self.unset_states_of_status(stmt_id, frame, status)
-        # print(f"in_state_bits: {frame.state_bit_vector_manager.explain(status.in_state_bits)}")
+        
         # collect in state
 
         in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
@@ -250,7 +252,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        # print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
             print("  DON'T CONTINUE")
             if status.in_state_bits != old_in_state_bits:
@@ -284,8 +285,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             frame.symbol_changed_stmts.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
-        # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
-        # print(f"out_state_bits: {frame.state_bit_vector_manager.explain(status.out_state_bits)}")
 
         return change_flag
 

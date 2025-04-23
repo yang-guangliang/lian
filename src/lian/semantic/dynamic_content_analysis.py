@@ -97,7 +97,6 @@ class DynamicContentAnalysis(StmtStateAnalysis):
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
             callee_method_def_use_summary:MethodDefUseSummary = self.loader.load_method_def_use_summary(each_callee_id)
             parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
-            # print(f"save_parameter_mapping: {each_callee_id, caller_id, call_stmt_id}")
             if parameter_mapping_list is None:
                 parameter_mapping_list = []
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
