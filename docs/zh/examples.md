@@ -46,5 +46,5 @@ scripts/test.sh <example.py> #仅限测试
 ![输入图片说明](../img/image%20(6).png)
 &emsp;查阅状态空间(s2space_p3.bundle0)找到index为61的状态，可以看到其data_type为一个方法声明，则其value值27表示该方法声明的GIR_stmt_id。<br>
 ![输入图片说明](../img/image%20(7).png)
-&emsp;查阅GIR，发现第27条GIR_stmt对应着恶意方法%mm1。说明该状态成功被计算出来。<br>
+&emsp;查阅GIR(gir.bundle0)，发现第27条GIR_stmt对应着恶意方法%mm1。说明该状态成功被计算出来。<br>
 ![输入图片说明](../img/image%20(8).png)
