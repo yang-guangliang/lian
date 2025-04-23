@@ -245,7 +245,7 @@ class StmtStateAnalysis:
         )
         if state_def_node not in self.frame.all_state_defs:
             self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
-            self.frame.all_state_defs.add(state_def_node)       
+            self.frame.all_state_defs.add(state_def_node)
 
         status.defined_states.add(index)
 
@@ -748,7 +748,7 @@ class StmtStateAnalysis:
 
                 try:
                     #print(tmp_value1, tmp_value2, operator)
-                    value = eval(f"{tmp_value1} {operator} {tmp_value2}")
+                    value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
                 except:
                     value = ""
 
@@ -827,7 +827,7 @@ class StmtStateAnalysis:
 
                 if operand_state.value:
                     try:
-                        value = eval(f"{stmt.operator} {operand_state.value}")
+                        value = util.strict_eval(f"{stmt.operator} {operand_state.value}")
                         data_type = operand_state.data_type
                     except:
                         value = None
@@ -1225,7 +1225,7 @@ class StmtStateAnalysis:
             each_state = self.frame.symbol_state_space[each_state_index]
             if not (each_state and isinstance(each_state, State)):
                 continue
-            
+
             if each_state.state_type == StateTypeKind.ANYTHING:
                 state_type = StateTypeKind.ANYTHING
 
@@ -1297,8 +1297,8 @@ class StmtStateAnalysis:
                     original_access_path = access_path,
                     access_point = AccessPoint(
                         kind = AccessPointKind.FIELD_ELEMENT,
-                        key = field_name                        
-                    ) 
+                        key = field_name
+                    )
                 )
                 caller_state_fields[field_name] = self.collect_children_fields(stmt_id, status, callee_state_fields[field_name], caller_state_fields[field_name], source_symbol_id, new_access_path)
 
@@ -1312,7 +1312,7 @@ class StmtStateAnalysis:
 
     # 用形参的last_states去更新传入的实参
     def apply_parameter_summary_to_args_states(
-        self, stmt_id, status: StmtStatus, last_states, old_arg_state_index, old_to_new_arg_state, 
+        self, stmt_id, status: StmtStatus, last_states, old_arg_state_index, old_to_new_arg_state,
         parameter_symbol_id = -1, callee_id = -1, deferred_index_updates = None, old_to_lastest_old_arg_state = None
     ):
         if old_to_lastest_old_arg_state is None:
@@ -1320,9 +1320,9 @@ class StmtStateAnalysis:
 
         if old_arg_state_index not in old_to_new_arg_state:
             latest_old_arg_index = self.resolver.retrieve_lastest_states(
-                self.frame, stmt_id, self.frame.symbol_state_space,{old_arg_state_index}, 
+                self.frame, stmt_id, self.frame.symbol_state_space,{old_arg_state_index},
                 self.frame.state_bit_vector_manager.explain(status.in_state_bits), old_to_lastest_old_arg_state
-            ).pop()          
+            ).pop()
             new_arg_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, latest_old_arg_index)
             old_to_new_arg_state[old_arg_state_index] = new_arg_state_index
             status.defined_states.add(new_arg_state_index)
@@ -1393,7 +1393,7 @@ class StmtStateAnalysis:
                     access_point = AccessPoint(
                         kind = AccessPointKind.FIELD_ELEMENT,
                         key = field_name
-                    )                        
+                    )
                 )
                 new_arg_state_fields[field_name] = self.collect_children_fields(
                     stmt_id, status, callee_state_fields[field_name], new_arg_state_fields[field_name],
@@ -1407,13 +1407,13 @@ class StmtStateAnalysis:
         for field_name, field_states in copy.deepcopy(new_arg_state_fields).items():
             for each_field_state_index in field_states:
                 each_field_state = self.frame.symbol_state_space[each_field_state_index]
-                if each_field_state.state_type == StateTypeKind.ANYTHING: 
+                if each_field_state.state_type == StateTypeKind.ANYTHING:
                     # if config.DEBUG_FLAG:
                     #     print(f"\n\napply_parameter时, each_field_state {each_field_state_index} 是anything, field_name是{field_name}")
                     #     # pprint.pprint(each_field_state)
                     #     print()
                     self.resolver.resolve_anything_in_summary_generation(
-                        each_field_state_index, self.frame, stmt_id, callee_id, deferred_index_updates, 
+                        each_field_state_index, self.frame, stmt_id, callee_id, deferred_index_updates,
                         set_to_update = new_arg_state_fields[field_name], parameter_symbol_id = parameter_symbol_id
                     )
 
@@ -1549,7 +1549,7 @@ class StmtStateAnalysis:
                         last_state_indexes.add(last_state_index)
 
             self.apply_parameter_summary_to_args_states(
-                stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state, 
+                stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state,
                 parameter_symbol_id, callee_id, deferred_index_updates, old_to_lastest_old_arg_state
                 )
         # print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")

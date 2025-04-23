@@ -9,6 +9,7 @@ import networkx as nx
 import math
 import keyword
 import hashlib
+import dis
 
 from lian.config import config
 
@@ -36,6 +37,14 @@ def is_none(element):
 
 def is_available(element):
     return not is_empty(element)
+
+def strict_eval(content):
+    bytecode =compile(content, "", "eval")
+    for insn in dis.get_instructions(bytecode):
+        if "CALL" in insn.opname:
+            error_and_quit(f"Found dangerous content to be evaluated: f{content}")
+
+    return eval(content, {}, {})
 
 class EmptyObject:
     pass

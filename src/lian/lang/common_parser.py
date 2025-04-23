@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import re
-from lian.config.constants import LianInternal
+import ast
+
 from tree_sitter import Node
+
+from lian.config.constants import LianInternal
 
 class Parser:
     def __init__(self, options):
@@ -111,7 +114,7 @@ class Parser:
         尝试将字符串转换为Python对象，失败返回原字符串
         """
         try:
-            return str(eval(input_string))
+            return str(ast.literal_eval(input_string))
         except:
             pass
         return input_string

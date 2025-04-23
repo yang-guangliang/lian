@@ -175,7 +175,8 @@ class WorkspaceBuilder:
 
         src_dir_path = os.path.join(workspace_path, config.SOURCE_CODE_DIR)
         for path in self.options.in_path:
-            if self.options.workspace in path:
+            real_path = os.path.realpath(path)
+            if config.DEFAULT_WORKSPACE in real_path:
                 continue
             if os.path.isdir(path):
                 path_name = os.path.basename(path)
