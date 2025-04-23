@@ -635,7 +635,8 @@ class SemanticSummaryGeneration:
                 frame, stmt_id, stmt, symbol_id, method_summary, old_key_state_indexes
             )
 
-            if current_states is None:
+            # print("收集到的current_States是", current_states)
+            if current_states is None or len(current_states) == 0:
                 continue
 
             if used_symbol.states != current_states:
@@ -757,7 +758,6 @@ class SemanticSummaryGeneration:
         old_implicitly_used_symbols = status.implicitly_used_symbols.copy()
         status.in_state_bits = self.collect_in_state_bits(stmt_id, stmt, frame)
         self.unset_states_of_status(stmt_id, frame, status)
-        # print(f"in_state_bits: {frame.state_bit_vector_manager.explain(status.in_state_bits)}")
         # 收集输入状态
         # collect in state
 
@@ -769,7 +769,7 @@ class SemanticSummaryGeneration:
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         # print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
-            # print("  DON'T CONTINUE")
+            print("  DON'T CONTINUE")
             if status.in_state_bits != old_in_state_bits:
                 status.out_state_bits = status.in_state_bits
             self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_defined_symbols, old_status_defined_states)
@@ -778,7 +778,7 @@ class SemanticSummaryGeneration:
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
         change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
-            # print(f"  NO CHANGE")
+            print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
@@ -802,7 +802,6 @@ class SemanticSummaryGeneration:
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
         # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
-        # print(f"out_state_bits: {frame.state_bit_vector_manager.explain(status.out_state_bits)}")
 
         return change_flag
 
@@ -842,6 +841,7 @@ class SemanticSummaryGeneration:
         2. 更新符号到状态的映射
         3. 保存压缩后的状态空间
         """
+        # print(f"生成方法{frame.method_id}的summary")
         def_use_summary = frame.method_def_use_summary
         if def_use_summary is None:
             return
@@ -895,9 +895,7 @@ class SemanticSummaryGeneration:
             symbol_id_to_lastest_state_indexes = {}
             for symbol_id in symbol_id_to_old_state_indexes:
                 old_states = symbol_id_to_old_state_indexes[symbol_id]
-                # print(f"\ngrn generate_and_save_analysis_summary stmt_id {stmt_id} symbol_id {symbol_id}, old_states {old_states}")
                 latest_states = self.resolver.retrieve_lastest_states(frame, stmt_id, symbol_state_space, old_states, available_defined_states, state_index_old_to_new)
-                # print(f"grn generate_and_save_analysis_summary stmt_id {stmt_id}, symbol_id {symbol_id}, latest_states {latest_states}\n")
                 symbol_id_to_lastest_state_indexes[symbol_id] = latest_states
 
             # 补充defined_external_symbol_ids的情况，因为defined_external_symbol_ids在frame里没有symbol_def_node
@@ -968,7 +966,7 @@ class SemanticSummaryGeneration:
         compact_space = frame.symbol_state_space.extract_related_elements_to_new_space(all_indexes)
         # adjust ids and save summary template
         method_summary.adjust_ids(compact_space.old_index_to_new_index)
-
+        # print(compact_space)
         self.save_analysis_summary_and_space(frame, method_summary, compact_space)
         # print(f"dynamic_call_stmt: {frame.method_summary_template.dynamic_call_stmt}")
 

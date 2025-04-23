@@ -178,7 +178,6 @@ class Resolver:
         newest_remaining = set()
         state_index_set_copy = set()
         status = frame.stmt_id_to_status[stmt_id]
-
         for index in state_index_set:
             if old_index_ceiling > 0:
                 if index < old_index_ceiling:
@@ -430,8 +429,8 @@ class Resolver:
         作用：在current_frame中找到能流到当前断点语句处的、该symbol_id的symbol的所有states的最新版本(内部小弟已用retrieve*方法更新)
         输出：set
         """
-        if config.DEBUG_FLAG:
-            print(f"get_latest_source_state_indexes: method_id {current_frame.method_id}, state_symbol_id: {state_symbol_id}")
+        # if config.DEBUG_FLAG:
+        #     print(f"get_latest_source_state_indexes: method_id {current_frame.method_id}, state_symbol_id: {state_symbol_id}")
         current_space = current_frame.symbol_state_space
         current_stmt_id = current_frame.stmt_worklist[0]
         current_status = current_frame.stmt_id_to_status[current_stmt_id]
@@ -440,8 +439,8 @@ class Resolver:
         reachable_symbol_defs: set = available_symbol_defs & current_frame.symbol_to_define[state_symbol_id]
         available_state_defs = current_frame.state_bit_vector_manager.explain(current_status.in_state_bits)
         # print(f"available_symbol_defs: {available_symbol_defs}")
-        print(f"reachable_symbol_defs: {reachable_symbol_defs}")
-        print(f"available_state_defs: {available_state_defs}")
+        # print(f"reachable_symbol_defs: {reachable_symbol_defs}")
+        # print(f"available_state_defs: {available_state_defs}")
         source_state_indexes = set()
 
         if len(reachable_symbol_defs) == 0:
@@ -454,20 +453,15 @@ class Resolver:
 
             state_index_set = set()
             for source_state_index in def_symbol.states:
-                # grn 方法39的state24。
                 source_state = current_space[source_state_index]
-                if (source_state and isinstance(source_state, State) and source_state.state_type != StateTypeKind.ANYTHING):
+                # if (source_state and isinstance(source_state, State) and source_state.state_type != StateTypeKind.ANYTHING):
+                if source_state and isinstance(source_state, State):
                     # source_state_indexes.add(source_state_index)
-                    # grn 没走这里，source_state仍然是anything(o是来自main的外部变量)。
                     state_index_set.add(source_state_index)
-
             each_symbol_newest_states = self.collect_newest_states_by_state_indexes(current_frame, current_stmt_id, state_index_set, available_state_defs)
-            print("啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊",each_symbol_newest_states)
             source_state_indexes.update(each_symbol_newest_states)
 
-        # source_state_indexes是空的。在这里return了
         if not source_state_indexes:
-            print("啦啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊")
             return set()
 
         state_index_old_to_new = {} # TODO：2024.11.14 是否可以优化，从而不用再新创一个state？
@@ -515,7 +509,7 @@ class Resolver:
 
             # 找到当前state的最新别名
             newest_state_index_set =  self.collect_newest_states_by_state_indexes(frame, stmt_id, {state_index}, available_defined_states)
-            print(f"retrieve_lateset_states old {state_index}, new {newest_state_index_set}",)
+            # print(f"retrieve_lateset_states old {state_index}, new {newest_state_index_set}",)
             for newest_state_index in newest_state_index_set:
                 if newest_state_index in state_index_old_to_new:
                     state_index_old_to_new[state_index] = state_index_old_to_new[newest_state_index]
@@ -564,9 +558,9 @@ class Resolver:
         if not arg_access_path:
             return source_state_indexes.copy()
         
-        print("get_state_from_path方法")
-        print(f"source_state_indexes: {source_state_indexes}")
-        print(f"arg_access_path: {arg_access_path}")
+        # print("get_state_from_path方法")
+        # print(f"source_state_indexes: {source_state_indexes}")
+        # print(f"arg_access_path: {arg_access_path}")
 
         new_source_states = source_state_indexes.copy()
         for one_point in arg_access_path:
@@ -627,8 +621,8 @@ class Resolver:
         # -find the corresponding states based on the bit vector
 
         state_symbol_id = state.source_symbol_id
-        if config.DEBUG_FLAG:
-            print(f"aaaaaaaaaaaaaaaaaaaa\nresolve_symbol_states@ state_symbol_id: {state_symbol_id} \nresolving_state: {state}\n")
+        # if config.DEBUG_FLAG:
+        #     print(f"\n\n进入resolve_symbol_states\nresolve_symbol_states@ state_symbol_id: {state_symbol_id} \nresolving_state: {state}\n")
         access_path = state.access_path.copy()
         data_type = state.data_type
         current_space = None
@@ -639,14 +633,14 @@ class Resolver:
 
         for current_frame_index in range(len(frame_stack) - 1, 0, -1):
             current_frame: ComputeFrame = frame_stack[current_frame_index]
-            if config.DEBUG_FLAG:
-                print(f"--current method id: {current_frame.method_id} state_symbol_id: {state_symbol_id} access_path: {access_path}")
+            # if config.DEBUG_FLAG:
+                # print(f"--current method id: {current_frame.method_id} state_symbol_id: {state_symbol_id} access_path: {access_path}")
             if len(current_frame.stmt_worklist) == 0:
                 continue
 
             if data_type == LianInternal.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
-                if config.DEBUG_FLAG:
-                    print("resolve_symbol_states 在找this")
+                # if config.DEBUG_FLAG:
+                #     print("resolve_symbol_states 在找this")
                 caller_frame = frame_stack[current_frame_index - 1]
                 if not isinstance(caller_frame, ComputeFrame):
                     break
@@ -685,14 +679,12 @@ class Resolver:
                     continue
 
                 if self.loader.is_parameter_decl_of_method(state_symbol_id, current_frame.method_id):
-                    print("是参数！！！！！！！！！！！！！！！！！！！！！！！！！！！！！")
                     caller_frame = frame_stack[current_frame_index - 1]
                     if not (caller_frame and isinstance(caller_frame, ComputeFrame)):
                         continue
                     # print("From Parameter Decl")
-                    # 根据parameter找到对应的arg，并更新所在frame以及state_symbol_id
+                    # 根据parameter找到对应的arg，并更新所在frame以及state_symbol_id。
                     (infered_symbol_id, source_states_related_space) = self.infer_arg_from_parameter(caller_frame, current_frame, state_symbol_id, access_path, source_state_indexes)
-                    print(f"要到caller里去找的symbol_id是: {infered_symbol_id}")
                     if source_state_indexes:
                         current_space = source_states_related_space
                         break
@@ -701,11 +693,9 @@ class Resolver:
 
                 # 获取source state所在的子space以及其在子space中的index
                 latest_source_state_indexes = self.get_latest_source_state_indexes(current_frame, state_symbol_id)
-                print(f"latest_source_state_indexes是空的: {latest_source_state_indexes}")
-                # print(f"current_space: {current_space}")
                 current_space = self.get_sub_space(current_frame, latest_source_state_indexes, source_state_indexes)
 
-            if current_space is not None:
+            if current_space is not None and len(current_space) != 0 :
                 break
 
         if current_space is None:
@@ -720,7 +710,6 @@ class Resolver:
         # if config.DEBUG_FLAG:
         #     print(f"source_state_indexes after get_state_from_path: {accessed_states}")
         if not accessed_states:
-            print("cccccccccccccccccccccccccccccccccccccccccccccccccccc")
             return return_indexes
 
         # if source_state_indexes:
@@ -744,7 +733,6 @@ class Resolver:
                     return_indexes.add(new_space_copy.old_index_to_new_index[each_index])
         # print(f"source_state_indexes before get_state_from_path: {source_state_indexes}")
         # print(f"current_space:{current_space}")
-        print("pppppppppppppppppppppppppppppppppppppppppppppp")
         return return_indexes
 
 
@@ -753,7 +741,6 @@ class Resolver:
             set_to_update = None, parameter_symbol_id = -1
             ):
         '''
-        [rn]
         在apply_summary时，若callee的state_summary中，有将要关联的state是anything(external或parameter)，则通过该方法找到concrete_state，并更新set_to_update
         '''
         state = caller_frame.symbol_state_space[state_index]
@@ -773,15 +760,12 @@ class Resolver:
             return
 
         if data_type == LianInternal.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
-            print("resolve_symbol_states 在找this")
+            pass
             # if isinstance(caller_frame, ComputeFrame):
             #     current_space = self.get_this_state(caller_frame, source_state_indexes)
-                # TODO 不用提取小space，只要retrive到latest_indexes就行
-                # latest_this_state_indexes = ....
         
         # 若anything的source是callee参数。
         if self.loader.is_parameter_decl_of_method(state_symbol_id, callee_id):
-            # print("该anything的source是callee参数,延迟更新")
             if set_to_update is None or deferred_index_updates is None:
                 return
             # 收集初始的arg_indexes
@@ -799,7 +783,6 @@ class Resolver:
                 arg_state_indexes = arg_state_indexes, access_path = access_path, set_to_update = set_to_update
                 )
             deferred_index_updates.add(deferred_index_update) # 延迟更新。会通过update_deferred_index方法更新
-            # print(f"ra 添加延迟更新 {deferred_index_update}")
 
             if state_symbol_id != parameter_symbol_id:
                 set_to_update.discard(state_index)  
@@ -847,13 +830,13 @@ class Resolver:
             or len(access_path) == 1:
             # print(set_to_update)
             set_to_update.discard(state_index) 
-            if config.DEBUG_FLAG:
-                if not state.fields:
-                    print("进入的state没有fields(a.f=a.g) 延迟更新")
-                elif len(access_path) == 1:
-                    print("出现a.f=a，延迟更新")
-                else:
-                    print("出现循环依赖 延迟更新 ")
+            # if config.DEBUG_FLAG:
+            #     if not state.fields:
+            #         print("进入的state没有fields(a.f=a.g) 延迟更新")
+            #     elif len(access_path) == 1:
+            #         print("出现a.f=a，延迟更新")
+            #     else:
+            #         print("出现循环依赖 延迟更新 ")
             if set_to_update is not None: 
                 deferred_index_update = DefferedIndexUpdate(
                     state_index = state_index, state_symbol_id = parameter_symbol_id, stmt_id = stmt_id,
@@ -928,7 +911,7 @@ class Resolver:
             # 从被callee_summary更新完的arg_states中找
             updated_arg_indexes = {old_to_new_index[old_arg_index] for old_arg_index in old_arg_indexes}
             concrete_states = self.get_state_from_path(current_space, access_path, updated_arg_indexes)
-            print(f"update_deferred 最新arg为<{updated_arg_indexes}> access_path为<{access_path}>，找到的具体state {concrete_states}, set {set_to_update} {id(set_to_update)}")
+            # print(f"update_deferred 最新arg为<{updated_arg_indexes}> access_path为<{access_path}>，找到的具体state {concrete_states}, set {set_to_update} {id(set_to_update)}")
             set_to_update.update(concrete_states)
 
     def are_states_identical(self, state_index1, state_index2, space1: SymbolStateSpace, space2: SymbolStateSpace):
