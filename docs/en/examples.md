@@ -23,7 +23,7 @@ caller()
 
 # Run With LIAN
 ```
-scripts/test.sh <example.py> #仅限测试
+scripts/test.sh <example.py> # only for test
 ```
 ----
 # Screenshot of Execution
