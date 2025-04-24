@@ -1,0 +1,293 @@
+
+<head>
+  <title>DataFrame Viewer</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=0">
+  <style>
+    .zoom {
+        zoom: 90%;
+    }
+    /* 表格样式 */
+    table {
+       width: 100%;
+       border-collapse: collapse; /* 边框合并 */
+       box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+       margin: 20px 0;
+       overflow: auto;
+    }
+
+    /* 表头样式 */
+    th {
+       position: sticky;
+       top: 0;
+       background-color: #4CAF50;
+       color: white;
+       padding: 4px; /* 减小内边距 */
+       line-height: 1.0; /* 减小行高 */
+    }
+
+    /* 表格行样式 */
+    tr {
+       background-color: #fff; /* 设置默认背景颜色 */
+       line-height: 1.0; /* 减小行高 */
+    }
+
+    tr:nth-child(even) {
+       background-color: #f2f2f2; /* 偶数行背景颜色 */
+    }
+
+    /* 单元格样式 */
+    td, th {
+       padding: 4px; /* 减小内边距 */
+       text-align: left;
+       border-bottom: 1px solid #ddd;
+    }
+
+    /* 样式表 */
+    .sidebar {
+        z-index: 1000;
+        font-size: 11px;
+        line-height: 1.2;
+        height: 100%;
+        position: fixed;
+        left: 0;
+        top: 0;
+        background-color: #f1f1f1;
+        overflow: hidden;
+        overflow-y: auto;
+    }
+    .sidebar ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    .sidebar li {
+        padding: 04px;
+        cursor: pointer;
+    }
+    .sidebar li:hover {
+        background-color: #ddd;
+    }
+    .content {
+        padding: 02px;
+        font-size: 11px;
+    }
+    .resizer {
+        width: 4px;
+        height: 100%;
+        background-color: #ccc;
+        position: absolute;
+        right: -5px;
+        top: 0;
+        cursor: ew-resize;
+    }
+
+    /* 鼠标悬停效果 */
+    tr:hover {background-color: #ddd;}
+    td:hover {background-color: #ddd}
+  </style>
+</head>
+<body>
+	<div class="sidebar">
+		<ul>
+			<li onclick="sessionStorage.setItem('pageTitle', 'gir.bundle0');document.title='gir.bundle0';window.location.href='#section0'">gir.bundle0</li>
+			<li onclick="sessionStorage.setItem('pageTitle', 'grouped_methods');document.title='grouped_methods';window.location.href='#section1'">grouped_methods</li>
+			<li onclick="sessionStorage.setItem('pageTitle', 'module_symbols');document.title='module_symbols';window.location.href='#section2'">module_symbols</li>
+			<li onclick="sessionStorage.setItem('pageTitle', 'scope_hierarchy.bundle0');document.title='scope_hierarchy.bundle0';window.location.href='#section3'">scope_hierarchy.bundle0</li>
+			<li onclick="sessionStorage.setItem('pageTitle', 'unit_to_stmt_id');document.title='unit_to_stmt_id';window.location.href='#section4'">unit_to_stmt_id</li>
+		</ul>
+
+	</div>
+	<div class="content">
+		<div id="section0">
+			<h1>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/gir/gir.bundle0</h1>
+			<p><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>operation</th>
+      <th>parent_stmt_id</th>
+      <th>stmt_id</th>
+      <th>receiver_object</th>
+      <th>field</th>
+      <th>source</th>
+      <th>unit_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>field_write</td>
+      <td>0</td>
+      <td>10</td>
+      <td>v4</td>
+      <td>"HARMONY_HEI_TI_FONT_FAMILY"</td>
+      <td>acc</td>
+      <td>4</td>
+    </tr>
+  </tbody>
+</table></p>
+		</div>
+		<div id="section1">
+			<h1>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/semantic_p1/grouped_methods</h1>
+			<p><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>no_callees</th>
+      <th>only_direct_callees</th>
+      <th>mixed_direct_callees</th>
+      <th>only_dynamic_callees</th>
+      <th>containing_dynamic_callees</th>
+      <th>containing_error_callees</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>[]</td>
+      <td>[]</td>
+      <td>[]</td>
+      <td>[]</td>
+      <td>[]</td>
+      <td>[]</td>
+    </tr>
+  </tbody>
+</table></p>
+		</div>
+		<div id="section2">
+			<h1>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/module_symbols</h1>
+			<p><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>module_id</th>
+      <th>symbol_name</th>
+      <th>unit_ext</th>
+      <th>lang</th>
+      <th>parent_module_id</th>
+      <th>symbol_type</th>
+      <th>unit_path</th>
+      <th>original_path</th>
+      <th>is_extern</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4</td>
+      <td>definefieldbyname</td>
+      <td>.txt</td>
+      <td>abc</td>
+      <td>0</td>
+      <td>1</td>
+      <td>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/src/definefieldbyname.txt</td>
+      <td>/home/corgi/workspace/harmony_analysis/tests/abc/small_case/definefieldbyname.txt</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5</td>
+      <td>javascript</td>
+      <td></td>
+      <td></td>
+      <td>0</td>
+      <td>12</td>
+      <td>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/externs/javascript</td>
+      <td></td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>6</td>
+      <td>python</td>
+      <td></td>
+      <td></td>
+      <td>0</td>
+      <td>12</td>
+      <td>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/externs/python</td>
+      <td></td>
+      <td>True</td>
+    </tr>
+  </tbody>
+</table></p>
+		</div>
+		<div id="section3">
+			<h1>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/semantic_p1/scope_hierarchy.bundle0</h1>
+			<p><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>unit_id</th>
+      <th>stmt_id</th>
+      <th>scope_id</th>
+      <th>parent_stmt_id</th>
+      <th>scope_kind</th>
+      <th>name</th>
+      <th>attrs</th>
+      <th>supers</th>
+      <th>alias</th>
+      <th>source</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4</td>
+      <td>0</td>
+      <td>-1</td>
+      <td>-1</td>
+      <td>14</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table></p>
+		</div>
+		<div id="section4">
+			<h1>/home/corgi/workspace/harmony_analysis/test/analyzer_workspace/semantic_p1/unit_to_stmt_id</h1>
+			<p><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>unit_id</th>
+      <th>min_stmt_id</th>
+      <th>max_stmt_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4</td>
+      <td>10</td>
+      <td>10</td>
+    </tr>
+  </tbody>
+</table></p>
+		</div></div>
+    <script>
+        function adjustSidebarWidth() {
+            var sidebar = document.querySelector('.sidebar');
+            var ul = sidebar.querySelector('ul');
+            var li = ul.querySelector('li');
+            var maxWidth = li.offsetWidth;
+            sidebar.style.width = Math.min(200, window.innerWidth) + 'px';
+            var content = document.querySelector('.content');
+            content.style.marginLeft = sidebar.style.width;
+
+            document.body.style.zoom = 0.9;
+        }
+
+        window.onload = adjustSidebarWidth;
+        window.onresize = adjustSidebarWidth;
+
+        function restoreTitle() {
+          if (sessionStorage.getItem('pageTitle')) {
+            document.title = sessionStorage.getItem('pageTitle');
+          }
+        }
+        document.addEventListener('DOMContentLoaded', restoreTitle);
+
+    </script>
+</body>

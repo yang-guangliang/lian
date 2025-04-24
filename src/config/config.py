@@ -1,6 +1,7 @@
 import os
 
-ROOT_DIR = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
+ROOT_DIR = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+print(ROOT_DIR)
 LIAN_DIR = os.path.join(ROOT_DIR, "lian/src")
 ANALYZER_DIR = os.path.join(ROOT_DIR, "src")
 
@@ -13,7 +14,3 @@ OUT_DIR                 = "out"
 
 LRU_CACHE_CAPACITY      = 10000
 BUNDLE_CACHE_CAPACITY   = 10
-
-LANG_NAME="abc"
-LANG_SO_PATH= ""
-LANG_EXTENSION=".txt"

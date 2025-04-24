@@ -1,0 +1,119 @@
+
+<head>
+  <title>DataFrame Viewer</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=0">
+  <style>
+    .zoom {
+        zoom: 90%;
+    }
+    /* 表格样式 */
+    table {
+       width: 100%;
+       border-collapse: collapse; /* 边框合并 */
+       box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+       margin: 20px 0;
+       overflow: auto;
+    }
+
+    /* 表头样式 */
+    th {
+       position: sticky;
+       top: 0;
+       background-color: #4CAF50;
+       color: white;
+       padding: 4px; /* 减小内边距 */
+       line-height: 1.0; /* 减小行高 */
+    }
+
+    /* 表格行样式 */
+    tr {
+       background-color: #fff; /* 设置默认背景颜色 */
+       line-height: 1.0; /* 减小行高 */
+    }
+
+    tr:nth-child(even) {
+       background-color: #f2f2f2; /* 偶数行背景颜色 */
+    }
+
+    /* 单元格样式 */
+    td, th {
+       padding: 4px; /* 减小内边距 */
+       text-align: left;
+       border-bottom: 1px solid #ddd;
+    }
+
+    /* 样式表 */
+    .sidebar {
+        z-index: 1000;
+        font-size: 11px;
+        line-height: 1.2;
+        height: 100%;
+        position: fixed;
+        left: 0;
+        top: 0;
+        background-color: #f1f1f1;
+        overflow: hidden;
+        overflow-y: auto;
+    }
+    .sidebar ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    .sidebar li {
+        padding: 04px;
+        cursor: pointer;
+    }
+    .sidebar li:hover {
+        background-color: #ddd;
+    }
+    .content {
+        padding: 02px;
+        font-size: 11px;
+    }
+    .resizer {
+        width: 4px;
+        height: 100%;
+        background-color: #ccc;
+        position: absolute;
+        right: -5px;
+        top: 0;
+        cursor: ew-resize;
+    }
+
+    /* 鼠标悬停效果 */
+    tr:hover {background-color: #ddd;}
+    td:hover {background-color: #ddd}
+  </style>
+</head>
+<body>
+	<div class="sidebar">
+		<ul>
+		</ul>
+
+	</div>
+	<div class="content"></div>
+    <script>
+        function adjustSidebarWidth() {
+            var sidebar = document.querySelector('.sidebar');
+            var ul = sidebar.querySelector('ul');
+            var li = ul.querySelector('li');
+            var maxWidth = li.offsetWidth;
+            sidebar.style.width = Math.min(200, window.innerWidth) + 'px';
+            var content = document.querySelector('.content');
+            content.style.marginLeft = sidebar.style.width;
+
+            document.body.style.zoom = 0.9;
+        }
+
+        window.onload = adjustSidebarWidth;
+        window.onresize = adjustSidebarWidth;
+
+        function restoreTitle() {
+          if (sessionStorage.getItem('pageTitle')) {
+            document.title = sessionStorage.getItem('pageTitle');
+          }
+        }
+        document.addEventListener('DOMContentLoaded', restoreTitle);
+
+    </script>
+</body>

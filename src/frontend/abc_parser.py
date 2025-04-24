@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-  
+import sys, os
+
 from lian.config import config
 from lian.lang import common_parser
 from lian.config.constants import LianInternal
 
-class Parser(common_parser.Parser):
+class ABCParser(common_parser.Parser):
 
     def init(self):
         self.DECLARATION_HANDLER_MAP = {
