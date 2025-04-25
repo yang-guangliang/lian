@@ -4,6 +4,7 @@ import re
 import ast
 
 from tree_sitter import Node
+from lian.util import util
 
 from lian.config.constants import LianInternal
 
@@ -114,7 +115,7 @@ class Parser:
         尝试将字符串转换为Python对象，失败返回原字符串
         """
         try:
-            return str(ast.literal_eval(input_string))
+            return str(util.strict_eval(input_string))
         except:
             pass
         return input_string
