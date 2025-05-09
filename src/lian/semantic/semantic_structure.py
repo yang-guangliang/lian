@@ -1676,11 +1676,16 @@ class Parameter:
 
 @dataclasses.dataclass
 class APath:
-    path: list = dataclasses.field(default_factory=list)
+    path: tuple = dataclasses.field(default_factory=tuple)
 
     def add_call(self, source_node, stmt_id, target_node):
-        self.path.extend([source_node, stmt_id, target_node])
-
+        self.path += (source_node, stmt_id, target_node)
+    
+    def __post_init__(self):
+        # 实例化后验证类型
+        if not isinstance(self.path,tuple):
+            util.warn("赋值给APath的值不是tuple类型")
+        
     def to_tuple(self):
         return tuple(self.path)
 

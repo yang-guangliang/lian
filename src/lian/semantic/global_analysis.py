@@ -529,5 +529,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             result = self.analyze_frame_stack(frame_stack)
 
         self.loader.save_call_graph_p3(self.call_graph)
+        self.loader.save_call_paths_p3(self.path_manager.paths)
+        self.loader._call_path_p3_loader.export()
+        a = self.loader.load_call_paths_p3()
+        print("所有的call_paths: ",a)
 
 
