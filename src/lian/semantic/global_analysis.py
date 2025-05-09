@@ -402,10 +402,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # caller_id = frame.caller_id
             # call_stmt_id = frame.call_stmt_id
             caller_frame = frame_stack[-2]
-            if isinstance(caller_frame, ComputeFrame):
-                frame_path = APath(caller_frame.path + frame.call_site)
-            else:
+            if not isinstance(caller_frame, ComputeFrame):
                 frame_path = APath(frame.call_site)
+
 
             if config.DEBUG_FLAG:
                 util.debug(f"\n\tPhase III Analysis is in progress <method {frame.method_id}> \n")
