@@ -244,7 +244,21 @@ class Parser:
                     self.print_tree(child, level + 1, child_field)
                 else:
                     self.print_tree(child, level + 1)
-
+    
+    def add_col_row_info(self, node, gir_dict):
+        """
+        添加行列信息
+        """
+        if node:
+            start_line, start_col = node.start_point
+            end_line, end_col = node.end_point
+            first_key = next(iter(gir_dict))
+            gir_dict[first_key]["start_row"] = start_line
+            gir_dict[first_key]["start_col"] = start_col
+            gir_dict[first_key]["end_row"] = end_line
+            gir_dict[first_key]["end_col"] = end_col
+        return gir_dict
+    
     def parse(self, node, statements=[], replacement=[]):
         """
         主解析入口：
