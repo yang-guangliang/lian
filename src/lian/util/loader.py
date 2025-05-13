@@ -1034,7 +1034,7 @@ class CallPathLoader:
         self.all_APaths = []
 
     def save(self, all_APaths: set):
-        self.all_APaths = all_APaths  
+        self.all_APaths = all_APaths
 
     def load(self):
         dm = DataModel().load(self.path)
@@ -1056,6 +1056,12 @@ class UnsolvedSymbolIDAssignerLoader:
         self.path = path
         self.symbol_name_to_id = {}
         self.symbol_id = config.BUILTIN_SYMBOL_START_ID
+
+    def assign_new_id(self):
+        result = self.symbol_id
+        self.symbol_name_to_id[config.UNSOLVED_SYMBOL_NAME] = result
+        self.symbol_id -= 1
+        return result
 
     def load(self, symbol_name):
         if symbol_name in self.symbol_name_to_id:
@@ -1941,6 +1947,8 @@ class Loader:
         return self._unsolved_symbol_id_assigner_loader.save(symbol_name, symbol_id)
     def load_unsolved_symbol_id_by_name(self, symbol_name):
         return self._unsolved_symbol_id_assigner_loader.load(symbol_name)
+    def assign_new_unsolved_symbol_id(self):
+        return self._unsolved_symbol_id_assigner_loader.assign_new_id()
 
     def save_symbol_name_to_scope_ids(self, *args):
         return self._symbol_name_to_scope_ids_loader.save(*args)
@@ -2067,12 +2075,12 @@ class Loader:
     def save_call_graph_p3(self, *args):
         return self._call_graph_p3_loader.save(*args)
     def load_call_graph_p3(self, *args):
-        return self._call_graph_p3_loader.load(*args) 
+        return self._call_graph_p3_loader.load(*args)
 
     def save_call_paths_p3(self, *args):
         return self._call_path_p3_loader.save(*args)
     def load_call_paths_p3(self, *args):
-        return self._call_path_p3_loader.load(*args)    
+        return self._call_path_p3_loader.load(*args)
 
     def load_method_symbol_to_define(self, *args):
         return self._symbol_to_define_loader.load(*args)

@@ -166,6 +166,11 @@ class StmtDefUseAnalysis:
         defined_symbol: Symbol = self.symbol_state_space[defined_symbol_index]
         status.defined_states = self.each_stmt_defined_states
         if isinstance(defined_symbol, Symbol):
+            defined_symbol_name = defined_symbol.name
+            if defined_symbol_name.startswith(LianInternal.VARIABLE_DECL_PREF):
+                if defined_symbol_name not in self.tmp_variable_to_define:
+                    self.tmp_variable_to_define[defined_symbol_name] = stmt_id
+
             if is_parameter_decl_stmt:
                 defined_symbol.source_unit_id = self.unit_id
                 defined_symbol.symbol_id = stmt_id
@@ -174,25 +179,11 @@ class StmtDefUseAnalysis:
                     frame.symbol_to_define[stmt_id] = set()
                 frame.symbol_to_define[stmt_id].add(stmt_id)
 
-                # if isinstance(defined_symbol, Symbol):
-                defined_symbol_name = defined_symbol.name
-                if defined_symbol_name.startswith(LianInternal.VARIABLE_DECL_PREF):
-                    if defined_symbol_name not in self.tmp_variable_to_define:
-                        self.tmp_variable_to_define[defined_symbol_name] = stmt_id
             else:
                 if is_decl_stmt:
                     defined_symbol.source_unit_id = self.unit_id
                     defined_symbol.symbol_id = stmt_id
-                    defined_symbol_name = defined_symbol.name
-                    if defined_symbol_name.startswith(LianInternal.VARIABLE_DECL_PREF):
-                        if defined_symbol_name not in self.tmp_variable_to_define:
-                            self.tmp_variable_to_define[defined_symbol_name] = stmt_id
                     return
-
-                defined_symbol_name = defined_symbol.name
-                if defined_symbol_name.startswith(LianInternal.VARIABLE_DECL_PREF):
-                    if defined_symbol_name not in self.tmp_variable_to_define:
-                        self.tmp_variable_to_define[defined_symbol_name] = stmt_id
 
                     defined_symbol.source_unit_id = self.unit_id
                     defined_symbol.symbol_id = self.tmp_variable_to_define[defined_symbol_name]
@@ -255,12 +246,13 @@ class StmtDefUseAnalysis:
                 used_symbol.source_unit_id = self.unit_id
                 used_symbol.symbol_id = self.tmp_variable_to_define.get(used_symbol.name, (-1))
                 continue
+
             source_info = self.resolver.resolve_symbol_source(
                 self.unit_id, self.method_id, stmt_id, stmt, used_symbol
             )
             if util.is_available(source_info):
-                if source_info.symbol_id == stmt_id:
-                    source_info.symbol_id = self.loader.load_unsolved_symbol_id_by_name(used_symbol.name)
+                if source_info.symbol_id == stmt_id or source_info.symbol_id < 0:
+                    source_info.symbol_id = self.loader.assign_new_unsolved_symbol_id()
 
                 used_symbol.source_unit_id = source_info.source_unit_id
                 symbol_id = source_info.symbol_id
@@ -688,7 +680,13 @@ class StmtDefUseAnalysis:
         defined_symbol = self.symbol_state_space[defined_symbol_index]
         result = self.import_hierarchy_analysis.analyze_import_stmt(self.unit_id, stmt_id, stmt)
         for each_node in result:
-            if isinstance(defined_symbol, Symbol) and defined_symbol.source_unit_id == -1:
+            if not isinstance(defined_symbol, Symbol):
+                continue
+
+            if each_node.source_symbol_id == -1:
+                each_node.source_symbol_id = self.loader.assign_new_unsolved_symbol_id()
+
+            if defined_symbol.source_unit_id == -1:
                 if each_node.name == stmt.name:
                     defined_symbol.source_unit_id = each_node.source_module_id
                     defined_symbol.symbol_id = each_node.source_symbol_id

@@ -8,7 +8,7 @@ DEBUG_FLAG                                  = False
 STRING_MAX_LEN                              = 200
 MAX_PRIORITY                                = 100
 MIN_ID_INTERVAL                             = 20
-BUILTIN_SYMBOL_START_ID                     = -100
+BUILTIN_SYMBOL_START_ID                     = -101
 BUILTIN_THIS_SYMBOL_ID                      = -9
 BUILTIN_OBJECT_SYMBOL_ID                    = -8
 
@@ -28,7 +28,7 @@ DEFAULT_WORKSPACE                           = "lian_workspace"
 MODULE_SYMBOLS_FILE                         = "module_symbols"
 SOURCE_CODE_DIR                             = "src"
 EXTERNS_DIR                                 = "externs"
-GIR_DIR                                   = "gir"
+GIR_DIR                                     = "gir"
 SEMANTIC_DIR_P1                             = "semantic_p1"
 SEMANTIC_DIR_P2                             = "semantic_p2"
 SEMANTIC_DIR_P3                             = "semantic_p3"
@@ -41,7 +41,7 @@ MOCK_METHOD_NAME_SEPARATOR                  = "_1_"
 
 BUNDLE_CACHE_CAPACITY                       = 10
 LRU_CACHE_CAPACITY                          = 10000
-GIR_CACHE_CAPACITY                        = LRU_CACHE_CAPACITY / 2
+GIR_CACHE_CAPACITY                          = LRU_CACHE_CAPACITY / 2
 
 METHOD_HEADER_CACHE_CAPABILITY              = 10000
 METHOD_BODY_CACHE_CAPABILITY                = 1000
@@ -112,3 +112,4 @@ METHOD_SUMMARY_TEMPLATE_PATH                = "method_summary_template"
 METHOD_SUMMARY_INSTANCE_PATH                = "method_summary_instance"
 
 UNSOLVED_SYMBOL_ID_ASSIGNER_LOADER          = "unsolved_symbol_ids"
+UNSOLVED_SYMBOL_NAME                        = "%%%%unsolved_symbols"
