@@ -46,19 +46,19 @@ class AppManager:
         self.p2state_extern_callee_handlers = []
 
         self.event_handlers = {
-            EventKind.MOCK_SOURCE_CODE_READY                       : self.mock_source_code_handlers,
-            EventKind.ORIGINAL_SOURCE_CODE_READY                   : self.source_code_handlers,
-            EventKind.UNFLATTENED_GIR_LIST_GENERATED             : self.gir_list_handlers,
-            EventKind.GIR_LIST_GENERATED                         : self.flattened_gir_list_handlers,
-            EventKind.GIR_DATA_MODEL_GENERATED                   : self.gir_data_model_handlers,
+            EventKind.MOCK_SOURCE_CODE_READY                        : self.mock_source_code_handlers,
+            EventKind.ORIGINAL_SOURCE_CODE_READY                    : self.source_code_handlers,
+            EventKind.UNFLATTENED_GIR_LIST_GENERATED                : self.gir_list_handlers,
+            EventKind.GIR_LIST_GENERATED                            : self.flattened_gir_list_handlers,
+            EventKind.GIR_DATA_MODEL_GENERATED                      : self.gir_data_model_handlers,
 
-            EventKind.P2STATE_FIELD_READ_BEFORE                    : self.p2state_field_read_before_handlers,
-            EventKind.P2STATE_FIELD_READ_AFTER                     : self.p2state_field_read_after_handlers,
-            EventKind.P2STATE_GENERATE_EXTERNAL_STATES             : self.p2state_generate_external_states_handlers,
-            EventKind.P2STATE_NEW_OBJECT_BEFORE                    : self.p2state_new_object_before_handlers,
-            EventKind.P2STATE_NEW_OBJECT_AFTER                     : self.p2state_new_object_after_handlers,
-            EventKind.P2STATE_BUILTIN_FUNCTION_BEFORE              : self.p2state_builtin_function_before_handlers,
-            EventKind.P2STATE_EXTERN_CALLEE                        : self.p2state_extern_callee_handlers,
+            EventKind.P2STATE_FIELD_READ_BEFORE                     : self.p2state_field_read_before_handlers,
+            EventKind.P2STATE_FIELD_READ_AFTER                      : self.p2state_field_read_after_handlers,
+            EventKind.P2STATE_GENERATE_EXTERNAL_STATES              : self.p2state_generate_external_states_handlers,
+            EventKind.P2STATE_NEW_OBJECT_BEFORE                     : self.p2state_new_object_before_handlers,
+            EventKind.P2STATE_NEW_OBJECT_AFTER                      : self.p2state_new_object_after_handlers,
+            EventKind.P2STATE_BUILTIN_FUNCTION_BEFORE               : self.p2state_builtin_function_before_handlers,
+            EventKind.P2STATE_EXTERN_CALLEE                         : self.p2state_extern_callee_handlers,
         }
 
         self.register_default_apps()
