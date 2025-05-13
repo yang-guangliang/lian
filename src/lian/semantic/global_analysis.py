@@ -247,9 +247,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         # collect in state
 
         in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
-        # print(f"in_symbols: {in_symbols}")
+        print(f"in_symbols: {in_symbols}")
         in_states = self.group_used_states(stmt_id, in_symbols, frame)
-        # print(f"in_states@before complete_in_states: {in_states}")
+        print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         if not continue_flag:
@@ -261,14 +261,18 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
+        print(f"before dynamic_content_analysis.compute_stmt_state")
         change_flag: P2ResultFlag = frame.dynamic_content_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
+        print(f"after dynamic_content_analysis.compute_stmt_state")
         if change_flag is None:
             if config.DEBUG_FLAG:
                 print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
+        print(f"before update_out_states")
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
+        print(f"after update_out_states")
 
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
@@ -310,6 +314,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             stmt_id = frame.stmt_worklist.peek()
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
+                print("gir: ",self.loader.load_stmt_gir(stmt_id))
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
                 frame.stmt_worklist.pop()
                 continue
@@ -402,10 +407,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # caller_id = frame.caller_id
             # call_stmt_id = frame.call_stmt_id
             caller_frame = frame_stack[-2]
-            if isinstance(caller_frame, ComputeFrame):
-                frame_path = APath(caller_frame.path + frame.call_site)
-            else:
+            if not isinstance(caller_frame, ComputeFrame):
                 frame_path = APath(frame.call_site)
+
 
             if config.DEBUG_FLAG:
                 util.debug(f"\n\tPhase III Analysis is in progress <method {frame.method_id}> \n")
@@ -529,5 +533,11 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             result = self.analyze_frame_stack(frame_stack)
 
         self.loader.save_call_graph_p3(self.call_graph)
+        self.loader.save_call_paths_p3(self.path_manager.paths)
+        self.loader._call_path_p3_loader.export()
+        all_APaths = self.loader.load_call_paths_p3()
+        print("所有的APaths: ",all_APaths)
+        for apath in all_APaths:
+            print(apath.to_CallSite_list())
 
 

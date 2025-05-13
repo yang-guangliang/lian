@@ -469,7 +469,7 @@ class Resolver:
         # print(f"\nlatest_source_state_indexes in get_latest_source_state_indexes: {latest_source_state_indexes}")
         return latest_source_state_indexes
 
-    def get_sub_space(self, current_frame, latest_source_state_indexes, new_indexes):
+    def get_sub_space(self, current_frame, current_space:SymbolStateSpace, latest_source_state_indexes, new_indexes):
         """
         创建子状态空间：
         1. 基于源状态索引提取子集
@@ -479,7 +479,6 @@ class Resolver:
         if not isinstance(current_frame, ComputeFrame):
             return None
 
-        current_space = current_frame.symbol_state_space
         if not current_space:
             return None
 
@@ -693,7 +692,7 @@ class Resolver:
 
                 # 获取source state所在的子space以及其在子space中的index
                 latest_source_state_indexes = self.get_latest_source_state_indexes(current_frame, state_symbol_id)
-                current_space = self.get_sub_space(current_frame, latest_source_state_indexes, source_state_indexes)
+                current_space = self.get_sub_space(current_frame, current_space, latest_source_state_indexes, source_state_indexes)
 
             if util.is_available(current_space):
                 break

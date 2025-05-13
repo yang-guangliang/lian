@@ -37,7 +37,8 @@ from lian.semantic.semantic_structure import (
     ExportNode,
     IndexMapInSummary,
     SymbolDefNode,
-    MethodSummaryInstance
+    MethodSummaryInstance,
+    APath
 )
 
 class ModuleSymbolsLoader:
@@ -1027,6 +1028,29 @@ class CallGraphP1Loader:
             })
         DataModel(results).save(self.path)
 
+class CallPathLoader:
+    def __init__(self, file_path):
+        self.path = file_path
+        self.all_APaths = []
+
+    def save(self, all_APaths: set):
+        self.all_APaths = all_APaths  
+
+    def load(self):
+        dm = DataModel().load(self.path)
+        if 'call_path' in dm._data.columns:
+            call_path_lists = dm._data['call_path'].iloc[0]
+            self.all_APaths = {APath(path=tuple(path)) for path in call_path_lists}
+        return self.all_APaths
+
+    def export(self):
+        if len(self.all_APaths) == 0:
+            return
+        DataModel([{
+            'call_path': [ap.path for ap in self.all_APaths]
+        }]).save(self.path)
+
+
 class UnsolvedSymbolIDAssignerLoader:
     def __init__(self, path):
         self.path = path
@@ -1568,6 +1592,11 @@ class Loader:
             os.path.join(self.semantic_path_p3, config.CALL_GRAPH_BUNDLE_PATH_P3),
         )
 
+
+        self._call_path_p3_loader = CallPathLoader(
+            os.path.join(self.semantic_path_p3, config.CALL_PATH_BUNDLE_PATH_P3),
+        )
+
         self._symbol_to_define_loader = MethodSymbolToDefinedLoader(
             options,
             [],
@@ -2038,7 +2067,12 @@ class Loader:
     def save_call_graph_p3(self, *args):
         return self._call_graph_p3_loader.save(*args)
     def load_call_graph_p3(self, *args):
-        return self._call_graph_p3_loader.load(*args)
+        return self._call_graph_p3_loader.load(*args) 
+
+    def save_call_paths_p3(self, *args):
+        return self._call_path_p3_loader.save(*args)
+    def load_call_paths_p3(self, *args):
+        return self._call_path_p3_loader.load(*args)    
 
     def load_method_symbol_to_define(self, *args):
         return self._symbol_to_define_loader.load(*args)

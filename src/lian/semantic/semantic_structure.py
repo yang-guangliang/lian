@@ -1676,13 +1676,31 @@ class Parameter:
 
 @dataclasses.dataclass
 class APath:
-    path: list = dataclasses.field(default_factory=list)
+    path: tuple = dataclasses.field(default_factory=tuple)
 
-    def add_call(self, source_node, stmt_id, target_node):
-        self.path.extend([source_node, stmt_id, target_node])
-
+    # def add_call(self, source_node, stmt_id, target_node):
+    #     self.path += (source_node, stmt_id, target_node)
+    
+    def __post_init__(self):
+        # 实例化后验证类型
+        if not isinstance(self.path,tuple):
+            util.warn("赋值给APath的值不是tuple类型")
+        
     def to_tuple(self):
         return tuple(self.path)
+    
+    def to_CallSite_list(self):
+        callsite_list = []
+        if len(self.path) == 1:
+            return [CallSite(self.path[0],-1,-1)]
+        if len(self.path) < 3 or len(self.path) % 2 != 1:
+            raise ValueError("Please check the APath format")
+        for i in range(0, len(self.path) - 2, 2):
+            caller = self.path[i]
+            call_stmt = self.path[i + 1]
+            callee = self.path[i + 2]
+            callsite_list.append(CallSite(caller, call_stmt, callee))
+        return callsite_list
 
     def __getitem__(self, index):
         return self.path[index]
@@ -1694,6 +1712,16 @@ class APath:
         if not isinstance(other, APath):
             return False
         return self.path == other.path
+
+@dataclasses.dataclass
+class CallSite:
+    caller_id : int = -1
+    call_stmt_id : int = -1
+    callee_id : int = -1
+
+    def to_tuple(self):
+        return (self.caller_id, self.call_stmt_id, self.callee_id)
+    
 
 class PathManager:
     def __init__(self):
