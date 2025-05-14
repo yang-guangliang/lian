@@ -206,10 +206,15 @@ def read_df(all_files, output_path):
     for file_path in sorted(all_files, key=os.path.basename):
         global COUNTER
 
+        # 只打印call_path相关
+        # suffixes = ["call_graph_p2","call_path_p3","method_id_to_name","class_id_to_name","class_to_method_id","gir.bundle0"]
+        # if not file_path.endswith(tuple(suffixes)):
+        #     continue
+
         # 读取并打印单个feather文件
         if file_path.endswith(".indexing"):
             continue
-        elif "cfg" in os.path.basename(file_path):
+        if "cfg" in os.path.basename(file_path):
             # process_graph_files(all_files, file_path, output_path)
             continue
 

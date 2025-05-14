@@ -1354,7 +1354,6 @@ class StmtStateAnalysis:
                 array_states = state_array_copy[index]
                 for each_array_state_index in array_states:
                     each_array_state = self.frame.symbol_state_space[each_array_state_index]
-                    accessed_state_indexes = None
                     if each_array_state.state_type == StateTypeKind.ANYTHING:
                         self.resolver.resolve_anything_in_summary_generation(each_array_state_index, self.frame, stmt_id, callee_id, set_to_update=state_array[index])
 
@@ -1410,7 +1409,7 @@ class StmtStateAnalysis:
                 if each_field_state.state_type == StateTypeKind.ANYTHING:
                     # if config.DEBUG_FLAG:
                     #     print(f"\n\napply_parameter时, each_field_state {each_field_state_index} 是anything, field_name是{field_name}")
-                    #     # pprint.pprint(each_field_state)
+                    #     pprint.pprint(each_field_state)
                     #     print()
                     self.resolver.resolve_anything_in_summary_generation(
                         each_field_state_index, self.frame, stmt_id, callee_id, deferred_index_updates,
@@ -1551,7 +1550,7 @@ class StmtStateAnalysis:
             self.apply_parameter_summary_to_args_states(
                 stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state,
                 parameter_symbol_id, callee_id, deferred_index_updates, old_to_lastest_old_arg_state
-                )
+            )
         # print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")
         # pprint.pprint(deferred_index_updates)
         # print(f"old_to_new_arg_state {old_to_new_arg_state}")
@@ -1773,6 +1772,7 @@ class StmtStateAnalysis:
             if self.is_state_a_method_decl(each_state):
                 if each_state.value:
                     source_state_id = each_state.source_state_id
+                    # 如果是state1.func()的形式，要去找state1
                     if source_state_id != each_state.state_id:
                         this_state_set.update(
                             self.resolver.obtain_parent_states(stmt_id, self.frame, status, each_state_index)
@@ -2985,6 +2985,9 @@ class StmtStateAnalysis:
         if er.should_block_event_requester(app_return):
             defined_symbol.states = event.out_data.defined_states
             return P2ResultFlag()
+        # else:
+            # receiver_states = event.out_data.receiver_states
+            # print("经过插件后的receiver_states是：",receiver_states)
 
         for receiver_state_index in receiver_states:
             each_receiver_state = self.frame.symbol_state_space[receiver_state_index]

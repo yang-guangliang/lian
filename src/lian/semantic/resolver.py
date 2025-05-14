@@ -246,12 +246,11 @@ class Resolver:
 
     def obtain_parent_states(self, stmt_id, frame, status, base_state_index):
         """
-        获取父级状态链：
-        1. 解析基状态访问路径
-        2. 遍历状态层级关系
-        3. 收集父状态索引
+            给定一个base_state，找到其当前最新的parent_sates。
         """
+        # print("obtain_parent_states@ 要找的base_state是",base_state_index)
         parent_state_id = self.obtain_parent_state_id(frame, status, base_state_index)
+        # print("obtain_parent_states@ 找到的parent_state_id是",parent_state_id)
         if parent_state_id <= 0:
             return set()
 
@@ -270,13 +269,13 @@ class Resolver:
         #         frame.state_bit_vector_manager.add_bit_id(bit_id)
 
         # print(f"available_state_defs: {available_state_defs}")
-        return self.collect_newest_states_by_state_ids(frame, available_state_defs, {parent_state_id})
-
+        newest_states = self.collect_newest_states_by_state_ids(frame, available_state_defs, {parent_state_id})
+        # print("obtain_parent_states@ 找到的newest_states是",newest_states, ", method_id是",frame.method_id)
+        return newest_states
+    
     def obtain_parent_state_id(self, frame, status, base_state_index):
         """
-        获取父状态ID：
-        1. 解析基状态访问路径
-        2. 返回父状态ID
+            获取parent_state_id
         """
         base_state = frame.symbol_state_space[base_state_index]
         if not isinstance(base_state, State):
@@ -292,25 +291,26 @@ class Resolver:
 
     def get_this_state(self, caller_frame: ComputeFrame, new_indexes: set):
         """
-        解析THIS状态：
-        1. 获取调用帧的调用语句
-        2. 解析调用上下文中的THIS符号
-        3. 创建新的状态空间副本
+            解析出this/self对应的状态
+            this_states结果会存入new_indexes集合；返回this相关的state space
         """
+        # print("进入get_this_state")
         call_stmt_id = caller_frame.stmt_worklist[0]
         stmt = caller_frame.stmt_id_to_stmt[call_stmt_id]
         if stmt.operation != "call_stmt":
             return
 
+        # 取出call_name_symbol的states
         call_stmt_status = caller_frame.stmt_id_to_status[call_stmt_id]
         call_name_symbol_index = call_stmt_status.used_symbols[0]
         current_space = caller_frame.symbol_state_space
         call_name_symbol = current_space[call_name_symbol_index]
         if not (call_name_symbol and isinstance(call_name_symbol, Symbol)):
             return
-
-        this_state_set = set()
         call_name_state_index_set = call_name_symbol.states
+
+        # 获取call_name_states的parent_states，也就是this的states
+        this_state_set = set()
         for each_state_index in call_name_state_index_set:
             this_state_set.update(
                 self.obtain_parent_states(call_stmt_id, caller_frame, call_stmt_status, each_state_index)
@@ -549,10 +549,7 @@ class Resolver:
 
     def get_state_from_path(self, current_space, arg_access_path: list[AccessPoint], source_state_indexes):
         """
-        通过访问路径获取状态：
-        1. 遍历访问路径的层级
-        2. 解析字段/数组元素访问
-        3. 返回最终状态索引集合
+        传入source_state_indexes和current_space，从current_space中取出source_states。随后根据传入的access_path解析出对应的状态
         """
         if not arg_access_path:
             return source_state_indexes.copy()
@@ -589,7 +586,7 @@ class Resolver:
                     index = one_point.key
                     for tmp_state in tmp_states:
                         array = tmp_state.array
-                        if index <= len(array):
+                        if 0 <= index < len(array):
                             tmp_indexes.update(array[index])
 
                 else:
@@ -759,6 +756,7 @@ class Resolver:
             return
 
         if data_type == LianInternal.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
+            # print("resolve_anything_in_summary_generation@ 要找this")
             pass
             # if isinstance(caller_frame, ComputeFrame):
             #     current_space = self.get_this_state(caller_frame, source_state_indexes)

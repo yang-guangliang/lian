@@ -446,11 +446,14 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                     continue
 
                 # check if there is an available method summary
-                summary_template: MethodSummaryTemplate = self.loader.load_method_summary_template(frame.method_id).copy()
-                summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(frame.method_id)
-                if not summary_template:
+                p2_summary_template = self.loader.load_method_summary_template(frame.method_id)
+                # 如果没有summary->函数体为空->跳过
+                if util.is_empty(p2_summary_template):
                     frame_stack.pop()
                     continue
+        
+                summary_template: MethodSummaryTemplate = p2_summary_template.copy()
+                summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(frame.method_id)
 
                 if not summary_template.dynamic_call_stmt:
                     if config.DEBUG_FLAG:
