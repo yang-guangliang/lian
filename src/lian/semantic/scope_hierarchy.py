@@ -667,6 +667,17 @@ class TypeHierarchy:
                                 parent_index = counter
                             )
                         )
+                else :
+                    result.append(
+                        TypeNode(
+                            name = stmt.name,
+                            unit_id= unit_id,
+                            class_stmt_id = stmt_id,
+                            parent_id = -1,
+                            parent_name = each_name,
+                            parent_index = counter
+                        )
+                    )
                 counter += 1
         else :
             result.append(
