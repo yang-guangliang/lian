@@ -2137,37 +2137,25 @@ class Loader:
     def stmt_to_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
         stmt = self.load_stmt_gir(stmt_id)
-        stmt_id = stmt.parent_stmt_id
 
         while(stmt.operation != 'method_decl'):
+            
+            stmt_id = stmt.parent_stmt_id
             stmt = self.load_stmt_gir(stmt_id)
-            stmt_id = stmt.stmt_id
 
-        method_start_line = stmt.start_line 
-        method_end_line = stmt.end_line 
+        method_start_line = int(stmt.start_row)
+        method_end_line = int(stmt.end_row) + 1
         unit_id = stmt.unit_id
+        lang_name = self.convert_unit_id_to_lang_name(unit_id)
         unit_path = self.convert_unit_id_to_unit_path(unit_id)
 
         with open(unit_path, 'r') as f:
             lines = f.readlines()
-            return ''.join(lines[method_start_line - 1: method_end_line])
+        lines = [line.rstrip() for line in lines]
         comment_start = method_start_line - 1
-        line_end = 0
-        while comment_start > 0:
-            if not line or line.startswith('#'):
-                comment_start -= 1
-            elif line.endswith("'''") :
-                # 处理多行字符串注释
-                line_end = 1
-                comment_start -= 1
-            elif line.startswith("'''"):
-                # 处理多行字符串注释
-                line_end = 0
-                comment_start -= 1
-            else:
-                if line_end == 0:
-                    break
-                else:
-                    comment_start -= 1
+        
+        comment_start = util.determine_comment_line(lang_name, comment_start, lines)
+
         code_with_comment = lines[comment_start: method_end_line]
         return code_with_comment
+    
