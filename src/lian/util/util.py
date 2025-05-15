@@ -414,3 +414,48 @@ def process_string(s):
         s = s.replace(char, f"\\{char}")
 
     return s
+def determine_comment_line(lang_name, comment_start, lines):
+        line_end = 0
+
+        while comment_start > 0:
+            line = lines[comment_start].lstrip()
+            if lang_name == 'java':
+                if  line.startswith('//') or line.startswith('/*') and line.endswith('*/'):
+                    comment_start -= 1
+                elif line.endswith("*/"):
+                    line_end = 1
+                    comment_start -= 1
+                elif line.startswith("/*"):
+                    line_end = 0
+                    comment_start -= 1
+                else:
+                    if line_end == 0:
+                        break
+                    else:
+                        comment_start -= 1
+            elif lang_name == 'python':
+                if  line.startswith('#'):
+                    comment_start -= 1
+                elif line.endswith("'''") and line.startswith("'''") and len(line)>5:
+                    comment_start -= 1
+                elif line.endswith('"""') and line.startswith('"""') and len(line)>5:
+                    comment_start -= 1
+                elif line.endswith("'''") or line.endswith('"""'):
+                    if line_end == 0:
+                        line_end = 1
+                        comment_start -= 1
+                    else:
+                        line_end = 0
+                        comment_start -= 1
+                elif line.startswith("'''") or line.startswith('"""'):
+                    # 处理多行字符串注释
+                    line_end = 0
+                    comment_start -= 1
+                else:
+                    if line_end == 0:
+                        break
+                    else:
+                        comment_start -= 1
+        
+        return comment_start + 1
+
