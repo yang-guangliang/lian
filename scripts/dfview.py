@@ -206,8 +206,9 @@ def read_df(all_files, output_path):
     for file_path in sorted(all_files, key=os.path.basename):
         global COUNTER
 
-        # 只打印call_path相关
+        # [rn]只打印call_path相关
         # suffixes = ["call_graph_p2","call_path_p3","method_id_to_name","class_id_to_name","class_to_method_id","gir.bundle0"]
+        # # suffixes = ["call_graph_p2","call_path_p3","method_id_to_name","class_id_to_name","class_to_method_id"]
         # if not file_path.endswith(tuple(suffixes)):
         #     continue
 

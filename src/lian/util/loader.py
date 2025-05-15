@@ -1037,6 +1037,9 @@ class CallPathLoader:
         self.all_APaths = all_APaths
 
     def load(self):
+        # 防止该文件不存在第三阶段call_path从而读取报错
+        if not os.path.exists(self.path):
+            return {}
         dm = DataModel().load(self.path)
         if 'call_path' in dm._data.columns:
             call_path_lists = dm._data['call_path'].iloc[0]

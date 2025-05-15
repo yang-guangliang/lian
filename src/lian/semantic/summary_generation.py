@@ -767,7 +767,7 @@ class SemanticSummaryGeneration:
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        # print(f"in_states@after complete_in_states: {in_states}")
+        print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
             print("  DON'T CONTINUE")
             if status.in_state_bits != old_in_state_bits:
@@ -994,6 +994,7 @@ class SemanticSummaryGeneration:
 
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
+                print("gir: ",self.loader.load_stmt_gir(stmt_id))
 
             if frame.interruption_flag:
                 frame.interruption_flag = False

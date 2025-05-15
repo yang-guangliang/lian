@@ -37,24 +37,28 @@ def resolve_this_field_method(data: EventData):
         data.out_data.receiver_states = receiver_states
         app_return = er.config_continue_event_processing(app_return)
         return app_return
-
+    # 取出该类的methods_in_class
+    current_method_id = frame.method_id
+    current_class_id = loader.convert_method_id_to_class_id(current_method_id)
+    methods_in_class = loader.load_methods_in_class(current_class_id)
+    method_name = loader.convert_method_id_to_method_name(current_method_id)
+    class_name = loader.convert_class_id_to_class_name(current_class_id)
+    # print("methods_in_class: \n",methods_in_class)
+    print("receiver_states:",receiver_states,\
+          "\n当前方法是来自",class_name,"类的",method_name)
+    print([frame.symbol_state_space[i].data_type for i in receiver_states])
+    # input("11111111111111111111")
     for each_receiver_state_index in receiver_states:
         each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
         # if each_receiver_state.data_type != LianInternal.THIS:
         #     continue
-
-        # 取出该类的methods_in_class
-        current_method_id = frame.method_id
-        current_class_id = loader.convert_method_id_to_class_id(current_method_id)
-        methods_in_class = loader.load_methods_in_class(current_class_id)
-        # print("methods_in_class: \n",methods_in_class)
 
         for each_field_state_index in field_states:
             each_field_state = frame.symbol_state_space[each_field_state_index]
             if not isinstance(each_field_state, State):
                 continue
             field_name = str(each_field_state.value)    
-            # print("resolve_this_field_method@ field_name是",field_name)
+            print("resolve_this_field_method@ field_name是",field_name)
             if len(field_name) == 0:
                 continue
             
@@ -90,7 +94,7 @@ def resolve_this_field_method(data: EventData):
                 util.add_to_dict_with_default_set(new_receiver_state.fields, field_name, field_method_state_index)
             receiver_states.discard(each_receiver_state_index)
             receiver_states.add(new_receiver_state_index)
-            # print("copy_on_change 产生的新state是",new_receiver_state_index,"原来是",each_receiver_state_index)
+            print("copy_on_change 产生的新state是",new_receiver_state_index,"原来是",each_receiver_state_index)
             # pprint.pprint(new_receiver_state)
 
     data.out_data.receiver_states = receiver_states
