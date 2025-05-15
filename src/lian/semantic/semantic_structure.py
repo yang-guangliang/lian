@@ -93,7 +93,7 @@ class BasicSpace:
         if not isinstance(index, (int, numpy.int64)):
             if int_index := util.str_to_int(index):
                 index = int_index
-            else:
+            else: 
                 return None
         if index >= 0 and index < len(self.space):
             return self.space[index]
@@ -158,10 +158,6 @@ class BasicGraph:
         # if config.DEBUG_FLAG:
         #     util.debug(f"_add_one_edge:{src_stmt_id}->{dst_stmt_id}, weight={weight}")
         self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
-
-    def add_node(self, node):
-        if node:
-            self.graph.add_node(node)
 
     def add_edge(self, src_stmt, dst_stmt, weight = None):
         src_stmt_id = -1
@@ -232,18 +228,6 @@ class BasicGraphWithSelfCircle(BasicGraph):
         # if config.DEBUG_FLAG:
         #     util.debug(f"_add_one_edge:{src_stmt_id}->{dst_stmt_id}, weight={weight}")
         self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
-
-class MultipleDirectedGraph(BasicGraph):
-    pass
-
-@dataclasses.dataclass
-class ImportStmtInfo:
-    stmt_id: int            = -1
-    imported_unit_id: int   = -1
-    imported_stmt_id: int   = -1
-    is_parsed: bool         = False
-    is_unit: bool           = False
-
 
 class SimpleWorkList:
     def __init__(self, init_data = []):
@@ -382,6 +366,13 @@ class Scope(BasicElement):
     def __repr__(self):
         result = self.to_dict()
         return (f"Scope [{str(result)}]")
+
+    def construct_from_dict(self, d: dict):
+        for k, v in d.items():
+            if hasattr(self, k):
+                setattr(self, k, v)
+        return self
+
 
 class ScopeSpace(BasicSpace):
     def to_dict(self):
@@ -752,7 +743,7 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
             new_indexes = set()
             is_list = False
 
-        if util.is_available(shift_result):
+        if shift_result is not None:
             shift_result.new_indexes = new_indexes
             old_index_to_new_index = shift_result.old_index_to_new_index
             new_index_to_old_index = shift_result.new_index_to_old_index
@@ -791,7 +782,7 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
             all_indexes.add(index)
 
             content = self.space[index]
-            if util.is_available(content):
+            if content is not None:
                 if isinstance(content, State):
                     for each_value in content.fields.values():
                         target_list_copy.update(each_value)
@@ -807,7 +798,7 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
         # copy target elements
         for index in all_indexes:
             content = self.space[index]
-            if util.is_available(content):
+            if content is not None:
                 results.append(content.copy())
                 new_index = len(results) - 1
                 old_index_to_new_index[index] = new_index
@@ -1202,7 +1193,7 @@ class MethodDefUseSummary:
                 f"return_symbol_ids={self.return_symbol_ids}, "\
                 f"defined_this_symbol_id={self.defined_this_symbol_id}, "\
                 f"used_this_symbol_id={self.used_this_symbol_id}"\
-
+                
 
     def copy(self):
         return MethodDefUseSummary(
@@ -1341,7 +1332,7 @@ class DefferedIndexUpdate:
             self.stmt_id == other.stmt_id and
             self.arg_state_indexes == other.arg_state_indexes
         )
-
+    
     def __hash__(self):
         return hash((self.state_index, self.state_symbol_id, self.stmt_id))
 
@@ -1676,31 +1667,13 @@ class Parameter:
 
 @dataclasses.dataclass
 class APath:
-    path: tuple = dataclasses.field(default_factory=tuple)
+    path: list = dataclasses.field(default_factory=list)
 
-    # def add_call(self, source_node, stmt_id, target_node):
-    #     self.path += (source_node, stmt_id, target_node)
-    
-    def __post_init__(self):
-        # 实例化后验证类型
-        if not isinstance(self.path,tuple):
-            util.warn("赋值给APath的值不是tuple类型")
-        
+    def add_call(self, source_node, stmt_id, target_node):
+        self.path.extend([source_node, stmt_id, target_node])
+
     def to_tuple(self):
         return tuple(self.path)
-    
-    def to_CallSite_list(self):
-        callsite_list = []
-        if len(self.path) == 1:
-            return [CallSite(self.path[0],-1,-1)]
-        if len(self.path) < 3 or len(self.path) % 2 != 1:
-            raise ValueError("Please check the APath format")
-        for i in range(0, len(self.path) - 2, 2):
-            caller = self.path[i]
-            call_stmt = self.path[i + 1]
-            callee = self.path[i + 2]
-            callsite_list.append(CallSite(caller, call_stmt, callee))
-        return callsite_list
 
     def __getitem__(self, index):
         return self.path[index]
@@ -1712,16 +1685,6 @@ class APath:
         if not isinstance(other, APath):
             return False
         return self.path == other.path
-
-@dataclasses.dataclass
-class CallSite:
-    caller_id : int = -1
-    call_stmt_id : int = -1
-    callee_id : int = -1
-
-    def to_tuple(self):
-        return (self.caller_id, self.call_stmt_id, self.callee_id)
-    
 
 class PathManager:
     def __init__(self):

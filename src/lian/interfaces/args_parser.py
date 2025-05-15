@@ -3,23 +3,27 @@
 import sys
 import argparse
 import types
-from lian.config import config
+from lian.config import constants, config
+LANG_EXTENSIONS = constants.LANG_EXTENSIONS
 
-class ArgsParser:
+class ArgParser:
     def __init__(self):
-        self.main_parser = argparse.ArgumentParser()
-        self.options = self.obtain_default_options()
+        self.main_parser = None
+        self.options = None
+        self.init()
 
     def init(self):
         # Create the top-level parser
+        self.main_parser = argparse.ArgumentParser()
         subparsers = self.main_parser.add_subparsers(dest='sub_command')
         # Create the parser for the "lang" command
         parser_lang = subparsers.add_parser('lang', help="Parse code to General IR")
         parser_semantic = subparsers.add_parser('semantic', help='Perform semantic analysis')
         parser_security = subparsers.add_parser('security', help='Conduct security analysis')
         parser_run = subparsers.add_parser('run', help='Run end-to-end analysis')
-        # Add the arguments to the main parser
+        parser_safe = subparsers.add_parser('safe', help='Compile safe-lang files')
 
+        # Add the arguments to the main parser
         for parser in [parser_lang, parser_semantic, parser_security, parser_run]:
             parser.add_argument("-b", "--benchmark", action="store_true")
             # parser.add_argument("-r", "--recursive", action="store_true",
@@ -34,29 +38,8 @@ class ArgsParser:
             parser.add_argument("--android", action="store_true", help="Enable the Android analysis mode")
             parser.add_argument("-a", "--apps", default=[], action='append', help="Config the <plugin> dir")
             parser.add_argument('-l', "--lang", default="", type=str, help='programming lang', required=True)
+            parser.add_argument("--incremental", action="store_true", help="Reuse previous analysis results")
 
-        return self
-
-    def merge_options(self, parsed_args):
-        for key, value in vars(parsed_args).items():
-            setattr(self.options, key, value)
-
-    def obtain_default_options(self):
-        return types.SimpleNamespace(
-            apps = [],
-            lang = "",
-            benchmark = False,
-            android = False,
-            cores = 1,
-            print_stmts = False,
-            include_headers = "",
-            debug = False,
-            force = False,
-            recursive = True,
-            workspace = config.DEFAULT_WORKSPACE,
-            sub_command = "",
-            in_path = "",
-        )
 
     def print_help(self):
         self.main_parser.print_help()
@@ -70,10 +53,10 @@ class ArgsParser:
                 correctness = False
 
         if not correctness:
-            self.print_help()
+            self.main_parser.print_help()
             sys.exit(1)
 
-    def adjust_lang(self):
+    def adjust(self):
         self.options.lang = self.options.lang.split(",")
         if len(self.options.lang) == 0:
             util.error_and_quit("The target lang should be specified.")
@@ -85,9 +68,16 @@ class ArgsParser:
                 lang_list.append(lang_option)
         self.options.lang = lang_list
 
-    def parse_cmds(self):
+        constants.update_lang_extensions(lang_list)
+
+        file_extensions = []
+        for lang_option in self.options.lang:
+            file_extensions.extend(LANG_EXTENSIONS.get(lang_option, []))
+        self.options.lang_extensions = file_extensions
+
+    def parse(self):
         args = self.main_parser.parse_args()
-        self.merge_options(args)
-        self.adjust_lang()
+        self.options = types.SimpleNamespace(**vars(args))
         self.validate()
+        self.adjust()
         return self.options

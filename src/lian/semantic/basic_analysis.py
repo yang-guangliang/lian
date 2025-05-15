@@ -2,7 +2,8 @@
 import pprint
 import sys
 import traceback
-
+from tqdm import tqdm
+from lian.incremental.unit_level_checker import UnitLevelChecker
 from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
@@ -40,27 +41,32 @@ from lian.semantic.scope_hierarchy import (
 from lian.semantic.entry_points import EntryPointGenerator
 from lian.semantic.control_flow import ControlFlowAnalysis
 from lian.semantic.stmt_def_use_analysis import StmtDefUseAnalysis
+from lian.incremental import unit_level_checker
 
 class BasicSemanticAnalysis:
-    def __init__(self, lian):
+    def __init__(self, options, app_manager, loader, resolver, incremental_checker, extern_system):
         self.analysis_phases = []
-        self.options = lian.options
-        self.app_manager = lian.app_manager
-        self.extern_system = lian.extern_system
-        self.loader:Loader = lian.loader
-        self.resolver: Resolver = lian.resolver
-        self.entry_points = EntryPointGenerator(lian.options, lian.app_manager, lian.loader)
+        self.options = options
+        self.app_manager = app_manager
+        self.extern_system = extern_system
+        self.loader:Loader = loader
+        self.resolver: Resolver = resolver
+        self.incremental_checker: UnitLevelChecker = incremental_checker
+        self.entry_points = EntryPointGenerator(options, app_manager, loader)
         self.basic_call_graph = BasicCallGraph()
         self.analyzed_method_ids = set()
 
-    def config(self):
-        pass
-
-    def analyze_stmt_def_use(self, method_id, import_result):
+    def analyze_stmt_def_use(self, method_id, import_result, incremental_flag = False):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
-        cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
+        cfg = None
+        if incremental_flag:
+            # util.debug("cfg incremental")
+            cfg = self.incremental_checker.fetch_cfg(method_id)
+            self.loader.save_method_cfg(method_id, cfg)
+        else:
+            cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
         all_cfg_nodes = set(cfg.nodes())
 
         if util.is_available(parameter_decls):
@@ -157,7 +163,19 @@ class BasicSemanticAnalysis:
             unit_id = unit_info.module_id
             unit_list.append(unit_id)
             unit_gir = self.loader.load_unit_gir(unit_id)
-            unit_scope = UnitScopeHierarchyAnalysis(self.loader, unit_id, unit_gir).analyze()
+
+            unit_scope = None
+            incremental_flag = False
+            if self.options.incremental:
+                if self.options.debug:
+                    util.debug("Scope incremental:")
+                previous_scope_analysis_pack = self.incremental_checker.previous_scope_hierarchy_analysis_results(unit_info)
+                if previous_scope_analysis_pack:
+                    incremental_flag = True
+                    unit_scope = UnitScopeHierarchyAnalysis(self.loader, unit_id, unit_gir).reuse_analysis(previous_scope_analysis_pack)
+
+            if not incremental_flag:
+                unit_scope = UnitScopeHierarchyAnalysis(self.loader, unit_id, unit_gir).analyze()
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
             self.extern_system.install_mock_code_file(unit_info, unit_scope)
         self.loader.export_scope_hierarchy()
@@ -165,21 +183,22 @@ class BasicSemanticAnalysis:
 
         self.extern_system.display_all_installed_rules()
 
-        # Given a import stmt, how to construct export nodes of each unit and unit hierarchy
+        # Given an import stmt, how to construct export nodes of each unit and unit hierarchy
         importAnalysis = ImportHierarchy(self.loader, self.resolver)
         importAnalysis.analyze(unit_list)
         # Given a class decl stmt and its supers' names, how to resolve them with its id?
-        #print("=== Analyzing Type Hierarchy ===")
+        print("=== Analyzing Type Hierarchy ===")
         TypeHierarchy(self.loader, self.resolver).analyze(unit_list)
 
         # Conduct basic analysis, i.e., context-insensitive and flow-insensitive analysis
         # reversed() is to improve cache hit rates
-        #print("=== Analyzing def_use ===")
+        print("=== Analyzing def_use ===")
         unit_list.reverse()
-        for unit_id in unit_list:
+        for unit_id in tqdm(unit_list):
+            incremental_flag = (self.incremental_checker.check_unit_id_analyzed(unit_id) is not None)
             all_unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
             for method_id in all_unit_methods:
-                self.analyze_stmt_def_use(method_id, importAnalysis)
+                self.analyze_stmt_def_use(method_id, importAnalysis, incremental_flag)
         self.loader.save_call_graph_p1(self.basic_call_graph)
 
         self.group_methods_by_callee_types()

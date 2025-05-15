@@ -8,7 +8,7 @@ DEBUG_FLAG                                  = False
 STRING_MAX_LEN                              = 200
 MAX_PRIORITY                                = 100
 MIN_ID_INTERVAL                             = 20
-BUILTIN_SYMBOL_START_ID                     = -101
+BUILTIN_SYMBOL_START_ID                     = -100
 BUILTIN_THIS_SYMBOL_ID                      = -9
 BUILTIN_OBJECT_SYMBOL_ID                    = -8
 
@@ -23,15 +23,24 @@ FIRST_GLOBAL_ROUND                          = 1
 
 ANY_LANG                                    = "%"
 
+LIB_DIR                                     = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+LANGS_SO_PATH                               = os.path.join(LIB_DIR, "lib/langs_linux.so")
+ABC_LANG_SO_PATH                            = os.path.join(LIB_DIR, "lib/abc_lang_linux.so")
+SAFE_LANG_SO_PATH                           = os.path.join(LIB_DIR, "lib/safe_lang_linux.so")
+if platform == "darwin":                    # OS X
+    LANGS_SO_PATH                           = os.path.join(LIB_DIR, "lib/langs_darwin.so")
+elif platform == "win32":                   # Windows...
+    LANGS_SO_PATH                           = os.path.join(LIB_DIR, "lib/langs_windows.so")
 
 DEFAULT_WORKSPACE                           = "lian_workspace"
 MODULE_SYMBOLS_FILE                         = "module_symbols"
 SOURCE_CODE_DIR                             = "src"
 EXTERNS_DIR                                 = "externs"
-GIR_DIR                                     = "gir"
+GIR_DIR                                   = "gir"
 SEMANTIC_DIR_P1                             = "semantic_p1"
 SEMANTIC_DIR_P2                             = "semantic_p2"
 SEMANTIC_DIR_P3                             = "semantic_p3"
+BACKUP_DIR                                  = "bak"
 
 SRC_LIAN_DIR                                = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 EXTERNS_MOCK_CODE_DIR                       = os.path.join(SRC_LIAN_DIR, "externs/mock")
@@ -41,7 +50,7 @@ MOCK_METHOD_NAME_SEPARATOR                  = "_1_"
 
 BUNDLE_CACHE_CAPACITY                       = 10
 LRU_CACHE_CAPACITY                          = 10000
-GIR_CACHE_CAPACITY                          = LRU_CACHE_CAPACITY / 2
+GIR_CACHE_CAPACITY                        = LRU_CACHE_CAPACITY / 2
 
 METHOD_HEADER_CACHE_CAPABILITY              = 10000
 METHOD_BODY_CACHE_CAPABILITY                = 1000
@@ -49,7 +58,7 @@ STMT_SCOPE_CACHE_CAPABILITY                 = 1000
 
 MODULE_SYMBOLS_PATH                         = "module_symbols"
 LOADER_INDEXING_PATH                        = "indexing"
-GIR_BUNDLE_PATH                             = "gir"
+GIR_BUNDLE_PATH                             = "gir_ir"
 CFG_BUNDLE_PATH                             = "cfg"
 SCOPE_HIERARCHY_BUNDLE_PATH                 = "scope_hierarchy"
 METHOD_INTERNAL_CALLEES_PATH                = "method_internal_callees"
@@ -73,7 +82,6 @@ METHOD_ID_TO_METHOD_NAME_PATH               = "method_id_to_name"
 CALL_GRAPH_BUNDLE_PATH_P1                   = "call_graph_p1"
 CALL_GRAPH_BUNDLE_PATH_P2                   = "call_graph_p2"
 CALL_GRAPH_BUNDLE_PATH_P3                   = "call_graph_p3"
-CALL_PATH_BUNDLE_PATH_P3                    = "call_path_p3"
 
 ENTRY_POINTS_PATH                           = "entry_points"
 SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P1    = "symbol_bit_vector_p1"
@@ -112,4 +120,3 @@ METHOD_SUMMARY_TEMPLATE_PATH                = "method_summary_template"
 METHOD_SUMMARY_INSTANCE_PATH                = "method_summary_instance"
 
 UNSOLVED_SYMBOL_ID_ASSIGNER_LOADER          = "unsolved_symbol_ids"
-UNSOLVED_SYMBOL_NAME                        = "%%%%unsolved_symbols"

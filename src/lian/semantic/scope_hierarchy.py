@@ -26,13 +26,10 @@ from lian.semantic.semantic_structure import (
     UnitSymbolDeclSummary,
     SimpleWorkList,
     ExportNode,
-    TypeNode,
-    MultipleDirectedGraph,
-    ImportStmtInfo
+    TypeNode
 )
 from lian.util import util
 from lian.util.loader import Loader
-
 class UnitScopeHierarchyAnalysis:
     def __init__(self, loader: Loader, unit_id, unit_gir):
         self.loader = loader
@@ -62,7 +59,7 @@ class UnitScopeHierarchyAnalysis:
         return self.unit_gir.read_block(block_id)
 
     def init(self):
-        if util.is_empty(self.unit_gir):
+        if self.unit_gir is None:
             # util.error("UnitScopeHierarchyAnalysis.unit_gir is empty")
             return
         for row in self.unit_gir:
@@ -77,6 +74,8 @@ class UnitScopeHierarchyAnalysis:
         self.summarize_symbol_decls()
         return self.save_necessary_info()
 
+
+
     def access_by_stmt_id(self, stmt_id):
         return self.stmt_id_to_gir.get(stmt_id)
 
@@ -88,7 +87,7 @@ class UnitScopeHierarchyAnalysis:
             return self.stmt_id_to_scope_id_cache[stmt_id]
 
         stmt = self.access_by_stmt_id(stmt_id)
-        if util.is_empty(stmt):
+        if stmt is None:
             return 0
 
         result = stmt.stmt_id
@@ -363,6 +362,17 @@ class UnitScopeHierarchyAnalysis:
             )
         )
 
+    def reuse_analysis(self, previous_scope_analysis_results_pack):
+        pack = previous_scope_analysis_results_pack # alias
+        self.init()
+        for k, v in pack.items():
+            if hasattr(self, k):
+                setattr(self, k, v)
+            else:
+                if k == "unit_symbol_decl_summary":
+                    self.loader.save_unit_symbol_decl_summary(self.unit_id, v)
+        return self.save_necessary_info()
+
     def save_necessary_info(self):
         self.loader.save_unit_id_to_stmt_ids(self.unit_id, self.stmt_id_to_gir.keys())
         self.loader.save_unit_id_to_method_ids(self.unit_id, self.method_stmt_ids)
@@ -381,7 +391,7 @@ class UnitScopeHierarchyAnalysis:
             self.loader.save_class_id_to_field_ids(stmt_id, self.class_id_to_class_field_ids[stmt_id])
         for stmt_id in self.class_id_to_class_method_ids:
             self.loader.save_class_id_to_method_ids(stmt_id, self.class_id_to_class_method_ids[stmt_id])
-
+        util.debug(self.scope_space[0])
         return self.loader.save_unit_scope_hierarchy(self.unit_id, self.scope_space)
 
     def display_results(self):
@@ -393,6 +403,7 @@ class ImportHierarchy:
         self.resolver = resolver
         self.analyzed_imported_unit_ids = set()
         self.import_graph = BasicGraph()
+
 
     def append_export_node(self, export_result, unit_id, stmt):
 
@@ -442,7 +453,7 @@ class ImportHierarchy:
 
             # determine its module type
             module_type = ExportNodeType.MODULE_DIR
-            if self.loader.is_unit_id(module_id):
+            if self.loader.is_module_unit_id(module_id):
                 module_type = ExportNodeType.MODULE_UNIT
 
             # save node
@@ -547,7 +558,6 @@ class ImportHierarchy:
 
         # set flag to true and avoiding recursive analysis
         self.analyzed_imported_unit_ids.add(unit_id)
-        #self.import_graph.add_node(unit_id)
 
         # start analysis from scope_hierarchy
         scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
@@ -597,48 +607,6 @@ class ImportHierarchy:
             self.analyze_unit_imports(unit_id)
         self.loader.save_import_graph(self.import_graph)
 
-class ImportGraphTranslatorToUnitLevel:
-    def __init__(self, loader, import_graph, unit_id_list):
-        self.loader = loader
-        self.import_graph = import_graph
-        self.unit_id_list = unit_id_list
-
-    def convert(self):
-        unit_import_graph = MultipleDirectedGraph()
-        for unit_id in self.unit_id_list:
-            unit_import_graph.add_node(unit_id)
-
-        import_stmt_id_to_data = {}
-        graph = self.import_graph.retrieve_graph()
-        for node_id in graph.nodes:
-            out_edges = graph[node_id]
-            if not out_edges:
-                continue
-
-            for out_id in out_edges:
-                stmt_id = out_edges[out_id]["weight"]
-                import_data = ImportStmtInfo()
-                import_data.stmt_id = stmt_id
-
-                if self.loader.is_unit_id(out_id):
-                    import_data.imported_unit_id = out_id
-                    import_data.is_parsed = True
-                    import_data.is_unit = True
-
-                    unit_import_graph.add_edge(node_id, out_id, stmt_id)
-                else:
-                    unit_id = self.loader.convert_stmt_id_to_unit_id(out_id)
-                    if unit_id > 0:
-                        import_data.imported_unit_id = unit_id
-                        import_data.imported_stmt_id = out_id
-                        import_data.is_parsed = True
-
-                if import_data.imported_unit_id > 0:
-                    unit_import_graph.add_edge(node_id, import_data.imported_unit_id, stmt_id)
-                import_stmt_id_to_data[stmt_id] = import_data
-
-        return (unit_import_graph, import_stmt_id_to_data)
-
 class TypeHierarchy:
     def __init__(self, loader, resolver):
         self.loader: Loader = loader
@@ -667,17 +635,6 @@ class TypeHierarchy:
                                 parent_index = counter
                             )
                         )
-                else :
-                    result.append(
-                        TypeNode(
-                            name = stmt.name,
-                            unit_id= unit_id,
-                            class_stmt_id = stmt_id,
-                            parent_id = -1,
-                            parent_name = each_name,
-                            parent_index = counter
-                        )
-                    )
                 counter += 1
         else :
             result.append(

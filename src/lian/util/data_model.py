@@ -294,17 +294,24 @@ class DataModel:
     def get_schema(self):
         return self._data.columns
 
+    def convert_to_dict_list(self):
+        df = self._data
+        records = df.to_dict(orient="records")
+        cleaned_records = []
+        for row in records:
+            cleaned_row = {}
+            for key, value in row.items():
+                if pd.notnull(value):
+                    cleaned_row[key] = value
+            cleaned_records.append(cleaned_row)
+        return cleaned_records
+
+
 class Row:
     def __init__(self, row, schema, index):
-        object.__setattr__(self, "_row", row)
-        object.__setattr__(self, "_schema", schema)
-        object.__setattr__(self, "_index", index)
-
-    def __copy__(self):
-        new_row = self._row.copy()
-        new_schema = self._schema.copy()
-        new_index = self._index
-        return Row(new_row, new_schema, new_index)
+        self._row = row
+        self._schema = schema
+        self._index = index
 
     def __getattr__(self, item):
         pos = self._schema.get(item, -1)
@@ -312,24 +319,6 @@ class Row:
             return self._row[pos]
         # util.error(f"Failed to obtain key <{item}> from the dataframe row{self._row}")
         return None
-
-    def __setattr__(self, name, value):
-        if name.startswith("_"):
-            object.__setattr__(self, name, value)
-        else:
-            if name in self._schema:
-                pos = self._schema[name]
-                self._row[pos] = value
-            else:
-                raise AttributeError(f"Unable to set properties '{name}'")
-
-    def add_new_column(self, column_name, column_data):
-        if column_name in self._schema:
-            pos = self._schema[column_name]
-            self._row[pos] = column_data
-        else:
-            self._row = np.append(self._row, column_data)
-            self._schema[column_name] = len(self._row) - 1
 
     def __repr__(self):
         return f"Row({self._row})"

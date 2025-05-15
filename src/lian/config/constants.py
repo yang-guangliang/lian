@@ -2,6 +2,50 @@
 
 from lian.util import util
 
+LANG_EXTENSIONS = {
+    "c"             : [".c", ".h", ".i"],
+    "cpp"           : [".cpp", ".cxx", ".cc", ".h", ".hh", ".hpp", ".ii"],
+    "csharp"        : [".cs"],
+    "rust"          : [".rs"],
+    "mir"           : [".mir"],
+    "go"            : [".go"],
+    "java"          : [".java"],
+    "javascript"    : [".js"],
+    "typescript"    : [".ts"],
+    "kotlin"        : [".kt"],
+    "scala"         : [".scala"],
+    "llvm"          : [".ll"],
+    "python"        : [".py"],
+    "ruby"          : [".rb"],
+    "smali"         : [".smali"],
+    "swift"         : [".swift"],
+    "php"           : [".php"],
+    "codeql"        : [".ql"],
+    "ql"            : [".ql"],
+    "abc"           : [".txt"],
+    "safe"          : [".safe"], 
+    "arkts"         : [".ets"],
+}
+
+EXTENSIONS_LANG = {}
+
+def update_lang_extensions(lang_list):
+    global LANG_EXTENSIONS
+    global EXTENSIONS_LANG
+
+    # Adjust the attribution of .h files
+    if "c" in lang_list:
+        if ".h" in LANG_EXTENSIONS["cpp"]:
+            LANG_EXTENSIONS["cpp"].remove(".h")
+    elif "cpp" in lang_list:
+        if ".h" in LANG_EXTENSIONS["c"]:
+            LANG_EXTENSIONS["c"].remove(".h")
+
+    for lang, exts in LANG_EXTENSIONS.items():
+        for each_ext in exts:
+            if each_ext not in EXTENSIONS_LANG:
+                EXTENSIONS_LANG[each_ext] = lang
+
 CLASS_DECL_OPERATION = {
     "class_decl",
     "record_decl",
@@ -275,7 +319,7 @@ LoaderQueryEntry = util.SimpleEnum({
     'stmt_status'                   : 3,
     'symbols_states_space'          : 4,
     'method_summary'                : 5,
-    'gir'                           : 6,
+    'gir_ir'                      : 6,
     'scope_space'                   : 7,
 })
 
@@ -370,3 +414,10 @@ JsPrototype = util.SimpleEnum({
 
 })
 
+IncrementalBackupType = util.SimpleEnum({
+    "EMPTY"                       : -1,
+    "GIR"                           : 0,
+    "SEMANTIC_P1"                   : 1,
+    "SEMANTIC_P2"                   : 2,
+    "SEMANTIC_P3"                   : 3
+})

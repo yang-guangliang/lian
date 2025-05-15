@@ -6,7 +6,7 @@ import networkx
 import pprint
 import numpy
 from bisect import insort
-
+from math import isnan
 from lian.util.data_model import DataModel
 from lian.config import schema
 from lian.util import util
@@ -38,7 +38,7 @@ from lian.semantic.semantic_structure import (
     IndexMapInSummary,
     SymbolDefNode,
     MethodSummaryInstance,
-    APath
+    MethodInClass
 )
 
 class ModuleSymbolsLoader:
@@ -54,7 +54,7 @@ class ModuleSymbolsLoader:
         self.unit_id_to_lang = {}
         self.module_name_to_module_ids = {}
         self.module_id_to_children_ids = {}
-        self.unit_ids = set()
+        self.module_unit_ids = set()
         self.all_module_ids = set()
         self.module_dir_ids = set()
         self.unit_path_to_id = {}
@@ -77,7 +77,7 @@ class ModuleSymbolsLoader:
             module_id = row.module_id
 
             if row.symbol_type == SymbolKind.UNIT_SYMBOL:
-                self.unit_ids.add(module_id)
+                self.module_unit_ids.add(module_id)
 
             # cache all module ids
             self.all_module_ids.add(module_id)
@@ -104,17 +104,18 @@ class ModuleSymbolsLoader:
                 self.unit_path_to_id[row.unit_path] = module_id
                 self.unit_id_to_path[module_id] = row.unit_path
 
-        self.module_dir_ids = self.all_module_ids - self.unit_ids
+        self.module_dir_ids = self.all_module_ids - self.module_unit_ids
 
     def export(self):
+
         if util.is_available(self.module_symbol_table):
             self.module_symbol_table.save(self.path)
 
     def is_module_id(self, unit_id):
         return unit_id in self.all_module_ids
 
-    def is_unit_id(self, unit_id):
-        return unit_id in self.unit_ids
+    def is_module_unit_id(self, unit_id):
+        return unit_id in self.module_unit_ids
 
     def is_module_dir_id(self, unit_id):
         return unit_id in self.module_dir_ids
@@ -160,7 +161,7 @@ class ModuleSymbolsLoader:
 
     def parse_import_module_path(self, path):
         def check_return(result):
-            if util.is_empty(result):
+            if result is None:
                 return set()
             return result
 
@@ -338,11 +339,18 @@ class GeneralLoader:
     def restore_indexing(self):
         if not os.path.exists(self.loader_indexing_path):
             return
-
         df = DataModel().load(self.loader_indexing_path)
         for row in df:
             data = row.raw_data()
-            self.item_id_to_bundle_id[data[0]] = data[1]
+            # TODO
+            #  TEMPORARY FIX, EXPECTED TO BE IMPROVED LATER
+            #  This is due to pandas feather format saving tuples but loading numpy.ndarray
+            try:
+                self.item_id_to_bundle_id[data[0]] = data[1]
+            except TypeError:
+                key_tuple = tuple(data[0])
+                self.item_id_to_bundle_id[key_tuple] = data[1]
+
 
 class UnitLevelLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
@@ -398,6 +406,7 @@ class GLangIRLoader(UnitLevelLoader):
 
             self.active_bundle = {}
             self.active_bundle_length = 0
+
 
 class ScopeHierarchyLoader(UnitLevelLoader):
     pass
@@ -648,11 +657,24 @@ class MethodsInClassLoader(UnitIDToMethodIDLoader):
             return
 
         results = []
-        for (unit_id, class_ids) in self.unit_id_to_stmt_ids.items():
+        for (class_id, methods) in self.unit_id_to_stmt_ids.items():
 
-            for method in class_ids:
+            for method in methods:
                 results.append([method.unit_id, method.class_id, method.name, method.stmt_id])
         DataModel(results, columns = schema.class_id_to_method_id_schema).save(self.path)
+
+    def restore(self): # findtagBugFix?
+        df = DataModel().load(self.path)
+        for row in df:
+            unit_id, class_id, method_name, method_stmt_id = row.raw_data()
+            method = MethodInClass(
+                unit_id, class_id, method_name, method_stmt_id
+            )
+            self.stmt_id_to_unit_id[method] = class_id
+            if class_id not in self.unit_id_to_stmt_ids:
+                self.unit_id_to_stmt_ids[class_id] = []
+            self.unit_id_to_stmt_ids[class_id].append(method)
+
 
 class EntryPointsLoader:
     def __init__(self, path):
@@ -702,7 +724,7 @@ class CFGLoader(GeneralLoader):
         return edges
 
 ##############################################################
-# The following is to deal with the results of basice analysis
+# The following is to deal with the results of basic analysis
 ##############################################################
 class MethodLevelAnalysisResultLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, _id, bundle_data):
@@ -837,6 +859,9 @@ class CalleeParameterMapping(MethodLevelAnalysisResultLoader):
 
             parameter_mapping_list.append(
                 ParameterMapping(
+                    caller_id = row.caller_id,
+                    call_stmt_id = row.call_stmt_id,
+                    callee_id = row.callee_id,
                     arg_index_in_space = row.arg_index_in_space,
                     arg_state_id = row.arg_state_id,
                     arg_source_symbol_id = row.arg_source_symbol_id,
@@ -904,6 +929,8 @@ class MethodSummaryLoader:
         self.method_summary_records[_id] = method_summary
 
     def convert_list_to_dict(self, l):
+        if l is None:
+            return {}
         if len(l) == 0:
             return {}
 
@@ -1013,7 +1040,13 @@ class CallGraphP1Loader:
         df = DataModel().load(self.path)
         self.call_graph = CallGraph()
         for row in df:
-            self.call_graph.add_edge(row.source_method_id, row.target_method_id, row.stmt_id)
+            source_method_id = int(row.source_method_id)
+            target_method_id = int(row.target_method_id)
+            if isnan(row.stmt_id):
+                stmt_id = None
+            else:
+                stmt_id = int(row.stmt_id)
+            self.call_graph.add_edge(source_method_id, target_method_id, stmt_id)
 
     def export(self):
         if util.is_empty(self.call_graph):
@@ -1028,43 +1061,11 @@ class CallGraphP1Loader:
             })
         DataModel(results).save(self.path)
 
-class CallPathLoader:
-    def __init__(self, file_path):
-        self.path = file_path
-        self.all_APaths = []
-
-    def save(self, all_APaths: set):
-        self.all_APaths = all_APaths
-
-    def load(self):
-        # 防止该文件不存在第三阶段call_path从而读取报错
-        if not os.path.exists(self.path):
-            return {}
-        dm = DataModel().load(self.path)
-        if 'call_path' in dm._data.columns:
-            call_path_lists = dm._data['call_path'].iloc[0]
-            self.all_APaths = {APath(path=tuple(path)) for path in call_path_lists}
-        return self.all_APaths
-
-    def export(self):
-        if len(self.all_APaths) == 0:
-            return
-        DataModel([{
-            'call_path': [ap.path for ap in self.all_APaths]
-        }]).save(self.path)
-
-
 class UnsolvedSymbolIDAssignerLoader:
     def __init__(self, path):
         self.path = path
         self.symbol_name_to_id = {}
         self.symbol_id = config.BUILTIN_SYMBOL_START_ID
-
-    def assign_new_id(self):
-        result = self.symbol_id
-        self.symbol_name_to_id[config.UNSOLVED_SYMBOL_NAME] = result
-        self.symbol_id -= 1
-        return result
 
     def load(self, symbol_name):
         if symbol_name in self.symbol_name_to_id:
@@ -1082,7 +1083,7 @@ class UnsolvedSymbolIDAssignerLoader:
         for row in df:
             self.symbol_name_to_id[row.name] = row.symbol_id
         if self.symbol_name_to_id:
-            self.symbol_id = min(self.symbol_id, self.symbol_name_to_id.values()) - 1
+            self.symbol_id = min(self.symbol_id, min(self.symbol_name_to_id.values())) - 1
 
     def export(self):
         if len(self.symbol_name_to_id) == 0:
@@ -1252,7 +1253,7 @@ class GroupedMethodsLoader:
         return self.grouped_methods
 
     def export(self):
-        if util.is_empty(self.grouped_methods):
+        if self.grouped_methods is None:
             return
         DataModel([self.grouped_methods.to_dict()]).save(self.path)
 
@@ -1601,11 +1602,6 @@ class Loader:
             os.path.join(self.semantic_path_p3, config.CALL_GRAPH_BUNDLE_PATH_P3),
         )
 
-
-        self._call_path_p3_loader = CallPathLoader(
-            os.path.join(self.semantic_path_p3, config.CALL_PATH_BUNDLE_PATH_P3),
-        )
-
         self._symbol_to_define_loader = MethodSymbolToDefinedLoader(
             options,
             [],
@@ -1711,7 +1707,7 @@ class Loader:
         return self._load_method_body_by_header(method_id, method_decl_stmt)
 
     def _load_method_body_by_header(self, method_id, method_decl_stmt):
-        if util.is_empty(method_decl_stmt):
+        if method_decl_stmt is None:
             return None
 
         if self.method_body_cache.contain(method_id):
@@ -1759,9 +1755,19 @@ class Loader:
     def restore(self):
         for loader in self._all_loaders:
             if hasattr(loader, 'restore_indexing'):
-                loader.restore_indexing()
+                #util.debug(loader.__class__.__name__ + " is restoring index")
+                try:
+                    loader.restore_indexing()
+                except FileNotFoundError:
+                    pass
+                # except TypeError as e:
+                    # util.warn(e)
             if hasattr(loader, 'restore'):
-                loader.restore()
+                util.debug(loader.__class__.__name__ + " is restoring")
+                try:
+                    loader.restore()
+                except FileNotFoundError:
+                    pass
 
     ############################################################
     # The following is used to forwarding calls; This may be better for autocomplete in editor
@@ -1786,8 +1792,8 @@ class Loader:
 
     def is_module_id(self, *args):
         return self._module_symbols_loader.is_module_id(*args)
-    def is_unit_id(self, *args):
-        return self._module_symbols_loader.is_unit_id(*args)
+    def is_module_unit_id(self, *args):
+        return self._module_symbols_loader.is_module_unit_id(*args)
     def is_module_dir_id(self, *args):
         return self._module_symbols_loader.is_module_dir_id(*args)
 
@@ -1811,7 +1817,9 @@ class Loader:
     def save_unit_gir(self, *args):
         return self._gir_loader.save(*args)
     def export_gir(self):
-        return self._gir_loader.export()
+        self._gir_loader.export()
+    #def restore_gir(self):
+     #   self._gir_loader.restore()
 
     def load_unit_scope_hierarchy(self, *args):
         return self._scope_hierarchy_loader.load(*args)
@@ -1950,8 +1958,6 @@ class Loader:
         return self._unsolved_symbol_id_assigner_loader.save(symbol_name, symbol_id)
     def load_unsolved_symbol_id_by_name(self, symbol_name):
         return self._unsolved_symbol_id_assigner_loader.load(symbol_name)
-    def assign_new_unsolved_symbol_id(self):
-        return self._unsolved_symbol_id_assigner_loader.assign_new_id()
 
     def save_symbol_name_to_scope_ids(self, *args):
         return self._symbol_name_to_scope_ids_loader.save(*args)
@@ -2074,16 +2080,11 @@ class Loader:
         return self._call_graph_p2_loader.save(*args)
     def load_call_graph_p2(self, *args):
         return self._call_graph_p2_loader.load(*args)
-
+    
     def save_call_graph_p3(self, *args):
         return self._call_graph_p3_loader.save(*args)
     def load_call_graph_p3(self, *args):
         return self._call_graph_p3_loader.load(*args)
-
-    def save_call_paths_p3(self, *args):
-        return self._call_path_p3_loader.save(*args)
-    def load_call_paths_p3(self, *args):
-        return self._call_path_p3_loader.load(*args)
 
     def load_method_symbol_to_define(self, *args):
         return self._symbol_to_define_loader.load(*args)
@@ -2136,29 +2137,3 @@ class Loader:
         return self._callee_parameter_mapping_loader.load(*args)
     def save_parameter_mapping(self, *args):
         return self._callee_parameter_mapping_loader.save(*args)
-    
-    def stmt_to_method_source_code(self, stmt_id):
-        # python文件行号从一开始，tree-sitter从0开始
-        stmt = self.load_stmt_gir(stmt_id)
-
-        while(stmt.operation != 'method_decl'):
-            
-            stmt_id = stmt.parent_stmt_id
-            stmt = self.load_stmt_gir(stmt_id)
-
-        method_start_line = int(stmt.start_row)
-        method_end_line = int(stmt.end_row) + 1
-        unit_id = stmt.unit_id
-        lang_name = self.convert_unit_id_to_lang_name(unit_id)
-        unit_path = self.convert_unit_id_to_unit_path(unit_id)
-
-        with open(unit_path, 'r') as f:
-            lines = f.readlines()
-        lines = [line.rstrip() for line in lines]
-        comment_start = method_start_line - 1
-        
-        comment_start = util.determine_comment_line(lang_name, comment_start, lines)
-
-        code_with_comment = lines[comment_start: method_end_line]
-        return code_with_comment
-    
