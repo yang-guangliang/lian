@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from lian.semantic.semantic_structure import AccessPoint, State, ComputeFrame
+from lian.semantic.semantic_structure import AccessPoint, State, ComputeFrame, Symbol
 from lian.semantic.stmt_state_analysis import StmtStateAnalysis
 from lian.apps.app_template import EventData
 from lian.config.constants import (
@@ -23,7 +23,7 @@ def resolve_this_field_method(data: EventData):
     frame: ComputeFrame = in_data.frame
     status = in_data.status
     receiver_states = in_data.receiver_states
-    receiver_symbol = in_data.receiver_symbol
+    receiver_symbol: Symbol = in_data.receiver_symbol
     field_states = in_data.field_states
     defined_symbol = in_data.defined_symbol
     stmt_id = in_data.stmt_id
@@ -44,10 +44,9 @@ def resolve_this_field_method(data: EventData):
     method_name = loader.convert_method_id_to_method_name(current_method_id)
     class_name = loader.convert_class_id_to_class_name(current_class_id)
     # print("methods_in_class: \n",methods_in_class)
-    print("receiver_states:",receiver_states,\
-          "\n当前方法是来自",class_name,"类的",method_name)
-    print([frame.symbol_state_space[i].data_type for i in receiver_states])
-    # input("11111111111111111111")
+    # print("receiver_states:",receiver_states,\
+    #       "\n当前方法是来自",class_name,"类的",method_name)
+    # print([frame.symbol_state_space[i].data_type for i in receiver_states])
     for each_receiver_state_index in receiver_states:
         each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
         # if each_receiver_state.data_type != LianInternal.THIS:
@@ -58,7 +57,7 @@ def resolve_this_field_method(data: EventData):
             if not isinstance(each_field_state, State):
                 continue
             field_name = str(each_field_state.value)    
-            print("resolve_this_field_method@ field_name是",field_name)
+            # print("resolve_this_field_method@ field_name是",field_name)
             if len(field_name) == 0:
                 continue
             
@@ -94,7 +93,9 @@ def resolve_this_field_method(data: EventData):
                 util.add_to_dict_with_default_set(new_receiver_state.fields, field_name, field_method_state_index)
             receiver_states.discard(each_receiver_state_index)
             receiver_states.add(new_receiver_state_index)
-            print("copy_on_change 产生的新state是",new_receiver_state_index,"原来是",each_receiver_state_index)
+            # 新创了this_state副本之后，要把之前summary中的key_dynamic_content中原来的this_state去掉。否则之后取this_state的时候会状态爆炸
+            state_analysis.cancel_key_state(receiver_symbol.symbol_id, each_receiver_state_index)
+            # print("copy_on_change 产生的新state是",new_receiver_state_index,"原来是",each_receiver_state_index)
             # pprint.pprint(new_receiver_state)
 
     data.out_data.receiver_states = receiver_states

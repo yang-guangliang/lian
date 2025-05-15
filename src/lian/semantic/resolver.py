@@ -465,7 +465,7 @@ class Resolver:
             return set()
 
         state_index_old_to_new = {} # TODO：2024.11.14 是否可以优化，从而不用再新创一个state？
-        latest_source_state_indexes = self.retrieve_lastest_states(current_frame, current_stmt_id, current_space, source_state_indexes, available_state_defs, state_index_old_to_new) # 拿source_state的最新状态
+        latest_source_state_indexes = self.retrieve_latest_states(current_frame, current_stmt_id, current_space, source_state_indexes, available_state_defs, state_index_old_to_new) # 拿source_state的最新状态
         # print(f"\nlatest_source_state_indexes in get_latest_source_state_indexes: {latest_source_state_indexes}")
         return latest_source_state_indexes
 
@@ -494,12 +494,12 @@ class Resolver:
 
         return new_space
 
-    def retrieve_lastest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
+    def retrieve_latest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
         """
         # input：state_index的集合 或都来自symbol.states，或都来自state[f]。返回：这一批state_index对应的newest_index集合
         # 作用：输入state_indexes，它会一气更新好内部所有小弟的index，最后返回输入对应的最新indexes
         """
-        # print(f"找最新retrieve_lastest_states state_old_to_new, 输入的是:{state_indexes}")
+        # print(f"找最新retrieve_latest_states state_old_to_new, 输入的是:{state_indexes}")
         return_indexes = set()
         for state_index in state_indexes:
             if state_index in state_index_old_to_new: # 一个下标只处理一次
@@ -529,16 +529,16 @@ class Resolver:
 
                     # 递归处理小弟
                     for field_name, field_indexes in created_state.fields.items():
-                        new_indexes = self.retrieve_lastest_states(frame, stmt_id, symbol_state_space, field_indexes, available_defined_states, state_index_old_to_new)
+                        new_indexes = self.retrieve_latest_states(frame, stmt_id, symbol_state_space, field_indexes, available_defined_states, state_index_old_to_new)
                         created_state.fields[field_name] = new_indexes
 
                     new_array = []
                     for array_indexes in created_state.array:
-                        lastest_array_indexes = self.retrieve_lastest_states(frame, stmt_id, symbol_state_space, array_indexes, available_defined_states, state_index_old_to_new)
-                        new_array.append(lastest_array_indexes)
+                        latest_array_indexes = self.retrieve_latest_states(frame, stmt_id, symbol_state_space, array_indexes, available_defined_states, state_index_old_to_new)
+                        new_array.append(latest_array_indexes)
                         created_state.array = new_array
 
-                    created_state.tangping_elements = self.retrieve_lastest_states(frame, stmt_id, symbol_state_space, created_state.tangping_elements, available_defined_states, state_index_old_to_new)
+                    created_state.tangping_elements = self.retrieve_latest_states(frame, stmt_id, symbol_state_space, created_state.tangping_elements, available_defined_states, state_index_old_to_new)
 
                 else:
                     util.add_to_dict_with_default_set(state_index_old_to_new, state_index, newest_state_index)

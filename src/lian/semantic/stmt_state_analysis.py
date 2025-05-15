@@ -353,7 +353,7 @@ class StmtStateAnalysis:
 
         return defined_symbol.states
 
-    def cancel_key_state(self, stmt_id, symbol_id, state_index):
+    def cancel_key_state(self, symbol_id, state_index, stmt_id = -1):
         """取消关键状态标记，并清理相关动态调用信息"""
         key_state = self.frame.symbol_state_space[state_index]
         if not(key_state and isinstance(key_state, State)):
@@ -366,6 +366,7 @@ class StmtStateAnalysis:
                 values = key_dynamic_content[symbol_id]
                 values.discard(IndexMapInSummary(raw_index = state_index, new_index = -1))
 
+        if stmt_id > 0:
             self.frame.method_summary_template.dynamic_call_stmt.discard(stmt_id)
 
     def tag_key_state(self, stmt_id, symbol_id, state_index):
@@ -376,6 +377,7 @@ class StmtStateAnalysis:
 
         key_state.symbol_or_state = SymbolOrState.EXTERNAL_KEY_STATE
         key_dynamic_content = self.frame.method_summary_template.key_dynamic_content
+        # print("tag_key_state@add_state_index",state_index)
         util.add_to_dict_with_default_set(
             key_dynamic_content, symbol_id, IndexMapInSummary(raw_index = state_index, new_index = -1)
         )
@@ -1313,15 +1315,15 @@ class StmtStateAnalysis:
     # 用形参的last_states去更新传入的实参
     def apply_parameter_summary_to_args_states(
         self, stmt_id, status: StmtStatus, last_states, old_arg_state_index, old_to_new_arg_state,
-        parameter_symbol_id = -1, callee_id = -1, deferred_index_updates = None, old_to_lastest_old_arg_state = None
+        parameter_symbol_id = -1, callee_id = -1, deferred_index_updates = None, old_to_latest_old_arg_state = None
     ):
-        if util.is_empty(old_to_lastest_old_arg_state):
-            old_to_lastest_old_arg_state = {}
+        if util.is_empty(old_to_latest_old_arg_state):
+            old_to_latest_old_arg_state = {}
 
         if old_arg_state_index not in old_to_new_arg_state:
-            latest_old_arg_index = self.resolver.retrieve_lastest_states(
+            latest_old_arg_index = self.resolver.retrieve_latest_states(
                 self.frame, stmt_id, self.frame.symbol_state_space,{old_arg_state_index},
-                self.frame.state_bit_vector_manager.explain(status.in_state_bits), old_to_lastest_old_arg_state
+                self.frame.state_bit_vector_manager.explain(status.in_state_bits), old_to_latest_old_arg_state
             ).pop()
             new_arg_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, latest_old_arg_index)
             old_to_new_arg_state[old_arg_state_index] = new_arg_state_index
@@ -1466,7 +1468,7 @@ class StmtStateAnalysis:
     ):
         status = self.frame.stmt_id_to_status[stmt_id]
         old_to_new_arg_state = {}
-        old_to_lastest_old_arg_state = {}
+        old_to_latest_old_arg_state = {}
         deferred_index_updates = set()
         for each_mapping in parameter_mapping_list:
             # state_array: list[set] = []
@@ -1549,7 +1551,7 @@ class StmtStateAnalysis:
 
             self.apply_parameter_summary_to_args_states(
                 stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state,
-                parameter_symbol_id, callee_id, deferred_index_updates, old_to_lastest_old_arg_state
+                parameter_symbol_id, callee_id, deferred_index_updates, old_to_latest_old_arg_state
             )
         # print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")
         # pprint.pprint(deferred_index_updates)

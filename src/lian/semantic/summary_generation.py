@@ -558,7 +558,7 @@ class SemanticSummaryGeneration:
 
     def complete_in_states_and_check_continue_flag(self, stmt_id, frame: ComputeFrame, stmt, status, in_states, method_summary: MethodSummaryTemplate):
         """
-        完成输入状态的更新，并检查是否需要继续分析。
+        完成in_states的更新，并检查是否需要继续分析。
         返回是否继续分析的标记。
         """
         # print("@in_states before", in_states)
@@ -613,11 +613,13 @@ class SemanticSummaryGeneration:
             # externals
             # first encounter
             elif symbol_id not in method_summary.used_external_symbols:
+                # print(f"{symbol_id} not in method_summary.used_external_symbols")
                 if(
                     symbol_id in frame.method_def_use_summary.used_external_symbol_ids or
                     symbol_id in frame.method_def_use_summary.used_this_symbol_id or
                     stmt_id in dynamic_call_stmt
                 ):
+                    # print(f"{symbol_id} goes into generate_external_symbol_states")
                     new_state_indexes = self.generate_external_symbol_states(frame, stmt_id, symbol_id, used_symbol, method_summary)
                     method_summary.used_external_symbols[symbol_id] = new_state_indexes
 
@@ -626,14 +628,24 @@ class SemanticSummaryGeneration:
 
             # from externals & key_dynamic_content
             old_key_state_indexes = used_symbol.states
-            if symbol_id in method_summary.key_dynamic_content and from_external:
-                old_key_state_indexes = set()
-                for index_pair in method_summary.key_dynamic_content[symbol_id]:
-                    old_key_state_indexes.add(index_pair.raw_index)
+            # print(f"{symbol_id} symbol中的states:",used_symbol.states)
+            # print("\n打印method_summary",method_summary.key_dynamic_content)
+            current_states = set()
+            if util.is_empty(old_key_state_indexes):
+                # 如果第二阶段碰到一个来自外部的symbol，并且进行了一些关键操作，比如field_read a.f，其中a是external_symbol。那就会把a加入到key_dynamic_content中
+                # method_summary.key_dynamic_content是在tag_key_state方法中添加的
+                if symbol_id in method_summary.key_dynamic_content and from_external:
+                    # print(f"symbol_id {symbol_id} in method_summary.key_dynamic_content and from_external")
+                    for index_pair in method_summary.key_dynamic_content[symbol_id]:
+                        old_key_state_indexes.add(index_pair.raw_index)
 
-            current_states = self.collect_external_symbol_states(
-                frame, stmt_id, stmt, symbol_id, method_summary, old_key_state_indexes
-            )
+                # print("收集到的old_key_state_indexes是", old_key_state_indexes)
+                current_states = self.collect_external_symbol_states(
+                    frame, stmt_id, stmt, symbol_id, method_summary, old_key_state_indexes
+                )
+            else:
+                # 如果能直接从in_symbol中获取，就直接用
+                current_states = old_key_state_indexes
 
             # print("收集到的current_States是", current_states)
             if util.is_empty(current_states):
@@ -892,18 +904,18 @@ class SemanticSummaryGeneration:
 
             # 统一更新所有小弟
             state_index_old_to_new = {}
-            symbol_id_to_lastest_state_indexes = {}
+            symbol_id_to_latest_state_indexes = {}
             for symbol_id in symbol_id_to_old_state_indexes:
                 old_states = symbol_id_to_old_state_indexes[symbol_id]
-                latest_states = self.resolver.retrieve_lastest_states(frame, stmt_id, symbol_state_space, old_states, available_defined_states, state_index_old_to_new)
-                symbol_id_to_lastest_state_indexes[symbol_id] = latest_states
+                latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, old_states, available_defined_states, state_index_old_to_new)
+                symbol_id_to_latest_state_indexes[symbol_id] = latest_states
 
             # 补充defined_external_symbol_ids的情况，因为defined_external_symbol_ids在frame里没有symbol_def_node
             for symbol_id in def_use_summary.defined_external_symbol_ids:
                 state_index = frame.external_symbol_id_to_initial_state_index.get(symbol_id, None)
                 if state_index:
-                    latest_states = self.resolver.retrieve_lastest_states(frame, stmt_id, symbol_state_space, {state_index}, available_defined_states, state_index_old_to_new)
-                    symbol_id_to_lastest_state_indexes[symbol_id] = latest_states
+                    latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, {state_index}, available_defined_states, state_index_old_to_new)
+                    symbol_id_to_latest_state_indexes[symbol_id] = latest_states
 
             # save results
             lines_to_be_updated = (
@@ -931,8 +943,8 @@ class SemanticSummaryGeneration:
                         symbol_id = symbol_id[0]
                         #default_value_symbol_id = symbol_id[1]
 
-                    if symbol_id in symbol_id_to_lastest_state_indexes:
-                        state_indexes = symbol_id_to_lastest_state_indexes[symbol_id]
+                    if symbol_id in symbol_id_to_latest_state_indexes:
+                        state_indexes = symbol_id_to_latest_state_indexes[symbol_id]
                         for each_state_index in state_indexes:
                             util.add_to_dict_with_default_set(
                                 content_record,
@@ -946,7 +958,7 @@ class SemanticSummaryGeneration:
                             all_indexes.add(each_state_index)
 
             # 处理return
-            new_return_states = self.resolver.retrieve_lastest_states(frame, stmt_id, symbol_state_space, returned_states, available_defined_states, state_index_old_to_new)
+            new_return_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, returned_states, available_defined_states, state_index_old_to_new)
 
             if new_return_states:
                 for each_return_state in new_return_states:
