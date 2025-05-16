@@ -1217,100 +1217,128 @@ class StmtStateAnalysis:
 
         self.loader.save_parameter_mapping(call_site, parameter_mapping_list)
 
-    def collect_children_fields(self, stmt_id, status: StmtStatus, state_set_in_summary_field: set, state_set_in_arg_field: set, source_symbol_id, access_path):
-        state_type = StateTypeKind.REGULAR
-        callee_state_fields = {}
-        tangping_flag = False
-        tangping_elements = set()
-        return_states = set()
-        for each_state_index in state_set_in_summary_field:
-            each_state = self.frame.symbol_state_space[each_state_index]
-            if not (each_state and isinstance(each_state, State)):
-                continue
+    def recursively_collect_children_fields(self, stmt_id, status: StmtStatus, state_set_in_summary_field: set, state_set_in_arg_field: set, source_symbol_id, access_path):
+        """
+        合并两个“状态集合”———— 一个来自 summary field（state_set_in_summary_field），一个来自 arg field（state_set_in_arg_field）——所对应的所有 State 对象中的 fields（字段）信息，
+        最终创建一个或多个新的 State，并返回这些新 State 在符号空间（symbol_state_space）中的索引集合。
+        """
+        # 闭包缓存，避免field环形依赖
+        cache = {}
 
-            if each_state.state_type == StateTypeKind.ANYTHING:
-                state_type = StateTypeKind.ANYTHING
+        def _recursively_collect_children_fields(stmt_id, status: StmtStatus, state_set_in_summary_field: set, state_set_in_arg_field: set, source_symbol_id, access_path):
+            cache_key = (
+                stmt_id,
+                frozenset(state_set_in_summary_field),
+                frozenset(state_set_in_arg_field),
+                source_symbol_id,
+            )
+            # 检查缓存
+            if cache_key in cache:
+                return cache[cache_key]
+            
+            # state_type默认为REGULAR，如果任意一个输入状态的 state_type 是 ANYTHING，则结果也标记为 ANYTHING。
+            state_type = StateTypeKind.REGULAR
+            # summary_states_fields / arg_state_fields：分别用来收集summary和arg两组状态的字段映射（字段名 → 值集合）。
+            summary_states_fields = {}
+            arg_state_fields = {}
+            tangping_flag = False
+            tangping_elements = set()
+            return_set = set()
 
-            if each_state.tangping_flag:
-                tangping_flag = True
-                tangping_elements.update(each_state.tangping_elements)
-                continue
+            # 填充summary_states_fields
+            for each_state_index in state_set_in_summary_field:
+                each_state = self.frame.symbol_state_space[each_state_index]
+                # print("打印summary_field中的",each_state_index)
+                # pprint.pprint(each_state)
+                if not (each_state and isinstance(each_state, State)):
+                    continue
+                if each_state.state_type == StateTypeKind.ANYTHING:
+                    state_type = StateTypeKind.ANYTHING
+                if each_state.tangping_flag:
+                    tangping_flag = True
+                    tangping_elements.update(each_state.tangping_elements)
+                    continue
+                # 将该State的fields中每个字段名和对应值集，合并到summary_states_fields，同名字段时将值集并集。
+                each_state_fields = each_state.fields.copy()
+                for field_name in each_state_fields:
+                    util.add_to_dict_with_default_set(summary_states_fields, field_name, each_state_fields[field_name])
 
-            each_state_fields = each_state.fields.copy()
-            for field_name in each_state_fields:
-                util.add_to_dict_with_default_set(callee_state_fields, field_name, each_state_fields[field_name])
+            # 填充arg_state_fields
+            for each_state_index in state_set_in_arg_field:
+                each_state = self.frame.symbol_state_space[each_state_index]
+                if not (each_state and isinstance(each_state, State)):
+                    continue
+                # print("打印arg_field中的",each_state_index)
+                # pprint.pprint(each_state)            
+                if each_state.tangping_flag:
+                    tangping_flag = True
+                    tangping_elements.update(each_state.tangping_elements)
+                    continue
+                each_state_fields = each_state.fields.copy()
+                for field_name in each_state_fields:
+                    util.add_to_dict_with_default_set(arg_state_fields, field_name, each_state_fields[field_name])
 
-        caller_state_fields = {}
-        for each_state_index in state_set_in_arg_field:
-            each_state = self.frame.symbol_state_space[each_state_index]
-            if not (each_state and isinstance(each_state, State)):
-                continue
+            if tangping_flag:
+                new_state_index = self.create_state_and_add_space(status, stmt_id)
+                new_state: State = self.frame.symbol_state_space[new_state_index]
+                new_state.tangping_flag = True
+                new_state.tangping_elements = tangping_elements
+                return_set.add(new_state_index)
 
-            if each_state.tangping_flag:
-                tangping_flag = True
-                tangping_elements.update(each_state.tangping_elements)
-                continue
+            # print(f"\n======\naccess_path {access_path}")
+            # print(f"arg_fields: {arg_state_fields}\nsummary_fields: {summary_states_fields}" )
 
-            each_state_fields = each_state.fields.copy()
-            for field_name in each_state_fields:
-                util.add_to_dict_with_default_set(caller_state_fields, field_name, each_state_fields[field_name])
+            # 只有单侧有字段时的处理
+            if not arg_state_fields or not summary_states_fields:
+                if summary_states_fields:
+                    new_state_index = self.create_state_and_add_space(status, stmt_id)
+                    new_state: State = self.frame.symbol_state_space[new_state_index]
+                    new_state.fields = summary_states_fields
+                    return_set.add(new_state_index)
+                elif arg_state_fields:
+                    new_state_index = self.create_state_and_add_space(status, stmt_id)
+                    new_state: State = self.frame.symbol_state_space[new_state_index]
+                    new_state.fields = arg_state_fields
+                    return_set.add(new_state_index)
+                else:
+                    new_state = None
+                    if not return_set:
+                        return_set.update(state_set_in_summary_field)
+                if new_state:
+                    new_state.state_type = state_type
+                    new_state.source_symbol_id = source_symbol_id
+                    new_state.access_path = access_path
+                return return_set
 
-        if tangping_flag:
+            # 两侧都有字段
             new_state_index = self.create_state_and_add_space(status, stmt_id)
-            new_state: State = self.frame.symbol_state_space[new_state_index]
-            new_state.tangping_flag = True
-            new_state.tangping_elements = tangping_elements
-            return_states.add(new_state_index)
+            return_set = {new_state_index}
+            cache[cache_key] = return_set
 
-        # print(f"\n======\naccess_path {access_path}")
-        # print(f"caller_fields {caller_state_fields} ; callee_fields {callee_state_fields}" )
-
-        if not caller_state_fields or not callee_state_fields:
-            if callee_state_fields:
-                new_state_index = self.create_state_and_add_space(status, stmt_id)
-                new_state: State = self.frame.symbol_state_space[new_state_index]
-                new_state.fields = callee_state_fields
-                return_states.add(new_state_index)
-
-            elif caller_state_fields:
-                new_state_index = self.create_state_and_add_space(status, stmt_id)
-                new_state: State = self.frame.symbol_state_space[new_state_index]
-                new_state.fields = caller_state_fields
-                return_states.add(new_state_index)
-
-            else:
-                new_state = None
-                if not return_states:
-                    return_states.update(state_set_in_summary_field)
-
-            if new_state:
-                new_state.state_type = state_type
-                new_state.source_symbol_id = source_symbol_id
-                new_state.access_path = access_path
-            return return_states
-
-        for field_name in callee_state_fields:
-            if field_name not in caller_state_fields:
-                caller_state_fields[field_name] = callee_state_fields[field_name]
-            else:
-                # TODO Previous line repeated 977 more times
-                # print(f"原本access_path是{access_path} 添加field_name<{field_name}>")
-                new_access_path = self.copy_and_extend_access_path(
-                    original_access_path = access_path,
-                    access_point = AccessPoint(
-                        kind = AccessPointKind.FIELD_ELEMENT,
-                        key = field_name
+            for field_name in summary_states_fields:
+                if field_name not in arg_state_fields:
+                    arg_state_fields[field_name] = summary_states_fields[field_name]
+                # 如果已经存在，则 深入递归合并
+                else:
+                    # print(f"原本access_path是{access_path}")
+                    # print(f"要递归处理的field_name是<{field_name}>,准备递归更新children_fields")
+                    # 生成更深一层的access_path
+                    new_access_path = self.copy_and_extend_access_path(
+                        original_access_path = access_path,
+                        access_point = AccessPoint(
+                            kind = AccessPointKind.FIELD_ELEMENT,
+                            key = field_name
+                        )
                     )
-                )
-                caller_state_fields[field_name] = self.collect_children_fields(stmt_id, status, callee_state_fields[field_name], caller_state_fields[field_name], source_symbol_id, new_access_path)
+                    arg_state_fields[field_name] = _recursively_collect_children_fields(stmt_id, status, summary_states_fields[field_name], arg_state_fields[field_name], source_symbol_id, new_access_path)
 
-        new_state_index = self.create_state_and_add_space(status, stmt_id)
-        new_state: State = self.frame.symbol_state_space[new_state_index]
-        new_state.fields = caller_state_fields
-        new_state.state_type = state_type
-        new_state.source_symbol_id = source_symbol_id
-        new_state.access_path = access_path
-        return {new_state_index}
+            new_state: State = self.frame.symbol_state_space[new_state_index]
+            new_state.fields = arg_state_fields
+            new_state.state_type = state_type
+            new_state.source_symbol_id = source_symbol_id
+            new_state.access_path = access_path
+            return return_set
+        return _recursively_collect_children_fields(stmt_id, status, state_set_in_summary_field, state_set_in_arg_field, source_symbol_id, access_path)
 
     # 用形参的last_states去更新传入的实参
     def apply_parameter_summary_to_args_states(
@@ -1396,7 +1424,7 @@ class StmtStateAnalysis:
                         key = field_name
                     )
                 )
-                new_arg_state_fields[field_name] = self.collect_children_fields(
+                new_arg_state_fields[field_name] = self.recursively_collect_children_fields(
                     stmt_id, status, callee_state_fields[field_name], new_arg_state_fields[field_name],
                     parameter_symbol_id, access_path
                     )
@@ -1422,6 +1450,7 @@ class StmtStateAnalysis:
         self, stmt_id, callee_summary: MethodSummaryTemplate,
         callee_space: SymbolStateSpace, instance_state_indexes:set[int]
     ):
+        # print("apply_this_symbol_semantic_summary@instance_state_indexes",instance_state_indexes)
         status = self.frame.stmt_id_to_status[stmt_id]
         old_to_new_arg_state = {}
         this_symbols = callee_summary.this_symbols
@@ -1438,6 +1467,7 @@ class StmtStateAnalysis:
                 last_state_indexes.add(index_in_appended_space)
 
             for instance_state_index_in_space in instance_state_indexes.copy():
+                # 将summary中的this_symbol_last_state应用到实际的instance_state上
                 self.apply_parameter_summary_to_args_states(stmt_id, status, last_state_indexes, instance_state_index_in_space, old_to_new_arg_state)
 
         new_this_states = set()
@@ -1610,7 +1640,7 @@ class StmtStateAnalysis:
 
     def apply_callee_semantic_summary(self, stmt_id, callee_id, args: MethodCallArguments, callee_summary, callee_compact_space: SymbolStateSpace, this_state_set: set = set()):
         # print("---开始apply_callee_semantic_summary---")
-        # print("callee_id", callee_id)
+        # print("callee_id", callee_id, self.loader.convert_method_id_to_method_name(callee_id))
         # print("callee_summary")
         # pprint.pprint(callee_summary)
         # print("callee_compact_space")

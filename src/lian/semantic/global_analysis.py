@@ -314,7 +314,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             stmt_id = frame.stmt_worklist.peek()
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
-                print("gir: ",self.loader.load_stmt_gir(stmt_id))
+                print("gir3: ",self.loader.load_stmt_gir(stmt_id))
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
                 frame.stmt_worklist.pop()
                 continue

@@ -1006,7 +1006,7 @@ class SemanticSummaryGeneration:
 
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
-                print("gir: ",self.loader.load_stmt_gir(stmt_id))
+                print("gir2: ",self.loader.load_stmt_gir(stmt_id))
 
             if frame.interruption_flag:
                 frame.interruption_flag = False
