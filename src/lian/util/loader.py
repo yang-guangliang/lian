@@ -1022,12 +1022,46 @@ class CallGraphP1Loader:
         results = []
         for edge in self.call_graph.graph.edges(data='weight'):
             results.append({
+
                 "source_method_id": edge[0],
                 "target_method_id": edge[1],
                 "stmt_id": edge[2]
             })
         DataModel(results).save(self.path)
+class CallGraphStrongerLoader:
+    def __init__(self, path):
+        self.path = path
+        self.call_graph = None
 
+    def save(self, basic_call_graph):
+        self.call_graph = basic_call_graph
+
+    def load(self):
+        return self.call_graph
+
+    def restore(self):
+        df = DataModel().load(self.path)
+        self.call_graph = CallGraph()
+        for row in df:
+            self.call_graph.add_edge(row.source_method_id, row.target_method_id, row.stmt_id)
+
+    def export(self):
+        if util.is_empty(self.call_graph):
+            return
+
+        results = []
+        for edge in self.call_graph:
+            results.append({
+                
+                "caller_method_id": edge[0],
+                "caller_class_name": edge[1],
+                "caller_method_name": edge[2],
+                "callee_method_id": edge[3],
+                "callee_class_name": edge[4],
+                "callee_method_name": edge[5],
+                "stmt_id": edge[6]
+            })
+        DataModel(results).save(self.path)
 class CallPathLoader:
     def __init__(self, file_path):
         self.path = file_path
@@ -1606,6 +1640,10 @@ class Loader:
             os.path.join(self.semantic_path_p3, config.CALL_PATH_BUNDLE_PATH_P3),
         )
 
+        self._call_graph_stronger_loader = CallGraphStrongerLoader(
+            os.path.join(self.semantic_path_p3, config.CALL_GRAPH_BUNDLE_PATH_P4),
+        )
+
         self._symbol_to_define_loader = MethodSymbolToDefinedLoader(
             options,
             [],
@@ -2079,6 +2117,11 @@ class Loader:
         return self._call_graph_p3_loader.save(*args)
     def load_call_graph_p3(self, *args):
         return self._call_graph_p3_loader.load(*args)
+    
+    def save_call_graph_p4(self, *args):
+        return self._call_graph_stronger_loader.save(*args)
+    def load_call_graph_p4(self, *args):
+        return self._call_graph_stronger_loader.load(*args)
 
     def save_call_paths_p3(self, *args):
         return self._call_path_p3_loader.save(*args)
