@@ -1049,10 +1049,9 @@ class SemanticSummaryGeneration:
 
             if not frame.has_been_inited:
                 if self.init_compute_frame(frame, frame_stack) is None:
+                    self.analyzed_method_list.add(frame.method_id)
                     frame_stack.pop()
                     continue
-
-            # self.import_unit_init(frame.unit_id)
             result: P2ResultFlag = self.analyze_stmts(frame)
             if result is not None and result.interruption_flag and result.interruption_data:
                 # here an interruption is faced
