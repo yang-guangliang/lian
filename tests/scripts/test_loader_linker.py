@@ -20,7 +20,7 @@ class LoaderLinkerTestCase(unittest.TestCase):
         space_path = os.path.join(config.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.space")
         status_path = os.path.join(config.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.status")
         summary_path = os.path.join(config.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.summary")
-        
+
         print("_"*60, "current symbols_states", "_"*60)
         for item in symbols_states:
             print(item)
@@ -71,7 +71,7 @@ class LoaderLinkerTestCase(unittest.TestCase):
 
     @classmethod
     def raw_test(cls):
-        Lian().run()
+        Lian().parse_command()
 
     @classmethod
     def read_stmt_status(cls, LoaderLinker_path):
@@ -86,7 +86,7 @@ class LoaderLinkerTestCase(unittest.TestCase):
         in_bits = LoaderLinker["in_bits"].values
         out_bits = LoaderLinker["out_bits"].values
         for index in range(len(LoaderLinker)):
-            # results.append((unit_id[index], stmt_id[index], defined_symbol[index], used_symbols[index], 
+            # results.append((unit_id[index], stmt_id[index], defined_symbol[index], used_symbols[index],
                             # field[index], operation[index], in_bits[index], out_bits[index]))
             results.append((stmt_id[index], defined_symbol[index], used_symbols[index], field[index]))
         results = sorted(results)

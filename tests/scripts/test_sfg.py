@@ -19,7 +19,7 @@ class sfgTestCase(unittest.TestCase):
     def compare_sfg(cls, symbols_states, stmt_status, target_file):
         space_path = os.path.join(config.RESOURCE_DIR, "state_flow", "standard_results", f"{target_file}.space")
         status_path = os.path.join(config.RESOURCE_DIR, "state_flow", "standard_results", f"{target_file}.status")
-        
+
         print("_"*60, "current symbols_states", "_"*60)
         for item in symbols_states:
             print(item)
@@ -51,7 +51,7 @@ class sfgTestCase(unittest.TestCase):
 
     @classmethod
     def raw_test(cls):
-        Lian().run()
+        Lian().parse_command()
 
     @classmethod
     def read_symbols_states(cls, sfg_path):
@@ -75,13 +75,13 @@ class sfgTestCase(unittest.TestCase):
         fields = sfg["fields"].values
         for index in range(len(sfg)):
             results.append((index_in_space[index],  stmt_id[index],     symbol_or_state[index],     symbol_id[index],
-                            name[index],            states[index],      default_data_type[index],   state_id[index], 
-                            state_type[index],      data_type[index],   values[index],              array_tangping_flag[index], 
+                            name[index],            states[index],      default_data_type[index],   state_id[index],
+                            state_type[index],      data_type[index],   values[index],              array_tangping_flag[index],
                             array[index],           fields[index]))
         results = sorted(results)
         table = PrettyTable()
-        table.field_names = ["index_in_space", "stmt_id", "symbol_or_state", 
-                             "symbol_id", "name", "states", "default_data_type", 
+        table.field_names = ["index_in_space", "stmt_id", "symbol_or_state",
+                             "symbol_id", "name", "states", "default_data_type",
                              "state_id", "state_type", "data_type", "values", "tpflag", "array", "fields"]
         for item in results:
             table.add_row(item)
@@ -102,7 +102,7 @@ class sfgTestCase(unittest.TestCase):
         in_bits = sfg["in_bits"].values
         out_bits = sfg["out_bits"].values
         for index in range(len(sfg)):
-            # results.append((unit_id[index], stmt_id[index], defined_symbol[index], used_symbols[index], 
+            # results.append((unit_id[index], stmt_id[index], defined_symbol[index], used_symbols[index],
                             # field[index], operation[index], in_bits[index], out_bits[index]))
             results.append((stmt_id[index], defined_symbol[index], used_symbols[index], field[index]))
         results = sorted(results)

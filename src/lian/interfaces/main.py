@@ -42,18 +42,19 @@ from lian.semantic.entry_points import EntryPointGenerator
 from lian.semantic import semantic_structure
 
 class Lian:
-    def __init__(self):
+    def __init__(self, **custom_options):
         self.options = None
+        self.custom_options = custom_options
         self.app_manager = None
         self.loader = None
         self.extern_system = None
         self.resolver = None
         self.lang_table = lang_config.LANG_TABLE
         self.command_handler = {
-            "lang":         self.lang_command,
-            "semantic":     self.semantic_command,
-            "security":     self.security_command,
-            "run":          self.run_command,
+            "lang":         self.lang_analysis,
+            "semantic":     self.semantic_analysis,
+            "security":     self.security_analysis,
+            "run":          self.run_all,
         }
 
         self.args_parser = args_parser.ArgsParser()
@@ -61,6 +62,17 @@ class Lian:
 
     def parse_cmds(self):
         self.options = self.args_parser.init().parse_cmds()
+
+        if util.is_available(self.custom_options):
+            if isinstance(self.options, dict):
+                for key, value in self.custom_options.items():
+                    if key in self.options:
+                        self.options[key] = value
+            else:
+                for key, value in self.custom_options.items():
+                    if hasattr(self.options, key):
+                        setattr(self.options, key, value)
+
         return self
 
     def update_lang_config(self):
@@ -103,35 +115,39 @@ class Lian:
         )
 
     # app path -> options -> app_manager -> load app from the path (importlib) -> register app
-    def run(self):
+    def dispatch_command(self):
         handler = self.command_handler.get(self.options.sub_command)
         if not handler:
             util.error_and_quit(f"Failed to find command \"{self.options.sub_command}\"")
         handler()
 
-    def lang_command(self):
+    def lang_analysis(self):
         LangAnalysis(self).run()
+        self.loader.export()
 
-    def semantic_command(self):
+    def semantic_analysis(self):
         if self.options.debug:
             util.debug("\n\t###########  # Semantic Analysis #  ###########")
 
         BasicSemanticAnalysis(self).run()
         SemanticSummaryGeneration(self).run()
         GlobalAnalysis(self).run()
-
         self.loader.export()
 
-    def security_command(self):
-        SecurityAnalysis(self).run()
+    def security_analysis(self):
+        pass
 
-    def run_command(self):
-        self.lang_command()
-        self.semantic_command()
-        #self.security_command()
+    def run_all(self):
+        self.lang_analysis()
+        self.semantic_analysis()
+
+    def run(self):
+        self.parse_cmds().init_submodules().dispatch_command()
+
+        return self
 
 def main():
-    Lian().parse_cmds().init_submodules().run()
+    Lian().run()
 
 if __name__ == "__main__":
     main()

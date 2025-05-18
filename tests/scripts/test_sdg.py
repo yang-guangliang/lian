@@ -164,7 +164,7 @@ class symbol_graphTestCase(unittest.TestCase):
 
     @classmethod
     def raw_test(cls):
-        loader = Lian().run()
+        loader = Lian().parse_command()
         return loader
 
     @classmethod

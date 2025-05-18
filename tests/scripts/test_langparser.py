@@ -32,7 +32,7 @@ class ParserTestCase(unittest.TestCase):
 
     def test_run_all(self):
         def raw_test():
-            Lian().run()
+            Lian().parse_command()
 
         for test, files in self.tests.items():
             try:
