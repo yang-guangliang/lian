@@ -42,9 +42,9 @@ from lian.semantic.entry_points import EntryPointGenerator
 from lian.semantic import semantic_structure
 
 class Lian:
-    def __init__(self, **custom_options):
+    def __init__(self):
         self.options = None
-        self.custom_options = custom_options
+        self.custom_options = {}
         self.app_manager = None
         self.loader = None
         self.extern_system = None
@@ -59,6 +59,9 @@ class Lian:
 
         self.args_parser = args_parser.ArgsParser()
         self.options = self.args_parser.obtain_default_options()
+
+    def set_options(self, **custom_options):
+        self.custom_options = custom_options
 
     def parse_cmds(self):
         self.options = self.args_parser.init().parse_cmds()
