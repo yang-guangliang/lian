@@ -207,10 +207,10 @@ def read_df(all_files, output_path):
         global COUNTER
 
         # [rn]只打印call_path相关
-        # suffixes = ["call_graph_p2","call_path_p3","method_id_to_name","class_id_to_name","class_to_method_id","gir.bundle0"]
-        # # suffixes = ["call_graph_p2","call_path_p3","method_id_to_name","class_id_to_name","class_to_method_id"]
-        # if not file_path.endswith(tuple(suffixes)):
-        #     continue
+        # suffixes = ["call_graph_p2","call_path_p3","method_id_to_name","class_id_to_name","class_to_method_id","call_beauty","call_beauty2","gir.bundle0"]
+        suffixes = ["call_graph_p2","call_path_p3","method_id_to_name","class_id_to_name","class_to_method_id","call_beauty","call_beauty2"]
+        if not file_path.endswith(tuple(suffixes)):
+            continue
 
         # 读取并打印单个feather文件
         if file_path.endswith(".indexing"):

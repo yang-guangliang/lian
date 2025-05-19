@@ -74,6 +74,9 @@ CALL_GRAPH_BUNDLE_PATH_P1                   = "call_graph_p1"
 CALL_GRAPH_BUNDLE_PATH_P2                   = "call_graph_p2"
 CALL_GRAPH_BUNDLE_PATH_P3                   = "call_graph_p3"
 CALL_PATH_BUNDLE_PATH_P3                    = "call_path_p3"
+CALL_PATH_BEAUTY                            = "call_beauty"
+CALL_PATH_BEAUTY2                           = "call_beauty2"
+
 
 ENTRY_POINTS_PATH                           = "entry_points"
 SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P1    = "symbol_bit_vector_p1"

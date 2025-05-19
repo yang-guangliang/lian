@@ -515,6 +515,33 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         frame_stack.add(entry_frame)
         return frame_stack
 
+
+    def save_call_beauty_global(self, all_call_sites):
+        self.call_beauty = []
+        for edge in all_call_sites:
+            caller_method_id = edge[0]
+            callee_method_id= edge[1]
+            stmt_id = edge[2]
+            caller_class_id = self.loader.convert_method_id_to_class_id(caller_method_id)
+            caller_class_name = self.loader.convert_class_id_to_class_name(caller_class_id)
+            caller_method_name = self.loader.convert_method_id_to_method_name(caller_method_id)
+            if util.is_empty(caller_class_name):
+                caller_class_name = "None"
+            if caller_method_id == -1 or not isinstance(caller_method_name,str):
+                caller_method_name = "None"
+
+            callee_class_id = self.loader.convert_method_id_to_class_id(callee_method_id)
+            callee_class_name = self.loader.convert_class_id_to_class_name(callee_class_id)
+            callee_method_name = self.loader.convert_method_id_to_method_name(callee_method_id)
+            if util.is_empty(callee_class_name):
+                callee_class_name = "None"
+            if callee_method_id == -1 or not isinstance(callee_method_name,str):
+                callee_method_name = "None"            
+            one_call = [caller_method_id,caller_class_name,caller_method_name,callee_method_id,callee_class_name,callee_method_name,stmt_id]
+            self.call_beauty.append(one_call)
+        self.loader.save_call_beauty_global(self.call_beauty)
+        self.loader._call_graph_stronger_loader2.export()
+
     def run(self):
         """
         执行全局分析主流程：
@@ -540,7 +567,13 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         self.loader._call_path_p3_loader.export()
         all_APaths = self.loader.load_call_paths_p3()
         print("所有的APaths: ",all_APaths)
+        all_call_sites = []
         for apath in all_APaths:
-            print(apath.to_CallSite_list())
+            call_site_list = apath.to_CallSite_list()
+            for call_site in call_site_list:
+                one_call_site = [call_site.caller_id,call_site.callee_id,call_site.call_stmt_id] 
+                all_call_sites.append(one_call_site)
+        self.save_call_beauty_global(all_call_sites)
+
 
 
