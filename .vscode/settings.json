@@ -1,0 +1,11 @@
+{
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "./src"
+    },
+    "python.analysis.extraPaths": [
+        "./src"
+    ],
+    "cSpell.words": [
+        "lian"
+    ]
+}
