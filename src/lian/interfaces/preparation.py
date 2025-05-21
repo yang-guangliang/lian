@@ -187,8 +187,9 @@ class WorkspaceBuilder:
 
         self.change_c_like_files(src_dir_path)
 
-        externs_dir_path = os.path.join(workspace_path, config.EXTERNS_DIR)
-        self.copytree_with_extension(config.EXTERNS_MOCK_CODE_DIR, externs_dir_path)
+        if not self.options.noextern:
+            externs_dir_path = os.path.join(workspace_path, config.EXTERNS_DIR)
+            self.copytree_with_extension(config.EXTERNS_MOCK_CODE_DIR, externs_dir_path)
 
         return self.dst_file_to_src_file
 

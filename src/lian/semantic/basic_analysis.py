@@ -159,11 +159,13 @@ class BasicSemanticAnalysis:
             unit_gir = self.loader.load_unit_gir(unit_id)
             unit_scope = UnitScopeHierarchyAnalysis(self.loader, unit_id, unit_gir).analyze()
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
-            self.extern_system.install_mock_code_file(unit_info, unit_scope)
+            if not self.options.noextern:
+                self.extern_system.install_mock_code_file(unit_info, unit_scope)
         self.loader.export_scope_hierarchy()
         self.loader.export_entry_points()
 
-        self.extern_system.display_all_installed_rules()
+        if not self.options.noextern:
+            self.extern_system.display_all_installed_rules()
 
         # Given a import stmt, how to construct export nodes of each unit and unit hierarchy
         importAnalysis = ImportHierarchy(self.loader, self.resolver)
