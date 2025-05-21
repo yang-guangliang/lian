@@ -247,9 +247,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         # collect in state
 
         in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
-        print(f"in_symbols: {in_symbols}")
+        # print(f"in_symbols: {in_symbols}")
         in_states = self.group_used_states(stmt_id, in_symbols, frame)
-        print(f"in_states@before complete_in_states: {in_states}")
+        # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         if not continue_flag:
@@ -261,18 +261,14 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        print(f"before dynamic_content_analysis.compute_stmt_state")
         change_flag: P2ResultFlag = frame.dynamic_content_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
-        print(f"after dynamic_content_analysis.compute_stmt_state")
         if change_flag is None:
             if config.DEBUG_FLAG:
                 print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        print(f"before update_out_states")
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
-        print(f"after update_out_states")
 
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
