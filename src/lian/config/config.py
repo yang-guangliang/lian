@@ -72,7 +72,6 @@ METHOD_ID_TO_METHOD_NAME_PATH               = "method_id_to_name"
 
 CALL_GRAPH_BUNDLE_PATH_P1                   = "call_graph_p1"
 CALL_GRAPH_BUNDLE_PATH_P2                   = "call_graph_p2"
-CALL_GRAPH_BUNDLE_PATH_P3                   = "call_graph_p3"
 CALL_PATH_BUNDLE_PATH_P3                    = "call_path_p3"
 CALL_PATH_BEAUTY                            = "call_beauty"
 CALL_PATH_BEAUTY2                           = "call_beauty2"

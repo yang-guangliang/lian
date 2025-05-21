@@ -562,7 +562,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             frame_stack = self.init_frame_stack(entry_point)
             result = self.analyze_frame_stack(frame_stack)
 
-        self.loader.save_call_graph_p3(self.call_graph)
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader._call_path_p3_loader.export()
         all_APaths = self.loader.load_call_paths_p3()
