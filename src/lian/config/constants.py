@@ -156,7 +156,7 @@ ControlFlowKind = util.SimpleEnum({
     "YIELD"                 : 16,
 })
 
-SymbolDependencyKind = util.SimpleEnum({
+SymbolDependencyGraphEdgeKind = util.SimpleEnum({
     "REGULAR"               : 0,
     "EXPLICITLY_DEFINED"    : 1,
     "EXPLICITLY_USED"       : 2,

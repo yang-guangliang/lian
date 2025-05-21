@@ -965,6 +965,7 @@ class SymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     stmt_id: int = -1
+    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.stmt_id))
@@ -978,17 +979,19 @@ class SymbolDefNode:
             "bit_pos": bit_pos,
             "index": self.index,
             "symbol_id": self.symbol_id,
-            "stmt_id": self.stmt_id
+            "stmt_id": self.stmt_id,
+            "stmt_counter": self.stmt_counter,
         }
 
     def to_tuple(self):
-        return (self.index, self.symbol_id, self.stmt_id)
+        return (self.index, self.symbol_id, self.stmt_id, self.stmt_counter)
 
 @dataclasses.dataclass
 class LastSymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     last_stmt_id: int= -1
+    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.last_stmt_id))
@@ -1001,6 +1004,7 @@ class StateDefNode:
     index: int = -1
     state_id: int = -1
     stmt_id: int = -1
+    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.state_id, self.stmt_id))
@@ -1680,15 +1684,15 @@ class APath:
 
     # def add_call(self, source_node, stmt_id, target_node):
     #     self.path += (source_node, stmt_id, target_node)
-    
+
     def __post_init__(self):
         # 实例化后验证类型
         if not isinstance(self.path,tuple):
             util.warn("赋值给APath的值不是tuple类型")
-        
+
     def to_tuple(self):
         return tuple(self.path)
-    
+
     def to_CallSite_list(self):
         callsite_list = []
         if len(self.path) == 1:
@@ -1747,7 +1751,7 @@ class PathManager:
             return False
         new_path_len = len(new_path_tuple)
         # print("\n进入add_path的path_tuple是: ",new_path_tuple)
-        
+
         # 检查new_path是否是现有路径的严格前缀
         need_to_add = False
         current = self.root
@@ -1776,7 +1780,7 @@ class PathManager:
                 self._remove_path(new_path_tuple[:i + 1])
                 current.is_end = False
                 need_to_add = True
-        
+
         if need_to_add:
             current.is_end = True
             # print("添加路径:",new_path)

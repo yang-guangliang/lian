@@ -8,7 +8,7 @@ from lian.config import config
 import lian.util.data_model as dm
 from lian.config.constants import (
     ExportNodeType,
-    SymbolDependencyKind,
+    SymbolDependencyGraphEdgeKind,
     ScopeKind,
     SymbolKind,
     EventKind,
