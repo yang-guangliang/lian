@@ -75,6 +75,11 @@ call_graph_schema = {
     "call_type"                     : 0
 }
 
+call_path_schema = [
+    "index",
+    "call_path"
+]
+
 method_summary_schema = [
     'method_id',
     'parameter_symbols',

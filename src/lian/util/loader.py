@@ -1041,18 +1041,14 @@ class CallPathLoader:
         if not os.path.exists(self.path):
             return {}
         dm = DataModel().load(self.path)
-        if 'call_path' in dm._data.columns:
-            call_path_lists = dm._data['call_path'].iloc[0]
-            self.all_APaths = {APath(path=tuple(path)) for path in call_path_lists}
+
         return self.all_APaths
 
     def export(self):
         if len(self.all_APaths) == 0:
             return
-        DataModel([{
-            'call_path': [ap.path for ap in self.all_APaths]
-        }]).save(self.path)
-
+        all_pathTuples = [(index, ap.path) for index, ap in enumerate(self.all_APaths)]
+        DataModel(all_pathTuples,columns=schema.call_path_schema).save(self.path)
 
 class UnsolvedSymbolIDAssignerLoader:
     def __init__(self, path):
@@ -2074,11 +2070,6 @@ class Loader:
         return self._call_graph_p2_loader.save(*args)
     def load_call_graph_p2(self, *args):
         return self._call_graph_p2_loader.load(*args)
-
-    def save_call_graph_p3(self, *args):
-        return self._call_graph_p3_loader.save(*args)
-    def load_call_graph_p3(self, *args):
-        return self._call_graph_p3_loader.load(*args)
 
     def save_call_paths_p3(self, *args):
         return self._call_path_p3_loader.save(*args)
