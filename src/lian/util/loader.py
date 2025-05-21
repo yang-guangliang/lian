@@ -1632,9 +1632,6 @@ class Loader:
         self._call_graph_stronger_loader2 = CallGraphStrongerLoader(
             os.path.join(self.semantic_path_p3, config.CALL_PATH_BEAUTY2),
         )
-        self._call_graph_p3_loader = CallGraphP1Loader(
-            os.path.join(self.semantic_path_p3, config.CALL_GRAPH_BUNDLE_PATH_P3),
-        )
 
         self._call_path_p3_loader = CallPathLoader(
             os.path.join(self.semantic_path_p3, config.CALL_PATH_BUNDLE_PATH_P3),
