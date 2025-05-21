@@ -1721,18 +1721,75 @@ class CallSite:
 
     def to_tuple(self):
         return (self.caller_id, self.call_stmt_id, self.callee_id)
-    
+
+class TrieNode:
+    """
+    前缀树节点
+    """
+    def __init__(self):
+        self.children = {} # 存储子节点。key为路径元素，value为TrieNode
+        self.is_end = False # 标记该节点是否为路径终点/叶子结点
 
 class PathManager:
     def __init__(self):
-        self.paths = set()
+        self.paths = set() # 所有完整路径
+        self.root = TrieNode()
 
-    def add_path(self, path):
-        if isinstance(path, APath):
-            self.paths.add(path)
-            return
+    def add_path(self, new_path: APath):
+        """
+        添加路径到路径管理器中，并自动处理重复前缀路径。若添加成功，返回True，否则返回False。
+        """
+        if not isinstance(new_path, APath):
+            util.error("@PathManager: Invalid path type!!!!!!!! to be added: ", str(new_path), type(new_path))
+            return False
+        new_path_tuple = new_path.to_tuple()
+        if self.has_any_negative(new_path_tuple):
+            return False
+        new_path_len = len(new_path_tuple)
+        # print("\n进入add_path的path_tuple是: ",new_path_tuple)
+        
+        # 检查new_path是否是现有路径的严格前缀
+        need_to_add = False
+        current = self.root
+        for i, val in enumerate(new_path_tuple):
+            # 向前缀树中添加新节点
+            if need_to_add:
+                current.children[val] = TrieNode()
+                current = current.children[val]
+                continue
 
-        util.error("@PathManager: Invalid path type!!!!!!!! to be added: ", str(path), type(path))
+            # 是一条新路径，不是已有前缀
+            if val not in current.children:
+                # print(f"{val} not in current.children")
+                current.children[val] = TrieNode()
+                current = current.children[val]
+                need_to_add = True
+                continue
+
+            current = current.children[val]
+            # 若前缀树遍历到头了
+            if current.is_end:
+                # 长度一样，说明已有和new_path一样的path，不添加
+                if (i + 1) == new_path_len:
+                    return False
+                # 否则说明new_path是更长的已有path。清除较短的path。
+                self._remove_path(new_path_tuple[:i + 1])
+                current.is_end = False
+                need_to_add = True
+        
+        if need_to_add:
+            current.is_end = True
+            # print("添加路径:",new_path)
+            self.paths.add(new_path)
+
+    def _remove_path(self,removed_path:tuple):
+        # print("要删除的path是",removed_path)
+        removed_APath = APath(removed_path)
+        self.paths.discard(removed_APath)
+
+    def has_any_negative(self, path: tuple) -> bool:
+        """判断路径元组中是否存在任意负数"""
+        return any(x < 0 for x in path)
 
     def path_exists(self, path):
         return path in self.paths
