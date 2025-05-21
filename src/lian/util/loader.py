@@ -1593,11 +1593,6 @@ class Loader:
             os.path.join(self.semantic_path_p2, config.CALL_GRAPH_BUNDLE_PATH_P2),
         )
 
-        self._call_graph_p3_loader = CallGraphP1Loader(
-            os.path.join(self.semantic_path_p3, config.CALL_GRAPH_BUNDLE_PATH_P3),
-        )
-
-
         self._call_path_p3_loader = CallPathLoader(
             os.path.join(self.semantic_path_p3, config.CALL_PATH_BUNDLE_PATH_P3),
         )
