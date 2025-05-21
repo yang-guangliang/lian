@@ -12,7 +12,7 @@ import lian.util.data_model as dm
 from lian.config.constants import (
     LianInternal,
     StateTypeKind,
-    SymbolDependencyKind,
+    SymbolDependencyGraphEdgeKind,
     SymbolOrState,
     AnalysisPhaseName,
     CALL_OPERATION
@@ -447,7 +447,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 if util.is_empty(p2_summary_template):
                     frame_stack.pop()
                     continue
-        
+
                 summary_template: MethodSummaryTemplate = p2_summary_template.copy()
                 summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(frame.method_id)
 

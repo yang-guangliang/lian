@@ -9,7 +9,7 @@ from lian.config import type_table
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
-    SymbolDependencyKind,
+    SymbolDependencyGraphEdgeKind,
     LianInternal,
     StateTypeKind,
     SymbolOrState,
@@ -237,7 +237,7 @@ class SemanticSummaryGeneration:
                 continue
 
             state_id = defined_state.state_id
-            state_node = StateDefNode(index=defined_state_index, state_id=state_id, stmt_id=stmt_id)
+            state_node = StateDefNode(index=defined_state_index, state_id=state_id, stmt_id=stmt_id, stmt_counter=frame.stmt_counters[stmt_id])
             state_current_bits = self.update_current_state_bit(state_node, frame, state_current_bits, new_defined_state_set)
         status.out_state_bits = state_current_bits
 
@@ -309,12 +309,12 @@ class SemanticSummaryGeneration:
                 continue
             # pprint.pprint(defined_symbol)
             symbol_id = defined_symbol.symbol_id
-            key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id)
+            key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id, stmt_counter = frame.stmt_counters[stmt_id])
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
 
-            edge_type = SymbolDependencyKind.EXPLICITLY_DEFINED
+            edge_type = SymbolDependencyGraphEdgeKind.EXPLICITLY_DEFINED
             if tmp_counter != 0:
-                edge_type = SymbolDependencyKind.IMPLICITLY_DEFINED
+                edge_type = SymbolDependencyGraphEdgeKind.IMPLICITLY_DEFINED
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
         status.out_symbol_bits = current_bits
@@ -344,9 +344,9 @@ class SemanticSummaryGeneration:
             if not isinstance(defined_symbol, Symbol):
                 continue
             symbol_id = defined_symbol.symbol_id
-            key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id)
+            key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id, stmt_counter=frame.stmt_counters[stmt_id])
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
-            frame.symbol_graph.add_edge(stmt_id, key, SymbolDependencyKind.IMPLICITLY_DEFINED)
+            frame.symbol_graph.add_edge(stmt_id, key, SymbolDependencyGraphEdgeKind.IMPLICITLY_DEFINED)
         status.out_symbol_bits = current_bits
         # print("rerun_new_out_bits")
         # print(frame.symbol_bit_vector_manager.explain(current_bits))
@@ -393,10 +393,10 @@ class SemanticSummaryGeneration:
                 continue
 
             reachable_defs = self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs)
-            edge_type = SymbolDependencyKind.IMPLICITLY_USED
+            edge_type = SymbolDependencyGraphEdgeKind.IMPLICITLY_USED
             if not only_implicitly_used_symbols:
                 if used_symbol_index < len(status.used_symbols):
-                    edge_type = SymbolDependencyKind.EXPLICITLY_USED
+                    edge_type = SymbolDependencyGraphEdgeKind.EXPLICITLY_USED
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
 
@@ -535,7 +535,7 @@ class SemanticSummaryGeneration:
         util.add_to_dict_with_default_set(
             frame.state_to_define,
             new_state.state_id,
-            StateDefNode(index, new_state.state_id, stmt_id)
+            StateDefNode(index=index, state_id=new_state.state_id, stmt_id=stmt_id)
         )
         status.defined_states.add(index)
 
@@ -779,9 +779,9 @@ class SemanticSummaryGeneration:
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        # print(f"in_states@after complete_in_states: {in_states}")
+        print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
-            # print("  DON'T CONTINUE")
+            print("  DON'T CONTINUE")
             if status.in_state_bits != old_in_state_bits:
                 status.out_state_bits = status.in_state_bits
             self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_defined_symbols, old_status_defined_states)
@@ -790,7 +790,7 @@ class SemanticSummaryGeneration:
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
         change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
-            # print(f"  NO CHANGE")
+            print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)

@@ -62,6 +62,7 @@ class Lian:
 
     def set_options(self, **custom_options):
         self.custom_options = custom_options
+        return self
 
     def parse_cmds(self):
         self.options = self.args_parser.init().parse_cmds()
@@ -103,7 +104,8 @@ class Lian:
         self.app_manager.register_extern_system(self.extern_system)
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)
-        self.extern_system.init()
+        if not self.options.noextern:
+            self.extern_system.init()
 
         if util.is_available(other_init):
             other_init(self)
