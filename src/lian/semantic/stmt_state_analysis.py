@@ -775,7 +775,7 @@ class StmtStateAnalysis:
 
         state_index1 = self.create_state_and_add_space(
             status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-            data_type = data_type1, state_type = state_type,
+            data_type = f"{data_type1}/{data_type2}", state_type = state_type,
             access_path=self.copy_and_extend_access_path(
                 state1.access_path,
                 AccessPoint(
@@ -785,19 +785,19 @@ class StmtStateAnalysis:
             )
         )
         self.update_access_path_state_id(state_index1)
-        state_index2 = self.create_state_and_add_space(
-            status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-            data_type = data_type2, state_type = state_type,
-            access_path=self.copy_and_extend_access_path(
-                state2.access_path,
-                AccessPoint(
-                    kind = AccessPointKind.BINARY_ASSIGN,
-                    key=defined_symbol.name
-                )
-            )
-        )
-        self.update_access_path_state_id(state_index2)
-        return {state_index1, state_index2}
+        # state_index2 = self.create_state_and_add_space(
+        #     status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
+        #     data_type = data_type2, state_type = state_type,
+        #     access_path=self.copy_and_extend_access_path(
+        #         state2.access_path,
+        #         AccessPoint(
+        #             kind = AccessPointKind.BINARY_ASSIGN,
+        #             key=defined_symbol.name
+        #         )
+        #     )
+        # )
+        # self.update_access_path_state_id(state_index2)
+        return {state_index1}
 
     def assign_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
@@ -883,19 +883,16 @@ class StmtStateAnalysis:
                     continue
 
                 if operand_state.state_type == StateTypeKind.ANYTHING or operand2_state.state_type == StateTypeKind.ANYTHING:
-                    anything_states = set()
-                    for each_index in [operand_state_index, operand2_state_index]:
-                        new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_index)
-                        new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
-                        new_operand_state.access_path.append(
-                            AccessPoint(
-                                kind = AccessPointKind.BINARY_ASSIGN,
-                                key=defined_symbol.name
-                            )
+                    new_operand_state_index = self.create_state_and_add_space(status, stmt_id)
+                    new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
+                    new_operand_state.access_path.append(
+                        AccessPoint(
+                            kind = AccessPointKind.BINARY_ASSIGN,
+                            key=defined_symbol.name
                         )
-                        self.update_access_path_state_id(new_operand_state_index)
-                        anything_states.add(new_operand_state_index)
-                    defined_symbol.states = anything_states
+                    )
+                    self.update_access_path_state_id(new_operand_state_index)
+                    defined_symbol.states = {new_operand_state_index}
                     return P2ResultFlag()
 
                 new_states.update(
@@ -2987,6 +2984,7 @@ class StmtStateAnalysis:
         if not isinstance(receiver_symbol, Symbol): # TODO: 暂时未处理<string>.format的形式
             return
         receiver_states = self.read_used_states(receiver_index, in_states)
+        # print("field_read经过插件之前的receiver_states",receiver_states)
         field_states = self.read_used_states(field_index, in_states)
         defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if not isinstance(defined_symbol, Symbol):
@@ -3018,8 +3016,8 @@ class StmtStateAnalysis:
             defined_symbol.states = event.out_data.defined_states
             return P2ResultFlag()
         # else:
-            # receiver_states = event.out_data.receiver_states
-            # print("经过插件后的receiver_states是：",receiver_states)
+        # receiver_states = event.out_data.receiver_states
+        # print("field_read经过插件后的receiver_states是：",receiver_states)
 
         for receiver_state_index in receiver_states:
             each_receiver_state = self.frame.symbol_state_space[receiver_state_index]
