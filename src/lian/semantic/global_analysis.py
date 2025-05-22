@@ -97,7 +97,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
-        frame.dynamic_content_analysis = DynamicContentAnalysis(
+        frame.stmt_state_analysis = DynamicContentAnalysis(
             app_manager = self.app_manager,
             loader = self.loader,
             resolver = self.resolver,
@@ -262,7 +262,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        change_flag: P2ResultFlag = frame.dynamic_content_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
+        change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
             if config.DEBUG_FLAG:
                 print(f"  NO CHANGE")
@@ -536,7 +536,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         self.loader._call_path_p3_loader.export()
         all_APaths = self.loader.load_call_paths_p3()
         print("所有的APaths: ",all_APaths)
-        for apath in all_APaths:
-            print(apath.to_CallSite_list())
+
+
 
 

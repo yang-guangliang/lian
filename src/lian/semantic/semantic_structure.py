@@ -1567,7 +1567,6 @@ class ComputeFrame(MetaComputeFrame):
 
         self.stmt_def_use_analysis = None
         self.stmt_state_analysis = None
-        self.dynamic_content_analysis = None
 
         self.interruption_flag = False
         self.interruption_data: InterruptionData = None
