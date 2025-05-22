@@ -425,7 +425,6 @@ class ImportHierarchy:
                         source_module_id = each_symbol.source_module_id,
                         source_symbol_id = each_symbol.source_symbol_id
                     ))
-            pass
 
         def may_append_unknown_node(result):
             if len(result) == 0:
@@ -473,10 +472,14 @@ class ImportHierarchy:
         elif hasattr(stmt, 'module_path'):
             source = stmt.module_path
         # format: < import name as alias >
-        if source == "":
+        print(stmt.name)
+        print(9999999999999999999999999)
+        print(source)
+
+        if source == ""or source == ".":
             module_ids_result = self.loader.parse_import_module_path(stmt.name)
             for module_id in module_ids_result:
-                if self.loader.is_module_dir_id(module_id):
+                if self.loader.is_module_dir_id(module_id) or self.loader.is_unit_id(module_id):
                     append_import_module_node(result, module_id)
                     self.import_graph.add_edge(unit_id, module_id, stmt_id)
                 else:

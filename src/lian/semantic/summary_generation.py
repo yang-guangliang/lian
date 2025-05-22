@@ -499,6 +499,15 @@ class SemanticSummaryGeneration:
                 value = symbol_id
             )
             new_state.access_path = [AccessPoint(key=used_symbol.name, state_id=new_state.state_id)]
+        elif self.loader.is_unit_id(symbol_id):
+            new_state = State(
+                stmt_id = stmt_id,
+                source_symbol_id = symbol_id,
+                data_type = LianInternal.UNIT,
+                state_type = StateTypeKind.REGULAR,
+                value = symbol_id
+            )
+            new_state.access_path = [AccessPoint(key=used_symbol.name, state_id=new_state.state_id)]
         else:
             new_state = State(
                 stmt_id = stmt_id,
