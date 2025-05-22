@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pprint
 import numpy
 import copy
+import heapq
 from collections import Counter
 from itertools import count
 from collections import defaultdict
@@ -246,29 +247,48 @@ class ImportStmtInfo:
 
 
 class SimpleWorkList:
-    def __init__(self, init_data = []):
+    def __init__(self, init_data = [], cfg = None):
         self.work_list = []
         self.all_data = set()
+        self.cfg = cfg
+        self.priority_dict = {}
         if init_data:
             self.add(init_data)
 
+        if self.cfg:
+            first_nodes = util.find_cfg_first_nodes(self.cfg)
+            if first_nodes:
+                cfg_order = list(reversed(list(
+                    nx.dfs_postorder_nodes(self.cfg, source=first_nodes[0])
+                )))
+
+                self.priority_dict = {
+                    node: idx for idx, node in enumerate(cfg_order)
+                }
+
+    def _add_with_priority(self, item):
+        if item not in self.all_data:
+            if self.priority_dict:
+                heapq.heappush(self.work_list, (self.priority_dict.get(item, 0), item))
+            else:
+                self.work_list.append(item)
+            self.all_data.add(item)
+
     def fast_add(self, item):
         if item not in self.all_data:
-            self.work_list.append(item)
-            self.all_data.add(item)
+            self._add_with_priority(item)
         return self
 
     def add(self, data):
         if hasattr(data, '__iter__'):
             for node in data:
                 if node not in self.all_data:
-                    self.all_data.add(node)
-                    self.work_list.append(node)
+                    self._add_with_priority(node)
+
             return self
 
         if data not in self.all_data:
-            self.all_data.add(data)
-            self.work_list.append(data)
+            self._add_with_priority(data)
 
         return self
 
@@ -277,19 +297,28 @@ class SimpleWorkList:
             return None
 
         result = self.work_list.pop(0)
+        if isinstance(result, tuple):
+            result = result[1]
         if result in self.all_data:
             self.all_data.remove(result)
         return result
 
     def insert_to_first(self, stmt_id):
-        self.work_list.insert(0, stmt_id)
+        if self.priority_dict:
+            heapq.heappush(self.work_list, (0, stmt_id))
+        else:
+            self.work_list.insert(0, stmt_id)
         self.all_data.add(stmt_id)
 
     def peek(self):
         if len(self.work_list) <= 0:
             return None
 
-        return self.work_list[0]
+        result = self.work_list[0]
+        if isinstance(result, tuple):
+            result = result[1]
+
+        return result
 
     def __len__(self):
         return len(self.work_list)
@@ -965,6 +994,7 @@ class SymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     stmt_id: int = -1
+    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.stmt_id))
@@ -978,17 +1008,19 @@ class SymbolDefNode:
             "bit_pos": bit_pos,
             "index": self.index,
             "symbol_id": self.symbol_id,
-            "stmt_id": self.stmt_id
+            "stmt_id": self.stmt_id,
+            "stmt_counter": self.stmt_counter,
         }
 
     def to_tuple(self):
-        return (self.index, self.symbol_id, self.stmt_id)
+        return (self.index, self.symbol_id, self.stmt_id, self.stmt_counter)
 
 @dataclasses.dataclass
 class LastSymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     last_stmt_id: int= -1
+    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.last_stmt_id))
@@ -1001,6 +1033,7 @@ class StateDefNode:
     index: int = -1
     state_id: int = -1
     stmt_id: int = -1
+    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.state_id, self.stmt_id))
@@ -1534,12 +1567,11 @@ class ComputeFrame(MetaComputeFrame):
 
         self.stmt_def_use_analysis = None
         self.stmt_state_analysis = None
-        self.dynamic_content_analysis = None
 
         self.interruption_flag = False
         self.interruption_data: InterruptionData = None
 
-        self.stmt_worklist = SimpleWorkList()
+        self.stmt_worklist = None
         self.symbol_changed_stmts = SimpleSet()
         self.stmt_id_to_stmt = {}
         self.stmt_id_to_status: dict[int, StmtStatus] = {}
@@ -1680,15 +1712,15 @@ class APath:
 
     # def add_call(self, source_node, stmt_id, target_node):
     #     self.path += (source_node, stmt_id, target_node)
-    
+
     def __post_init__(self):
         # 实例化后验证类型
         if not isinstance(self.path,tuple):
             util.warn("赋值给APath的值不是tuple类型")
-        
+
     def to_tuple(self):
         return tuple(self.path)
-    
+
     def to_CallSite_list(self):
         callsite_list = []
         if len(self.path) == 1:
@@ -1747,7 +1779,7 @@ class PathManager:
             return False
         new_path_len = len(new_path_tuple)
         # print("\n进入add_path的path_tuple是: ",new_path_tuple)
-        
+
         # 检查new_path是否是现有路径的严格前缀
         need_to_add = False
         current = self.root
@@ -1776,7 +1808,7 @@ class PathManager:
                 self._remove_path(new_path_tuple[:i + 1])
                 current.is_end = False
                 need_to_add = True
-        
+
         if need_to_add:
             current.is_end = True
             # print("添加路径:",new_path)

@@ -130,7 +130,10 @@ class Resolver:
                 return default_return
             import_info = export_symbols.query_first(export_symbols.name == symbol.name)
             if import_info:
-                return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
+                if import_info.source_symbol_id == -1:
+                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_module_id)
+                else:
+                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
             else:
                 return SourceSymbolScopeInfo(unit_id, symbol_id)
 
@@ -295,7 +298,7 @@ class Resolver:
             this_states结果会存入new_indexes集合；返回this相关的state space
         """
         # print("进入get_this_state")
-        call_stmt_id = caller_frame.stmt_worklist[0]
+        call_stmt_id = caller_frame.stmt_worklist.peek()
         stmt = caller_frame.stmt_id_to_stmt[call_stmt_id]
         if stmt.operation != "call_stmt":
             return
@@ -333,7 +336,7 @@ class Resolver:
         3. 构建实参状态空间
         """
         # 可能只找到arg的symbol id,也可能直接找到source state
-        call_stmt_id = caller_frame.stmt_worklist[0]
+        call_stmt_id = caller_frame.stmt_worklist.peek()
         current_space = caller_frame.symbol_state_space
         source_states.clear()
         # print(f"{callee_id, caller_id, call_stmt_id} load_parameter_mapping")
@@ -432,7 +435,7 @@ class Resolver:
         # if config.DEBUG_FLAG:
         #     print(f"get_latest_source_state_indexes: method_id {current_frame.method_id}, state_symbol_id: {state_symbol_id}")
         current_space = current_frame.symbol_state_space
-        current_stmt_id = current_frame.stmt_worklist[0]
+        current_stmt_id = current_frame.stmt_worklist.peek()
         current_status = current_frame.stmt_id_to_status[current_stmt_id]
 
         available_symbol_defs: set = current_frame.symbol_bit_vector_manager.explain(current_status.in_symbol_bits)
@@ -497,7 +500,7 @@ class Resolver:
     def retrieve_latest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
         """
         # input：state_index的集合 或都来自symbol.states，或都来自state[f]。返回：这一批state_index对应的newest_index集合
-        # 作用：输入state_indexes，它会一气更新好内部所有小弟的index，最后返回输入对应的最新indexes
+        # 作用：输入state_indexes，它会一气更新好内部所有小弟的index，最后返回输入对应的最新indexes(集合)
         """
         # print(f"找最新retrieve_latest_states state_old_to_new, 输入的是:{state_indexes}")
         return_indexes = set()

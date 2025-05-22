@@ -198,7 +198,11 @@ class StmtStateAnalysis:
         if self.loader.is_class_decl(state.value):
             return True
         return False
-
+    
+    def is_state_a_unit(self, state):
+        if state.data_type == LianInternal.UNIT:
+            return True
+        
     def is_state_a_method_decl(self, state):
         """
         判断状态是否为方法声明：
@@ -775,7 +779,7 @@ class StmtStateAnalysis:
 
         state_index1 = self.create_state_and_add_space(
             status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-            data_type = data_type1, state_type = state_type,
+            data_type = f"{data_type1}/{data_type2}", state_type = state_type,
             access_path=self.copy_and_extend_access_path(
                 state1.access_path,
                 AccessPoint(
@@ -785,19 +789,19 @@ class StmtStateAnalysis:
             )
         )
         self.update_access_path_state_id(state_index1)
-        state_index2 = self.create_state_and_add_space(
-            status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-            data_type = data_type2, state_type = state_type,
-            access_path=self.copy_and_extend_access_path(
-                state2.access_path,
-                AccessPoint(
-                    kind = AccessPointKind.BINARY_ASSIGN,
-                    key=defined_symbol.name
-                )
-            )
-        )
-        self.update_access_path_state_id(state_index2)
-        return {state_index1, state_index2}
+        # state_index2 = self.create_state_and_add_space(
+        #     status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
+        #     data_type = data_type2, state_type = state_type,
+        #     access_path=self.copy_and_extend_access_path(
+        #         state2.access_path,
+        #         AccessPoint(
+        #             kind = AccessPointKind.BINARY_ASSIGN,
+        #             key=defined_symbol.name
+        #         )
+        #     )
+        # )
+        # self.update_access_path_state_id(state_index2)
+        return {state_index1}
 
     def assign_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
@@ -883,19 +887,16 @@ class StmtStateAnalysis:
                     continue
 
                 if operand_state.state_type == StateTypeKind.ANYTHING or operand2_state.state_type == StateTypeKind.ANYTHING:
-                    anything_states = set()
-                    for each_index in [operand_state_index, operand2_state_index]:
-                        new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_index)
-                        new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
-                        new_operand_state.access_path.append(
-                            AccessPoint(
-                                kind = AccessPointKind.BINARY_ASSIGN,
-                                key=defined_symbol.name
-                            )
+                    new_operand_state_index = self.create_state_and_add_space(status, stmt_id)
+                    new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
+                    new_operand_state.access_path.append(
+                        AccessPoint(
+                            kind = AccessPointKind.BINARY_ASSIGN,
+                            key=defined_symbol.name
                         )
-                        self.update_access_path_state_id(new_operand_state_index)
-                        anything_states.add(new_operand_state_index)
-                    defined_symbol.states = anything_states
+                    )
+                    self.update_access_path_state_id(new_operand_state_index)
+                    defined_symbol.states = {new_operand_state_index}
                     return P2ResultFlag()
 
                 new_states.update(
@@ -1163,7 +1164,6 @@ class StmtStateAnalysis:
                                 )
                             )
                         )
-
                     parameter_index += 1
 
         if util.is_available(parameters.packed_named_parameter):
@@ -1217,9 +1217,40 @@ class StmtStateAnalysis:
 
         self.loader.save_parameter_mapping(call_site, parameter_mapping_list)
 
+    def fuse_states_to_one_state(self, state_indexes:set, stmt_id, status: StmtStatus):
+        """
+        给定一组state_indexes的集合，将这些states进行合并,只产生一个新state，合并了所有children_states
+        """        
+        if util.is_empty(state_indexes) or len(state_indexes) == 1:
+            return state_indexes
+        new_state_index = self.create_copy_of_state_and_add_space(status,stmt_id, state_indexes.pop())
+        new_state:State = self.frame.symbol_state_space[new_state_index]
+        state_array: list[set] = []
+        tangping_flag = False
+        tangping_elements = set()
+        state_fields = {}        
+        for each_state_index in state_indexes:
+            each_state = self.frame.symbol_state_space[each_state_index]
+            if not (each_state and isinstance(each_state, State)):
+                continue
+            for index in range(len(each_state.array)):
+                util.add_to_list_with_default_set(state_array, index, each_state.array[index])  
+            for field_name in each_state.fields:
+                util.add_to_dict_with_default_set(state_fields, field_name, each_state.fields[field_name])        
+            tangping_flag |= each_state.tangping_flag
+            tangping_elements.update(each_state.tangping_elements)
+        new_state.array = state_array
+        new_state.fields = state_fields
+        new_state.tangping_elements = tangping_elements
+        new_state.tangping_flag = tangping_flag
+        if tangping_flag:
+            self.make_state_tangping(new_state)
+        return {new_state_index}
+
+
     def recursively_collect_children_fields(self, stmt_id, status: StmtStatus, state_set_in_summary_field: set, state_set_in_arg_field: set, source_symbol_id, access_path):
         """
-        合并两个“状态集合”———— 一个来自 summary field（state_set_in_summary_field），一个来自 arg field（state_set_in_arg_field）——所对应的所有 State 对象中的 fields（字段）信息，
+        合并两个“状态集合”———— 【一个来自 summary field（state_set_in_summary_field），一个来自 arg field（state_set_in_arg_field）】所对应的所有 State 对象中的 fields（字段）信息，
         最终创建一个或多个新的 State，并返回这些新 State 在符号空间（symbol_state_space）中的索引集合。
         """
         # 闭包缓存，避免field环形依赖
@@ -2943,35 +2974,46 @@ class StmtStateAnalysis:
         new_receiver_symbol = self.frame.symbol_state_space[new_receiver_symbol_index]
         new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
         new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
-        source_index = self.create_state_and_add_space(
-            status, stmt_id = stmt_id,
-            source_symbol_id=receiver_state.source_symbol_id,
-            source_state_id=receiver_state.source_state_id,
-            state_type = StateTypeKind.ANYTHING,
-            access_path = self.copy_and_extend_access_path(
-                original_access_path = receiver_state.access_path,
-                access_point = AccessPoint(
-                    kind = AccessPointKind.FIELD_ELEMENT,
-                    key = field_name
-                )
-            )
-        )
-        self.update_access_path_state_id(source_index)
 
         if is_tangping:
             self.make_state_tangping(new_receiver_state)
 
-        if new_receiver_state.tangping_flag:
-            new_receiver_state.tangping_elements.add(source_index)
+        source_index = -1
+        if len(defined_states) == 0:
+            source_index = self.create_state_and_add_space(
+                status, stmt_id = stmt_id,
+                source_symbol_id=receiver_state.source_symbol_id,
+                source_state_id=receiver_state.source_state_id,
+                state_type = StateTypeKind.ANYTHING,
+                access_path = self.copy_and_extend_access_path(
+                    original_access_path = receiver_state.access_path,
+                    access_point = AccessPoint(
+                        kind = AccessPointKind.FIELD_ELEMENT,
+                        key = field_name
+                    )
+                )
+            )
+            self.update_access_path_state_id(source_index)
+
+        if source_index != -1:
+            if new_receiver_state.tangping_flag:
+                new_receiver_state.tangping_elements.add(source_index)
+            else:
+                new_receiver_state.fields[field_name] = {source_index}
         else:
-            new_receiver_state.fields[field_name] = {source_index}
+            if new_receiver_state.tangping_flag:
+                new_receiver_state.tangping_elements.update(defined_states)
+            else:
+                new_receiver_state.fields[field_name] = defined_states
 
         new_receiver_symbol.states.discard(receiver_state_index)
         new_receiver_symbol.states.add(new_receiver_state_index)
-        if new_receiver_state.tangping_flag:
-            defined_states.update(new_receiver_state.tangping_elements)
-        else:
-            defined_states.add(source_index)
+        
+        if source_index != -1:
+            if new_receiver_state.tangping_flag:
+                defined_states.update(new_receiver_state.tangping_elements)
+            else:    
+                defined_states.add(source_index)
 
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
@@ -2987,6 +3029,7 @@ class StmtStateAnalysis:
         if not isinstance(receiver_symbol, Symbol): # TODO: 暂时未处理<string>.format的形式
             return
         receiver_states = self.read_used_states(receiver_index, in_states)
+        # print("field_read经过插件之前的receiver_states",receiver_states)
         field_states = self.read_used_states(field_index, in_states)
         defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if not isinstance(defined_symbol, Symbol):
@@ -3018,8 +3061,8 @@ class StmtStateAnalysis:
             defined_symbol.states = event.out_data.defined_states
             return P2ResultFlag()
         # else:
-            # receiver_states = event.out_data.receiver_states
-            # print("经过插件后的receiver_states是：",receiver_states)
+        # receiver_states = event.out_data.receiver_states
+        # print("field_read经过插件后的receiver_states是：",receiver_states)
 
         for receiver_state_index in receiver_states:
             each_receiver_state = self.frame.symbol_state_space[receiver_state_index]
@@ -3054,6 +3097,31 @@ class StmtStateAnalysis:
                     index_set = each_receiver_state.fields.get(field_name, set())
                     defined_states.update(index_set)
                     continue
+                # elif self.is_state_a_unit(each_receiver_state):
+                #     data_type = LianInternal.UNIT
+                #     import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
+                #     for import_symbol in import_symbols:
+                #         if import_symbol.name == field_name:
+                #             if import_symbol.export_type == ScopeKind.METHOD_SCOPE:
+                #                 data_type = LianInternal.METHOD_DECL
+                #             elif import_symbol.export_type == ScopeKind.CLASS_SCOPE:
+                #                 data_type = LianInternal.CLASS_DECL
+
+                #             state_index = self.create_state_and_add_space(
+                #                 status, stmt_id = stmt_id,
+                #                 source_symbol_id =import_symbol.source_symbol_id,
+                #                 source_state_id = each_receiver_state.source_state_id,
+                #                 data_type = data_type,
+                #                 value = import_symbol.stmt_id,
+                #                 access_path = self.copy_and_extend_access_path(
+                #                     each_receiver_state.access_path,
+                #                     AccessPoint(
+                #                         key=import_symbol.name,
+                #                     )
+                #                 )
+                #             )
+                #             self.update_access_path_state_id(state_index)
+                #             defined_states.add(state_index)
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_class_decl(each_receiver_state):
@@ -3083,6 +3151,8 @@ class StmtStateAnalysis:
                             )
                             self.update_access_path_state_id(state_index)
                             defined_states.add(state_index)
+                            print(3)
+                            print(defined_states)
                     continue
 
                 new_receiver_symbol_index = self.assert_field_read_new_receiver_symbol(
@@ -3467,7 +3537,7 @@ class StmtStateAnalysis:
             new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
             new_path: list = array_state.access_path.copy()
             new_path.append(AccessPoint(
-                kind = AccessPointKind.ARRAY_ELEMENT,
+                kind = AccessPointKind.FIELD_ELEMENT,
                 key=util.read_stmt_field(target_symbol.name)
             ))
             source_index = self.create_state_and_add_space(

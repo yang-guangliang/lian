@@ -722,9 +722,9 @@ class BitVectorManagerLoader(MethodLevelAnalysisResultLoader):
             counter += 1
             bit_id = None
             if row.state_id:
-                bit_id = StateDefNode(index = int(row.index), state_id = int(row.state_id), stmt_id = int(row.stmt_id))
+                bit_id = StateDefNode(index = int(row.index), state_id = int(row.state_id), stmt_id = int(row.stmt_id, stmt_counter = int(row.stmt_counter)))
             elif row.symbol_id:
-                bit_id = SymbolDefNode(index = int(row.index), symbol_id = int(row.symbol_id), stmt_id = int(row.stmt_id))
+                bit_id = SymbolDefNode(index = int(row.index), symbol_id = int(row.symbol_id), stmt_id = int(row.stmt_id), stmt_counter= int(row.stmt_counter))
             if not bit_id:
                 continue
             bit_pos_to_id[int(row.bit_pos)] = bit_id
@@ -1307,11 +1307,11 @@ class SymbolGraphLoader(MethodLevelAnalysisResultLoader):
         for row in item_df:
             if not util.isna(row.defined):
                 defined_tuple = row.defined
-                key = SymbolDefNode(defined_tuple[0], defined_tuple[1], defined_tuple[2])
+                key = SymbolDefNode(defined_tuple[0], defined_tuple[1], defined_tuple[2], defined_tuple[3])
                 symbol_graph.add_edge(row.stmt_id, key, row.edge_type)
             else:
                 used_tuple = row.used
-                key = SymbolDefNode(used_tuple[0], used_tuple[1], used_tuple[2])
+                key = SymbolDefNode(used_tuple[0], used_tuple[1], used_tuple[2], used_tuple[3])
                 symbol_graph.add_edge(key, row.stmt_id, row.edge_type)
         return symbol_graph.graph
 
@@ -2177,13 +2177,13 @@ class Loader:
         return self._callee_parameter_mapping_loader.load(*args)
     def save_parameter_mapping(self, *args):
         return self._callee_parameter_mapping_loader.save(*args)
-    
+
     def stmt_to_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
         stmt = self.load_stmt_gir(stmt_id)
 
         while(stmt.operation != 'method_decl'):
-            
+
             stmt_id = stmt.parent_stmt_id
             stmt = self.load_stmt_gir(stmt_id)
 
@@ -2197,9 +2197,9 @@ class Loader:
             lines = f.readlines()
         lines = [line.rstrip() for line in lines]
         comment_start = method_start_line - 1
-        
+
         comment_start = util.determine_comment_line(lang_name, comment_start, lines)
 
         code_with_comment = lines[comment_start: method_end_line]
         return code_with_comment
-    
+

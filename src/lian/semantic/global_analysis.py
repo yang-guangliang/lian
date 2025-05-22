@@ -12,7 +12,7 @@ import lian.util.data_model as dm
 from lian.config.constants import (
     LianInternal,
     StateTypeKind,
-    SymbolDependencyKind,
+    SymbolDependencyGraphEdgeKind,
     SymbolOrState,
     AnalysisPhaseName,
     CALL_OPERATION
@@ -97,7 +97,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
-        frame.dynamic_content_analysis = DynamicContentAnalysis(
+        frame.stmt_state_analysis = DynamicContentAnalysis(
             app_manager = self.app_manager,
             loader = self.loader,
             resolver = self.resolver,
@@ -119,6 +119,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         frame.state_to_define = self.loader.load_method_state_to_define_p2(method_id).copy()
 
         frame.cfg = self.loader.load_method_cfg(method_id)
+        frame.stmt_worklist = SimpleWorkList(cfg = frame.cfg)
         frame.stmt_worklist.add(frame.cfg.nodes())
         frame.symbol_changed_stmts.add(frame.cfg.nodes())
 
@@ -247,9 +248,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         # collect in state
 
         in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
-        print(f"in_symbols: {in_symbols}")
+        # print(f"in_symbols: {in_symbols}")
         in_states = self.group_used_states(stmt_id, in_symbols, frame)
-        print(f"in_states@before complete_in_states: {in_states}")
+        # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         if not continue_flag:
@@ -261,18 +262,14 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        print(f"before dynamic_content_analysis.compute_stmt_state")
-        change_flag: P2ResultFlag = frame.dynamic_content_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
-        print(f"after dynamic_content_analysis.compute_stmt_state")
+        change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
             if config.DEBUG_FLAG:
                 print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        print(f"before update_out_states")
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
-        print(f"after update_out_states")
 
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
@@ -451,7 +448,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 if util.is_empty(p2_summary_template):
                     frame_stack.pop()
                     continue
-        
+
                 summary_template: MethodSummaryTemplate = p2_summary_template.copy()
                 summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(frame.method_id)
 

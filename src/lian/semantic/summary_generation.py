@@ -9,7 +9,7 @@ from lian.config import type_table
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
-    SymbolDependencyKind,
+    SymbolDependencyGraphEdgeKind,
     LianInternal,
     StateTypeKind,
     SymbolOrState,
@@ -24,6 +24,7 @@ import lian.apps.event_return as er
 from lian.apps.app_template import EventData
 from lian.semantic.semantic_structure import (
     AccessPoint,
+    SimpleWorkList,
     StateDefNode,
     Symbol,
     State,
@@ -54,6 +55,8 @@ class SemanticSummaryGeneration:
         返回：stmt_id -> 被调用者对象的字典
         """
         self.analysis_phases = []
+        self.count_stmt_def_states = {}
+        self.count_stmt_op_def_states = {}
         self.options = lian.options
         self.app_manager = lian.app_manager
         self.loader:Loader = lian.loader
@@ -148,6 +151,7 @@ class SemanticSummaryGeneration:
         if util.is_empty(frame.cfg):
             return
 
+        frame.stmt_worklist = SimpleWorkList(cfg = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
         frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
 
@@ -237,7 +241,7 @@ class SemanticSummaryGeneration:
                 continue
 
             state_id = defined_state.state_id
-            state_node = StateDefNode(index=defined_state_index, state_id=state_id, stmt_id=stmt_id)
+            state_node = StateDefNode(index=defined_state_index, state_id=state_id, stmt_id=stmt_id, stmt_counter=frame.stmt_counters[stmt_id])
             state_current_bits = self.update_current_state_bit(state_node, frame, state_current_bits, new_defined_state_set)
         status.out_state_bits = state_current_bits
 
@@ -309,12 +313,12 @@ class SemanticSummaryGeneration:
                 continue
             # pprint.pprint(defined_symbol)
             symbol_id = defined_symbol.symbol_id
-            key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id)
+            key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id, stmt_counter = frame.stmt_counters[stmt_id])
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
 
-            edge_type = SymbolDependencyKind.EXPLICITLY_DEFINED
+            edge_type = SymbolDependencyGraphEdgeKind.EXPLICITLY_DEFINED
             if tmp_counter != 0:
-                edge_type = SymbolDependencyKind.IMPLICITLY_DEFINED
+                edge_type = SymbolDependencyGraphEdgeKind.IMPLICITLY_DEFINED
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
         status.out_symbol_bits = current_bits
@@ -344,9 +348,9 @@ class SemanticSummaryGeneration:
             if not isinstance(defined_symbol, Symbol):
                 continue
             symbol_id = defined_symbol.symbol_id
-            key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id)
+            key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id, stmt_counter=frame.stmt_counters[stmt_id])
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
-            frame.symbol_graph.add_edge(stmt_id, key, SymbolDependencyKind.IMPLICITLY_DEFINED)
+            frame.symbol_graph.add_edge(stmt_id, key, SymbolDependencyGraphEdgeKind.IMPLICITLY_DEFINED)
         status.out_symbol_bits = current_bits
         # print("rerun_new_out_bits")
         # print(frame.symbol_bit_vector_manager.explain(current_bits))
@@ -393,10 +397,10 @@ class SemanticSummaryGeneration:
                 continue
 
             reachable_defs = self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs)
-            edge_type = SymbolDependencyKind.IMPLICITLY_USED
+            edge_type = SymbolDependencyGraphEdgeKind.IMPLICITLY_USED
             if not only_implicitly_used_symbols:
                 if used_symbol_index < len(status.used_symbols):
-                    edge_type = SymbolDependencyKind.EXPLICITLY_USED
+                    edge_type = SymbolDependencyGraphEdgeKind.EXPLICITLY_USED
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
 
@@ -468,9 +472,11 @@ class SemanticSummaryGeneration:
             symbol_id = each_in_symbol.symbol_id
             status = frame.stmt_id_to_status[stmt_id]
             available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
+            # print("group_used_states@ available_state_defs",available_state_defs)
             latest_state_index_set = self.resolver.collect_newest_states_by_state_indexes(
                 frame, stmt_id, each_in_symbol.states, available_state_defs
             )
+            # print("group_used_states@ latest_state_index_set",latest_state_index_set)
             if latest_state_index_set:
                 util.add_to_dict_with_default_set(symbol_id_to_state_index, symbol_id, latest_state_index_set)
 
@@ -495,6 +501,15 @@ class SemanticSummaryGeneration:
                 stmt_id = stmt_id,
                 source_symbol_id = symbol_id,
                 data_type = LianInternal.CLASS_DECL,
+                state_type = StateTypeKind.REGULAR,
+                value = symbol_id
+            )
+            new_state.access_path = [AccessPoint(key=used_symbol.name, state_id=new_state.state_id)]
+        elif self.loader.is_unit_id(symbol_id):
+            new_state = State(
+                stmt_id = stmt_id,
+                source_symbol_id = symbol_id,
+                data_type = LianInternal.UNIT,
                 state_type = StateTypeKind.REGULAR,
                 value = symbol_id
             )
@@ -535,7 +550,7 @@ class SemanticSummaryGeneration:
         util.add_to_dict_with_default_set(
             frame.state_to_define,
             new_state.state_id,
-            StateDefNode(index, new_state.state_id, stmt_id)
+            StateDefNode(index=index, state_id=new_state.state_id, stmt_id=stmt_id)
         )
         status.defined_states.add(index)
 
@@ -795,6 +810,17 @@ class SemanticSummaryGeneration:
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
+        if stmt_id not in self.count_stmt_def_states:
+            self.count_stmt_def_states[stmt_id] = 0
+        self.count_stmt_def_states[stmt_id] += len(new_out_states)
+        
+        stmt = self.loader.load_stmt_gir(stmt_id)
+        op = stmt.operation
+        if op not in self.count_stmt_op_def_states:
+            self.count_stmt_op_def_states[op] = 0
+        self.count_stmt_op_def_states[op] += len(new_out_states)
+                
+        
 
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
@@ -816,6 +842,21 @@ class SemanticSummaryGeneration:
         # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
 
         return change_flag
+    
+    def group_states_with_state_ids(self, frame: ComputeFrame, state_indexes: set):
+        """
+        给定一组state_indexes集合，输出{state_id:states}的映射
+        """
+        state_id_to_indexes = {}
+        space = frame.symbol_state_space
+        for index in state_indexes:
+            if not isinstance(state := space[index], State):
+                continue
+            state_id = state.state_id
+            util.add_to_dict_with_default_set(state_id_to_indexes, state_id, index)
+        # print("group_states_with_state_ids@ state_id_to_indexes",state_id_to_indexes)
+        return state_id_to_indexes
+
 
     def update_method_def_use_summary(self, stmt_id, frame: ComputeFrame):
         """
@@ -908,15 +949,30 @@ class SemanticSummaryGeneration:
             for symbol_id in symbol_id_to_old_state_indexes:
                 old_states = symbol_id_to_old_state_indexes[symbol_id]
                 latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, old_states, available_defined_states, state_index_old_to_new)
-                symbol_id_to_latest_state_indexes[symbol_id] = latest_states
+                # 在这里做一次合并，将latest_states中所有state_id相同的states进行合并成一个state。这是为了避免summary中保存的state过多，导致这条call语句新def的g状态过多，caller的state_bits爆炸。
+                # print(f"收集latest_states: symbol_id {symbol_id}, latest_states {latest_states}")
+                state_id_to_indexes = self.group_states_with_state_ids(frame, latest_states)
+                fusion_states = set()
+                for state_id in state_id_to_indexes:
+                    fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(state_id_to_indexes[state_id], stmt_id, status)
+                    # print(f"state_id {state_id}, fusion_state {list[fusion_state]}")
+                    fusion_states.update(fusion_state)
+                symbol_id_to_latest_state_indexes[symbol_id] = fusion_states
 
             # 补充defined_external_symbol_ids的情况，因为defined_external_symbol_ids在frame里没有symbol_def_node
             for symbol_id in def_use_summary.defined_external_symbol_ids:
                 state_index = frame.external_symbol_id_to_initial_state_index.get(symbol_id, None)
                 if state_index:
                     latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, {state_index}, available_defined_states, state_index_old_to_new)
-                    symbol_id_to_latest_state_indexes[symbol_id] = latest_states
+                    state_id_to_indexes = self.group_states_with_state_ids(frame, latest_states)
+                    fusion_states = set()
+                    for state_id in state_id_to_indexes:
+                        fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(state_id_to_indexes[state_id], stmt_id, status)
+                        fusion_states.update(fusion_state)
+                    symbol_id_to_latest_state_indexes[symbol_id] = fusion_states
 
+            # print("generate_and_save_analysis_summary@ symbol_id_to_latest_state_indexes: ")
+            # pprint.pprint(symbol_id_to_latest_state_indexes)
             # save results
             lines_to_be_updated = (
                 (def_use_summary.parameter_symbol_ids,          method_summary.parameter_symbols),
@@ -991,6 +1047,7 @@ class SemanticSummaryGeneration:
         """
         while len(frame.stmt_worklist) != 0:
             stmt_id = frame.stmt_worklist.peek()
+            print(f"当前语句id是{stmt_id}, stmt_worklist:",frame.stmt_worklist)
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
                 frame.stmt_worklist.pop()
                 continue
@@ -1003,6 +1060,7 @@ class SemanticSummaryGeneration:
             else:
                 if frame.stmt_counters[stmt_id] < config.MAX_STMT_STATE_ANALYSIS_ROUND:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
+                    print("添加cfg后继",list(util.graph_successors(frame.cfg, stmt_id)))
 
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
@@ -1121,6 +1179,25 @@ class SemanticSummaryGeneration:
             self.call_beauty.append(one_call)
         self.loader.save_call_beauty(self.call_beauty)
 
+    def print_count_stmt_def_states(self):
+        """
+        打印summary_generation阶段，每条语句产生的new_out_states数量，倒序排列
+        """
+        print("统计产生的new_out_states的数量——————￥￥￥￥￥￥￥￥￥￥￥￥")
+        sorted_ops = sorted(
+            self.count_stmt_op_def_states.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )        
+        sorted_stmts = sorted(
+            self.count_stmt_def_states.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )       
+        pprint.pprint(sorted_stmts)
+        pprint.pprint(sorted_ops)
+            
+
     def run(self):
         """
         执行语义摘要生成的主流程：
@@ -1143,5 +1220,6 @@ class SemanticSummaryGeneration:
         self.loader.save_call_graph_p2(self.call_graph)
         self.loader.export()
         self.save_call_beauty()
+        self.print_count_stmt_def_states()
 
         return self

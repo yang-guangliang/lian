@@ -215,9 +215,9 @@ def read_df(all_files, output_path):
         # 读取并打印单个feather文件
         if file_path.endswith(".indexing"):
             continue
-        if "cfg" in os.path.basename(file_path):
+        # if "cfg" in os.path.basename(file_path):
             # process_graph_files(all_files, file_path, output_path)
-            continue
+            # continue
 
         try:
             df = pd.read_feather(file_path)
