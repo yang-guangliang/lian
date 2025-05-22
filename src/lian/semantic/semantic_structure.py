@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pprint
 import numpy
 import copy
+import heapq
 from collections import Counter
 from itertools import count
 from collections import defaultdict
@@ -246,29 +247,48 @@ class ImportStmtInfo:
 
 
 class SimpleWorkList:
-    def __init__(self, init_data = []):
+    def __init__(self, init_data = [], cfg = None):
         self.work_list = []
         self.all_data = set()
+        self.cfg = cfg
+        self.priority_dict = {}
         if init_data:
             self.add(init_data)
 
+        if self.cfg:
+            first_nodes = util.find_cfg_first_nodes(self.cfg)
+            if first_nodes:
+                cfg_order = reversed(
+                    list(
+                        nx.dfs_postorder_nodes(self.cfg, source=first_nodes[0])
+                    )
+                )
+                self.priority_dict = {
+                    node: idx for idx, node in enumerate(cfg_order)
+                }
+
+    def _add_with_priority(self, item):
+        if item not in self.all_data:
+            if self.priority_dict:
+                heapq.heappush(self.work_list, (self.priority_dict.get(item, 0), item))
+            else:
+                self.work_list.append(item)
+            self.all_data.add(item)
+
     def fast_add(self, item):
         if item not in self.all_data:
-            self.work_list.append(item)
-            self.all_data.add(item)
+            self._add_with_priority(item)
         return self
 
     def add(self, data):
         if hasattr(data, '__iter__'):
             for node in data:
                 if node not in self.all_data:
-                    self.all_data.add(node)
-                    self.work_list.append(node)
+                    self._add_with_priority(node)
             return self
 
         if data not in self.all_data:
-            self.all_data.add(data)
-            self.work_list.append(data)
+            self._add_with_priority(data)
 
         return self
 
@@ -276,20 +296,29 @@ class SimpleWorkList:
         if len(self.work_list) <= 0:
             return None
 
-        result = self.work_list.pop(0)
+        result = self.work_list.pop()
+        if isinstance(result, tuple):
+            result = result[1]
         if result in self.all_data:
             self.all_data.remove(result)
         return result
 
     def insert_to_first(self, stmt_id):
-        self.work_list.insert(0, stmt_id)
+        if self.priority_dict:
+            heapq.heappush(self.work_list, (0, stmt_id))
+        else:
+            self.work_list.insert(0, stmt_id)
         self.all_data.add(stmt_id)
 
     def peek(self):
         if len(self.work_list) <= 0:
             return None
 
-        return self.work_list[0]
+        result = self.work_list[0]
+        if isinstance(result, tuple):
+            result = result[1]
+
+        return result
 
     def __len__(self):
         return len(self.work_list)
@@ -1543,7 +1572,7 @@ class ComputeFrame(MetaComputeFrame):
         self.interruption_flag = False
         self.interruption_data: InterruptionData = None
 
-        self.stmt_worklist = SimpleWorkList()
+        self.stmt_worklist = None
         self.symbol_changed_stmts = SimpleSet()
         self.stmt_id_to_stmt = {}
         self.stmt_id_to_status: dict[int, StmtStatus] = {}

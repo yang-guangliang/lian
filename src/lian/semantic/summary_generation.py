@@ -24,6 +24,7 @@ import lian.apps.event_return as er
 from lian.apps.app_template import EventData
 from lian.semantic.semantic_structure import (
     AccessPoint,
+    SimpleWorkList,
     StateDefNode,
     Symbol,
     State,
@@ -148,6 +149,7 @@ class SemanticSummaryGeneration:
         if util.is_empty(frame.cfg):
             return
 
+        frame.stmt_worklist = SimpleWorkList(cfg = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
         frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
 
