@@ -258,11 +258,10 @@ class SimpleWorkList:
         if self.cfg:
             first_nodes = util.find_cfg_first_nodes(self.cfg)
             if first_nodes:
-                cfg_order = reversed(
-                    list(
-                        nx.dfs_postorder_nodes(self.cfg, source=first_nodes[0])
-                    )
-                )
+                cfg_order = list(reversed(list(
+                    nx.dfs_postorder_nodes(self.cfg, source=first_nodes[0])
+                )))
+
                 self.priority_dict = {
                     node: idx for idx, node in enumerate(cfg_order)
                 }
@@ -285,6 +284,7 @@ class SimpleWorkList:
             for node in data:
                 if node not in self.all_data:
                     self._add_with_priority(node)
+
             return self
 
         if data not in self.all_data:
@@ -296,7 +296,7 @@ class SimpleWorkList:
         if len(self.work_list) <= 0:
             return None
 
-        result = self.work_list.pop()
+        result = self.work_list.pop(0)
         if isinstance(result, tuple):
             result = result[1]
         if result in self.all_data:
