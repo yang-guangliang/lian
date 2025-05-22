@@ -130,7 +130,10 @@ class Resolver:
                 return default_return
             import_info = export_symbols.query_first(export_symbols.name == symbol.name)
             if import_info:
-                return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
+                if import_info.source_symbol_id == -1:
+                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_module_id)
+                else:
+                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
             else:
                 return SourceSymbolScopeInfo(unit_id, symbol_id)
 
