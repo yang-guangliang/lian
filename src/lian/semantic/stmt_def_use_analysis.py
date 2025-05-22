@@ -171,7 +171,11 @@ class StmtDefUseAnalysis:
                 if defined_symbol_name not in self.tmp_variable_to_define:
                     self.tmp_variable_to_define[defined_symbol_name] = stmt_id
 
-            if is_parameter_decl_stmt:
+                defined_symbol.source_unit_id = self.unit_id
+                defined_symbol.symbol_id = self.tmp_variable_to_define[defined_symbol_name]
+                self.frame.method_def_use_summary.local_symbol_ids.add(defined_symbol.symbol_id)
+
+            elif is_parameter_decl_stmt:
                 defined_symbol.source_unit_id = self.unit_id
                 defined_symbol.symbol_id = stmt_id
 
@@ -179,55 +183,52 @@ class StmtDefUseAnalysis:
                     frame.symbol_to_define[stmt_id] = set()
                 frame.symbol_to_define[stmt_id].add(stmt_id)
 
-            else:
-                if is_decl_stmt:
-                    defined_symbol.source_unit_id = self.unit_id
-                    defined_symbol.symbol_id = stmt_id
-                    return
+            elif is_decl_stmt:
+                defined_symbol.source_unit_id = self.unit_id
+                defined_symbol.symbol_id = stmt_id
+                return
 
-                    defined_symbol.source_unit_id = self.unit_id
-                    defined_symbol.symbol_id = self.tmp_variable_to_define[defined_symbol_name]
-                    self.frame.method_def_use_summary.local_symbol_ids.add(defined_symbol.symbol_id)
+            elif defined_symbol_name == LianInternal.THIS:
+                defined_symbol.source_unit_id = self.unit_id
+                defined_symbol.symbol_id = config.BUILTIN_THIS_SYMBOL_ID
+                self.frame.method_def_use_summary.defined_this_symbol_id.add(defined_symbol.symbol_id)
 
-                elif defined_symbol_name == LianInternal.THIS:
-                    defined_symbol.source_unit_id = self.unit_id
-                    defined_symbol.symbol_id = config.BUILTIN_THIS_SYMBOL_ID
-                    self.frame.method_def_use_summary.defined_this_symbol_id.add(defined_symbol.symbol_id)
-                elif defined_symbol_name == LianInternal.OBJECT:
-                    defined_symbol.source_unit_id = self.unit_id
-                    defined_symbol.symbol_id = config.BUILTIN_OBJECT_SYMBOL_ID
-                else:
-                    if stmt.operation in ["nonlocal_stmt", "global_stmt"]:
-                        if stmt.operation == "global_stmt":
-                            source_info = self.resolver.resolve_symbol_source(
-                                self.unit_id, self.method_id, stmt_id, stmt, defined_symbol,
-                                source_symbol_must_be_global = True
-                            )
-                        else:
-                            source_info = self.resolver.resolve_symbol_source(
-                                self.unit_id, self.method_id, stmt_id, stmt, defined_symbol,
-                                source_symbol_must_be_global = False
-                            )
-                        if util.is_available(source_info):
-                            defined_symbol.source_unit_id = source_info.source_unit_id
-                            defined_symbol.symbol_id = source_info.symbol_id
+            elif defined_symbol_name == LianInternal.OBJECT:
+                defined_symbol.source_unit_id = self.unit_id
+                defined_symbol.symbol_id = config.BUILTIN_OBJECT_SYMBOL_ID
 
-                        # Finishing nonlocal and global statements
-                        return
-
+            elif stmt.operation in ["nonlocal_stmt", "global_stmt"]:
+                if stmt.operation == "global_stmt":
                     source_info = self.resolver.resolve_symbol_source(
-                        self.unit_id, self.method_id, stmt.stmt_id, stmt, defined_symbol
+                        self.unit_id, self.method_id, stmt_id, stmt, defined_symbol,
+                        source_symbol_must_be_global = True
                     )
-                    if util.is_available(source_info):
-                        defined_symbol.source_unit_id = source_info.source_unit_id
-                        symbol_id = source_info.symbol_id
-                        defined_symbol.symbol_id = symbol_id
-                        if symbol_id not in frame.symbol_to_define:
-                            frame.symbol_to_define[symbol_id] = set()
-                        frame.symbol_to_define[symbol_id].add(stmt_id)
-                        if symbol_id not in self.frame.method_def_use_summary.local_symbol_ids:
-                            self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
-                    source_info = None
+                else:
+                    source_info = self.resolver.resolve_symbol_source(
+                        self.unit_id, self.method_id, stmt_id, stmt, defined_symbol,
+                        source_symbol_must_be_global = False
+                    )
+                if util.is_available(source_info):
+                    defined_symbol.source_unit_id = source_info.source_unit_id
+                    defined_symbol.symbol_id = source_info.symbol_id
+
+                # Finishing nonlocal and global statements
+                return
+
+            else:
+                source_info = self.resolver.resolve_symbol_source(
+                    self.unit_id, self.method_id, stmt.stmt_id, stmt, defined_symbol
+                )
+                if util.is_available(source_info):
+                    defined_symbol.source_unit_id = source_info.source_unit_id
+                    symbol_id = source_info.symbol_id
+                    defined_symbol.symbol_id = symbol_id
+                    if symbol_id not in frame.symbol_to_define:
+                        frame.symbol_to_define[symbol_id] = set()
+                    frame.symbol_to_define[symbol_id].add(stmt_id)
+                    if symbol_id not in self.frame.method_def_use_summary.local_symbol_ids:
+                        self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
+                source_info = None
 
         for used_symbol_index in status.used_symbols:
             used_symbol = self.symbol_state_space[used_symbol_index]
