@@ -472,9 +472,6 @@ class ImportHierarchy:
         elif hasattr(stmt, 'module_path'):
             source = stmt.module_path
         # format: < import name as alias >
-        print(stmt.name)
-        print(9999999999999999999999999)
-        print(source)
 
         if source == ""or source == ".":
             module_ids_result = self.loader.parse_import_module_path(stmt.name)
