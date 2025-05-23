@@ -39,7 +39,8 @@ from lian.semantic.semantic_structure import (
     MethodSummaryTemplate,
     IndexMapInSummary,
     SymbolStateSpace,
-    LastSymbolDefNode
+    LastSymbolDefNode,
+    CountStmtDefStateNode
 )
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
@@ -219,22 +220,26 @@ class SemanticSummaryGeneration:
 
     def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set()):
         """
-        更新语句的输出状态位，处理新定义的状态集合。
-        根据新旧状态差异调整输出位向量。
+        为每个defined_states创建一个StateDefNode，并更新out_state_bits，(kill/gen也在这个过程中进行)。
+        如果该语句有defined_symbol且defined_symbol没有任何state，说明没解析出来，人为创建一个UNSOLVED的state给defined_symbol。
+        输出这句语句产生的new_states的集合(超出原来state_space长度的states)。
         """
+        # 这条语句新产生的状态
         new_defined_state_set = set()
         for index in status.defined_states:
             if index >= old_index_ceiling: # newly generated states
                 new_defined_state_set.add(index)
 
-        # print("@update_out_states new_defined_state_set", new_defined_state_set)
         if old_status_defined_states:
             defined_states = old_status_defined_states
             if not new_defined_state_set:
                 new_defined_state_set = old_status_defined_states
         else:
             defined_states = status.defined_states
+
         state_current_bits = status.in_state_bits
+
+        # 为每个defined_state创建一个StateDefNode，并更新out_state_bits
         for defined_state_index in defined_states:
             defined_state: State = frame.symbol_state_space[defined_state_index]
             if not isinstance(defined_state, State):
@@ -245,6 +250,7 @@ class SemanticSummaryGeneration:
             state_current_bits = self.update_current_state_bit(state_node, frame, state_current_bits, new_defined_state_set)
         status.out_state_bits = state_current_bits
 
+        # 若本句语句的defined_symbol没有被解析出任何状态，生成一个UNSOLVED状态给它。并不加入到out_state_bits
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
             if isinstance(defined_symbol, Symbol) and len(defined_symbol.states) == 0:
                 new_state = State(
@@ -253,7 +259,9 @@ class SemanticSummaryGeneration:
                     state_type = StateTypeKind.UNSOLVED
                 )
                 defined_symbol.states.add(frame.symbol_state_space.add(new_state))
-
+                print("本句语句的defined_symbol没有被解析出任何状态,生成一个UNSOLVED状态给它",defined_symbol.states)
+        
+        print("@update_out_states new_defined_state_set", new_defined_state_set)
         return new_defined_state_set
 
     def update_symbols_if_changed(
@@ -732,14 +740,13 @@ class SemanticSummaryGeneration:
 
     def adjust_computation_results(self, stmt_id, frame, status: StmtStatus, old_index_ceiling):
         """
-        调整计算结果，处理状态和符号的最新状态。
+        一条语句处理完后，将该语句的所有defined_symbol.states和status.defined_states更新到最新版本。
         """
         available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
         for defined_symbol_index in [status.defined_symbol, *status.implicitly_defined_symbols]:
             defined_symbol = frame.symbol_state_space[defined_symbol_index]
             if not isinstance(defined_symbol, Symbol):
                 continue
-
             adjusted_states = self.resolver.collect_newest_states_by_state_indexes(
                 frame, stmt_id, defined_symbol.states, available_state_defs, old_index_ceiling
             )
@@ -811,7 +818,7 @@ class SemanticSummaryGeneration:
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
 
-        self.collect_def_states_amount_each_stmt(stmt_id, len(new_out_states))
+        self.collect_def_states_amount_each_stmt(stmt_id, len(new_out_states),in_states)
                 
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
@@ -1149,36 +1156,39 @@ class SemanticSummaryGeneration:
     def reversed_methods_by_unit_id(self, methods):
         return reversed(self.sort_methods_by_unit_id(methods))
 
-    def collect_def_states_amount_each_stmt(self, stmt_id, new_out_states_len):
-        if stmt_id not in self.count_stmt_def_states:
-            self.count_stmt_def_states[stmt_id] = 0
-        self.count_stmt_def_states[stmt_id] += new_out_states_len
-        
+    def collect_def_states_amount_each_stmt(self, stmt_id, new_out_states_len, in_states):
         stmt = self.loader.load_stmt_gir(stmt_id)
         op = stmt.operation
+
+        if stmt_id not in self.count_stmt_def_states:
+            self.count_stmt_def_states[stmt_id] = CountStmtDefStateNode(stmt_id, op, in_states)
+        self.count_stmt_def_states[stmt_id].add_new_states_count(new_out_states_len)
+        
         if op not in self.count_stmt_op_def_states:
             self.count_stmt_op_def_states[op] = 0
         self.count_stmt_op_def_states[op] += new_out_states_len       
+
 
     def print_count_stmt_def_states(self):
         """
         打印summary_generation阶段，每条语句产生的new_out_states数量，倒序排列
         """
         print("统计产生的new_out_states的数量——————￥￥￥￥￥￥￥￥￥￥￥￥")
+        filtered_stmts_nodes = [node for node in self.count_stmt_def_states.values() if node.new_out_states_len >= 5]
+        sorted_stmts_nodes = sorted(filtered_stmts_nodes, key=lambda x: x.new_out_states_len, reverse=True)
+        for node in sorted_stmts_nodes:
+            # node.print_as_beautiful_dict()
+            node.print_as_dict()
+
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+
         sorted_ops = sorted(
             self.count_stmt_op_def_states.items(),
             key=lambda x: x[1],
             reverse=True
         )        
-        sorted_stmts = sorted(
-            self.count_stmt_def_states.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )       
-        pprint.pprint(sorted_stmts)
         pprint.pprint(sorted_ops)
             
-
     def run(self):
         """
         执行语义摘要生成的主流程：
