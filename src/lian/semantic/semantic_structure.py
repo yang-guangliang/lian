@@ -247,7 +247,7 @@ class ImportStmtInfo:
 
 
 class SimpleWorkList:
-    def __init__(self, init_data = [], cfg = None):
+    def __init__(self, init_data = [], cfg = None, entry_node = None):
         self.work_list = []
         self.all_data = set()
         self.cfg = cfg
@@ -256,13 +256,16 @@ class SimpleWorkList:
             self.add(init_data)
 
         if self.cfg:
-            first_nodes = util.find_cfg_first_nodes(self.cfg)
-            if first_nodes:
-                cfg_order = reversed(
-                    list(
-                        nx.dfs_postorder_nodes(self.cfg, source=first_nodes[0])
-                    )
-                )
+            if not entry_node:
+                first_nodes = util.find_cfg_first_nodes(self.cfg)
+                if first_nodes:
+                    entry_node = first_nodes[0]
+
+            if entry_node:
+                cfg_order = list(reversed(list(
+                    nx.dfs_postorder_nodes(self.cfg, source = entry_node)
+                )))
+
                 self.priority_dict = {
                     node: idx for idx, node in enumerate(cfg_order)
                 }
@@ -285,6 +288,7 @@ class SimpleWorkList:
             for node in data:
                 if node not in self.all_data:
                     self._add_with_priority(node)
+
             return self
 
         if data not in self.all_data:
@@ -296,7 +300,7 @@ class SimpleWorkList:
         if len(self.work_list) <= 0:
             return None
 
-        result = self.work_list.pop()
+        result = self.work_list.pop(0)
         if isinstance(result, tuple):
             result = result[1]
         if result in self.all_data:
@@ -335,7 +339,10 @@ class SimpleWorkList:
 
     def __getitem__(self, index):
         if index >= 0 and index < len(self.work_list):
-            return self.work_list[index]
+            result = self.work_list[index]
+            if isinstance(result, tuple):
+                result = result[1]
+            return result
         return None
 
     def __contains__(self, index):
@@ -1567,7 +1574,6 @@ class ComputeFrame(MetaComputeFrame):
 
         self.stmt_def_use_analysis = None
         self.stmt_state_analysis = None
-        self.dynamic_content_analysis = None
 
         self.interruption_flag = False
         self.interruption_data: InterruptionData = None
