@@ -220,24 +220,26 @@ class SemanticSummaryGeneration:
 
         return current_bits
 
-    def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set()):
+    def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set(), new_defined_state_set = set()):
         """
         为每个defined_states创建一个StateDefNode，并更新out_state_bits，(kill/gen也在这个过程中进行)。
         如果该语句有defined_symbol且defined_symbol没有任何state，说明没解析出来，人为创建一个UNSOLVED的state给defined_symbol。
         输出这句语句产生的new_states的集合(超出原来state_space长度的states)。
         """
         # 这条语句新产生的状态
-        new_defined_state_set = set()
-        for index in status.defined_states:
-            if index >= old_index_ceiling: # newly generated states
-                new_defined_state_set.add(index)
+        # new_defined_state_set = set()
+        # for index in status.defined_states:
+        #     if index >= old_index_ceiling: # newly generated states
+        #         new_defined_state_set.add(index)
 
-        if old_status_defined_states:
-            defined_states = old_status_defined_states
-            if not new_defined_state_set:
-                new_defined_state_set = old_status_defined_states
-        else:
-            defined_states = status.defined_states
+        # if old_status_defined_states:
+        #     defined_states = old_status_defined_states
+        #     if not new_defined_state_set:
+        #         new_defined_state_set = old_status_defined_states
+        # else:
+        #     defined_states = status.defined_states
+
+        defined_states = new_defined_state_set
 
         state_current_bits = status.in_state_bits
 
@@ -263,8 +265,8 @@ class SemanticSummaryGeneration:
                 defined_symbol.states.add(frame.symbol_state_space.add(new_state))
                 print("本句语句的defined_symbol没有被解析出任何状态,生成一个UNSOLVED状态给它",defined_symbol.states)
 
-        print("@update_out_states new_defined_state_set", new_defined_state_set)
-        return new_defined_state_set
+        # print("@update_out_states new_defined_state_set", new_defined_state_set)
+        # return new_defined_state_set
 
     def update_symbols_if_changed(
         self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_in_symbol_bits, old_out_symbol_bits, def_changed = False, use_changed = False
@@ -744,6 +746,8 @@ class SemanticSummaryGeneration:
         """
         一条语句处理完后，将该语句的所有defined_symbol.states和status.defined_states更新到最新版本。
         """
+        all_new_states = set()
+
         available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
         for defined_symbol_index in [status.defined_symbol, *status.implicitly_defined_symbols]:
             defined_symbol = frame.symbol_state_space[defined_symbol_index]
@@ -758,6 +762,10 @@ class SemanticSummaryGeneration:
             #     print(f"adjusted_states: {adjusted_states}")
             defined_symbol.states = adjusted_states
 
+            for index in adjusted_states:
+                if index >= old_index_ceiling:
+                    all_new_states.add(index)
+
         adjusted_states = self.resolver.collect_newest_states_by_state_indexes(
             frame, stmt_id, status.defined_states, available_state_defs, old_index_ceiling
         )
@@ -765,6 +773,12 @@ class SemanticSummaryGeneration:
         #     print(f"status.defined_states: {status.defined_states}")
         #     print(f"adjusted_states: {adjusted_states}")
         status.defined_states = adjusted_states
+
+        for index in adjusted_states:
+            if index >= old_index_ceiling:
+                all_new_states.add(index)
+
+        return all_new_states
 
     def compute_states(self, stmt_id, stmt, frame: ComputeFrame):
         """
@@ -817,8 +831,8 @@ class SemanticSummaryGeneration:
             print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
-        self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
+        new_out_states = self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
+        self.update_out_states(stmt_id, frame, status, old_index_ceiling, new_out_states)
 
         self.collect_def_states_amount_each_stmt(stmt_id, len(new_out_states),in_states)
 
