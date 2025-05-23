@@ -172,11 +172,10 @@ class Resolver:
         self, frame: ComputeFrame, stmt_id, state_index_set: set, available_state_defs, old_index_ceiling: int = -1
     ):
         """
-        收集最新状态索引：
-        1. 区分新旧索引范围
-        2. 转换状态索引到ID
-        3. 筛选有效状态定义
-        4. 合并新旧状态索引
+        给定一组state_index的集合。收集其中所有states的最新状态。states可以分为两种情况。
+        ①如果state_index超过原来state_space的长度(old_index_ceiling)，意味着它是本句语句新创建出的state，加入到newest_remaining集合，直接返回。
+        ②如果state_index在原来state_space的长度内，则收集其所有的state_id。最后遍历state_id，从frame.state_to_define和available_state_defs共同取出该state_id在这一句时的最新state(**如果没找到就返回自己**)。
+        最后将①和②都返回。
         """
         newest_remaining = set()
         state_index_set_copy = set()
@@ -213,6 +212,8 @@ class Resolver:
                             result.add(each_def.index)
                 else:
                     result.add(state_index)
+            
+            # 如果不在frame.state_to_define中，就返回自身
             else:
                 result.add(state_index)
         # print(f"result: {result}")
