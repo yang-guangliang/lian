@@ -251,7 +251,7 @@ class StmtStateAnalysis:
             self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
             self.frame.all_state_defs.add(state_def_node)
 
-        status.defined_states.add(index)
+        # status.defined_states.add(index)
 
         # 如果新建的state是基于我们在generate_external_state里手动给的state，说明该symbol也被我们define了，需添加到define集合中
         if overwritten_flag and source_state_id in self.frame.initial_state_to_external_symbol:
@@ -721,46 +721,49 @@ class StmtStateAnalysis:
         data_type2 = state2.data_type
         operator = stmt.operator
 
-        if state_type1 == state_type2 == StateTypeKind.REGULAR:
-            data_type = state1.data_type
-            if value1 and type_table.is_builtin_type(data_type1) \
-                and value2 and type_table.is_builtin_type(data_type2):
-                tmp_value1 = value1
-                tmp_value2 = value2
+        if not state_type1 == state_type2 == StateTypeKind.REGULAR:
+            return set()
+        data_type = state1.data_type
+        if value1 and type_table.is_builtin_type(data_type1) \
+            and value2 and type_table.is_builtin_type(data_type2):
+            tmp_value1 = value1
+            tmp_value2 = value2
 
-                is_string = False
-                if data_type1 == LianInternal.STRING:
-                    if not value1.isdigit():
+            is_string = False
+            if data_type1 == LianInternal.STRING:
+                if not value1.isdigit():
+                    is_string = True
+            if not is_string:
+                if data_type2 == LianInternal.STRING:
+                    if not value2.isdigit():
                         is_string = True
-                if not is_string:
-                    if data_type2 == LianInternal.STRING:
-                        if not value2.isdigit():
-                            is_string = True
 
-                if is_string:
-                    tmp_value1 = f'"{tmp_value1}"'
-                    tmp_value2 = f'"{tmp_value2}"'
-                    data_type = LianInternal.STRING
-                else:
-                    is_float = False
-                    if data_type1 == LianInternal.FLOAT or data_type2 == LianInternal.FLOAT:
-                        is_float = True
-                        data_type = LianInternal.FLOAT
-                    else:
-                        data_type = LianInternal.INT
-
-                    tmp_value1 = f'{tmp_value1}'
-                    tmp_value2 = f'{tmp_value2}'
-
-                try:
-                    #print(tmp_value1, tmp_value2, operator)
-                    value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
-                except:
-                    value = ""
-
+            if is_string:
+                tmp_value1 = f'"{tmp_value1}"'
+                tmp_value2 = f'"{tmp_value2}"'
+                data_type = LianInternal.STRING
             else:
+                is_float = False
+                if data_type1 == LianInternal.FLOAT or data_type2 == LianInternal.FLOAT:
+                    is_float = True
+                    data_type = LianInternal.FLOAT
+                else:
+                    data_type = LianInternal.INT
+
+                tmp_value1 = f'{tmp_value1}'
+                tmp_value2 = f'{tmp_value2}'
+
+            try:
+                #print(tmp_value1, tmp_value2, operator)
+                value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
+            except:
+                # value = ""
                 value = str(value1) + str(operator) + str(value2)
                 data_type = LianInternal.STRING
+
+            # else:
+            #     value = str(value1) + str(operator) + str(value2)
+            #     data_type = LianInternal.STRING
 
             result_state_index = self.create_state_and_add_space(
                 status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id, value=value, data_type=data_type,
@@ -817,22 +820,27 @@ class StmtStateAnalysis:
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
 
+        source_symbol_id = -1
+        if isinstance(operand_symbol, Symbol):
+            source_symbol_id = operand_symbol.symbol_id        
         new_states = set()
         # only one operand
         if util.isna(stmt.operand2):
             # compute unary operation
+            # 形如 a = b
             if util.isna(stmt.operator):
                 # print(">>>>>", stmt_id, stmt)
                 # print(operand_states)
                 defined_symbol.states = operand_states
                 return P2ResultFlag()
 
+            # 形如 a = -b
             for operand_state_index in operand_states:
                 operand_state = self.frame.symbol_state_space[operand_state_index]
                 if not isinstance(operand_state, State):
                     continue
 
-                if operand_state.value:
+                if not util.is_empty(operand_state.value):
                     try:
                         value = util.strict_eval(f"{stmt.operator} {operand_state.value}")
                         data_type = operand_state.data_type
@@ -840,24 +848,21 @@ class StmtStateAnalysis:
                         value = None
                         data_type = ""
                         # continue?
-                    source_symbol_id = -1
-                    if isinstance(operand_symbol, Symbol):
-                        source_symbol_id = operand_symbol.symbol_id
                     state_index = self.create_state_and_add_space(
                         status, stmt.stmt_id,
                         source_symbol_id=source_symbol_id,
                         source_state_id=operand_state.source_state_id,
                         value=value,
                         data_type = data_type,
-                        access_path=self.copy_and_extend_access_path(
-                            operand_state.access_path,
-                            AccessPoint(
-                                kind = AccessPointKind.BINARY_ASSIGN,
-                                key=defined_symbol.name
-                            )
-                        )
+                        # access_path=self.copy_and_extend_access_path(
+                        #     operand_state.access_path,
+                        #     AccessPoint(
+                        #         kind = AccessPointKind.BINARY_ASSIGN,
+                        #         key=defined_symbol.name
+                        #     )
+                        # )
                     )
-                    self.update_access_path_state_id(state_index)
+                    # self.update_access_path_state_id(state_index)
                     new_states.add(state_index)
                 # else:
                 #     new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, operand_state_index)
@@ -870,12 +875,14 @@ class StmtStateAnalysis:
                 #     )
                 #     self.update_access_path_state_id(new_operand_state_index)
                 #     new_states.add(new_operand_state_index)
-
+            # 保证defined_symbol.states中有东西
             if not new_states:
                 state_index = self.create_state_and_add_space(
                         status, stmt.stmt_id,
-                        source_symbol_id=-1111111111111111,
-                        source_state_id=operand_state.source_state_id,
+                        value = None,
+                        data_type = "",                        
+                        source_symbol_id = source_symbol_id,
+                        state_type =  StateTypeKind.ANYTHING
                     )
                 new_states = {state_index}
             defined_symbol.states = new_states
@@ -889,10 +896,13 @@ class StmtStateAnalysis:
             operand_state = self.frame.symbol_state_space[operand_state_index]
             if not isinstance(operand_state, State):
                 continue
-
+            if operand_state.state_type != StateTypeKind.REGULAR:
+                continue
             for operand2_state_index in operand2_states:
                 operand2_state = self.frame.symbol_state_space[operand2_state_index]
                 if not isinstance(operand2_state, State):
+                    continue
+                if operand2_state.state_type != StateTypeKind.REGULAR:
                     continue
 
                 # if operand_state.state_type == StateTypeKind.ANYTHING or operand2_state.state_type == StateTypeKind.ANYTHING:
@@ -913,12 +923,14 @@ class StmtStateAnalysis:
                         stmt, operand_state, operand2_state, defined_symbol
                     )
                 )
+        # 保证defined_symbol.states不为空
         if not new_states:
             state_index = self.create_state_and_add_space(
                     status, stmt.stmt_id,
-                    source_symbol_id=-11111111111,
-                    source_state_id=operand_state.source_state_id,
-                    
+                    value = None,
+                    data_type = "",                        
+                    source_symbol_id = source_symbol_id,
+                    state_type =  StateTypeKind.ANYTHING
                 )
             new_states = {state_index}        
         defined_symbol.states = new_states
@@ -1692,7 +1704,9 @@ class StmtStateAnalysis:
         # print("callee_summary")
         # pprint.pprint(callee_summary)
         # print("callee_compact_space")
+        # print(len(callee_compact_space))
         # pprint.pprint(callee_compact_space)
+
         status = self.frame.stmt_id_to_status[stmt_id]
         # append callee space to caller space
         self.frame.symbol_state_space.append_space_copy(callee_compact_space)
