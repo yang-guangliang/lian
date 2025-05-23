@@ -252,6 +252,7 @@ class StmtStateAnalysis:
             self.frame.all_state_defs.add(state_def_node)
 
         # status.defined_states.add(index)
+        # status.defined_states.add(index)
 
         # 如果新建的state是基于我们在generate_external_state里手动给的state，说明该symbol也被我们define了，需添加到define集合中
         if overwritten_flag and source_state_id in self.frame.initial_state_to_external_symbol:
