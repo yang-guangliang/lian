@@ -773,35 +773,36 @@ class StmtStateAnalysis:
 
             return {result_state_index}
 
-        state_type = StateTypeKind.ANYTHING
-        if StateTypeKind.UNSOLVED in (state_type1, state_type2):
-            state_type = StateTypeKind.UNSOLVED
+        # state_type = StateTypeKind.ANYTHING
+        # if StateTypeKind.UNSOLVED in (state_type1, state_type2):
+        #     state_type = StateTypeKind.UNSOLVED
 
-        state_index1 = self.create_state_and_add_space(
-            status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-            data_type = f"{data_type1}/{data_type2}", state_type = state_type,
-            access_path=self.copy_and_extend_access_path(
-                state1.access_path,
-                AccessPoint(
-                    kind = AccessPointKind.BINARY_ASSIGN,
-                    key=defined_symbol.name
-                )
-            )
-        )
-        self.update_access_path_state_id(state_index1)
-        # state_index2 = self.create_state_and_add_space(
+        # state_index1 = self.create_state_and_add_space(
         #     status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-        #     data_type = data_type2, state_type = state_type,
+        #     data_type = f"{data_type1}/{data_type2}", state_type = state_type,
         #     access_path=self.copy_and_extend_access_path(
-        #         state2.access_path,
+        #         state1.access_path,
         #         AccessPoint(
         #             kind = AccessPointKind.BINARY_ASSIGN,
         #             key=defined_symbol.name
         #         )
         #     )
         # )
-        # self.update_access_path_state_id(state_index2)
-        return {state_index1}
+        # self.update_access_path_state_id(state_index1)
+        # # state_index2 = self.create_state_and_add_space(
+        # #     status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
+        # #     data_type = data_type2, state_type = state_type,
+        # #     access_path=self.copy_and_extend_access_path(
+        # #         state2.access_path,
+        # #         AccessPoint(
+        # #             kind = AccessPointKind.BINARY_ASSIGN,
+        # #             key=defined_symbol.name
+        # #         )
+        # #     )
+        # # )
+        # # self.update_access_path_state_id(state_index2)
+        # return {state_index1}
+        return set()
 
     def assign_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
@@ -838,6 +839,7 @@ class StmtStateAnalysis:
                     except:
                         value = None
                         data_type = ""
+                        # continue?
                     source_symbol_id = -1
                     if isinstance(operand_symbol, Symbol):
                         source_symbol_id = operand_symbol.symbol_id
@@ -857,18 +859,25 @@ class StmtStateAnalysis:
                     )
                     self.update_access_path_state_id(state_index)
                     new_states.add(state_index)
-                else:
-                    new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, operand_state_index)
-                    new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
-                    new_operand_state.access_path.append(
-                        AccessPoint(
-                            kind = AccessPointKind.BINARY_ASSIGN,
-                            key=defined_symbol.name
-                        )
-                    )
-                    self.update_access_path_state_id(new_operand_state_index)
-                    new_states.add(new_operand_state_index)
+                # else:
+                #     new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, operand_state_index)
+                #     new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
+                #     new_operand_state.access_path.append(
+                #         AccessPoint(
+                #             kind = AccessPointKind.BINARY_ASSIGN,
+                #             key=defined_symbol.name
+                #         )
+                #     )
+                #     self.update_access_path_state_id(new_operand_state_index)
+                #     new_states.add(new_operand_state_index)
 
+            if not new_states:
+                state_index = self.create_state_and_add_space(
+                        status, stmt.stmt_id,
+                        source_symbol_id=-1111111111111111,
+                        source_state_id=operand_state.source_state_id,
+                    )
+                new_states = {state_index}
             defined_symbol.states = new_states
             return P2ResultFlag()
 
@@ -886,24 +895,32 @@ class StmtStateAnalysis:
                 if not isinstance(operand2_state, State):
                     continue
 
-                if operand_state.state_type == StateTypeKind.ANYTHING or operand2_state.state_type == StateTypeKind.ANYTHING:
-                    new_operand_state_index = self.create_state_and_add_space(status, stmt_id)
-                    new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
-                    new_operand_state.access_path.append(
-                        AccessPoint(
-                            kind = AccessPointKind.BINARY_ASSIGN,
-                            key=defined_symbol.name
-                        )
-                    )
-                    self.update_access_path_state_id(new_operand_state_index)
-                    defined_symbol.states = {new_operand_state_index}
-                    return P2ResultFlag()
+                # if operand_state.state_type == StateTypeKind.ANYTHING or operand2_state.state_type == StateTypeKind.ANYTHING:
+                #     new_operand_state_index = self.create_state_and_add_space(status, stmt_id)
+                #     new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
+                #     new_operand_state.access_path.append(
+                #         AccessPoint(
+                #             kind = AccessPointKind.BINARY_ASSIGN,
+                #             key=defined_symbol.name
+                #         )
+                #     )
+                #     self.update_access_path_state_id(new_operand_state_index)
+                #     defined_symbol.states = {new_operand_state_index}
+                #     return P2ResultFlag()
 
                 new_states.update(
                     self.compute_two_states(
                         stmt, operand_state, operand2_state, defined_symbol
                     )
                 )
+        if not new_states:
+            state_index = self.create_state_and_add_space(
+                    status, stmt.stmt_id,
+                    source_symbol_id=-11111111111,
+                    source_state_id=operand_state.source_state_id,
+                    
+                )
+            new_states = {state_index}        
         defined_symbol.states = new_states
         return P2ResultFlag()
 
