@@ -2979,11 +2979,11 @@ class StmtStateAnalysis:
         new_receiver_symbol.states.discard(receiver_state_index)
         new_receiver_symbol.states.add(new_receiver_state_index)
         
-        if source_index != -1:
-            if new_receiver_state.tangping_flag:
-                defined_states.update(new_receiver_state.tangping_elements)
-            else:    
-                defined_states.add(source_index)
+        # if source_index != -1:
+        #     if new_receiver_state.tangping_flag:
+        #         defined_states.update(new_receiver_state.tangping_elements)
+        #     else:    
+        #         defined_states.add(source_index)
 
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
@@ -3072,7 +3072,7 @@ class StmtStateAnalysis:
                     import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
                     if not import_symbols:
                         continue
-                    
+
                     for import_symbol in import_symbols:
                         if import_symbol.name == field_name:
                             if import_symbol.export_type == ScopeKind.METHOD_SCOPE:
@@ -3097,6 +3097,7 @@ class StmtStateAnalysis:
                             )
                             self.update_access_path_state_id(state_index)
                             each_defined_states.add(state_index)
+                    continue
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_class_decl(each_receiver_state):
@@ -3125,7 +3126,7 @@ class StmtStateAnalysis:
                                 )
                             )
                             self.update_access_path_state_id(state_index)
-                            defined_states.add(state_index)
+                            each_defined_states.add(state_index)
 
                     continue
 
