@@ -1670,6 +1670,7 @@ class P2ResultFlag:
     states_changed: bool = False
     def_changed: bool = False
     use_changed: bool = False
+    unwanted_def_states:set[int] = dataclasses.field(default_factory=set)
     interruption_flag: bool = False
     interruption_data: InterruptionData = None
     condition_path_flag: int = ConditionStmtPathFlag.NO_PATH
@@ -1972,3 +1973,52 @@ class UnionFind:
                 sets[root] = {element}
 
         return sets.values()
+
+@dataclasses.dataclass
+class CountStmtDefStateNode:
+    stmt_id : int
+    stmt_operation : str = ""
+    in_states : set[int] = dataclasses.field(default_factory=set)
+    new_out_states_len : int = 0
+
+    def add_new_states_count(self, len):
+        self.new_out_states_len += len
+        
+
+    def print_as_beautiful_dict(self):
+        ordered_fields = [
+            'new_out_states_len',
+            'stmt_id',
+            'stmt_operation',
+            'in_states'
+        ]
+        node_dict = dataclasses.asdict(self)
+        # 打印头部信息
+        print(f"{'='*20} Node {node_dict['stmt_id']} {'='*20}")
+        # 逐个字段美观打印
+        for field in ordered_fields:
+            value = node_dict[field]
+            # 特殊处理in_states字段，使其更易读
+            if field == 'in_states':
+                print(f"{field:18} :")
+                if isinstance(value, dict):
+                    for key, val in value.items():
+                        print(f"{'':20}{key:6} : {val}")
+                else:
+                    print(f"{'':20}{value}")
+            else:
+                print(f"{field:18} : {value}")
+        # 打印分隔线
+        print(f"{'='*50}")
+
+    def print_as_dict(self):
+        """按照指定顺序打印节点属性"""
+        ordered_fields = [
+            'new_out_states_len',
+            'stmt_id',
+            'stmt_operation',
+            'in_states'
+        ]
+        node_dict = dataclasses.asdict(self)
+        ordered_dict = {field: node_dict[field] for field in ordered_fields}
+        print(ordered_dict)

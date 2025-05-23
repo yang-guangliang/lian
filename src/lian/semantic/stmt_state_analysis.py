@@ -3009,11 +3009,14 @@ class StmtStateAnalysis:
         new_receiver_symbol.states.discard(receiver_state_index)
         new_receiver_symbol.states.add(new_receiver_state_index)
         
-        # if source_index != -1:
-        #     if new_receiver_state.tangping_flag:
-        #         defined_states.update(new_receiver_state.tangping_elements)
-        #     else:    
-        #         defined_states.add(source_index)
+        if source_index != -1:
+            if new_receiver_state.tangping_flag:
+                defined_states.update(new_receiver_state.tangping_elements)
+            else:    
+                defined_states.add(source_index)
+
+        print("source_index",source_index)
+        print("new_receiver_symbol.states",new_receiver_symbol.states)
 
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
@@ -3037,6 +3040,7 @@ class StmtStateAnalysis:
 
         new_receiver_symbol_index = None
         defined_states = set()
+        unwanted_def_states = set()
 
         event = EventData(
             self.lang,
@@ -3098,6 +3102,8 @@ class StmtStateAnalysis:
                     index_set = each_receiver_state.fields.get(field_name, set())
                     each_defined_states.update(index_set)
                     continue
+
+                # if field_name not in receiver_state.fields:
                 elif self.is_state_a_unit(each_receiver_state):
                     import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
                     if not import_symbols:
@@ -3127,9 +3133,9 @@ class StmtStateAnalysis:
                             )
                             self.update_access_path_state_id(state_index)
                             each_defined_states.add(state_index)
+                            unwanted_def_states.add(state_index)
                     continue
 
-                # if field_name not in receiver_state.fields:
                 elif self.is_state_a_class_decl(each_receiver_state):
                     first_found_class_id = -1 # 记录从下往上找到该方法的第一个class_id。最后只返回该class中所有的同名方法，不继续向上找。
                     class_methods = self.loader.load_methods_in_class(each_receiver_state.value)
@@ -3157,9 +3163,10 @@ class StmtStateAnalysis:
                             )
                             self.update_access_path_state_id(state_index)
                             each_defined_states.add(state_index)
-
+                            unwanted_def_states.add(state_index)
                     continue
 
+                # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
                 new_receiver_symbol_index = self.assert_field_read_new_receiver_symbol(
                     new_receiver_symbol_index, status, stmt_id, receiver_symbol
                 )
@@ -3170,7 +3177,8 @@ class StmtStateAnalysis:
             defined_states |= each_defined_states
 
         defined_symbol.states = defined_states
-        return P2ResultFlag()
+        print("ppppppppppppppppp", defined_symbol.states)
+        return P2ResultFlag(unwanted_def_states = unwanted_def_states)
 
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
