@@ -48,6 +48,8 @@ from lian.semantic.stmt_state_analysis import StmtStateAnalysis
 
 # from lian.config.type_table import get_lang_init_script_name
 
+stmt_counts = 0
+
 class SemanticSummaryGeneration:
     def __init__(self, lian):
         """
@@ -1087,6 +1089,13 @@ class SemanticSummaryGeneration:
 
             # move to the next statement
             frame.stmt_counters[stmt_id] += 1
+            global stmt_counts
+            stmt_counts += 1
+            if stmt_counts % 2000 == 0:
+                print(f"第{stmt_counts/2000}轮打印stmt_states情况")
+                self.print_count_stmt_def_states()
+                
+            
             frame.stmt_worklist.pop()
 
     def analyze_method(self, method_id):
