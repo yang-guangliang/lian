@@ -262,7 +262,7 @@ class SemanticSummaryGeneration:
                 )
                 defined_symbol.states.add(frame.symbol_state_space.add(new_state))
                 print("本句语句的defined_symbol没有被解析出任何状态,生成一个UNSOLVED状态给它",defined_symbol.states)
-        
+
         print("@update_out_states new_defined_state_set", new_defined_state_set)
         return new_defined_state_set
 
@@ -821,7 +821,7 @@ class SemanticSummaryGeneration:
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
 
         self.collect_def_states_amount_each_stmt(stmt_id, len(new_out_states),in_states)
-                
+
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
             new_defined_symbol_states = defined_symbol.states
@@ -842,7 +842,7 @@ class SemanticSummaryGeneration:
         # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
 
         return change_flag
-    
+
     def group_states_with_state_ids(self, frame: ComputeFrame, state_indexes: set):
         """
         给定一组state_indexes集合，输出{state_id:states}的映射
@@ -1088,13 +1088,13 @@ class SemanticSummaryGeneration:
 
             # move to the next statement
             frame.stmt_counters[stmt_id] += 1
+
             global stmt_counts
             stmt_counts += 1
             if stmt_counts % 2000 == 0:
                 print(f"第{stmt_counts/2000}轮打印stmt_states情况")
                 self.print_count_stmt_def_states()
-                
-            
+
             frame.stmt_worklist.pop()
 
     def analyze_method(self, method_id):
@@ -1172,10 +1172,10 @@ class SemanticSummaryGeneration:
         if stmt_id not in self.count_stmt_def_states:
             self.count_stmt_def_states[stmt_id] = CountStmtDefStateNode(stmt_id, op, in_states)
         self.count_stmt_def_states[stmt_id].add_new_states_count(new_out_states_len)
-        
+
         if op not in self.count_stmt_op_def_states:
             self.count_stmt_op_def_states[op] = 0
-        self.count_stmt_op_def_states[op] += new_out_states_len       
+        self.count_stmt_op_def_states[op] += new_out_states_len
 
 
     def print_count_stmt_def_states(self):
@@ -1185,19 +1185,24 @@ class SemanticSummaryGeneration:
         print("统计产生的new_out_states的数量——————￥￥￥￥￥￥￥￥￥￥￥￥")
         filtered_stmts_nodes = [node for node in self.count_stmt_def_states.values() if node.new_out_states_len >= 5]
         sorted_stmts_nodes = sorted(filtered_stmts_nodes, key=lambda x: x.new_out_states_len, reverse=True)
+        counter = 0
         for node in sorted_stmts_nodes:
             # node.print_as_beautiful_dict()
+            if counter >= 20:
+                break
+            counter+=1
             node.print_as_dict()
 
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
-        sorted_ops = sorted(
-            self.count_stmt_op_def_states.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )        
-        pprint.pprint(sorted_ops)
-            
+        sorted_ops = sorted(self.count_stmt_op_def_states.items(), key=lambda x: x[1], reverse=True)
+        counter = 0
+        for each_op in sorted_ops:
+            if counter >= 20:
+                break
+            counter+=1
+            print(each_op)
+
     def run(self):
         """
         执行语义摘要生成的主流程：

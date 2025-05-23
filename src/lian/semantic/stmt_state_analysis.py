@@ -198,11 +198,11 @@ class StmtStateAnalysis:
         if self.loader.is_class_decl(state.value):
             return True
         return False
-    
+
     def is_state_a_unit(self, state):
         if state.data_type == LianInternal.UNIT:
             return True
-        
+
     def is_state_a_method_decl(self, state):
         """
         判断状态是否为方法声明：
@@ -247,11 +247,10 @@ class StmtStateAnalysis:
             item.state_id,
             state_def_node
         )
-        if state_def_node not in self.frame.all_state_defs:
-            self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
-            self.frame.all_state_defs.add(state_def_node)
 
-        # status.defined_states.add(index)
+        # if state_def_node not in self.frame.all_state_defs:
+        #     self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
+        #     self.frame.all_state_defs.add(state_def_node)
         # status.defined_states.add(index)
 
         # 如果新建的state是基于我们在generate_external_state里手动给的state，说明该symbol也被我们define了，需添加到define集合中
@@ -263,6 +262,7 @@ class StmtStateAnalysis:
                 self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
+    @profile
     def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index, overwritten_flag = False):
         """复制已有状态并添加到状态空间，更新相关定义信息"""
         state = self.frame.symbol_state_space[state_index]
@@ -722,50 +722,55 @@ class StmtStateAnalysis:
         data_type2 = state2.data_type
         operator = stmt.operator
 
-        if not state_type1 == state_type2 == StateTypeKind.REGULAR:
+        if not (state_type1 == state_type2 == StateTypeKind.REGULAR):
             return set()
+
+        if not (value1 and type_table.is_builtin_type(data_type1) and value2 and type_table.is_builtin_type(data_type2)):
+            return set()
+
+        value = None
         data_type = state1.data_type
-        if value1 and type_table.is_builtin_type(data_type1) \
-            and value2 and type_table.is_builtin_type(data_type2):
-            tmp_value1 = value1
-            tmp_value2 = value2
 
-            is_string = False
-            if data_type1 == LianInternal.STRING:
-                if not value1.isdigit():
+        tmp_value1 = value1
+        tmp_value2 = value2
+
+        is_string = False
+        if data_type1 == LianInternal.STRING:
+            if not value1.isdigit():
+                is_string = True
+        if not is_string:
+            if data_type2 == LianInternal.STRING:
+                if not value2.isdigit():
                     is_string = True
-            if not is_string:
-                if data_type2 == LianInternal.STRING:
-                    if not value2.isdigit():
-                        is_string = True
 
-            if is_string:
-                tmp_value1 = f'"{tmp_value1}"'
-                tmp_value2 = f'"{tmp_value2}"'
-                data_type = LianInternal.STRING
+        if is_string:
+            tmp_value1 = f'"{tmp_value1}"'
+            tmp_value2 = f'"{tmp_value2}"'
+            data_type = LianInternal.STRING
+        else:
+            is_float = False
+            if data_type1 == LianInternal.FLOAT or data_type2 == LianInternal.FLOAT:
+                is_float = True
+                data_type = LianInternal.FLOAT
             else:
-                is_float = False
-                if data_type1 == LianInternal.FLOAT or data_type2 == LianInternal.FLOAT:
-                    is_float = True
-                    data_type = LianInternal.FLOAT
-                else:
-                    data_type = LianInternal.INT
+                data_type = LianInternal.INT
 
-                tmp_value1 = f'{tmp_value1}'
-                tmp_value2 = f'{tmp_value2}'
+            tmp_value1 = f'{tmp_value1}'
+            tmp_value2 = f'{tmp_value2}'
 
-            try:
-                #print(tmp_value1, tmp_value2, operator)
-                value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
-            except:
-                # value = ""
-                value = str(value1) + str(operator) + str(value2)
-                data_type = LianInternal.STRING
+        try:
+            #print(tmp_value1, tmp_value2, operator)
+            value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
+        except:
+            # value = ""
+            value = str(value1) + str(operator) + str(value2)
+            data_type = LianInternal.STRING
 
-            # else:
-            #     value = str(value1) + str(operator) + str(value2)
-            #     data_type = LianInternal.STRING
+        # else:
+        #     value = str(value1) + str(operator) + str(value2)
+        #     data_type = LianInternal.STRING
 
+        if value:
             result_state_index = self.create_state_and_add_space(
                 status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id, value=value, data_type=data_type,
                 access_path = [AccessPoint(
@@ -823,7 +828,7 @@ class StmtStateAnalysis:
 
         source_symbol_id = -1
         if isinstance(operand_symbol, Symbol):
-            source_symbol_id = operand_symbol.symbol_id        
+            source_symbol_id = operand_symbol.symbol_id
         new_states = set()
         # only one operand
         if util.isna(stmt.operand2):
@@ -843,49 +848,52 @@ class StmtStateAnalysis:
 
                 if not util.is_empty(operand_state.value):
                     try:
-                        value = util.strict_eval(f"{stmt.operator} {operand_state.value}")
+                        value = util.strict_eval(f"{stmt.operator}{operand_state.value}")
                         data_type = operand_state.data_type
                     except:
-                        value = None
-                        data_type = ""
-                        # continue?
-                    state_index = self.create_state_and_add_space(
-                        status, stmt.stmt_id,
-                        source_symbol_id=source_symbol_id,
-                        source_state_id=operand_state.source_state_id,
-                        value=value,
-                        data_type = data_type,
-                        # access_path=self.copy_and_extend_access_path(
-                        #     operand_state.access_path,
-                        #     AccessPoint(
-                        #         kind = AccessPointKind.BINARY_ASSIGN,
-                        #         key=defined_symbol.name
-                        #     )
-                        # )
-                    )
+                        # value = None
+                        # data_type = ""
+                        continue
+
+                    # state_index = self.create_state_and_add_space(
+                    #     status, stmt.stmt_id,
+                    #     source_symbol_id=source_symbol_id,
+                    #     source_state_id=operand_state.source_state_id,
+                    #     value=value,
+                    #     data_type = data_type,
+                    #     access_path=self.copy_and_extend_access_path(
+                    #         operand_state.access_path,
+                    #         AccessPoint(
+                    #             kind = AccessPointKind.BINARY_ASSIGN,
+                    #             key=defined_symbol.name
+                    #         )
+                    #     )
+                    # )
                     # self.update_access_path_state_id(state_index)
-                    new_states.add(state_index)
-                # else:
-                #     new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, operand_state_index)
-                #     new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
-                #     new_operand_state.access_path.append(
-                #         AccessPoint(
-                #             kind = AccessPointKind.BINARY_ASSIGN,
-                #             key=defined_symbol.name
-                #         )
-                #     )
-                #     self.update_access_path_state_id(new_operand_state_index)
-                #     new_states.add(new_operand_state_index)
+                    # new_states.add(state_index)
+
+                    new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, operand_state_index)
+                    new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
+                    new_operand_state.value = value
+                    # new_operand_state.access_path.append(
+                    #     AccessPoint(
+                    #         kind = AccessPointKind.BINARY_ASSIGN,
+                    #         key=defined_symbol.name
+                    #     )
+                    # )
+                    #self.update_access_path_state_id(new_operand_state_index)
+                    new_states.add(new_operand_state_index)
             # 保证defined_symbol.states中有东西
-            if not new_states:
-                state_index = self.create_state_and_add_space(
+
+            if len(new_states) == 0:
+                tmp_index = self.create_state_and_add_space(
                         status, stmt.stmt_id,
                         value = None,
-                        data_type = "",                        
+                        data_type = "",
                         source_symbol_id = source_symbol_id,
                         state_type =  StateTypeKind.ANYTHING
                     )
-                new_states = {state_index}
+                new_states = {tmp_index}
             defined_symbol.states = new_states
             return P2ResultFlag()
 
@@ -929,11 +937,11 @@ class StmtStateAnalysis:
             state_index = self.create_state_and_add_space(
                     status, stmt.stmt_id,
                     value = None,
-                    data_type = "",                        
+                    data_type = "",
                     source_symbol_id = source_symbol_id,
                     state_type =  StateTypeKind.ANYTHING
                 )
-            new_states = {state_index}        
+            new_states = {state_index}
         defined_symbol.states = new_states
         return P2ResultFlag()
 
@@ -1250,7 +1258,7 @@ class StmtStateAnalysis:
     def fuse_states_to_one_state(self, state_indexes:set, stmt_id, status: StmtStatus):
         """
         给定一组state_indexes的集合，将这些states进行合并,只产生一个新state，合并了所有children_states
-        """        
+        """
         if util.is_empty(state_indexes) or len(state_indexes) == 1:
             return state_indexes
         new_state_index = self.create_copy_of_state_and_add_space(status,stmt_id, state_indexes.pop())
@@ -1258,15 +1266,15 @@ class StmtStateAnalysis:
         state_array: list[set] = []
         tangping_flag = False
         tangping_elements = set()
-        state_fields = {}        
+        state_fields = {}
         for each_state_index in state_indexes:
             each_state = self.frame.symbol_state_space[each_state_index]
             if not (each_state and isinstance(each_state, State)):
                 continue
             for index in range(len(each_state.array)):
-                util.add_to_list_with_default_set(state_array, index, each_state.array[index])  
+                util.add_to_list_with_default_set(state_array, index, each_state.array[index])
             for field_name in each_state.fields:
-                util.add_to_dict_with_default_set(state_fields, field_name, each_state.fields[field_name])        
+                util.add_to_dict_with_default_set(state_fields, field_name, each_state.fields[field_name])
             tangping_flag |= each_state.tangping_flag
             tangping_elements.update(each_state.tangping_elements)
         new_state.array = state_array
@@ -1296,7 +1304,7 @@ class StmtStateAnalysis:
             # 检查缓存
             if cache_key in cache:
                 return cache[cache_key]
-            
+
             # state_type默认为REGULAR，如果任意一个输入状态的 state_type 是 ANYTHING，则结果也标记为 ANYTHING。
             state_type = StateTypeKind.REGULAR
             # summary_states_fields / arg_state_fields：分别用来收集summary和arg两组状态的字段映射（字段名 → 值集合）。
@@ -1330,7 +1338,7 @@ class StmtStateAnalysis:
                 if not (each_state and isinstance(each_state, State)):
                     continue
                 # print("打印arg_field中的",each_state_index)
-                # pprint.pprint(each_state)            
+                # pprint.pprint(each_state)
                 if each_state.tangping_flag:
                     tangping_flag = True
                     tangping_elements.update(each_state.tangping_elements)
@@ -1699,6 +1707,7 @@ class StmtStateAnalysis:
 
             status.implicitly_defined_symbols.append(index_to_add)
 
+    @profile
     def apply_callee_semantic_summary(self, stmt_id, callee_id, args: MethodCallArguments, callee_summary, callee_compact_space: SymbolStateSpace, this_state_set: set = set()):
         # print("---开始apply_callee_semantic_summary---")
         # print("callee_id", callee_id, self.loader.convert_method_id_to_method_name(callee_id))
@@ -1815,7 +1824,7 @@ class StmtStateAnalysis:
 
         return None
 
-
+    @profile
     def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         call_stmt   target  name    return_type prototype   args
@@ -1896,6 +1905,7 @@ class StmtStateAnalysis:
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )
 
+    @profile
     def compute_target_method_states(self, stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set = set()):
         # Compute callees' summaries
         # TODO 如果method_id空，退出
@@ -2992,6 +3002,7 @@ class StmtStateAnalysis:
             new_receiver_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, receiver_symbol)
         return new_receiver_symbol_index
 
+    @profile
     def change_field_read_receiver_state(
         self, stmt_id, status, new_receiver_symbol_index, receiver_state_index, receiver_state,
         field_name, defined_states, is_tangping = False
@@ -3000,18 +3011,23 @@ class StmtStateAnalysis:
             defined_states.update(receiver_state.tangping_elements)
             return
 
-        if not field_name:
-            is_tangping = True
-
         new_receiver_symbol = self.frame.symbol_state_space[new_receiver_symbol_index]
         new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
         new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
 
-        if is_tangping:
+        if (not field_name) or is_tangping:
             self.make_state_tangping(new_receiver_state)
 
-        source_index = -1
-        if len(defined_states) == 0:
+        if new_receiver_state.tangping_elements:
+            defined_states.update(new_receiver_state.tangping_elements)
+
+        elif defined_states:
+            if receiver_state.tangping_flag:
+                new_receiver_state.tangping_elements.update(defined_states)
+            else:
+                new_receiver_state.fields[field_name] = defined_states
+
+        else:
             source_index = self.create_state_and_add_space(
                 status, stmt_id = stmt_id,
                 source_symbol_id=receiver_state.source_symbol_id,
@@ -3027,29 +3043,70 @@ class StmtStateAnalysis:
             )
             self.update_access_path_state_id(source_index)
 
-        if source_index != -1:
             if new_receiver_state.tangping_flag:
                 new_receiver_state.tangping_elements.add(source_index)
             else:
                 new_receiver_state.fields[field_name] = {source_index}
-        else:
-            if new_receiver_state.tangping_flag:
-                new_receiver_state.tangping_elements.update(defined_states)
-            else:
-                new_receiver_state.fields[field_name] = defined_states
+
+            defined_states.add(source_index)
 
         new_receiver_symbol.states.discard(receiver_state_index)
         new_receiver_symbol.states.add(new_receiver_state_index)
-        
-        if source_index != -1:
-            if new_receiver_state.tangping_flag:
-                defined_states.update(new_receiver_state.tangping_elements)
-            else:    
-                defined_states.add(source_index)
+        # if receiver_state.tangping_elements:
+        #     defined_states.update(receiver_state.tangping_elements)
+        #     return
+
+        # if not field_name:
+        #     is_tangping = True
+
+        # new_receiver_symbol = self.frame.symbol_state_space[new_receiver_symbol_index]
+        # new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
+        # new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
+
+        # if is_tangping:
+        #     self.make_state_tangping(new_receiver_state)
+
+        # source_index = -1
+        # if len(defined_states) == 0:
+        #     source_index = self.create_state_and_add_space(
+        #         status, stmt_id = stmt_id,
+        #         source_symbol_id=receiver_state.source_symbol_id,
+        #         source_state_id=receiver_state.source_state_id,
+        #         state_type = StateTypeKind.ANYTHING,
+        #         access_path = self.copy_and_extend_access_path(
+        #             original_access_path = receiver_state.access_path,
+        #             access_point = AccessPoint(
+        #                 kind = AccessPointKind.FIELD_ELEMENT,
+        #                 key = field_name
+        #             )
+        #         )
+        #     )
+        #     self.update_access_path_state_id(source_index)
+
+        # if source_index != -1:
+        #     if new_receiver_state.tangping_flag:
+        #         new_receiver_state.tangping_elements.add(source_index)
+        #     else:
+        #         new_receiver_state.fields[field_name] = {source_index}
+        # else:
+        #     if new_receiver_state.tangping_flag:
+        #         new_receiver_state.tangping_elements.update(defined_states)
+        #     else:
+        #         new_receiver_state.fields[field_name] = defined_states
+
+        # new_receiver_symbol.states.discard(receiver_state_index)
+        # new_receiver_symbol.states.add(new_receiver_state_index)
+
+        # if source_index != -1:
+        #     if new_receiver_state.tangping_flag:
+        #         defined_states.update(new_receiver_state.tangping_elements)
+        #     else:
+        #         defined_states.add(source_index)
 
         # print("source_index",source_index)
         # print("new_receiver_symbol.states",new_receiver_symbol.states)
 
+    @profile
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         <field_read: target, receiver_object, field>
@@ -3112,8 +3169,9 @@ class StmtStateAnalysis:
                     continue
 
                 field_name = str(each_field_state.value)
-                if each_receiver_state.tangping_flag:
+                if each_receiver_state.tangping_elements:
                     each_defined_states.update(each_receiver_state.tangping_elements)
+                    continue
 
                 elif len(field_name) == 0 or each_field_state.state_type == StateTypeKind.ANYTHING:
                     if isinstance(field_symbol, Symbol):
@@ -3137,63 +3195,60 @@ class StmtStateAnalysis:
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_unit(each_receiver_state):
                     import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
-                    if not import_symbols:
-                        continue
+                    if import_symbols:
+                        for import_symbol in import_symbols:
+                            if import_symbol.name == field_name:
+                                if import_symbol.export_type == ScopeKind.METHOD_SCOPE:
+                                    data_type = LianInternal.METHOD_DECL
+                                elif import_symbol.export_type == ScopeKind.CLASS_SCOPE:
+                                    data_type = LianInternal.CLASS_DECL
+                                else:
+                                    data_type = LianInternal.UNIT
 
-                    for import_symbol in import_symbols:
-                        if import_symbol.name == field_name:
-                            if import_symbol.export_type == ScopeKind.METHOD_SCOPE:
-                                data_type = LianInternal.METHOD_DECL
-                            elif import_symbol.export_type == ScopeKind.CLASS_SCOPE:
-                                data_type = LianInternal.CLASS_DECL
-                            else: 
-                                data_type = LianInternal.UNIT
-
-                            state_index = self.create_state_and_add_space(
-                                status, stmt_id = stmt_id,
-                                source_symbol_id =import_symbol.source_symbol_id,
-                                source_state_id = each_receiver_state.source_state_id,
-                                data_type = data_type,
-                                value = import_symbol.stmt_id,
-                                access_path = self.copy_and_extend_access_path(
-                                    each_receiver_state.access_path,
-                                    AccessPoint(
-                                        key=import_symbol.name,
+                                state_index = self.create_state_and_add_space(
+                                    status, stmt_id = stmt_id,
+                                    source_symbol_id =import_symbol.source_symbol_id,
+                                    source_state_id = each_receiver_state.source_state_id,
+                                    data_type = data_type,
+                                    value = import_symbol.stmt_id,
+                                    access_path = self.copy_and_extend_access_path(
+                                        each_receiver_state.access_path,
+                                        AccessPoint(
+                                            key=import_symbol.name,
+                                        )
                                     )
                                 )
-                            )
-                            self.update_access_path_state_id(state_index)
-                            each_defined_states.add(state_index)
-                    continue
+                                self.update_access_path_state_id(state_index)
+                                each_defined_states.add(state_index)
 
                 elif self.is_state_a_class_decl(each_receiver_state):
                     first_found_class_id = -1 # 记录从下往上找到该方法的第一个class_id。最后只返回该class中所有的同名方法，不继续向上找。
                     class_methods = self.loader.load_methods_in_class(each_receiver_state.value)
-                    for method in class_methods:
-                        if method.name == field_name:
-                            method_class_id = self.loader.convert_method_id_to_class_id(method.stmt_id)
-                            if first_found_class_id == -1:
-                                first_found_class_id = method_class_id
+                    if class_methods:
+                        for method in class_methods:
+                            if method.name == field_name:
+                                method_class_id = self.loader.convert_method_id_to_class_id(method.stmt_id)
+                                if first_found_class_id == -1:
+                                    first_found_class_id = method_class_id
 
-                            if method_class_id != first_found_class_id:
-                                continue
+                                if method_class_id != first_found_class_id:
+                                    continue
 
-                            state_index = self.create_state_and_add_space(
-                                status, stmt_id = stmt_id,
-                                source_symbol_id = method.stmt_id,
-                                source_state_id = each_receiver_state.source_state_id,
-                                data_type = LianInternal.METHOD_DECL,
-                                value = method.stmt_id,
-                                access_path = self.copy_and_extend_access_path(
-                                    each_receiver_state.access_path,
-                                    AccessPoint(
-                                        key=method.name,
+                                state_index = self.create_state_and_add_space(
+                                    status, stmt_id = stmt_id,
+                                    source_symbol_id = method.stmt_id,
+                                    source_state_id = each_receiver_state.source_state_id,
+                                    data_type = LianInternal.METHOD_DECL,
+                                    value = method.stmt_id,
+                                    access_path = self.copy_and_extend_access_path(
+                                        each_receiver_state.access_path,
+                                        AccessPoint(
+                                            key=method.name,
+                                        )
                                     )
                                 )
-                            )
-                            self.update_access_path_state_id(state_index)
-                            each_defined_states.add(state_index)
-                    continue
+                                self.update_access_path_state_id(state_index)
+                                each_defined_states.add(state_index)
 
                 # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
                 new_receiver_symbol_index = self.assert_field_read_new_receiver_symbol(
@@ -3208,6 +3263,7 @@ class StmtStateAnalysis:
         defined_symbol.states = defined_states
         return P2ResultFlag()
 
+    @profile
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         field_write: receiver_object, field, source

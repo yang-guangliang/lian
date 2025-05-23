@@ -46,10 +46,10 @@ def update_lang_extensions(lang_table, lang_list):
 
     # Adjust the attribution of .h files
     if "c" in lang_list:
-        if ".h" in LANG_EXTENSIONS["cpp"]:
+        if ".h" in LANG_EXTENSIONS.get("cpp", []):
             LANG_EXTENSIONS["cpp"].remove(".h")
     elif "cpp" in lang_list:
-        if ".h" in LANG_EXTENSIONS["c"]:
+        if ".h" in LANG_EXTENSIONS.get("c", []):
             LANG_EXTENSIONS["c"].remove(".h")
 
     for lang, exts in LANG_EXTENSIONS.items():
