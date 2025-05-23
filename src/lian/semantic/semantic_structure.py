@@ -247,7 +247,7 @@ class ImportStmtInfo:
 
 
 class SimpleWorkList:
-    def __init__(self, init_data = [], cfg = None):
+    def __init__(self, init_data = [], cfg = None, entry_node = None):
         self.work_list = []
         self.all_data = set()
         self.cfg = cfg
@@ -256,10 +256,14 @@ class SimpleWorkList:
             self.add(init_data)
 
         if self.cfg:
-            first_nodes = util.find_cfg_first_nodes(self.cfg)
-            if first_nodes:
+            if not entry_node:
+                first_nodes = util.find_cfg_first_nodes(self.cfg)
+                if first_nodes:
+                    entry_node = first_nodes[0]
+
+            if entry_node:
                 cfg_order = list(reversed(list(
-                    nx.dfs_postorder_nodes(self.cfg, source=first_nodes[0])
+                    nx.dfs_postorder_nodes(self.cfg, source = entry_node)
                 )))
 
                 self.priority_dict = {
@@ -335,7 +339,10 @@ class SimpleWorkList:
 
     def __getitem__(self, index):
         if index >= 0 and index < len(self.work_list):
-            return self.work_list[index]
+            result = self.work_list[index]
+            if isinstance(result, tuple):
+                result = result[1]
+            return result
         return None
 
     def __contains__(self, index):

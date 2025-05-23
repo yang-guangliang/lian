@@ -3065,6 +3065,7 @@ class StmtStateAnalysis:
         # print("field_read经过插件后的receiver_states是：",receiver_states)
 
         for receiver_state_index in receiver_states:
+            each_defined_states = set()
             each_receiver_state = self.frame.symbol_state_space[receiver_state_index]
             if not isinstance(each_receiver_state, State):
                 continue
@@ -3077,7 +3078,7 @@ class StmtStateAnalysis:
 
                 field_name = str(each_field_state.value)
                 if each_receiver_state.tangping_flag:
-                    defined_states.update(each_receiver_state.tangping_elements)
+                    each_defined_states.update(each_receiver_state.tangping_elements)
 
                 elif len(field_name) == 0 or each_field_state.state_type == StateTypeKind.ANYTHING:
                     if isinstance(field_symbol, Symbol):
@@ -3089,39 +3090,43 @@ class StmtStateAnalysis:
                         )
                         self.change_field_read_receiver_state(
                             stmt_id, status, new_receiver_symbol_index, receiver_state_index, each_receiver_state,
-                            field_name, defined_states, is_tangping = True
+                            field_name, each_defined_states, is_tangping = True
                         )
                     continue
 
                 elif field_name in each_receiver_state.fields:
                     index_set = each_receiver_state.fields.get(field_name, set())
-                    defined_states.update(index_set)
+                    each_defined_states.update(index_set)
                     continue
-                # elif self.is_state_a_unit(each_receiver_state):
-                #     data_type = LianInternal.UNIT
-                #     import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
-                #     for import_symbol in import_symbols:
-                #         if import_symbol.name == field_name:
-                #             if import_symbol.export_type == ScopeKind.METHOD_SCOPE:
-                #                 data_type = LianInternal.METHOD_DECL
-                #             elif import_symbol.export_type == ScopeKind.CLASS_SCOPE:
-                #                 data_type = LianInternal.CLASS_DECL
+                elif self.is_state_a_unit(each_receiver_state):
+                    import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
+                    if not import_symbols:
+                        continue
+                    
+                    for import_symbol in import_symbols:
+                        if import_symbol.name == field_name:
+                            if import_symbol.export_type == ScopeKind.METHOD_SCOPE:
+                                data_type = LianInternal.METHOD_DECL
+                            elif import_symbol.export_type == ScopeKind.CLASS_SCOPE:
+                                data_type = LianInternal.CLASS_DECL
+                            else: 
+                                data_type = LianInternal.UNIT
 
-                #             state_index = self.create_state_and_add_space(
-                #                 status, stmt_id = stmt_id,
-                #                 source_symbol_id =import_symbol.source_symbol_id,
-                #                 source_state_id = each_receiver_state.source_state_id,
-                #                 data_type = data_type,
-                #                 value = import_symbol.stmt_id,
-                #                 access_path = self.copy_and_extend_access_path(
-                #                     each_receiver_state.access_path,
-                #                     AccessPoint(
-                #                         key=import_symbol.name,
-                #                     )
-                #                 )
-                #             )
-                #             self.update_access_path_state_id(state_index)
-                #             defined_states.add(state_index)
+                            state_index = self.create_state_and_add_space(
+                                status, stmt_id = stmt_id,
+                                source_symbol_id =import_symbol.source_symbol_id,
+                                source_state_id = each_receiver_state.source_state_id,
+                                data_type = data_type,
+                                value = import_symbol.stmt_id,
+                                access_path = self.copy_and_extend_access_path(
+                                    each_receiver_state.access_path,
+                                    AccessPoint(
+                                        key=import_symbol.name,
+                                    )
+                                )
+                            )
+                            self.update_access_path_state_id(state_index)
+                            each_defined_states.add(state_index)
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_class_decl(each_receiver_state):
@@ -3151,8 +3156,7 @@ class StmtStateAnalysis:
                             )
                             self.update_access_path_state_id(state_index)
                             defined_states.add(state_index)
-                            print(3)
-                            print(defined_states)
+
                     continue
 
                 new_receiver_symbol_index = self.assert_field_read_new_receiver_symbol(
@@ -3160,8 +3164,9 @@ class StmtStateAnalysis:
                 )
                 self.change_field_read_receiver_state(
                     stmt_id, status, new_receiver_symbol_index, receiver_state_index, each_receiver_state,
-                    field_name, defined_states, is_tangping = False
+                    field_name, each_defined_states, is_tangping = False
                 )
+            defined_states |= each_defined_states
 
         defined_symbol.states = defined_states
         return P2ResultFlag()

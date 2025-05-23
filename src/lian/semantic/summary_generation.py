@@ -810,18 +810,9 @@ class SemanticSummaryGeneration:
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
-        if stmt_id not in self.count_stmt_def_states:
-            self.count_stmt_def_states[stmt_id] = 0
-        self.count_stmt_def_states[stmt_id] += len(new_out_states)
-        
-        stmt = self.loader.load_stmt_gir(stmt_id)
-        op = stmt.operation
-        if op not in self.count_stmt_op_def_states:
-            self.count_stmt_op_def_states[op] = 0
-        self.count_stmt_op_def_states[op] += len(new_out_states)
-                
-        
 
+        self.collect_def_states_amount_each_stmt(stmt_id, len(new_out_states))
+                
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
             new_defined_symbol_states = defined_symbol.states
@@ -1157,6 +1148,17 @@ class SemanticSummaryGeneration:
 
     def reversed_methods_by_unit_id(self, methods):
         return reversed(self.sort_methods_by_unit_id(methods))
+
+    def collect_def_states_amount_each_stmt(self, stmt_id, new_out_states_len):
+        if stmt_id not in self.count_stmt_def_states:
+            self.count_stmt_def_states[stmt_id] = 0
+        self.count_stmt_def_states[stmt_id] += new_out_states_len
+        
+        stmt = self.loader.load_stmt_gir(stmt_id)
+        op = stmt.operation
+        if op not in self.count_stmt_op_def_states:
+            self.count_stmt_op_def_states[op] = 0
+        self.count_stmt_op_def_states[op] += new_out_states_len       
 
     def save_call_beauty(self):
         self.call_beauty = []
