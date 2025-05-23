@@ -344,7 +344,11 @@ class LangAnalysis:
         # remainder = node_id % 10
         # if remainder != 0:
         #     node_id += (10 - remainder)
-        return node_id + config.MIN_ID_INTERVAL
+        node_id += config.MIN_ID_INTERVAL
+        remainder = node_id % 10
+        if remainder != 0:
+            node_id += (10 - remainder)
+        return node_id
 
     def run(self):
         """

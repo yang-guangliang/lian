@@ -1980,6 +1980,7 @@ class CountStmtDefStateNode:
     stmt_operation : str = ""
     in_states : set[int] = dataclasses.field(default_factory=set)
     new_out_states_len : int = 0
+    
 
     def add_new_states_count(self, len):
         self.new_out_states_len += len
@@ -1993,12 +1994,10 @@ class CountStmtDefStateNode:
             'in_states'
         ]
         node_dict = dataclasses.asdict(self)
-        # 打印头部信息
         print(f"{'='*20} Node {node_dict['stmt_id']} {'='*20}")
-        # 逐个字段美观打印
         for field in ordered_fields:
             value = node_dict[field]
-            # 特殊处理in_states字段，使其更易读
+
             if field == 'in_states':
                 print(f"{field:18} :")
                 if isinstance(value, dict):
@@ -2008,7 +2007,7 @@ class CountStmtDefStateNode:
                     print(f"{'':20}{value}")
             else:
                 print(f"{field:18} : {value}")
-        # 打印分隔线
+
         print(f"{'='*50}")
 
     def print_as_dict(self):

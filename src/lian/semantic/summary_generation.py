@@ -237,7 +237,6 @@ class SemanticSummaryGeneration:
         else:
             defined_states = status.defined_states
 
-        # wanted_def_states = defined_states - unwanted_def_states
         state_current_bits = status.in_state_bits
 
         # 为每个defined_state创建一个StateDefNode，并更新out_state_bits
