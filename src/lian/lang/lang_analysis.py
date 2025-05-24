@@ -329,11 +329,7 @@ class LangAnalysis:
         """
         symbol_table = self.loader.load_module_symbol_table()
         result = len(symbol_table)
-        remainder = len(symbol_table) % 10
-        result += 10 - remainder
-        if remainder < 5:
-            return result
-        return result + 10
+        return self.adjust_node_id(result)
 
     def adjust_node_id(self, node_id):
         """
