@@ -119,7 +119,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         frame.state_to_define = self.loader.load_method_state_to_define_p2(method_id).copy()
 
         frame.cfg = self.loader.load_method_cfg(method_id)
-        frame.stmt_worklist = SimpleWorkList(cfg = frame.cfg)
+        frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(frame.cfg.nodes())
         frame.symbol_changed_stmts.add(frame.cfg.nodes())
 

@@ -247,23 +247,23 @@ class ImportStmtInfo:
 
 
 class SimpleWorkList:
-    def __init__(self, init_data = [], cfg = None, entry_node = None):
+    def __init__(self, init_data = [], graph = None, entry_node = None):
         self.work_list = []
         self.all_data = set()
-        self.cfg = cfg
+        self.graph = graph
         self.priority_dict = {}
         if init_data:
             self.add(init_data)
 
-        if self.cfg:
+        if self.graph:
             if not entry_node:
-                first_nodes = util.find_cfg_first_nodes(self.cfg)
+                first_nodes = list(sorted(util.find_graph_nodes_with_zero_in_degree(self.graph)))
                 if first_nodes:
                     entry_node = first_nodes[0]
 
             if entry_node:
                 cfg_order = list(reversed(list(
-                    nx.dfs_postorder_nodes(self.cfg, source = entry_node)
+                    nx.dfs_postorder_nodes(self.graph, source = entry_node)
                 )))
 
                 self.priority_dict = {
@@ -1980,11 +1980,11 @@ class CountStmtDefStateNode:
     stmt_operation : str = ""
     in_states : set[int] = dataclasses.field(default_factory=set)
     new_out_states_len : int = 0
-    
+
 
     def add_new_states_count(self, len):
         self.new_out_states_len += len
-        
+
 
     def print_as_beautiful_dict(self):
         ordered_fields = [
