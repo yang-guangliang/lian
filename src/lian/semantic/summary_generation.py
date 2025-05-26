@@ -1204,6 +1204,27 @@ class SemanticSummaryGeneration:
             counter+=1
             print(each_op)
 
+    def save_call_beauty(self):
+        self.call_beauty = []
+        for edge in self.call_graph.graph.edges(data='weight'):
+            caller_method_id = edge[0]
+            callee_method_id= edge[1]
+            stmt_id = edge[2]
+            caller_class_id = self.loader.convert_method_id_to_class_id(caller_method_id)
+            caller_class_name = self.loader.convert_class_id_to_class_name(caller_class_id)
+            if util.is_empty(caller_class_name):
+                caller_class_name = "None"
+            
+            caller_method_name = self.loader.convert_method_id_to_method_name(caller_method_id)
+            callee_class_id = self.loader.convert_method_id_to_class_id(callee_method_id)
+            callee_class_name = self.loader.convert_class_id_to_class_name(callee_class_id)
+            callee_method_name = self.loader.convert_method_id_to_method_name(callee_method_id)
+            if util.is_empty(callee_class_name):
+                callee_class_name = "None"
+            one_call = [caller_method_id,caller_class_name,caller_method_name,callee_method_id,callee_class_name,callee_method_name,stmt_id]
+            self.call_beauty.append(one_call)
+        self.loader.save_call_beauty(self.call_beauty)
+
     def run(self):
         """
         执行语义摘要生成的主流程：
