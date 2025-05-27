@@ -67,7 +67,11 @@ class DynamicContentAnalysis(StmtStateAnalysis):
 
         print(f"current path: {path_str}")
 
-    def compute_target_method_states(self, stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set = set()):
+    def compute_target_method_states(
+        self, stmt_id, stmt, status, in_states,
+        callee_method_ids, target_symbol, args,
+        this_state_set = set(), new_object_flag = False
+    ):
         callee_ids_to_be_analyzed = []
         caller_id = self.frame.method_id
         call_stmt_id = stmt_id
@@ -134,7 +138,10 @@ class DynamicContentAnalysis(StmtStateAnalysis):
             else:
                 continue
             callee_compact_space = callee_compact_space.copy()
-            self.apply_callee_semantic_summary(stmt_id, each_callee_id, args, callee_summary, callee_compact_space, this_state_set)
+            self.apply_callee_semantic_summary(
+                stmt_id, each_callee_id, args, callee_summary,
+                callee_compact_space, this_state_set, new_object_flag
+            )
 
         return P2ResultFlag()
 
