@@ -1261,7 +1261,8 @@ class StmtStateAnalysis:
         """
         if util.is_empty(state_indexes) or len(state_indexes) == 1:
             return state_indexes
-        new_state_index = self.create_copy_of_state_and_add_space(status,stmt_id, state_indexes.pop())
+        # 以集合中的任一个元素作为模板，创建一个fusion_state。create_copy过程中会自动将fusion_state加入status.defined_states中。
+        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, list(state_indexes)[0])
         new_state:State = self.frame.symbol_state_space[new_state_index]
         state_array: list[set] = []
         tangping_flag = False
