@@ -249,7 +249,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
         # print(f"in_symbols: {in_symbols}")
-        in_states = self.group_used_states(stmt_id, in_symbols, frame)
+        in_states = self.group_used_states(stmt_id, in_symbols, frame, status)
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)

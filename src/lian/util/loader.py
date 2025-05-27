@@ -2148,3 +2148,28 @@ class Loader:
         code_with_comment = lines[comment_start: method_end_line]
         return code_with_comment
 
+    def print_context_info_for_debug(self, stmt_id, method_id):
+        unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+        unit_path = self.convert_unit_id_to_unit_path(unit_id)
+        method_name = self.convert_method_id_to_method_name(method_id)
+        class_id = self.convert_method_id_to_class_id(method_id)
+        class_name = self.convert_class_id_to_class_name(class_id)
+        if util.is_empty(class_name):
+            class_name = "None"
+        gir_stmt = self.load_stmt_gir(stmt_id)
+
+        context = {
+            'unit_path': unit_path,
+            'class_name': class_name,
+            'method_name': method_name,
+        }
+        pprint.pprint(context, indent=2, width=80)    
+
+        
+            
+    
+
+
+        
+
+        
