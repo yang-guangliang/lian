@@ -949,7 +949,7 @@ class SemanticSummaryGeneration:
             for symbol_id in symbol_id_to_old_state_indexes:
                 old_states = symbol_id_to_old_state_indexes[symbol_id]
                 latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, old_states, available_defined_states, state_index_old_to_new)
-                # 在这里做一次合并，将latest_states中所有state_id相同的states进行合并成一个state。这是为了避免summary中保存的state过多，导致这条call语句新def的g状态过多，caller的state_bits爆炸。
+                # 在这里做一次合并，将latest_states中所有state_id相同的states进行合并成一个state。避免summary中保存的state过多，导致这条call语句新def的g状态过多，caller的state_bits爆炸。
                 # print(f"收集latest_states: symbol_id {symbol_id}, latest_states {latest_states}")
                 state_id_to_indexes = self.group_states_with_state_ids(frame, latest_states)
                 fusion_states = set()

@@ -1443,7 +1443,7 @@ class StmtStateAnalysis:
                 tangping_flag = True
                 tangping_elements.update(each_last_state.tangping_elements)
 
-            # collect all array of all states
+            # collect all array of all states in summary
             each_last_state_array = each_last_state.array
             for index in range(len(each_last_state_array)):
                 util.add_to_list_with_default_set(state_array, index, each_last_state_array[index])
@@ -1456,7 +1456,7 @@ class StmtStateAnalysis:
                     if each_array_state.state_type == StateTypeKind.ANYTHING:
                         self.resolver.resolve_anything_in_summary_generation(each_array_state_index, self.frame, stmt_id, callee_id, set_to_update=state_array[index])
 
-            # collect all fields of all states
+            # collect all fields of all states in summary
             each_state_fields = each_last_state.fields.copy()
             for field_name in each_state_fields:
                 util.add_to_dict_with_default_set(callee_state_fields, field_name, each_state_fields[field_name])
@@ -1517,12 +1517,16 @@ class StmtStateAnalysis:
 
     def apply_this_symbol_semantic_summary(
         self, stmt_id, callee_summary: MethodSummaryTemplate,
-        callee_space: SymbolStateSpace, instance_state_indexes:set[int]
+        callee_space: SymbolStateSpace, instance_state_indexes:set[int],
+        new_object_flag: bool
     ):
         # print("apply_this_symbol_semantic_summary@instance_state_indexes",instance_state_indexes)
+        if util.is_empty(instance_state_indexes):
+            return 
         status = self.frame.stmt_id_to_status[stmt_id]
         old_to_new_arg_state = {}
         this_symbols = callee_summary.this_symbols
+        # 收集callee_summary中this_symbols的last_states，并应用到实际传入的instance_state中。
         for this_symbol_id in this_symbols:
             this_symbol_last_states = this_symbols.get(this_symbol_id, [])
             last_states:set[State] = set()
@@ -1534,18 +1538,23 @@ class StmtStateAnalysis:
                 each_this_symbol_last_state = self.frame.symbol_state_space[index_in_appended_space]
                 last_states.add(each_this_symbol_last_state)
                 last_state_indexes.add(index_in_appended_space)
+            # print("apply_this_symbol_semantic_summary@this_last_state_indexes",last_state_indexes)
 
             for instance_state_index_in_space in instance_state_indexes.copy():
                 # 将summary中的this_symbol_last_state应用到实际的instance_state上
                 self.apply_parameter_summary_to_args_states(stmt_id, status, last_state_indexes, instance_state_index_in_space, old_to_new_arg_state)
 
+        # 如果caller是通过new_object_stmt调用到callee的，就不应该将以上对this的修改添加到caller的summary中
+        if new_object_flag:
+            return 
+
         new_this_states = set()
         for old_state in old_to_new_arg_state:
             new_this_states.add(old_to_new_arg_state[old_state])
-
         if not new_this_states:
             return
-
+        # print("apply_this_symbol_semantic_summary@new_this_states",new_this_states)
+        
         index_to_add = self.frame.symbol_state_space.add(
             Symbol(
                 stmt_id = stmt_id,
@@ -1708,7 +1717,11 @@ class StmtStateAnalysis:
             status.implicitly_defined_symbols.append(index_to_add)
 
     @profile
-    def apply_callee_semantic_summary(self, stmt_id, callee_id, args: MethodCallArguments, callee_summary, callee_compact_space: SymbolStateSpace, this_state_set: set = set()):
+    def apply_callee_semantic_summary(
+        self, stmt_id, callee_id, args: MethodCallArguments, 
+        callee_summary, callee_compact_space: SymbolStateSpace, 
+        this_state_set: set = set(), new_object_flag = False
+        ):
         # print("---开始apply_callee_semantic_summary---")
         # print("callee_id", callee_id, self.loader.convert_method_id_to_method_name(callee_id))
         # print("callee_summary")
@@ -1736,6 +1749,7 @@ class StmtStateAnalysis:
         state_visited = set()
         defined_states = set()
         defined_state_id_set = set()
+        # 将summary中涉及到的所有states(包括children states)加入到defined_states中
         while len(work_list) != 0:
             current_state_index = work_list.pop()
             if current_state_index in state_visited:
@@ -1752,11 +1766,12 @@ class StmtStateAnalysis:
             if current_state.tangping_flag:
                 work_list.add(current_state.tangping_elements)
         old_defined_states = status.defined_states.copy()
+        # 移除旧status.defined_states中和新defined_states同state_id的states
         for each_state_index in old_defined_states:
             if self.frame.symbol_state_space.convert_state_index_to_state_id(each_state_index) in defined_state_id_set:
                 status.defined_states.discard(each_state_index)
-
         status.defined_states.update(defined_states)
+        # print("apply_callee_semantic_summary中, 添加的status.defined_states:",status.defined_states)
 
         # mapping parameter and argument
         caller_id = self.frame.method_id
@@ -1771,7 +1786,7 @@ class StmtStateAnalysis:
 
         # apply this_symbol's state in callee_summary to this_state_set
         self.apply_this_symbol_semantic_summary(
-            stmt_id, callee_summary, callee_compact_space, this_state_set
+            stmt_id, callee_summary, callee_compact_space, this_state_set, new_object_flag
         )
 
         # apply other callee_summary to args
@@ -1906,7 +1921,11 @@ class StmtStateAnalysis:
         )
 
     @profile
-    def compute_target_method_states(self, stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set = set()):
+    def compute_target_method_states(
+        self, stmt_id, stmt, status, in_states,
+        callee_method_ids, defined_symbol, args,
+        this_state_set = set(), new_object_flag = False
+    ):
         # Compute callees' summaries
         # TODO 如果method_id空，退出
         # print(f"第二阶段 compute_target_method_states callee_ids {callee_method_ids}")
@@ -1996,7 +2015,8 @@ class StmtStateAnalysis:
 
             # apply callee semantic summary
             self.apply_callee_semantic_summary(
-                stmt_id, each_callee_id, args, callee_summary, callee_compact_space, this_state_set
+                stmt_id, each_callee_id, args, callee_summary,
+                callee_compact_space, this_state_set, new_object_flag
             )
 
         return P2ResultFlag()
@@ -2312,7 +2332,7 @@ class StmtStateAnalysis:
                 self.update_access_path_state_id(init_state_index)
                 defined_symbol.states.add(init_state_index)
 
-            # print("create state for new object", defined_symbol.states)
+            # print("new_object_stmt_state@ create a default_state for new object", defined_symbol.states)
 
         p2result_flag = P2ResultFlag()
         event = EventData(
