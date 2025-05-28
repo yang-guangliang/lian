@@ -2203,7 +2203,9 @@ class Loader:
         code_with_comment = lines[comment_start: method_end_line]
         return code_with_comment
 
-    def print_context_info_for_debug(self, stmt_id, method_id):
+    def print_context_info_for_debug(self, method_id, stmt_id = None):
+        if stmt_id is None:
+            stmt_id = method_id
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         unit_path = self.convert_unit_id_to_unit_path(unit_id)
         method_name = self.convert_method_id_to_method_name(method_id)
