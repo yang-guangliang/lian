@@ -200,6 +200,9 @@ class ModuleSymbolsLoader:
             if not final_ids:
                 break
 
+        init_ids = self.convert_module_name_to_module_ids("__init__")
+        children_ids = self.convert_module_ids_to_children_ids(final_ids)
+        final_ids |= children_ids & init_ids
         final_ids = check_return(final_ids)
         self.module_path_solving_cache.put(path, final_ids)
         return final_ids
