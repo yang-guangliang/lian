@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from lian.semantic.semantic_structure import AccessPoint, State, ComputeFrame, Symbol
+from lian.semantic.semantic_structs import AccessPoint, State, ComputeFrame, Symbol
 from lian.semantic.stmt_state_analysis import StmtStateAnalysis
 from lian.apps.app_template import EventData
 from lian.config.constants import (

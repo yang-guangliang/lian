@@ -2,7 +2,7 @@
 
 import pprint
 from lian.config import config
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     AccessPoint,
     ExportNode,
     SimpleWorkList,

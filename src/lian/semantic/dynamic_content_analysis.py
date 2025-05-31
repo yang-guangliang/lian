@@ -18,7 +18,7 @@ from lian.config.constants import (
     CalleeType,
     EventKind
 )
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     CallGraph,
     MethodDeclParameters,
     Parameter,

@@ -6,11 +6,11 @@ from lian.config import config,schema
 from lian.util import util
 import lian.util.data_model as dm
 from lian.config.constants import ControlFlowKind
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     ControlFlowGraph,
     CFGNode
 )
-from lian.semantic.semantic_structure import ComputeFrame
+from lian.semantic.semantic_structs import ComputeFrame
 from lian.util.loader import Loader
 
 class ControlFlowAnalysis:

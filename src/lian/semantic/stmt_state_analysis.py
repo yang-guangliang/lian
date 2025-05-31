@@ -21,7 +21,7 @@ from lian.config.constants import (
     AccessPointKind,
 )
 import lian.apps.event_return as er
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     MethodDeclParameters,
     Parameter,
     Argument,

@@ -17,7 +17,7 @@ from lian.config.constants import (
     AnalysisPhaseName,
     CALL_OPERATION
 )
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     MetaComputeFrame,
     P2ResultFlag,
     Symbol,

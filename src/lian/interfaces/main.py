@@ -39,7 +39,7 @@ from lian.semantic.summary_generation import SemanticSummaryGeneration
 from lian.semantic.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
 from lian.semantic.entry_points import EntryPointGenerator
-from lian.semantic import semantic_structure
+from lian.semantic import semantic_structs
 
 class Lian:
     def __init__(self):

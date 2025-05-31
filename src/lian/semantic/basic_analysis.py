@@ -15,7 +15,7 @@ from lian.config.constants import (
     CalleeType,
     BasicCallGraphNodeKind
 )
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     Symbol,
     State,
     ComputeFrame,

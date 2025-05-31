@@ -22,7 +22,7 @@ from lian.config.constants import (
 )
 import lian.apps.event_return as er
 from lian.apps.app_template import EventData
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     AccessPoint,
     SimpleWorkList,
     StateDefNode,

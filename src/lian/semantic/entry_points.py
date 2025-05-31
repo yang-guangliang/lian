@@ -14,7 +14,7 @@ from lian.config.constants import (
     LianInternal
 )
 from lian.apps.app_template import EventData
-from lian.semantic.semantic_structure import SimpleWorkList
+from lian.semantic.semantic_structs import SimpleWorkList
 
 @dataclasses.dataclass
 class EntryPointRule:

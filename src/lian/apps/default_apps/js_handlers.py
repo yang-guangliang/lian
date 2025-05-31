@@ -2,7 +2,7 @@
 
 import dataclasses
 import pprint
-from lian.semantic.semantic_structure import State
+from lian.semantic.semantic_structs import State
 from lian.apps.app_template import EventData
 import lian.apps.event_return as er
 from lian.config.constants import (
@@ -11,7 +11,7 @@ from lian.config.constants import (
     StateTypeKind,
     JsPrototype
 )
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     State
 )
 from lian.util import util

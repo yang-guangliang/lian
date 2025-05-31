@@ -16,7 +16,7 @@ from lian.config.constants import (
 )
 from lian.externs.extern_rule import Rule
 from lian.externs.modeling import js_api
-from lian.semantic.semantic_structure import AccessPoint, InterruptionData, State, Symbol
+from lian.semantic.semantic_structs import AccessPoint, InterruptionData, State, Symbol
 from lian.util import util
 
 

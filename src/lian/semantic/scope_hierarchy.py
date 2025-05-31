@@ -17,7 +17,7 @@ from lian.config.constants import (
     ScopeKind
 )
 
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     BasicGraph,
     MethodInClass,
     Scope,

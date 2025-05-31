@@ -2,7 +2,7 @@
 
 from lian.apps.app_template import EventData
 
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     State,
     Symbol
 )

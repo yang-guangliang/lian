@@ -15,7 +15,7 @@ from lian.config.constants import (
     SymbolOrState,
     SymbolKind
 )
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     BasicGraph,
     State,
     StateDefNode,
