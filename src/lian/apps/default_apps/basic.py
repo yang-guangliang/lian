@@ -460,12 +460,12 @@ def adjust_variable_decls(data: EventData):
 
             if key == "variable_decl":
                 variable_name = value["name"]
-                if data.lang in ["python", "abc", "safe"]:
+                if data.lang in ["python", "abc", "yian"]:
                 # if data.lang == "python" or data.lang == "abc":
                     if variable_name in available_variables:
                         to_be_deleted.append(ElementToBeDeleted(child_index, False, False))
                     else:
-                        # if data.lang == "safe" and child_index < len(stmts) - 1:
+                        # if data.lang == "yian" and child_index < len(stmts) - 1:
                         #     next_stmt = stmts[child_index + 1]
                         #     next_key = list(next_stmt.keys())[0]
                         #     if next_key == "assign_stmt":
@@ -475,7 +475,7 @@ def adjust_variable_decls(data: EventData):
                         #         value["from"] = assign_stmt_id
 
                         if in_block:
-                            if data.lang != "safe":
+                            if data.lang != "yian":
                                 to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
                         available_variables[variable_name] = True
 
@@ -574,7 +574,7 @@ def adjust_variable_decls(data: EventData):
                         if not has_save_breakpoints:
                             has_save_breakpoints = True
                             add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                        if data.lang == "safe":
+                        if data.lang == "yian":
                             add_stack(stmt_value, 0, {}, [], True)
                         else:
                             add_stack(stmt_value, 0, available_variables, [], True)
