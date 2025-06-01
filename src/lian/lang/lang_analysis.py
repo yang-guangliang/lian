@@ -130,7 +130,7 @@ class GIRProcessing:
         self.init_stmt_id(flattened_node, parent_stmt_id)
 
         if flattened_node["operation"] == "assign_stmt" and "operation" in last_node and last_node["operation"] == "variable_decl":
-            last_node["from"] = flattened_node["stmt_id"]
+            last_node["original_stmt"] = flattened_node["stmt_id"]
 
         if not isinstance(stmt_content, dict):
             return
