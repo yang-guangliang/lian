@@ -59,7 +59,7 @@ class Resolver:
         self.file_path_to_unit_ids[path] = unit_ids
         return unit_ids
 
-    def resolve_class_name_to_ids(self, unit_id, stmt_id, class_name):
+    def resolve_class_name_to_ids(self, unit_id, scope_id, class_name):
         """
         Given a class name, find its source stmt id
 
@@ -79,7 +79,7 @@ class Resolver:
             return result
 
         scope_ids = summary.symbol_name_to_scope_ids[class_name]
-        available_scope_ids = summary.scope_id_to_available_scope_ids.get(stmt_id, set([0]))
+        available_scope_ids = summary.scope_id_to_available_scope_ids.get(scope_id, set([0]))
         target_scope_ids = available_scope_ids & scope_ids
         # print("=" * 60)
         # print(scope_ids, available_scope_ids, summary, stmt_id)
