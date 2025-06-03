@@ -79,8 +79,10 @@ class Resolver:
             return result
 
         scope_ids = summary.symbol_name_to_scope_ids[class_name]
-        available_scope_ids = summary.scope_id_to_available_scope_ids.get(stmt_id, set())
+        available_scope_ids = summary.scope_id_to_available_scope_ids.get(stmt_id, set([0]))
         target_scope_ids = available_scope_ids & scope_ids
+        # print("=" * 60)
+        # print(scope_ids, available_scope_ids, summary, stmt_id)
         if len(target_scope_ids) == 0:
             return result
 
@@ -212,7 +214,7 @@ class Resolver:
                             result.add(each_def.index)
                 else:
                     result.add(state_index)
-            
+
             # 如果不在frame.state_to_define中，就返回自身
             else:
                 result.add(state_index)
@@ -276,7 +278,7 @@ class Resolver:
         newest_states = self.collect_newest_states_by_state_ids(frame, available_state_defs, {parent_state_id})
         # print("obtain_parent_states@ 找到的newest_states是",newest_states, ", method_id是",frame.method_id)
         return newest_states
-    
+
     def obtain_parent_state_id(self, frame, status, base_state_index):
         """
             获取parent_state_id
