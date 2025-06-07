@@ -310,7 +310,7 @@ class Row:
         pos = self._schema.get(item, -1)
         if pos != -1:
             return self._row[pos]
-        util.error(f"Failed to obtain key <{item}> from the dataframe row{self._row}")
+        #util.error(f"Failed to obtain key <{item}> from the dataframe row{self._row}")
         return None
 
     def __setattr__(self, name, value):
