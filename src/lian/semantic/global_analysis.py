@@ -15,7 +15,8 @@ from lian.config.constants import (
     SymbolDependencyGraphEdgeKind,
     SymbolOrState,
     AnalysisPhaseName,
-    CALL_OPERATION
+    CALL_OPERATION,
+    SENSITIVE_OPERATIONS
 )
 from lian.semantic.semantic_structs import (
     MetaComputeFrame,
@@ -54,11 +55,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         2. 初始化分析方法列表、路径管理器
         3. 调用父类初始化方法设置符号状态基础结构
         """
-        self.SENSITIVE_OPERATIONS = set([
-            "call_stmt",
-            "array_read",
-            "field_read",
-            "forin_stmt"])
         self.analyzed_method_list = set()
         self.path_manager = PathManager()
         super().__init__(lian)
@@ -161,19 +157,15 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             return old_key_state_indexes
 
         new_state_indexes = set()
-        if stmt.operation not in self.SENSITIVE_OPERATIONS:
-            if symbol_id in summary.used_external_symbols:
-                for index_pair in summary.used_external_symbols[symbol_id]:
-                    each_state_index = index_pair.raw_index
-                    new_state_indexes.add(each_state_index)
-            if not new_state_indexes:
-                return None
-            return new_state_indexes
+        # if stmt.operation not in SENSITIVE_OPERATIONS:
+        #     if symbol_id in summary.used_external_symbols:
+        #         for index_pair in summary.used_external_symbols[symbol_id]:
+        #             each_state_index = index_pair.raw_index
+        #             new_state_indexes.add(each_state_index)
+        #     if not new_state_indexes:
+        #         return None
+        #     return new_state_indexes
 
-        # holds frame.stmt_counters[stmt_id] == config.FIRST_GLOBAL_ROUND
-        # holds stmt.operation in self.SENSITIVE_OPERATIONS
-        # if config.DEBUG_FLAG:
-        #     print(f"stmt operation {stmt.operation} is SENSITIVE_OPERATIONS")
         status = frame.stmt_id_to_status[stmt_id]
         old_length = len(frame.symbol_state_space)
         for old_key_state_index in old_key_state_indexes:
@@ -397,6 +389,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         3. 处理未解析动态调用中断
         4. 生成最终方法摘要并保存结果
         """
+        frame_path = None
         while len(frame_stack) >= 2:
             # get current compute frame
             # print(f"\frame_stack: {frame_stack._stack}")
@@ -452,13 +445,13 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 summary_template: MethodSummaryTemplate = p2_summary_template.copy()
                 summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(frame.method_id)
 
-                if not summary_template.dynamic_call_stmt:
-                    if config.DEBUG_FLAG:
-                        util.debug(f"\t<method {frame.method_id}> does not need to be processed")
+                # if not summary_template.dynamic_call_stmt:
+                #     if config.DEBUG_FLAG:
+                #         util.debug(f"\t<method {frame.method_id}> does not need to be processed")
 
-                    self.save_analysis_summary_and_space(frame, summary_template.copy(), summary_compact_space.copy(), caller_frame)
-                    frame_stack.pop()
-                    continue
+                #     self.save_analysis_summary_and_space(frame, summary_template.copy(), summary_compact_space.copy(), caller_frame)
+                #     frame_stack.pop()
+                #     continue
 
                 # Need to deal with dynamic callees
                 if not frame.has_been_inited:

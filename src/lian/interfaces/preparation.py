@@ -129,7 +129,7 @@ class WorkspaceBuilder:
 
     def change_c_like_files(self, src_dir_path):
         if "c" in self.options.lang or "cpp" in self.options.lang:
-            if self.options.process_headers:
+            if self.options.enable_header_preprocess:
                 if not self.clang_installed:
                     self.clang_installed = shutil.which('clang') is not None and shutil.which('clang++') is not None
                 if self.clang_installed:

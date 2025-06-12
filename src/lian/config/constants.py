@@ -373,3 +373,9 @@ JsPrototype = util.SimpleEnum({
 
 })
 
+SENSITIVE_OPERATIONS = set([
+    "call_stmt",
+    "array_read",
+    "field_read",
+    "forin_stmt"
+])
