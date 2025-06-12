@@ -44,7 +44,6 @@ from lian.semantic import semantic_structs
 class Lian:
     def __init__(self):
         self.options = None
-        self.custom_options = {}
         self.app_manager = None
         self.loader = None
         self.extern_system = None
@@ -60,20 +59,16 @@ class Lian:
         self.args_parser = args_parser.ArgsParser()
         self.options = self.args_parser.obtain_default_options()
 
-    def set_options(self, **custom_options):
-        self.custom_options = custom_options
-        return self
-
-    def parse_cmds(self):
+    def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
 
-        if util.is_available(self.custom_options):
+        if util.is_available(custom_options):
             if isinstance(self.options, dict):
-                for key, value in self.custom_options.items():
+                for key, value in custom_options.items():
                     if key in self.options:
                         self.options[key] = value
             else:
-                for key, value in self.custom_options.items():
+                for key, value in custom_options.items():
                     if hasattr(self.options, key):
                         setattr(self.options, key, value)
 
@@ -124,11 +119,12 @@ class Lian:
         handler = self.command_handler.get(self.options.sub_command)
         if not handler:
             util.error_and_quit(f"Failed to find command \"{self.options.sub_command}\"")
-        handler()
+        return handler()
 
     def lang_analysis(self):
         LangAnalysis(self).run()
         self.loader.export()
+        return self
 
     def semantic_analysis(self):
         if self.options.debug:
@@ -138,6 +134,7 @@ class Lian:
         SemanticSummaryGeneration(self).run()
         GlobalAnalysis(self).run()
         self.loader.export()
+        return self
 
     def security_analysis(self):
         pass
@@ -145,6 +142,7 @@ class Lian:
     def run_all(self):
         self.lang_analysis()
         self.semantic_analysis()
+        return self
 
     def run(self):
         self.parse_cmds().init_submodules().dispatch_command()
