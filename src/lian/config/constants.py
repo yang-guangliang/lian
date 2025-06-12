@@ -8,10 +8,13 @@ CLASS_DECL_OPERATION = {
     "interface_decl",
     "enum_decl",
     "struct_decl",
+    "trait_decl",
+    "union_decl",
 }
 
 NAMESPACE_DECL_OPERATION = {
-    "namespace_decl"
+    "namespace_decl",
+    "module_decl",
 }
 
 IMPORT_OPERATION = {
