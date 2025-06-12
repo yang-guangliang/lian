@@ -17,7 +17,6 @@ class WorkspaceBuilder:
     def __init__(self, options):
         self.dst_file_to_src_file = {}
         self.options = options
-        #self.clang_installed = shutil.which('clang') is not None and shutil.which('clang++') is not None
         self.clang_installed = False
         self.c_like_extensions = LANG_EXTENSIONS.get('c', []) + LANG_EXTENSIONS.get('cpp', [])
         self.required_subdirs = [
@@ -100,9 +99,9 @@ class WorkspaceBuilder:
 
         # Prepare the include headers if provided
         include_flags = []
-        if self.options.include_headers:
+        if self.options.included_headers:
             include_flags.append('-I')
-            include_flags.append(self.options.include_headers)
+            include_flags.append(self.options.included_headers)
 
         # Depending on the language type, choose the right Clang command
         try:
@@ -130,11 +129,14 @@ class WorkspaceBuilder:
 
     def change_c_like_files(self, src_dir_path):
         if "c" in self.options.lang or "cpp" in self.options.lang:
-            if self.clang_installed:
-                self.rescan_c_like_files(src_dir_path)
+            if self.options.process_headers:
+                if not self.clang_installed:
+                    self.clang_installed = shutil.which('clang') is not None and shutil.which('clang++') is not None
+                if self.clang_installed:
+                    self.rescan_c_like_files(src_dir_path)
 
-                LANG_EXTENSIONS["c"] = [".i"]
-                LANG_EXTENSIONS["cpp"] = [".ii"]
+                    LANG_EXTENSIONS["c"] = [".i"]
+                    LANG_EXTENSIONS["cpp"] = [".ii"]
 
     def copytree_with_extension(self, src, dst_path):
         if os.path.islink(src):
