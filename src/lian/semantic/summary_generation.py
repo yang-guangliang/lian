@@ -261,9 +261,9 @@ class SemanticSummaryGeneration:
                     state_type = StateTypeKind.UNSOLVED
                 )
                 defined_symbol.states.add(frame.symbol_state_space.add(new_state))
-                print("本句语句的defined_symbol没有被解析出任何状态,生成一个UNSOLVED状态给它",defined_symbol.states)
+                # print("本句语句的defined_symbol没有被解析出任何状态,生成一个UNSOLVED状态给它",defined_symbol.states)
 
-        print("@update_out_states new_defined_state_set", new_defined_state_set)
+        # print("@update_out_states new_defined_state_set", new_defined_state_set)
         return new_defined_state_set
 
     def update_symbols_if_changed(
@@ -811,7 +811,7 @@ class SemanticSummaryGeneration:
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        print(f"in_states@after complete_in_states: {in_states}")
+        # print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
             print("  DON'T CONTINUE")
             if status.in_state_bits != old_in_state_bits:
@@ -1059,7 +1059,7 @@ class SemanticSummaryGeneration:
         """
         while len(frame.stmt_worklist) != 0:
             stmt_id = frame.stmt_worklist.peek()
-            print(f"当前语句id是{stmt_id}, stmt_worklist:",frame.stmt_worklist)
+            # print(f"当前语句id是{stmt_id}, stmt_worklist:",frame.stmt_worklist)
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
                 frame.stmt_worklist.pop()
                 continue
@@ -1072,11 +1072,11 @@ class SemanticSummaryGeneration:
             else:
                 if frame.stmt_counters[stmt_id] < config.MAX_STMT_STATE_ANALYSIS_ROUND:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
-                    print("添加cfg后继",list(util.graph_successors(frame.cfg, stmt_id)))
+                    # print("添加cfg后继",list(util.graph_successors(frame.cfg, stmt_id)))
 
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
-                print("gir2: ",self.loader.load_stmt_gir(stmt_id))
+                # print("gir2: ",self.loader.load_stmt_gir(stmt_id))
 
             if frame.interruption_flag:
                 frame.interruption_flag = False
@@ -1101,11 +1101,11 @@ class SemanticSummaryGeneration:
             # move to the next statement
             frame.stmt_counters[stmt_id] += 1
 
-            global stmt_counts
-            stmt_counts += 1
-            if stmt_counts % 2000 == 0:
-                print(f"第{stmt_counts/2000}轮打印stmt_states情况")
-                self.print_count_stmt_def_states()
+            # global stmt_counts
+            # stmt_counts += 1
+            # if stmt_counts % 2000 == 0:
+                # print(f"第{stmt_counts/2000}轮打印stmt_states情况")
+                # self.print_count_stmt_def_states()
 
             frame.stmt_worklist.pop()
 
@@ -1236,6 +1236,6 @@ class SemanticSummaryGeneration:
         # save all results here
         self.loader.save_call_graph_p2(self.call_graph)
         self.loader.export()
-        self.print_count_stmt_def_states()
+        # self.print_count_stmt_def_states()
 
         return self

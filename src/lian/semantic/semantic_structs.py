@@ -1975,6 +1975,7 @@ class UnionFind:
 
 @dataclasses.dataclass
 class CountStmtDefStateNode:
+    """查看不同语句类型创建的新state数量(debug用)"""
     stmt_id : int
     stmt_operation : str = ""
     in_states : set[int] = dataclasses.field(default_factory=set)
@@ -2010,7 +2011,6 @@ class CountStmtDefStateNode:
         print(f"{'='*50}")
 
     def print_as_dict(self):
-        """按照指定顺序打印节点属性"""
         ordered_fields = [
             'new_out_states_len',
             'stmt_id',

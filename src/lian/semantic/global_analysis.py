@@ -303,7 +303,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             stmt_id = frame.stmt_worklist.peek()
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
-                print("gir3: ",self.loader.load_stmt_gir(stmt_id))
+                # print("gir3: ",self.loader.load_stmt_gir(stmt_id))
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
                 frame.stmt_worklist.pop()
                 continue
@@ -528,7 +528,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader._call_path_p3_loader.export()
         all_APaths = self.loader.load_call_paths_p3()
-        print("所有的APaths: ",all_APaths)
+        # print("所有的APaths: ",all_APaths)
 
 
 
