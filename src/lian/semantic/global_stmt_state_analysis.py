@@ -82,6 +82,8 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             util.debug(f"positional_args of stmt <{stmt_id}>: {args.positional_args}")
             util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
 
+        parameter_mapping_list = []
+
         for each_callee_id in callee_method_ids:
             callee_path = self.frame.path + (stmt_id, each_callee_id)
             self.print_path(callee_path)
@@ -102,11 +104,11 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             parameters = self.prepare_parameters(each_callee_id)
             if config.DEBUG_FLAG:
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
-            callee_method_def_use_summary:MethodDefUseSummary = self.loader.load_method_def_use_summary(each_callee_id)
-            parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
-            if util.is_empty(parameter_mapping_list):
-                parameter_mapping_list = []
-                self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
+            current_parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
+            if util.is_empty(current_parameter_mapping_list):
+                current_parameter_mapping_list = []
+                self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site)
+            parameter_mapping_list.extend(current_parameter_mapping_list)
 
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")

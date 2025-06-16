@@ -396,14 +396,14 @@ class StmtDefUseAnalysis:
                 index =  arg_symbol_list[index]
                 arg_symbol = self.symbol_state_space[index]
                 if isinstance(arg_symbol, State):
-                    positional_args_info.append(tuple(arg_symbol.value))
+                    positional_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value})
                 else:
-                    positional_args_info.append((arg_symbol.symbol_id, arg_symbol.name))
+                    positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
 
         elif packed_positional_args:
             index =  arg_symbol_list[0]
             arg_symbol = self.symbol_state_space[index]
-            packed_positional_args_info.append((arg_symbol.symbol_id, arg_symbol.name))
+            packed_positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
 
         if named_args:
             args_keys = sorted(ast.literal_eval(stmt.named_args).keys())
@@ -413,13 +413,13 @@ class StmtDefUseAnalysis:
                 space_index =  named_symbol_list[index]
                 arg_symbol = self.symbol_state_space[space_index]
                 if isinstance(arg_symbol, State):
-                    named_args_info.append((arg_symbol.value, args_keys[index]))
+                    named_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value, "key": args_keys[index]})
                 else:
-                    named_args_info.append((arg_symbol.symbol_id, arg_symbol.name, args_keys[index]))
+                    named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name, "key": args_keys[index]})
         elif packed_named_args:
             index = used_symbols[-1]
             arg_symbol = self.symbol_state_space[index]
-            packed_named_args_info.append((arg_symbol.symbol_id, arg_symbol.name))
+            packed_named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
 
         defined_symbol = self.symbol_state_space[status.defined_symbol]
 

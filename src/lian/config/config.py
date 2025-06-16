@@ -58,6 +58,8 @@ SCOPE_ID_TO_SYMBOL_INFO_PATH                = "scope_to_symbol_info"
 SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH        = "scope_to_available_scope_ids"
 
 CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH       = "call_stmt_format"
+METHOD_ID_TO_METHOD_DECL_FORMAT_PATH        = "method_decl_format"
+
 UNIT_ID_TO_STMT_ID_PATH                     = "unit_to_stmt_id"
 UNIT_ID_TO_METHOD_ID_PATH                   = "unit_to_method_id"
 UNIT_ID_TO_CLASS_ID_PATH                    = "unit_to_class_id"

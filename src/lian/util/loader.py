@@ -519,7 +519,7 @@ class CallStmtIDToCallFormatInfoLoader:
         self.call_stmt_id_to_call_format_info[call_stmt_id] = call_format_info
 
     def load(self, call_stmt_id):
-        return self.call_stmt_id_to_call_format_info.get(call_stmt_id, -1)
+        return self.call_stmt_id_to_call_format_info.get(call_stmt_id, None)
 
     def export(self):
         if len(self.call_stmt_id_to_call_format_info) == 0:
@@ -534,6 +534,31 @@ class CallStmtIDToCallFormatInfoLoader:
         df = DataModel().load(self.path)
         for row in df:
             self.call_stmt_id_to_call_format_info[row.stmt_id] = row
+
+class MethodIDToMethodDeclFormat:
+    def __init__(self, path):
+        self.method_id_to_method_decl_format = {}
+        self.path = path
+
+    def save(self, method_id, method_decl_format):
+        self.method_id_to_method_decl_format[method_id] = method_decl_format
+
+    def load(self, method_id):
+        return self.method_id_to_method_decl_format.get(method_id, None)
+
+    def export(self):
+        if len(self.method_id_to_method_decl_format) == 0:
+            return
+
+        results = []
+        for (method_id, method_decl_format) in self.method_id_to_method_decl_format.items():
+            results.append(method_decl_format)
+        DataModel(results).save(self.path)
+
+    def restore(self):
+        df = DataModel().load(self.path)
+        for row in df:
+            self.method_id_to_method_decl_format[row.method_id] = row
 
 class UnitIDToStmtIDLoader:
     def __init__(self, path):
@@ -1386,6 +1411,10 @@ class Loader:
             os.path.join(self.semantic_path_p1, config.CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH)
         )
 
+        self._method_id_to_method_decl_format_loader = MethodIDToMethodDeclFormat(
+            os.path.join(self.semantic_path_p1, config.METHOD_ID_TO_METHOD_DECL_FORMAT_PATH)
+        )
+
         self._unit_id_to_stmt_id_loader: UnitIDToStmtIDLoader = UnitIDToStmtIDLoader(
             os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_STMT_ID_PATH)
         )
@@ -1867,6 +1896,11 @@ class Loader:
         return self._call_stmt_id_to_call_format_info_loader.load(stmt_id)
     def save_stmt_id_to_call_stmt_format(self, stmt_id, call_format_info):
         return self._call_stmt_id_to_call_format_info_loader.save(stmt_id, call_format_info)
+
+    def convert_method_id_to_method_decl_format(self, method_id):
+        return self._method_id_to_method_decl_format_loader.load(method_id)
+    def save_method_id_to_method_decl_format(self, method_id, method_decl_format):
+        return self._method_id_to_method_decl_format_loader.save(method_id, method_decl_format)
 
     def convert_unit_id_to_stmt_ids(self, *args):
         return self._unit_id_to_stmt_id_loader.load_one_to_many(*args)

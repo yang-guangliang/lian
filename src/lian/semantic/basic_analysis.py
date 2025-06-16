@@ -57,12 +57,33 @@ class BasicSemanticAnalysis:
     def config(self):
         pass
 
+    def analyze_and_save_method_decl_format(self, method_id, method_decl_stmt, parameter_decls):
+        unit_id = self.loader.convert_method_id_to_unit_id(method_id)
+        parameters_info = []
+        for each_parameter_stmt in parameter_decls:
+            if each_parameter_stmt.operation == "parameter_decl":
+                parameters_info.append({
+                    "stmt_id": each_parameter_stmt.stmt_id,
+                    "name": each_parameter_stmt.name,
+                    "data_type": each_parameter_stmt.data_type
+                })
+        method_format = {
+            "unit_id" : unit_id,
+            "method_id" : method_id,
+            "name": method_decl_stmt.name,
+            "data_type": method_decl_stmt.data_type,
+            "parameters": str(parameters_info)
+        }
+        self.loader.save_method_id_to_method_decl_format(method_id, method_format)
+
     def analyze_stmt_def_use(self, method_id, import_result, external_symbol_id_collection):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
         cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
         all_cfg_nodes = set(cfg.nodes())
+
+        self.analyze_and_save_method_decl_format(method_id, method_decl_stmt, parameter_decls)
 
         if util.is_available(parameter_decls):
             for row in parameter_decls:

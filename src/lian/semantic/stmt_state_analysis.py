@@ -1114,7 +1114,8 @@ class StmtStateAnalysis:
         return result
 
     def map_arguments(
-        self, args: MethodCallArguments, parameters: MethodDeclParameters, parameter_mapping_list: list[ParameterMapping],call_site
+        self, args: MethodCallArguments, parameters: MethodDeclParameters,
+        parameter_mapping_list: list[ParameterMapping], call_site
     ):
         """
         Mapping arguments and parameters in terms of symbol_ids
