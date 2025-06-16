@@ -29,7 +29,7 @@ from lian.semantic.resolver import Resolver
 from lian.semantic.scope_hierarchy import ImportHierarchy
 
 class StmtDefUseAnalysis:
-    def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_result:ImportHierarchy):
+    def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_result:ImportHierarchy, external_symbol_id_collection):
         """
         初始化语句定义使用分析器：
         1. 注册各类语句的处理回调函数
@@ -47,6 +47,7 @@ class StmtDefUseAnalysis:
         self.callees = compute_frame.basic_callees
         self.tmp_variable_to_define = {}
         self.each_stmt_defined_states = set()
+        self.external_symbol_id_collection = external_symbol_id_collection
 
         self.import_hierarchy_analysis = import_result
 
@@ -253,7 +254,11 @@ class StmtDefUseAnalysis:
             )
             if util.is_available(source_info):
                 if source_info.symbol_id == stmt_id or source_info.symbol_id < 0:
-                    source_info.symbol_id = self.loader.assign_new_unsolved_symbol_id()
+                    if used_symbol.name in self.external_symbol_id_collection:
+                        source_info.symbol_id = self.external_symbol_id_collection[used_symbol.name]
+                    else:
+                        source_info.symbol_id = self.loader.assign_new_unsolved_symbol_id()
+                        self.external_symbol_id_collection[used_symbol.name] = source_info.symbol_id
 
                 used_symbol.source_unit_id = source_info.source_unit_id
                 symbol_id = source_info.symbol_id

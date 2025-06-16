@@ -4,7 +4,7 @@ import os,sys
 import pprint
 import copy
 
-from lian.semantic.dynamic_content_analysis import DynamicContentAnalysis
+from lian.semantic.global_stmt_state_analysis import GlobalStmtStateAnalysis
 from lian.semantic.summary_generation import SemanticSummaryGeneration
 from lian.util import util
 from lian.config import config
@@ -93,12 +93,11 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
-        frame.stmt_state_analysis = DynamicContentAnalysis(
+        frame.stmt_state_analysis = GlobalStmtStateAnalysis(
             app_manager = self.app_manager,
             loader = self.loader,
             resolver = self.resolver,
             compute_frame = frame,
-            call_graph = self.call_graph,
             path_manager = self.path_manager,
             analyzed_method_list = self.analyzed_method_list
         )

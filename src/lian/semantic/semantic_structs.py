@@ -1821,7 +1821,7 @@ class PathManager:
             # print("添加路径:",new_path)
             self.paths.add(new_path)
 
-    def _remove_path(self,removed_path:tuple):
+    def _remove_path(self, removed_path:tuple):
         # print("要删除的path是",removed_path)
         removed_APath = APath(removed_path)
         self.paths.discard(removed_APath)

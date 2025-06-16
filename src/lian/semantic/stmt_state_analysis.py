@@ -1523,7 +1523,7 @@ class StmtStateAnalysis:
     ):
         # print("apply_this_symbol_semantic_summary@instance_state_indexes",instance_state_indexes)
         if util.is_empty(instance_state_indexes):
-            return 
+            return
         status = self.frame.stmt_id_to_status[stmt_id]
         old_to_new_arg_state = {}
         this_symbols = callee_summary.this_symbols
@@ -1547,7 +1547,7 @@ class StmtStateAnalysis:
 
         # 如果caller是通过new_object_stmt调用到callee的，就不应该将以上对this的修改添加到caller的summary中
         if new_object_flag:
-            return 
+            return
 
         new_this_states = set()
         for old_state in old_to_new_arg_state:
@@ -1555,7 +1555,7 @@ class StmtStateAnalysis:
         if not new_this_states:
             return
         # print("apply_this_symbol_semantic_summary@new_this_states",new_this_states)
-        
+
         index_to_add = self.frame.symbol_state_space.add(
             Symbol(
                 stmt_id = stmt_id,
@@ -1719,8 +1719,8 @@ class StmtStateAnalysis:
 
     @profile
     def apply_callee_semantic_summary(
-        self, stmt_id, callee_id, args: MethodCallArguments, 
-        callee_summary, callee_compact_space: SymbolStateSpace, 
+        self, stmt_id, callee_id, args: MethodCallArguments,
+        callee_summary, callee_compact_space: SymbolStateSpace,
         this_state_set: set = set(), new_object_flag = False
         ):
         # print("---开始apply_callee_semantic_summary---")
@@ -1998,9 +1998,10 @@ class StmtStateAnalysis:
         #     util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
 
         for each_callee_id in callee_method_ids:
-            if not self.call_graph.has_specific_weight(self.frame.method_id, each_callee_id, stmt_id):
-                # print(f"add edge: {self.frame.method_id} -> {each_callee_id} @ {stmt_id}")
-                self.call_graph.add_edge(int(self.frame.method_id), int(each_callee_id), int(stmt_id))
+            if self.call_graph:
+                if not self.call_graph.has_specific_weight(self.frame.method_id, each_callee_id, stmt_id):
+                    # print(f"add edge: {self.frame.method_id} -> {each_callee_id} @ {stmt_id}")
+                    self.call_graph.add_edge(int(self.frame.method_id), int(each_callee_id), int(stmt_id))
 
             # prepare callee summary template and compact space
             callee_summary = self.loader.load_method_summary_template(each_callee_id)

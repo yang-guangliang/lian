@@ -56,7 +56,7 @@ class BasicSemanticAnalysis:
     def config(self):
         pass
 
-    def analyze_stmt_def_use(self, method_id, import_result):
+    def analyze_stmt_def_use(self, method_id, import_result, external_symbol_id_collection):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
@@ -77,6 +77,7 @@ class BasicSemanticAnalysis:
             self.basic_call_graph,
             compute_frame = frame,
             import_result=import_result,
+            external_symbol_id_collection=external_symbol_id_collection,
         )
 
         for stmt_id in frame.stmt_id_to_stmt:
@@ -179,9 +180,10 @@ class BasicSemanticAnalysis:
         #print("=== Analyzing def_use ===")
         unit_list.reverse()
         for unit_id in unit_list:
+            external_symbol_id_collection = {}
             all_unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
             for method_id in all_unit_methods:
-                self.analyze_stmt_def_use(method_id, importAnalysis)
+                self.analyze_stmt_def_use(method_id, importAnalysis, external_symbol_id_collection)
         self.loader.save_call_graph_p1(self.basic_call_graph)
 
         self.group_methods_by_callee_types()
