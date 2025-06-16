@@ -53,6 +53,7 @@ class BasicSemanticAnalysis:
         self.basic_call_graph = BasicCallGraph()
         self.analyzed_method_ids = set()
 
+
     def config(self):
         pass
 
@@ -150,6 +151,14 @@ class BasicSemanticAnalysis:
         self.loader.save_grouped_methods(types)
         return types
 
+    def analyze_unit_method_parameters(self, unit_id, unit_gir):
+        unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
+        for method_id in unit_methods:
+            method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
+            if util.is_available(parameter_decls):
+                for row in parameter_decls:
+                    self.loader.save_method_parameter(method_id, row)
+
     @profile
     def run(self):
         unit_list = []
@@ -162,6 +171,7 @@ class BasicSemanticAnalysis:
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
             if not self.options.noextern:
                 self.extern_system.install_mock_code_file(unit_info, unit_scope)
+
         self.loader.export_scope_hierarchy()
         self.loader.export_entry_points()
 

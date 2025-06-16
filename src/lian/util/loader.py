@@ -510,6 +510,31 @@ class UnitSymbolDeclSummaryLoader:
         self.scope_id_to_symbol_info_loader.export()
         self.scope_id_to_available_scope_ids_loader.export()
 
+class CallStmtIDToCallFormatInfoLoader:
+    def __init__(self, path):
+        self.call_stmt_id_to_call_format_info = {}
+        self.path = path
+
+    def save(self, call_stmt_id, call_format_info):
+        self.call_stmt_id_to_call_format_info[call_stmt_id] = call_format_info
+
+    def load(self, call_stmt_id):
+        return self.call_stmt_id_to_call_format_info.get(call_stmt_id, -1)
+
+    def export(self):
+        if len(self.call_stmt_id_to_call_format_info) == 0:
+            return
+
+        results = []
+        for (stmt_id, call_format_info) in self.call_stmt_id_to_call_format_info.items():
+            results.append(call_format_info)
+        DataModel(results).save(self.path)
+
+    def restore(self):
+        df = DataModel().load(self.path)
+        for row in df:
+            self.call_stmt_id_to_call_format_info[row.stmt_id] = row
+
 class UnitIDToStmtIDLoader:
     def __init__(self, path):
         self.unit_id_to_stmt_ids = {}
@@ -1357,6 +1382,10 @@ class Loader:
             os.path.join(self.semantic_path_p1, config.CLASS_METHODS_PATH),
         )
 
+        self._call_stmt_id_to_call_format_info_loader = CallStmtIDToCallFormatInfoLoader(
+            os.path.join(self.semantic_path_p1, config.CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH)
+        )
+
         self._unit_id_to_stmt_id_loader: UnitIDToStmtIDLoader = UnitIDToStmtIDLoader(
             os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_STMT_ID_PATH)
         )
@@ -1418,6 +1447,14 @@ class Loader:
         )
 
         self._scope_id_to_available_scope_ids_loader: ScopeIDToAvailableScopeIDsLoader = ScopeIDToAvailableScopeIDsLoader(
+            options,
+            [],
+            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
+        self._call_stmt_id_to_info = ScopeIDToAvailableScopeIDsLoader(
             options,
             [],
             os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
@@ -1826,6 +1863,11 @@ class Loader:
     def save_methods_in_class(self, *args):
         return self._class_id_to_methods_loader.save(*args)
 
+    def convert_stmt_id_to_call_stmt_format(self, stmt_id):
+        return self._call_stmt_id_to_call_format_info_loader.load(stmt_id)
+    def save_stmt_id_to_call_stmt_format(self, stmt_id, call_format_info):
+        return self._call_stmt_id_to_call_format_info_loader.save(stmt_id, call_format_info)
+
     def convert_unit_id_to_stmt_ids(self, *args):
         return self._unit_id_to_stmt_id_loader.load_one_to_many(*args)
     def save_unit_id_to_stmt_ids(self, *args):
@@ -2166,13 +2208,12 @@ class Loader:
             'class_name': class_name,
             'method_name': method_name,
         }
-        pprint.pprint(context, indent=2, width=80)    
-
-        
-            
-    
+        pprint.pprint(context, indent=2, width=80)
 
 
-        
 
-        
+
+
+
+
+

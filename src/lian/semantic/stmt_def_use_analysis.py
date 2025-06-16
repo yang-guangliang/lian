@@ -364,6 +364,78 @@ class StmtDefUseAnalysis:
             )
         )
 
+    def analyze_and_save_call_stmt_args(self, stmt_id, stmt, positional_arg_index, args_list, status):
+        positional_args = []
+        packed_positional_args = []
+        named_args = []
+        packed_named_args = []
+
+        args_list = []
+        if not util.isna(stmt.positional_args):
+            positional_args = args_list[:positional_arg_index]
+        elif not util.isna(stmt.packed_positional_args):
+            packed_named_args = args_list[0]
+
+        if not util.isna(stmt.packed_named_args):
+            packed_named_args = args_list[positional_arg_index:]
+        elif not util.isna(stmt.named_args):
+            named_args = args_list[positional_arg_index:]
+
+        used_symbols = status.used_symbols
+        arg_symbol_list = used_symbols[1:]
+        callee_name_symbol_index = used_symbols[0]
+        callee_name_symbol = self.symbol_state_space[callee_name_symbol_index]
+
+        positional_args_info = []
+        packed_positional_args_info = []
+        named_args_info = []
+        packed_named_args_info = []
+        if positional_args:
+            for index, arg in enumerate(positional_args):
+                index =  arg_symbol_list[index]
+                arg_symbol = self.symbol_state_space[index]
+                if isinstance(arg_symbol, State):
+                    positional_args_info.append(tuple(arg_symbol.value))
+                else:
+                    positional_args_info.append(tuple(arg_symbol.symbol_id, arg_symbol.name))
+
+        elif packed_positional_args:
+            index =  arg_symbol_list[0]
+            arg_symbol = self.symbol_state_space[index]
+            packed_positional_args_info.append(tuple(arg_symbol.symbol_id, arg_symbol.name))
+
+        if named_args:
+            args_keys = ast.literal_eval(stmt.named_args).keys()
+            named_symbol_list = arg_symbol_list[positional_arg_index:]
+            for index, arg in enumerate(named_args):
+                index =  named_symbol_list[index]
+                arg_symbol = self.symbol_state_space[index]
+                if isinstance(arg_symbol, State):
+                    named_args_info.append(tuple(arg_symbol.value, args_keys[index]))
+                else:
+                    named_args_info.append(tuple(arg_symbol.symbol_id, arg_symbol.name, args_keys[index]))
+        elif packed_named_args:
+            index = used_symbols[-1]
+            arg_symbol = self.symbol_state_space[index]
+            packed_named_args_info.append(tuple(arg_symbol.symbol_id, arg_symbol.name))
+
+        defined_symbol = self.symbol_state_space[status.defined_symbol]
+
+        call_format = {
+            "unit_id": self.unit_id,
+            "method_id": self.method_id,
+            "stmt_id": stmt_id,
+            "target_name": stmt.target,
+            "target_symbol_id": defined_symbol.symbol_id,
+            "callee_name": stmt.name,
+            "callee_symbol_id": callee_name_symbol.symbol_id,
+            "positional_args": str(positional_args_info),
+            "packed_positional_args": str(packed_positional_args_info),
+            "packed_named_args": str(packed_named_args_info),
+            "named_args": str(named_args_info)
+            }
+        self.loader.save_stmt_id_to_call_stmt_format(stmt_id, call_format)
+
     def call_stmt_def_use(self, stmt_id, stmt):
         # convert stmt.args(str) to list
         args_list = []
@@ -371,6 +443,8 @@ class StmtDefUseAnalysis:
             args_list = ast.literal_eval(stmt.positional_args)
         elif not util.isna(stmt.packed_positional_args):
             args_list = [stmt.packed_positional_args]
+
+        positional_arg_index = len(args_list)
 
         if not util.isna(stmt.packed_named_args):
             args_list.append(stmt.packed_named_args)
@@ -384,14 +458,10 @@ class StmtDefUseAnalysis:
             if not util.isna(symbol):
                 used_symbol_list.append(self.create_symbol_or_state_and_add_space(stmt_id, symbol))
         defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target)
-        self.add_status_with_symbol_id_sync(
-            stmt,
-            StmtStatus(
-                stmt_id,
-                defined_symbol = defined_symbol,
-                used_symbols = used_symbol_list
-             )
-        )
+        status = StmtStatus(stmt_id, defined_symbol = defined_symbol, used_symbols = used_symbol_list)
+        self.add_status_with_symbol_id_sync(stmt, status)
+
+        self.analyze_and_save_call_stmt_args(stmt_id, stmt, positional_arg_index, args_list, status)
 
         # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
         # So check the source stmt id

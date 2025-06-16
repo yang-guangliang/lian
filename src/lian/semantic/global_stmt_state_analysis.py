@@ -122,11 +122,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             )
 
         for each_callee_id in callee_method_ids:
-            if not self.call_graph.has_specific_weight(caller_id, each_callee_id, stmt_id):
-                # print(f"call_graph_p3 add edge: {caller_id} -> {each_callee_id} @ {stmt_id}")
-                self.call_graph.add_edge(int(caller_id), int(each_callee_id), int(stmt_id))
-            callee_path = self.frame.path + (stmt_id, each_callee_id)
-            new_path = APath(callee_path)
+            new_path = APath(self.frame.path + (stmt_id, each_callee_id))
             self.path_manager.add_path(new_path)
             new_call_site = (caller_id, stmt_id, each_callee_id)
             # prepare callee summary instance and compact space
