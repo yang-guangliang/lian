@@ -307,6 +307,8 @@ class Row:
         return Row(new_row, new_schema, new_index)
 
     def __getattr__(self, item):
+        if item == "copy":
+            return self.__copy__
         pos = self._schema.get(item, -1)
         if pos != -1:
             return self._row[pos]
