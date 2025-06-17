@@ -240,6 +240,8 @@ class StmtStateAnalysis:
             fields = {},
             array = []
         )
+        print(self.frame.symbol_state_space)
+        print(33333333333333333333333333333333333333)
         index = self.frame.symbol_state_space.add(item)
         state_def_node = StateDefNode(index=index, state_id=item.state_id, stmt_id=stmt_id)
         util.add_to_dict_with_default_set(

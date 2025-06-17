@@ -160,7 +160,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
         args = self.prepare_args(stmt_id, stmt, status, in_states)
 
-        #TODO: JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
+        # TODO: JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
         if name_symbol.name == LianInternal.THIS:
             caller_id = self.frame.method_id
             class_id = self.loader.convert_method_id_to_class_id(caller_id)
