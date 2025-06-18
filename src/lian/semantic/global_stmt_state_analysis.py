@@ -4,6 +4,8 @@ import ast
 from inspect import Parameter
 import pprint
 
+from pandas.core import frame
+
 from lian.semantic.resolver import Resolver
 from lian.semantic.stmt_state_analysis import StmtStateAnalysis
 from lian.util import util
