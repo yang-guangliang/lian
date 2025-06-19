@@ -1555,7 +1555,7 @@ class MetaComputeFrame:
     content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)
 
 class ComputeFrame(MetaComputeFrame):
-    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None):
+    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None):
         super().__init__(method_id)
         self.has_been_inited = False
         self.method_id = method_id
@@ -1614,6 +1614,10 @@ class ComputeFrame(MetaComputeFrame):
         self.initial_state_to_external_symbol = {}
         self.external_symbol_id_to_initial_state_index = {}
         self.path: tuple = ()
+
+        self.args_list = None
+        self.params_list = params_list
+        self.previous_global_space_length = 0
 
 class ComputeFrameStack:
     def __init__(self):

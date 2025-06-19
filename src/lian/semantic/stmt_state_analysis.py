@@ -2207,6 +2207,7 @@ class StmtStateAnalysis:
         def: name
         use: default_value
         """
+        print(6666666666666666666666666666666)
         parameter_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if isinstance(parameter_name_symbol, Symbol):
             parameter_state_index = self.create_state_and_add_space(

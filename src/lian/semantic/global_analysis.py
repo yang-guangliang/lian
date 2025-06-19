@@ -156,7 +156,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         self.adjust_index_of_status_space(len(global_space), status, symbol_state_space)
         frame.stmt_id_to_status = status
-
+        frame.previous_global_space_length = len(global_space)
         for item in symbol_state_space:
             global_space.add(item)
 
@@ -455,7 +455,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                             caller_id = caller_id,
                             call_stmt_id = call_stmt_id,
                             loader = self.loader,
-                            space = global_space
+                            space = global_space,
+                            params_list = frame.args_list
                         )
                         frame_stack.add(new_frame)
                         children_done_flag = False
@@ -498,6 +499,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             if util.is_available(result) and result.interruption_flag:
                 data: InterruptionData = result.interruption_data
                 new_callee = False
+                frame.args_list = data.args_list
                 for callee_id in data.callee_ids:
                     key = (data.caller_id, data.call_stmt_id, callee_id)
                     # print(key)
@@ -510,7 +512,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
             # summary_data = self.generate_analysis_summary_and_s2space(frame)
             # self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
-            self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
+            # self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
             self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
             # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
