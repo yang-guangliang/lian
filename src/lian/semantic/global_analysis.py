@@ -156,7 +156,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         self.adjust_index_of_status_space(len(global_space), status, symbol_state_space)
         frame.stmt_id_to_status = status
-        frame.previous_global_space_length = len(global_space)
         for item in symbol_state_space:
             global_space.add(item)
 

@@ -107,17 +107,12 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             parameters = self.prepare_parameters(each_callee_id)
             if config.DEBUG_FLAG:
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
-            current_parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
-            if util.is_empty(current_parameter_mapping_list):
-                current_parameter_mapping_list = []
-                self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site)
+            # current_parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
+            # if util.is_empty(current_parameter_mapping_list):
+            current_parameter_mapping_list = []
+            self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site)
             parameter_mapping_list.extend(current_parameter_mapping_list)
         
-        print(1111111111111111111111)
-        print(self.frame.previous_global_space_length)
-        for each in parameter_mapping_list:
-            each.arg_index_in_space += self.frame.previous_global_space_length
-        print(parameter_mapping_list)
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
             return P2ResultFlag(
@@ -132,31 +127,30 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                 ),
             )
 
-        for each_callee_id in callee_method_ids:
-            new_path = APath(self.frame.path + (stmt_id, each_callee_id))
-            self.path_manager.add_path(new_path)
-            new_call_site = (caller_id, stmt_id, each_callee_id)
-            # prepare callee summary instance and compact space
-            if new_call_site in self.frame.summary_collection:
-                callee_summary = self.frame.summary_collection[new_call_site]
-            else:
-                continue
-            callee_summary = callee_summary.copy()
+        # for each_callee_id in callee_method_ids:
+        #     new_path = APath(self.frame.path + (stmt_id, each_callee_id))
+        #     self.path_manager.add_path(new_path)
+        #     new_call_site = (caller_id, stmt_id, each_callee_id)
+        #     # prepare callee summary instance and compact space
+        #     if new_call_site in self.frame.summary_collection:
+        #         callee_summary = self.frame.summary_collection[new_call_site]
+        #     else:
+        #         continue
+        #     callee_summary = callee_summary.copy()
 
-            if new_call_site in self.frame.symbol_state_space_collection:
-                callee_compact_space = self.frame.symbol_state_space_collection[new_call_site]
-            else:
-                continue
-            callee_compact_space = callee_compact_space.copy()
-            self.apply_callee_semantic_summary(
-                stmt_id, each_callee_id, args, callee_summary,
-                callee_compact_space, this_state_set, new_object_flag
-            )
+        #     if new_call_site in self.frame.symbol_state_space_collection:
+        #         callee_compact_space = self.frame.symbol_state_space_collection[new_call_site]
+        #     else:
+        #         continue
+        #     callee_compact_space = callee_compact_space.copy()
+        #     self.apply_callee_semantic_summary(
+        #         stmt_id, each_callee_id, args, callee_summary,
+        #         callee_compact_space, this_state_set, new_object_flag
+        #     )
 
         return P2ResultFlag()
 
     def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        print(555555555555555555555555)
         # pprint.pprint(status)
         target_index = status.defined_symbol
         target_symbol: Symbol = self.frame.symbol_state_space[target_index]
@@ -214,7 +208,6 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         def: name
         use: default_value
         """
-        print(88888888888888888888888888888)
         parameter_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
         symbol_id = parameter_name_symbol.symbol_id
         if isinstance(parameter_name_symbol, Symbol):
@@ -222,7 +215,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             for each_pair in self.frame.params_list:
                 if each_pair.parameter_symbol_id == symbol_id:
                     parameter_state_index = each_pair.arg_index_in_space
-                    self.update_access_path_state_id(parameter_state_index)
+                    # self.update_access_path_state_id(parameter_state_index)
                     parameter_name_symbol.states.add(parameter_state_index)
             if len(status.used_symbols) > 0:
                 default_value_index = status.used_symbols[0]

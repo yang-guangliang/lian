@@ -1617,7 +1617,6 @@ class ComputeFrame(MetaComputeFrame):
 
         self.args_list = None
         self.params_list = params_list
-        self.previous_global_space_length = 0
 
 class ComputeFrameStack:
     def __init__(self):
