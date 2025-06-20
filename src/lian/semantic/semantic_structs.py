@@ -1555,7 +1555,7 @@ class MetaComputeFrame:
     content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)
 
 class ComputeFrame(MetaComputeFrame):
-    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None):
+    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None):
         super().__init__(method_id)
         self.has_been_inited = False
         self.method_id = method_id
@@ -1582,7 +1582,9 @@ class ComputeFrame(MetaComputeFrame):
         self.symbol_changed_stmts = SimpleSet()
         self.stmt_id_to_stmt = {}
         self.stmt_id_to_status: dict[int, StmtStatus] = {}
-        self.symbol_state_space: SymbolStateSpace = SymbolStateSpace()
+        self.symbol_state_space: SymbolStateSpace = space
+        if space is None:
+            self.symbol_state_space = SymbolStateSpace()
         self.space_summary: SymbolStateSpace = SymbolStateSpace()
         self.all_symbol_defs = set()
         self.all_state_defs = set()
@@ -1612,6 +1614,10 @@ class ComputeFrame(MetaComputeFrame):
         self.initial_state_to_external_symbol = {}
         self.external_symbol_id_to_initial_state_index = {}
         self.path: tuple = ()
+
+        self.args_list = None
+        self.params_list = params_list
+        self.previous_global_space_length = 0
 
 class ComputeFrameStack:
     def __init__(self):

@@ -70,8 +70,35 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         for each_callee in callees:
             results[each_callee.stmt_id] = each_callee
         return results
+    
+    def adjust_index_of_status_space(self, baseline_index, status, space):
+        
+        for stmtstatus in status.values():
+            for each_id, value in enumerate(stmtstatus.used_symbols):
+                stmtstatus.used_symbols[each_id] = value + baseline_index
+            for each_id, value in enumerate(stmtstatus.implicitly_used_symbols):
+                stmtstatus.implicitly_used_states[each_id] = value + baseline_index
+            for each_id, value in enumerate(stmtstatus.implicitly_defined_symbols):
+                stmtstatus.implicitly_defined_states[each_id] = value + baseline_index
+            stmtstatus.defined_symbol += baseline_index
+        for each_space in space:
+            # each_space.index += baseline_index
+            if isinstance(each_space, Symbol):
+                new_set = set()
+                for each_id in each_space.states:
+                    new_set.add(each_id + baseline_index)
+                each_space.states = new_set
+            else:
+                for each_id, stmtstatus in enumerate(each_space.array):
+                    each_space.array[each_id] = stmtstatus + baseline_index
+                for each_field, value_set in each_space.fields.items():
+                    new_set = set()
+                    for index in value_set:
+                        new_set.add(num + baseline_index)
+                    each_space.fields[each_field] = new_set
+        # print(space)
 
-    def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack):
+    def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
         """
         初始化计算帧环境：
         1. 设置方法参数/语句初始状态
@@ -124,8 +151,17 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             self.path_manager.add_path(frame_path)
 
         # avoid changing the content of the loader
-        frame.stmt_id_to_status = copy.deepcopy(self.loader.load_stmt_status_p2(method_id))
-        frame.symbol_state_space = self.loader.load_symbol_state_space_p2(method_id).copy()
+        status = copy.deepcopy(self.loader.load_stmt_status_p2(method_id))
+        symbol_state_space = self.loader.load_symbol_state_space_p2(method_id).copy()
+
+        self.adjust_index_of_status_space(len(global_space), status, symbol_state_space)
+        frame.stmt_id_to_status = status
+        frame.previous_global_space_length = len(global_space)
+        for item in symbol_state_space:
+            global_space.add(item)
+
+        frame.symbol_state_space = global_space
+
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(self.loader.load_method_internal_callees(method_id))
 
         frame.symbol_bit_vector_manager = self.loader.load_symbol_bit_vector_p2(method_id).copy()
@@ -251,7 +287,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 self.update_out_states(stmt_id, frame, status, old_index_ceiling, old_status_defined_states)
             self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
             return P2ResultFlag()
-
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
         change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
@@ -380,7 +415,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         key = (current_frame.caller_id, current_frame.call_stmt_id)
         last_frame.summary_collection[key] = summary_data
 
-    def analyze_frame_stack(self, frame_stack: ComputeFrameStack):
+    def analyze_frame_stack(self, frame_stack: ComputeFrameStack, global_space):
         """
         执行调用栈级分析流程：
         1. 处理动态调用分析需求
@@ -390,6 +425,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         """
         frame_path = None
         while len(frame_stack) >= 2:
+
             # get current compute frame
             # print(f"\frame_stack: {frame_stack._stack}")
             frame: ComputeFrame = frame_stack.peek()
@@ -404,6 +440,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 util.debug(f"\n\tPhase III Analysis is in progress <method {frame.method_id}> \n")
 
             if frame.content_to_be_analyzed:
+
                 if config.DEBUG_FLAG:
                     util.debug(f"\t<method {frame.method_id}> has content to be analyzed: {frame.content_to_be_analyzed}")
                 # check if all children have been analyzed
@@ -418,6 +455,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                             caller_id = caller_id,
                             call_stmt_id = call_stmt_id,
                             loader = self.loader,
+                            space = global_space,
+                            params_list = frame.args_list
                         )
                         frame_stack.add(new_frame)
                         children_done_flag = False
@@ -454,12 +493,13 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
                 # Need to deal with dynamic callees
                 if not frame.has_been_inited:
-                    self.init_compute_frame(frame, frame_stack)
+                    self.init_compute_frame(frame, frame_stack, global_space)
 
             result: P2ResultFlag = self.analyze_stmts(frame)
             if util.is_available(result) and result.interruption_flag:
                 data: InterruptionData = result.interruption_data
                 new_callee = False
+                frame.args_list = data.args_list
                 for callee_id in data.callee_ids:
                     key = (data.caller_id, data.call_stmt_id, callee_id)
                     # print(key)
@@ -472,8 +512,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
             # summary_data = self.generate_analysis_summary_and_s2space(frame)
             # self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
-            self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
-            self.loader.save_symbol_state_space_p3(frame.call_site, frame.symbol_state_space)
+            # self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
             self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
             # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
@@ -486,7 +525,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         meta_frame: MetaComputeFrame = frame_stack[0]
         return meta_frame.summary_collection
 
-    def init_frame_stack(self, entry_method_id):
+    def init_frame_stack(self, entry_method_id, global_space):
         """
         初始化调用栈框架：
         1. 创建元帧用于结果收集
@@ -496,7 +535,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         """
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
-        entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader)
+        entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space)
         # entry_frame.path = tuple([entry_method_id])
         entry_frame.path = (entry_method_id,)
         entry_frame_path = APath(entry_frame.path)
@@ -521,8 +560,10 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # for path in self.call_graph.find_paths(entry_point):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
-            frame_stack = self.init_frame_stack(entry_point)
-            result = self.analyze_frame_stack(frame_stack)
+            global_space = SymbolStateSpace()
+            frame_stack = self.init_frame_stack(entry_point, global_space)
+            result = self.analyze_frame_stack(frame_stack, global_space)
+            self.loader.save_symbol_state_space_p3((0, 0, 0), global_space)
 
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader._call_path_p3_loader.export()

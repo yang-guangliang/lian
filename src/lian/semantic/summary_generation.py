@@ -595,6 +595,8 @@ class SemanticSummaryGeneration:
         返回是否继续分析的标记。
         """
         # print("@in_states before", in_states)
+        if stmt.operation == "parameter_decl":
+            return True
         if stmt_id not in frame.symbol_changed_stmts:
             return False
 

@@ -3,6 +3,9 @@
 import ast
 from inspect import Parameter
 import pprint
+from typing import override
+
+from pandas.core import frame
 
 from lian.semantic.resolver import Resolver
 from lian.semantic.stmt_state_analysis import StmtStateAnalysis
@@ -109,7 +112,12 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                 current_parameter_mapping_list = []
                 self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site)
             parameter_mapping_list.extend(current_parameter_mapping_list)
-
+        
+        print(1111111111111111111111)
+        print(self.frame.previous_global_space_length)
+        for each in parameter_mapping_list:
+            each.arg_index_in_space += self.frame.previous_global_space_length
+        print(parameter_mapping_list)
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
             return P2ResultFlag(
@@ -119,8 +127,9 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                 interruption_data = InterruptionData(
                     caller_id = self.frame.method_id,
                     call_stmt_id = stmt_id,
-                    callee_ids = callee_ids_to_be_analyzed
-                )
+                    callee_ids = callee_ids_to_be_analyzed,
+                    args_list = parameter_mapping_list
+                ),
             )
 
         for each_callee_id in callee_method_ids:
@@ -147,6 +156,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         return P2ResultFlag()
 
     def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+        print(555555555555555555555555)
         # pprint.pprint(status)
         target_index = status.defined_symbol
         target_symbol: Symbol = self.frame.symbol_state_space[target_index]
@@ -160,7 +170,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
         args = self.prepare_args(stmt_id, stmt, status, in_states)
 
-        #TODO: JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
+        # TODO: JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
         if name_symbol.name == LianInternal.THIS:
             caller_id = self.frame.method_id
             class_id = self.loader.convert_method_id_to_class_id(caller_id)
@@ -196,3 +206,37 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set
         )
+
+
+    def parameter_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+        """
+        parameter_decl  attrs    data_type   name    default_value
+        def: name
+        use: default_value
+        """
+        print(88888888888888888888888888888)
+        parameter_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        symbol_id = parameter_name_symbol.symbol_id
+        if isinstance(parameter_name_symbol, Symbol):
+            parameter_name_symbol.states = set()
+            for each_pair in self.frame.params_list:
+                if each_pair.parameter_symbol_id == symbol_id:
+                    parameter_state_index = each_pair.arg_index_in_space
+                    self.update_access_path_state_id(parameter_state_index)
+                    parameter_name_symbol.states.add(parameter_state_index)
+            if len(status.used_symbols) > 0:
+                default_value_index = status.used_symbols[0]
+                default_value = self.frame.symbol_state_space[default_value_index]
+                if isinstance(default_value, Symbol):
+                    value_state_indexes = self.read_used_states(default_value_index, in_states)
+                    for default_value_state_index in value_state_indexes:
+                        # self.tag_key_state(stmt_id, default_value.symbol_id, default_value_state_index)
+                        util.add_to_dict_with_default_set(
+                            self.frame.method_summary_template.used_external_symbols,
+                            default_value.symbol_id,
+                            IndexMapInSummary(default_value_state_index, -1)
+                        )
+
+                else:
+                    parameter_name_symbol.states.add(default_value_index)
+        return P2ResultFlag()
