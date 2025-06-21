@@ -10,6 +10,7 @@ CLASS_DECL_OPERATION = {
     "struct_decl",
     "trait_decl",
     "union_decl",
+    "implement_decl"
 }
 
 NAMESPACE_DECL_OPERATION = {
