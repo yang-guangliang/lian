@@ -100,7 +100,7 @@ class EntryPointGenerator:
             if util.is_available(scope.name):
                 name = scope.name
             if util.is_available(scope.attrs):
-                attrs = ast.literal_eval(scope.attrs)
+                attrs = scope.attrs
             if self.check_entry_point_rules(
                     unit_info.lang, unit_info.module_id, unit_info.unit_path, scope.stmt_id, name, attrs
             ):
