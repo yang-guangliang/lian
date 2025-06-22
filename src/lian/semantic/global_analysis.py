@@ -79,7 +79,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             for each_id, value in enumerate(stmtstatus.implicitly_used_symbols):
                 stmtstatus.implicitly_used_states[each_id] = value + baseline_index
             for each_id, value in enumerate(stmtstatus.implicitly_defined_symbols):
-                stmtstatus.implicitly_defined_states[each_id] = value + baseline_index
+                stmtstatus.implicitly_defined_symbols[each_id] = value + baseline_index
             stmtstatus.defined_symbol += baseline_index
         for each_space in space:
             # each_space.index += baseline_index
@@ -94,7 +94,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 for each_field, value_set in each_space.fields.items():
                     new_set = set()
                     for index in value_set:
-                        new_set.add(num + baseline_index)
+                        new_set.add(index + baseline_index)
                     each_space.fields[each_field] = new_set
         # print(space)
 
@@ -517,6 +517,11 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
             # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)
 
+            #pop之前，把parameter的states存到callerframe里去
+            # for param in frame.params_list:
+            #     param.
+            #     caller_frame.symbol_state_space[param_id] = param_states
+            # caller_frame.callee_param = 
             frame_stack.pop()
             if config.DEBUG_FLAG:
                 util.debug(f"\n\t<method {frame.method_id}> is Done\n")
