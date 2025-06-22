@@ -208,7 +208,8 @@ class GIRParser:
         self.output_path = output_path
         self.max_rows = config.MAX_ROWS
         self.count = 0
-    def parse(self, file_path, lang_option, lang_table):
+
+    def parse(self, unit_info, file_path, lang_option, lang_table):
         """
         解析源代码生成GIR：
         1. 动态加载语言解析库
@@ -260,11 +261,11 @@ class GIRParser:
             return
 
         gir_statements = []
-        parser = lang.parser(self.options)
+        parser = lang.parser(self.options, unit_info)
         parser.parse(tree.root_node, gir_statements)
         return gir_statements
 
-    def deal_with_file_unit(self, current_node_id, file_unit, lang_table):
+    def deal_with_file_unit(self, current_node_id, unit_info, file_unit, lang_table):
         """
         处理单个文件单元：
         1. 确定文件语言类型
@@ -277,7 +278,7 @@ class GIRParser:
         if self.options.debug:
             util.debug("GIR-Parsing:", file_unit)
 
-        gir_statements = self.parse(file_unit, lang_option, lang_table = lang_table)
+        gir_statements = self.parse(unit_info, file_unit, lang_option, lang_table = lang_table)
         if not gir_statements:
             return (current_node_id, None)
         if self.options.debug and self.options.print_stmts:
@@ -375,7 +376,7 @@ class LangAnalysis:
         for unit_info in all_units:
             # if row.symbol_type == constants.SymbolKind.UNIT_SYMBOL and row.unit_ext in extensions:
             current_node_id, gir = gir_parser.deal_with_file_unit(
-                current_node_id, unit_info.unit_path, lang_table = self.lang_table
+                current_node_id, unit_info, unit_info.unit_path, lang_table = self.lang_table
             )
             gir_parser.add_unit_gir(unit_info, gir)
             current_node_id = self.adjust_node_id(current_node_id)
