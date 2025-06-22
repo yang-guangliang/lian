@@ -578,7 +578,8 @@ class ImportHierarchy:
         export_result = []
         if not export_stmts and not export_from_stmts:
             for each_symbol in internal_symbols:
-                export_result = self.append_export_node(export_result, unit_id, each_symbol)
+                if "private" not in each_symbol.attrs:
+                    export_result = self.append_export_node(export_result, unit_id, each_symbol)
             result.extend(export_result)
         else:
             for each_stmt in export_stmts:
