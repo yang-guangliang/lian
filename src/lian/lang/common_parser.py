@@ -9,7 +9,7 @@ from lian.util import util
 from lian.config.constants import LianInternal
 
 class Parser:
-    def __init__(self, options):
+    def __init__(self, options, unit_info = None):
         """
         初始化解析器上下文：
         1. 初始化临时变量计数器（变量/方法/类）
@@ -22,6 +22,10 @@ class Parser:
         self.class_id = 0
         self.options = options
         self.printed_flag = False
+        self.unit_info = unit_info
+        self.unit_path = None
+        if unit_info:
+            self.unit_path = unit_info.origin_path
 
         # self.CONSTANTS_MAP = {
         #     "None"                          : LianInternal.NULL,
@@ -48,6 +52,14 @@ class Parser:
 
     def init(self):
         pass
+
+    def syntax_error(self, node: Node, msg: str):
+        sys.stderr.write(
+            f"SyntaxError: {msg}\n"
+            f"--> {self.unit_path}:{node.start_point.row + 1}:{node.start_point.column}\n"
+            f"      {self.read_node_text(node)}\n"
+        )
+        sys.exit(-1)
 
     def create_empty_node_with_init_list(self, *names):
         node = {}
@@ -244,7 +256,7 @@ class Parser:
                     self.print_tree(child, level + 1, child_field)
                 else:
                     self.print_tree(child, level + 1)
-    
+
     def add_col_row_info(self, node, gir_dict):
         """
         添加行列信息
@@ -258,7 +270,7 @@ class Parser:
             gir_dict[first_key]["end_row"] = end_line
             gir_dict[first_key]["end_col"] = end_col
         return gir_dict
-    
+
     def parse(self, node, statements=[], replacement=[]):
         """
         主解析入口：
