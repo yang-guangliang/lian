@@ -47,7 +47,11 @@ class StmtDefUseAnalysis:
         self.callees = compute_frame.basic_callees
         self.tmp_variable_to_define = {}
         self.each_stmt_defined_states = set()
-        self.external_symbol_id_collection = external_symbol_id_collection
+        self.unit_lang = self.loader.convert_unit_id_to_lang_name(self.unit_id)
+        self.external_symbol_id_collection = {}
+        if self.unit_lang != "yian":
+            #每个函数
+            self.external_symbol_id_collection = external_symbol_id_collection
 
         self.import_hierarchy_analysis = import_result
 
@@ -220,9 +224,17 @@ class StmtDefUseAnalysis:
                 source_info = self.resolver.resolve_symbol_source(
                     self.unit_id, self.method_id, stmt.stmt_id, stmt, defined_symbol
                 )
+
+                print(f"@@@@ {stmt} {source_info}")
                 if util.is_available(source_info):
                     defined_symbol.source_unit_id = source_info.source_unit_id
                     symbol_id = source_info.symbol_id
+                    if symbol_id == stmt.stmt_id:
+                        if defined_symbol.name in self.external_symbol_id_collection:
+                            symbol_id = self.external_symbol_id_collection[defined_symbol.name]
+                        else:
+                            symbol_id = self.loader.assign_new_unsolved_symbol_id()
+                        self.external_symbol_id_collection[defined_symbol.name] = symbol_id
                     defined_symbol.symbol_id = symbol_id
                     if symbol_id not in frame.symbol_to_define:
                         frame.symbol_to_define[symbol_id] = set()
