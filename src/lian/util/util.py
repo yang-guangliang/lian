@@ -201,6 +201,9 @@ class SimpleEnum:
     def __getattr__(self, item):
         return self._members[item]
 
+    def __contains__(self, name):
+        return name in self._reverse_lookup
+
     def __repr__(self):
         return f"SimpleEnum({self._members})"
 
