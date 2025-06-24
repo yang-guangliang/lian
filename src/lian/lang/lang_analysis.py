@@ -262,7 +262,7 @@ class GIRParser:
 
         gir_statements = []
         parser = lang.parser(self.options, unit_info)
-        parser.parse(tree.root_node, gir_statements)
+        parser.parse_gir(tree.root_node, gir_statements)
         return gir_statements
 
     def deal_with_file_unit(self, current_node_id, unit_info, file_unit, lang_table):

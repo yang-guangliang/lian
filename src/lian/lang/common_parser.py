@@ -317,3 +317,15 @@ class Parser:
             ret = self.parse(node.named_children[i], statements, replacement)
             if i + 1 == size:
                 return ret
+
+    def start_parse(self, node, statements):
+        pass
+
+    def end_parse(self, node, statements):
+        pass
+
+    def parse_gir(self, node, statements):
+        replacement = []
+        self.start_parse(node, statements)
+        self.parse(node, statements, replacement)
+        self.end_parse(node, statements)
