@@ -3,7 +3,6 @@
 import ast
 from inspect import Parameter
 import pprint
-from typing import override
 
 from pandas.core import frame
 
