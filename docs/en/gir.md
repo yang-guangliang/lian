@@ -45,8 +45,8 @@ This page describes our self-developed universal intermediate language. Compared
 | label_stmt                    | name                                                         | Label declaration                                            |
 | asm_stmt                      | target<br>data_type<br>attrs<br>data<br>extra<br>args        | Inline assembly: `target = attrs data(asm content)`          |
 | assert_stmt                   | condition                                                    | `assert condition`                                           |
-| del_stmt                      | name                                                         | Python `del target`                                          |
-| unset_stmt                    | name                                                         | PHP `unset`                                                  |
+| del_stmt                      | receiver<br>name                                             | Python `del target`                                          |
+| unset_stmt                    | receiver<br>name                                             | PHP `unset`                                                  |
 | pass_stmt                     |                                                              | Empty statement (Python `pass`)                              |
 | global_stmt                   | name                                                         | Python `global target`                                       |
 | nonlocal_stmt                 | name                                                         | Python `nonlocal target`                                     |
