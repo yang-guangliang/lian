@@ -204,6 +204,9 @@ class SimpleEnum:
     def __contains__(self, name):
         return name in self._reverse_lookup
 
+    def __iter__(self):
+        return iter(self._reverse_lookup)
+
     def __repr__(self):
         return f"SimpleEnum({self._members})"
 

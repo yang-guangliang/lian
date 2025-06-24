@@ -347,6 +347,12 @@ class Row:
     def raw_data(self):
         return self._row
 
+    def __contains__(self, item):
+        return item in self._schema
+
+    def __iter__(self):
+        return iter(self._row)
+
 
 class Column(pd.Series):
     def __repr__(self):
