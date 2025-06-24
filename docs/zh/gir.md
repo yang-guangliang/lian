@@ -45,8 +45,8 @@
 | label_stmt                    | name                                                         | 表示label指令                                                |
 | asm_stmt                      | target<br>data_type<br>attrs<br>data<br>extra<br>args        | target = attrs data(asm content), extra(input/out), args     |
 | assert_stmt                   | condition                                                    | 表示assert指令，其格式为assert condition                     |
-| del_stmt                      | name                                                         | 表示删除指令，例如python中 del target                        |
-| unset_stmt                    | name                                                         | 表示重置指令，php                                            |
+| del_stmt                      | receiver<br>name                                             | 表示删除指令，例如python中 del target                        |
+| unset_stmt                    | receiver<br>name                                             | 表示重置指令，php                                            |
 | pass_stmt                     |                                                              | 表示空指令                                                   |
 | global_stmt                   | name                                                         | 表示全局应用指令，例如python中glabol target                  |
 | nonlocal_stmt                 | name                                                         | 表示变量引用指令，例如python中nonlocal target                |
