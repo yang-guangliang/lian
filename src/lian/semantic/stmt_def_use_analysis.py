@@ -48,10 +48,7 @@ class StmtDefUseAnalysis:
         self.tmp_variable_to_define = {}
         self.each_stmt_defined_states = set()
         self.unit_lang = self.loader.convert_unit_id_to_lang_name(self.unit_id)
-        self.external_symbol_id_collection = {}
-        if self.unit_lang != "yian":
-            #每个函数
-            self.external_symbol_id_collection = external_symbol_id_collection
+        self.external_symbol_id_collection = external_symbol_id_collection
 
         self.import_hierarchy_analysis = import_result
 

@@ -84,7 +84,6 @@ class DefaultApp(AppSummary):
                     "javascript",
                     "php",
                     "abc",
-                    "yian"
                     # "llvm"
                 ]
             ),
@@ -98,15 +97,7 @@ class DefaultApp(AppSummary):
             EventHandler(
                 event = EventKind.GIR_LIST_GENERATED,
                 handler = basic.add_main_func,
-                langs = [
-                    "python",
-                    "javascript",
-                    "c",
-                    "php",
-                    "typescript",
-                    "arkts",
-                    "yian"
-                ]
+                langs = [config.ANY_LANG]
             ),
 
             # EventHandler(
@@ -125,7 +116,7 @@ class DefaultApp(AppSummary):
                 event = EventKind.P2STATE_FIELD_READ_BEFORE,
                 handler = this_field_read.resolve_this_field_method,
                 langs = [config.ANY_LANG]
-            ),            
+            ),
 
             # EventHandler(
             #     event = EventKind.P2STATE_FIELD_READ_AFTER,

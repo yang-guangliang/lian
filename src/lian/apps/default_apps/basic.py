@@ -460,23 +460,14 @@ def adjust_variable_decls(data: EventData):
 
             if key == "variable_decl":
                 variable_name = value["name"]
-                if data.lang in ["python", "abc", "yian"]:
+                if data.lang in ["python", "abc"]:
                 # if data.lang == "python" or data.lang == "abc":
                     if variable_name in available_variables:
                         to_be_deleted.append(ElementToBeDeleted(child_index, False, False))
                     else:
-                        # if data.lang == "yian" and child_index < len(stmts) - 1:
-                        #     next_stmt = stmts[child_index + 1]
-                        #     next_key = list(next_stmt.keys())[0]
-                        #     if next_key == "assign_stmt":
-                        #         assign_body = next_stmt[next_key]
-                        #         print(f"assign_body: {assign_body}")
-                        #         assign_stmt_id = assign_body["stmt_id"]
-                        #         value["from"] = assign_stmt_id
 
                         if in_block:
-                            if data.lang != "yian":
-                                to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
+                            to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
                         available_variables[variable_name] = True
 
                         # to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
@@ -574,10 +565,8 @@ def adjust_variable_decls(data: EventData):
                         if not has_save_breakpoints:
                             has_save_breakpoints = True
                             add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                        if data.lang == "yian":
-                            add_stack(stmt_value, 0, {}, [], True)
-                        else:
-                            add_stack(stmt_value, 0, available_variables, [], True)
+
+                        add_stack(stmt_value, 0, available_variables, [], True)
                         has_done = False
                 if has_save_breakpoints:
                     break

@@ -214,6 +214,8 @@ class BasicSemanticAnalysis:
             external_symbol_id_collection = {}
             all_unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
             for method_id in all_unit_methods:
+                if self.options.strict_parse_mode:
+                    external_symbol_id_collection = {}
                 self.analyze_stmt_def_use(method_id, importAnalysis, external_symbol_id_collection)
         self.loader.save_call_graph_p1(self.basic_call_graph)
 
