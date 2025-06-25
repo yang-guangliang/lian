@@ -225,7 +225,7 @@ class StmtDefUseAnalysis:
                     self.unit_id, self.method_id, stmt.stmt_id, stmt, defined_symbol
                 )
 
-                print(f"@@@@ {stmt} {source_info}")
+                #print(f"@@@@ {stmt} {source_info}")
                 if util.is_available(source_info):
                     defined_symbol.source_unit_id = source_info.source_unit_id
                     symbol_id = source_info.symbol_id
