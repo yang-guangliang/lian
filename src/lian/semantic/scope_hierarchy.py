@@ -406,55 +406,64 @@ class ImportHierarchy:
         ))
         return export_result
 
+    def validate_import(self, stmt):
+        if "*" in stmt.source or "*" in stmt.name or "*" in stmt.alias:
+            util.error_and_quit("ImportError: cannot use '*' in import")
+        if stmt.operation == "from_import_stmt":
+            if stmt.source == "" or stmt.source == ".":
+                util.error_and_quit("ImportError: cannot use relative/empty path in from..import")
+        if util.is_empty(stmt.name):
+            util.error_and_quit("ImportError: cannot use empty name in import")
+
+    def import_module_sync(self, unit_id, stmt_id, visited, result, module_id):
+        self.analyze_unit_imports(module_id)
+        self.import_graph.add_edge(unit_id, module_id, stmt_id)
+        export_symbols = self.loader.load_unit_export_symbols(module_id)
+        if not export_symbols: # TODO 2024.11.11 怀疑有import的循环依赖，分析1的过程中，又要load1的import
+            return
+        for each_symbol in export_symbols:
+            # print("imported symbol: ", each_symbol)
+            if each_symbol.name not in visited:
+                visited.add(each_symbol.name)
+                result.append(ExportNode(
+                    unit_id = unit_id,
+                    stmt_id = each_symbol.stmt_id,
+                    name = each_symbol.name,
+                    export_type = each_symbol.export_type,
+                    source_module_id = each_symbol.source_module_id,
+                    source_symbol_id = each_symbol.source_symbol_id
+                ))
+
+    def may_append_unknown_node(self, unit_id, stmt_id, target_name, result):
+        if len(result) == 0:
+            result.append(ExportNode(
+                unit_id = unit_id,
+                stmt_id = stmt_id,
+                name = target_name,
+                export_type = ExportNodeType.UNKNOWN_IMPORT,
+            ))
+
+    def append_import_module_node(self, unit_id, stmt_id, target_name, visited, result, module_id):
+        if not self.loader.is_module_id(module_id):
+            return
+
+        # determine its module type
+        module_type = ExportNodeType.MODULE_DIR
+        if self.loader.is_unit_id(module_id):
+            module_type = ExportNodeType.MODULE_UNIT
+
+        # save node
+        if target_name not in visited:
+            visited.add(target_name)
+            result.append(ExportNode(
+                unit_id = unit_id,
+                stmt_id = stmt_id,
+                name = target_name,
+                export_type = module_type,
+                source_module_id = module_id
+            ))
+
     def analyze_import_stmt(self, unit_id, stmt_id, stmt):
-        def import_module_sync(result, module_id):
-            self.analyze_unit_imports(module_id)
-            self.import_graph.add_edge(unit_id, module_id, stmt_id)
-            export_symbols = self.loader.load_unit_export_symbols(module_id)
-            if not export_symbols: # TODO 2024.11.11 怀疑有import的循环依赖，分析1的过程中，又要load1的import
-                return
-            for each_symbol in export_symbols:
-                # print("imported symbol: ", each_symbol)
-                if each_symbol.name not in visited:
-                    visited.add(each_symbol.name)
-                    result.append(ExportNode(
-                        unit_id = unit_id,
-                        stmt_id = each_symbol.stmt_id,
-                        name = each_symbol.name,
-                        export_type = each_symbol.export_type,
-                        source_module_id = each_symbol.source_module_id,
-                        source_symbol_id = each_symbol.source_symbol_id
-                    ))
-
-        def may_append_unknown_node(result):
-            if len(result) == 0:
-                result.append(ExportNode(
-                    unit_id = unit_id,
-                    stmt_id = stmt_id,
-                    name = target_name,
-                    export_type = ExportNodeType.UNKNOWN_IMPORT,
-                ))
-
-        def append_import_module_node(result, module_id):
-            if not self.loader.is_module_id(module_id):
-                return
-
-            # determine its module type
-            module_type = ExportNodeType.MODULE_DIR
-            if self.loader.is_unit_id(module_id):
-                module_type = ExportNodeType.MODULE_UNIT
-
-            # save node
-            if target_name not in visited:
-                visited.add(target_name)
-                result.append(ExportNode(
-                    unit_id = unit_id,
-                    stmt_id = stmt_id,
-                    name = target_name,
-                    export_type = module_type,
-                    source_module_id = module_id
-                ))
-
         # resolve the import stmt
         # return the list of import nodes (unit_id, stmt_id, name, source_unit_id, source_stmt_id)
         target_name = stmt.name
@@ -464,45 +473,45 @@ class ImportHierarchy:
         result = []
         visited = set()
 
+        is_strict_parse_mode = self.loader.options.strict_parse_mode
+        if is_strict_parse_mode:
+            self.validate_import(stmt)
+
         source = None
-        if hasattr(stmt, 'source'):
+        if hasattr(stmt, 'source') and util.is_available(stmt.source):
             source = stmt.source
-        elif hasattr(stmt, 'name'):
+        elif hasattr(stmt, 'name') and util.is_available(stmt.name):
             source = stmt.name
-        elif hasattr(stmt, 'module_path'):
+        elif hasattr(stmt, 'module_path') and util.is_available(stmt.module_path):
             source = stmt.module_path
         # format: < import name as alias >
 
-        is_strict_parse_mode = self.loader.options.strict_parse_mode
-
-        if is_strict_parse_mode:
-            if "*" in stmt.module_path or "*" in stmt.name or "*" in stmt.module_path or "*" in stmt.alias:
-                util.error_and_quit("ImportError: cannot use '*' in import")
 
         if not is_strict_parse_mode:
             if source == "" or source == ".":
                 module_ids_result = self.loader.parse_import_module_path(stmt.name)
                 for module_id in module_ids_result:
                     if self.loader.is_module_dir_id(module_id) or self.loader.is_unit_id(module_id):
-                        append_import_module_node(result, module_id)
+                        self.append_import_module_node(unit_id, stmt_id, target_name, visited, result, module_id)
                         self.import_graph.add_edge(unit_id, module_id, stmt_id)
                     else:
-                        import_module_sync(result, module_id)
-                may_append_unknown_node(result)
+                        self.import_module_sync(unit_id, stmt_id, visited, result, module_id)
+                self.may_append_unknown_node(unit_id, stmt_id, target_name, result)
                 return result
 
         # format < from source import name as alias >
         source_module_ids, name_module_ids = self.loader.parse_import_module_path_with_extra_name(source, stmt.name)
+        print("parse_import_module_path_with_extra_name: ", source, stmt.name, source_module_ids, name_module_ids)
 
         if len(source_module_ids) == 0:
-            may_append_unknown_node(result)
+            self.may_append_unknown_node(unit_id, stmt_id, target_name, result)
             return result
 
-        if is_strict_parse_mode:
+        if stmt.name != "*":
             for source_id in source_module_ids:
                 if self.loader.is_module_dir_id(source_id):
                     for name_id in name_module_ids:
-                        append_import_module_node(result, name_id)
+                        self.append_import_module_node(unit_id, stmt_id, target_name, visited, result, name_id)
                         self.import_graph.add_edge(unit_id, name_id, stmt_id)
                 else:
                     self.analyze_unit_imports(source_id)
@@ -522,13 +531,12 @@ class ImportHierarchy:
                                     source_symbol_id = each_symbol.source_symbol_id
                                 ))
 
-        if not is_strict_parse_mode and stmt.name == "*":
-
+        else:
             # format < from source import * >
             for source_id in source_module_ids:
                 if self.loader.is_module_dir_id(source_id):
                     for name_id in name_module_ids:
-                        append_import_module_node(result, name_id)
+                        self.append_import_module_node(unit_id, stmt_id, target_name, visited, result, name_id)
                         self.analyze_unit_imports(name_id)
                 else:
                     self.analyze_unit_imports(source_id)
@@ -547,7 +555,7 @@ class ImportHierarchy:
                                     source_symbol_id = each_symbol.source_symbol_id
                                 ))
 
-        may_append_unknown_node(result)
+        self.may_append_unknown_node(unit_id, stmt_id, target_name, result)
         return result
 
     def analyze_unit_imports(self, unit_id):
