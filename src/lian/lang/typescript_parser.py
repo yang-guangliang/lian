@@ -1402,7 +1402,7 @@ class Parser(common_parser.Parser):
         child = self.find_child_by_type(node,"namespace_import")
         if child:
             als = self.read_node_text(self.find_child_by_type(child,"identifier"))
-            statements.append({"from_import_stmt": {"name": "*", "alias": als,"source": source}})
+            statements.append({"from_import_stmt": {"name": "*", "alias": als, "source": source}})
             return als
 
 

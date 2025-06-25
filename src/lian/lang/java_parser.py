@@ -416,7 +416,7 @@ class Parser(common_parser.Parser):
         import_path = name.split(".")
         if len(import_path) > 1:
             prefix = ".".join(import_path[:-1])
-            statements.append({"from_import_stmt": {"sourc": prefix, "name": import_path[-1]}})
+            statements.append({"from_import_stmt": {"source": prefix, "name": import_path[-1]}})
 
     def parse_field(self, node, statements):
         myobject = self.find_child_by_field(node, "object")

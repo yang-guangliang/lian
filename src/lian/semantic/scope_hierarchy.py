@@ -473,16 +473,23 @@ class ImportHierarchy:
             source = stmt.module_path
         # format: < import name as alias >
 
-        if source == ""or source == ".":
-            module_ids_result = self.loader.parse_import_module_path(stmt.name)
-            for module_id in module_ids_result:
-                if self.loader.is_module_dir_id(module_id) or self.loader.is_unit_id(module_id):
-                    append_import_module_node(result, module_id)
-                    self.import_graph.add_edge(unit_id, module_id, stmt_id)
-                else:
-                    import_module_sync(result, module_id)
-            may_append_unknown_node(result)
-            return result
+        is_strict_parse_mode = self.loader.options.strict_parse_mode
+
+        if is_strict_parse_mode:
+            if "*" in stmt.module_path or "*" in stmt.name or "*" in stmt.module_path or "*" in stmt.alias:
+                util.error_and_quit("ImportError: cannot use '*' in import")
+
+        if not is_strict_parse_mode:
+            if source == "" or source == ".":
+                module_ids_result = self.loader.parse_import_module_path(stmt.name)
+                for module_id in module_ids_result:
+                    if self.loader.is_module_dir_id(module_id) or self.loader.is_unit_id(module_id):
+                        append_import_module_node(result, module_id)
+                        self.import_graph.add_edge(unit_id, module_id, stmt_id)
+                    else:
+                        import_module_sync(result, module_id)
+                may_append_unknown_node(result)
+                return result
 
         # format < from source import name as alias >
         source_module_ids, name_module_ids = self.loader.parse_import_module_path_with_extra_name(source, stmt.name)
@@ -491,7 +498,7 @@ class ImportHierarchy:
             may_append_unknown_node(result)
             return result
 
-        if stmt.name != "*":
+        if is_strict_parse_mode:
             for source_id in source_module_ids:
                 if self.loader.is_module_dir_id(source_id):
                     for name_id in name_module_ids:
@@ -514,7 +521,9 @@ class ImportHierarchy:
                                     source_module_id = each_symbol.source_module_id,
                                     source_symbol_id = each_symbol.source_symbol_id
                                 ))
-        else:
+
+        if not is_strict_parse_mode and stmt.name == "*":
+
             # format < from source import * >
             for source_id in source_module_ids:
                 if self.loader.is_module_dir_id(source_id):
