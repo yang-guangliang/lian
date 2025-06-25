@@ -7,7 +7,7 @@ This page describes our self-developed universal intermediate language. Compared
 | comment_stmt                  | data                                                         |                                                              |
 | package_stmt                  | name                                                         | Represents a package declaration statement, formatted as `package name` |
 | import_stmt                   | attrs<br>module_path<br>alias                                | Represents an import statement, formatted as `import module_path` or `import module_path as alias` <br><br/>Note：`module_path` is a directory or file path |
-| from_import_stmt              | attrs<br>module_path<br>name<br>alias                        | `attrs` notes： <br/>- `unit` : `name` must be a filename, not a folder<br>- `init`：target file must be initialized during import |
+| from_import_stmt              | attrs<br>source<br>name<br>alias                        | `attrs` notes： <br/>- `unit` : `name` must be a filename, not a folder<br>- `init`：target file must be initialized during import |
 | export_stmt                   | attrs<br>name<br>alias                                       | Represents an export command: `export <name> as <alias>`<br/>`attrs` identifies if it is `export default` (JS-only) |
 | from_export_stmt              | attrs<br>module_path<br>name<br>alias                        |                                                              |
 | require_stmt                  | target<br>name                                               | Represents a require statement: `target = require(name)`<br/>(PHP-only) |
