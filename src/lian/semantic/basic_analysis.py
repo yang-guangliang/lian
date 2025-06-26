@@ -43,6 +43,7 @@ from lian.semantic.stmt_def_use_analysis import StmtDefUseAnalysis
 
 class BasicSemanticAnalysis:
     def __init__(self, lian):
+        self.lian = lian
         self.analysis_phases = []
         self.options = lian.options
         self.app_manager = lian.app_manager
@@ -199,17 +200,13 @@ class BasicSemanticAnalysis:
         if not self.options.noextern:
             self.extern_system.display_all_installed_rules()
 
-        # Given a import stmt, how to construct export nodes of each unit and unit hierarchy
-        importAnalysis = ImportHierarchy(self.loader, self.resolver)
-        importAnalysis.analyze(unit_list)
-        # Given a class decl stmt and its supers' names, how to resolve them with its id?
-        #print("=== Analyzing Type Hierarchy ===")
+        importAnalysis = ImportHierarchy(self.lian, self.loader, self.resolver, unit_list).run()
         TypeHierarchy(self.loader, self.resolver).analyze(unit_list)
 
         # Conduct basic analysis, i.e., context-insensitive and flow-insensitive analysis
         # reversed() is to improve cache hit rates
         #print("=== Analyzing def_use ===")
-        unit_list.reverse()
+        #unit_list.reverse()
         for unit_id in unit_list:
             external_symbol_id_collection = {}
             all_unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)

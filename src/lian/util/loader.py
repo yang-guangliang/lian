@@ -59,7 +59,6 @@ class ModuleSymbolsLoader:
         self.module_dir_ids = set()
         self.unit_path_to_id = {}
         self.unit_id_to_path = {}
-        self.module_path_solving_cache = util.LRUCache(1000)
 
     def save(self, module_symbol_results):
         #print(module_symbol_results)
@@ -144,85 +143,6 @@ class ModuleSymbolsLoader:
             return []
 
         return all_units
-
-    def convert_module_ids_to_children_ids(self, ids):
-        result = set()
-        if not ids:
-            return result
-
-        for each_id in ids:
-            result |= self.module_id_to_children_ids.get(each_id, set())
-
-        return result
-
-    def convert_module_name_to_module_ids(self, module_name):
-        return self.module_name_to_module_ids.get(module_name, set())
-
-    def parse_import_module_path(self, path):
-        def check_return(result):
-            if util.is_empty(result):
-                return set()
-            return result
-
-        final_ids = set()
-        if not path:
-            return final_ids
-
-        if self.module_path_solving_cache.contain(path):
-            result = self.module_path_solving_cache.get(path)
-            return check_return(result)
-        module_list = path.split('.')
-        if not module_list:
-            return final_ids
-        while '' in module_list:
-            module_list.remove('')
-        children_ids = self.all_module_ids
-        for counter in range(len(module_list)):
-            current_path = module_list[counter]
-            if counter == 0:
-                final_ids = self.convert_module_name_to_module_ids(current_path)
-                if children_ids:
-                    final_ids = children_ids & final_ids
-                children_ids = self.convert_module_ids_to_children_ids(final_ids)
-
-            elif counter != 0 and counter != len(module_list) - 1:
-                children_ids = self.convert_module_ids_to_children_ids(final_ids)
-                final_ids = self.convert_module_name_to_module_ids(current_path)
-                if children_ids:
-                    final_ids = children_ids & final_ids
-
-            elif counter == len(module_list) - 1:
-                children_ids = self.convert_module_ids_to_children_ids(final_ids)
-                final_ids = self.convert_module_name_to_module_ids(current_path)
-                if children_ids:
-                    final_ids = children_ids & final_ids
-
-            if not final_ids:
-                break
-
-        init_ids = self.convert_module_name_to_module_ids("__init__")
-        children_ids = self.convert_module_ids_to_children_ids(final_ids)
-        final_ids |= children_ids & init_ids
-        final_ids = check_return(final_ids)
-        self.module_path_solving_cache.put(path, final_ids)
-        return final_ids
-
-    def parse_import_module_path_with_extra_name(self, path, child):
-        final_ids = self.parse_import_module_path(path)
-
-        result = set()
-
-        if final_ids:
-            children_ids = self.convert_module_ids_to_children_ids(final_ids)
-            if child != "*":
-                current_ids = self.convert_module_name_to_module_ids(child)
-                result = current_ids
-                if children_ids  and current_ids :
-                    result = children_ids & current_ids
-            else:
-                result = children_ids
-
-        return (final_ids, result)
 
     def parse_unit_path_to_unit_id(self, unit_path):
         return self.unit_path_to_id.get(unit_path, None)
@@ -1850,21 +1770,10 @@ class Loader:
         return self._module_symbols_loader.is_unit_id(*args)
     def is_module_dir_id(self, *args):
         return self._module_symbols_loader.is_module_dir_id(*args)
-
     def convert_unit_id_to_lang_name(self, *args):
         return self._module_symbols_loader.load_unit_lang_name(*args)
-
-    def convert_module_ids_to_children_ids(self, *args):
-        return self._module_symbols_loader.convert_module_ids_to_children_ids(*args)
-    def convert_module_name_to_module_ids(self, *args):
-        return self._module_symbols_loader.convert_module_name_to_module_ids(*args)
-    def parse_import_module_path(self, *args):
-        return self._module_symbols_loader.parse_import_module_path(*args)
-    def parse_import_module_path_with_extra_name(self, *args):
-        return self._module_symbols_loader.parse_import_module_path_with_extra_name(*args)
     def parse_require_unit_path_to_unit_id(self, *args):
         return self._module_symbols_loader.parse_unit_path_to_unit_id(*args)
-
 
     def load_unit_gir(self, *args):
         return self._gir_loader.load(*args)

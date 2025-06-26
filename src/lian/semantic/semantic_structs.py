@@ -426,6 +426,24 @@ class ScopeSpace(BasicSpace):
             results.append(row.to_dict())
         return results
 
+class ImportNode:
+    def __init__(self, node_type, node_id, node_name):
+        self.node_type:int = node_type
+        self.node_id: int = node_id
+        self.node_name: str = node_name
+
+    def __eq__(self, value):
+        if isinstance(value, ImportNode):
+            return (
+                self.node_type == value.node_type
+                and self.node_id == value.node_id
+                and self.node_name == value.node_name
+            )
+        return False
+
+    def __hash__(self):
+        return hash((self.node_type, self.node_id, self.node_name))
+
 class CFGNode:
     def __init__(self, stmt, edge = None):
         self.stmt = stmt

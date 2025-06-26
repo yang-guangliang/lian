@@ -2,7 +2,9 @@
 
 import pprint
 import re
+import networkx as nx
 
+from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
     CLASS_DECL_OPERATION,
@@ -14,11 +16,13 @@ from lian.config.constants import (
     EXPORT_STMT_OPERATION,
     FOR_STMT_OPERATION,
     ExportNodeType,
-    ScopeKind
+    ScopeKind,
+    SymbolKind
 )
 
 from lian.semantic.semantic_structs import (
     BasicGraph,
+    ImportNode,
     MethodInClass,
     Scope,
     ScopeSpace,
@@ -388,11 +392,38 @@ class UnitScopeHierarchyAnalysis:
         pprint.pprint(self.scope_space.to_dict())
 
 class ImportHierarchy:
-    def __init__(self, loader, resolver):
+    def __init__(self, lian, loader, resolver, unit_list):
+        self.lian = lian
+        self.options = self.lian.options
+        self.is_strict_parse_mode = self.options.strict_parse_mode
         self.loader = loader
         self.resolver = resolver
+        self.unit_list = unit_list
         self.analyzed_imported_unit_ids = set()
-        self.import_graph = BasicGraph()
+        self.import_graph = nx.DiGraph()
+
+        self.node_id_to_import_node = {}
+        self.node_name_to_import_node_id = {}
+
+
+    def initialize_import_graph(self):
+        for module_item in self.loader.load_module_symbol_table():
+            node_name = module_item.symbol_name
+            node_id = module_item.module_id
+            node_type = module_item.symbol_type
+            import_node = ImportNode(
+                node_type = node_type,
+                node_id = node_id,
+                node_name = node_name
+            )
+            if node_name not in self.node_name_to_import_node_id:
+                self.node_name_to_import_node_id[node_name] = set()
+            self.node_name_to_import_node_id[node_name].add(node_id)
+
+            self.node_id_to_import_node[import_node.node_id] = import_node
+            parent_node_id = module_item.parent_module_id
+            if parent_node_id in self.node_id_to_import_node:
+                self.import_graph.add_edge(parent_node_id, import_node)
 
     def append_export_node(self, export_result, unit_id, stmt):
 
@@ -463,6 +494,85 @@ class ImportHierarchy:
                 source_module_id = module_id
             ))
 
+    def convert_module_ids_to_children_ids(self, ids):
+        result = set()
+        if not ids:
+            return result
+
+        for each_id in ids:
+            result |= self.module_id_to_children_ids.get(each_id, set())
+
+        return result
+
+    def convert_module_name_to_module_ids(self, module_name):
+        return self.module_name_to_module_ids.get(module_name, set())
+
+    def parse_import_module_path(self, path):
+        def check_return(result):
+            if util.is_empty(result):
+                return set()
+            return result
+
+        final_ids = set()
+        if not path:
+            return final_ids
+
+        if self.module_path_solving_cache.contain(path):
+            result = self.module_path_solving_cache.get(path)
+            return check_return(result)
+        module_list = path.split('.')
+        if not module_list:
+            return final_ids
+        while '' in module_list:
+            module_list.remove('')
+        children_ids = self.all_module_ids
+        for counter in range(len(module_list)):
+            current_path = module_list[counter]
+            if counter == 0:
+                final_ids = self.convert_module_name_to_module_ids(current_path)
+                if children_ids:
+                    final_ids = children_ids & final_ids
+                children_ids = self.convert_module_ids_to_children_ids(final_ids)
+
+            elif counter != 0 and counter != len(module_list) - 1:
+                children_ids = self.convert_module_ids_to_children_ids(final_ids)
+                final_ids = self.convert_module_name_to_module_ids(current_path)
+                if children_ids:
+                    final_ids = children_ids & final_ids
+
+            elif counter == len(module_list) - 1:
+                children_ids = self.convert_module_ids_to_children_ids(final_ids)
+                final_ids = self.convert_module_name_to_module_ids(current_path)
+                if children_ids:
+                    final_ids = children_ids & final_ids
+
+            if not final_ids:
+                break
+
+        init_ids = self.convert_module_name_to_module_ids("__init__")
+        children_ids = self.convert_module_ids_to_children_ids(final_ids)
+        final_ids |= children_ids & init_ids
+        final_ids = check_return(final_ids)
+        self.module_path_solving_cache.put(path, final_ids)
+        return final_ids
+
+    def parse_import_module_path_with_extra_name(self, path, child):
+        final_ids = self.parse_import_module_path(path)
+
+        result = set()
+
+        if final_ids:
+            children_ids = self.convert_module_ids_to_children_ids(final_ids)
+            if child != "*":
+                current_ids = self.convert_module_name_to_module_ids(child)
+                result = current_ids
+                if children_ids  and current_ids :
+                    result = children_ids & current_ids
+            else:
+                result = children_ids
+
+        return (final_ids, result)
+
     def analyze_import_stmt(self, unit_id, stmt_id, stmt):
         # resolve the import stmt
         # return the list of import nodes (unit_id, stmt_id, name, source_unit_id, source_stmt_id)
@@ -473,8 +583,7 @@ class ImportHierarchy:
         result = []
         visited = set()
 
-        is_strict_parse_mode = self.loader.options.strict_parse_mode
-        if is_strict_parse_mode:
+        if self.is_strict_parse_mode:
             self.validate_import(stmt)
 
         source = None
@@ -487,7 +596,7 @@ class ImportHierarchy:
         # format: < import name as alias >
 
 
-        if not is_strict_parse_mode:
+        if not self.is_strict_parse_mode:
             if source == "" or source == ".":
                 module_ids_result = self.loader.parse_import_module_path(stmt.name)
                 for module_id in module_ids_result:
@@ -610,10 +719,13 @@ class ImportHierarchy:
 
         self.loader.save_unit_export_symbols(unit_id, result)
 
-    def analyze(self, unit_id_list):
-        for unit_id in unit_id_list:
+    def run(self):
+        self.initialize_import_graph()
+        for unit_id in self.unit_list:
             self.analyze_unit_imports(unit_id)
         self.loader.save_import_graph(self.import_graph)
+        return self
+
 
 class ImportGraphTranslatorToUnitLevel:
     def __init__(self, loader, import_graph, unit_id_list):
