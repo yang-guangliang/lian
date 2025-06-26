@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import os
+import platform
 from lian.lang import (
     c_parser,
     csharp_parser,
