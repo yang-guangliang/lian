@@ -12,8 +12,12 @@ from lian.lang import (
     llvm_parser
 )
 LIB_DIR              = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
-LANGS_SO_PATH        = os.path.join(LIB_DIR, "lib/langs_linux.so")
 
+LANGS_SO_PATH        = os.path.join(LIB_DIR, "lib/langs_linux.so")
+LANG_SO_PATH            = os.path.join(LIB_DIR, 
+    "lib/c_langs_macos_arm64.so" if 
+    platform.system() == 'Darwin' and platform.machine() == 'arm64'
+    else "lib/langs_linux.so")
 @dataclass
 class LangConfig:
     name     : str
