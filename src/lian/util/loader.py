@@ -130,6 +130,9 @@ class ModuleSymbolsLoader:
     def convert_module_id_to_module_info(self, unit_id):
         return self.module_id_to_module_info.get(unit_id, None)
 
+    def convert_module_id_to_child_module_ids(self, module_id):
+        return self.module_id_to_children_ids.get(module_id, set())
+
     def load_all_unit_info(self):
         if len(self.module_symbol_table) == 0:
             return []
@@ -1774,6 +1777,8 @@ class Loader:
         return self._module_symbols_loader.load_unit_lang_name(*args)
     def parse_require_unit_path_to_unit_id(self, *args):
         return self._module_symbols_loader.parse_unit_path_to_unit_id(*args)
+    def convert_module_id_to_child_module_ids(self, *args):
+        return self._module_symbols_loader.convert_module_id_to_child_module_ids(*args)
 
     def load_unit_gir(self, *args):
         return self._gir_loader.load(*args)

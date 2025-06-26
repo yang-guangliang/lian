@@ -61,6 +61,36 @@ def error_and_quit(*msg):
     sys.stderr.write(f"[ERROR]: {' '.join(str(item) for item in msg)}\n")
     sys.exit(-1)
 
+def convert_stmt_to_str(stmt):
+    if not hasattr(stmt, "_schema"):
+        return ""
+    stmt_item_list = [str(stmt.stmt_id)]
+    for key, pos in stmt._schema.items():
+        if key in [
+            "data_type",
+            "stmt_id",
+            "parent_stmt_id",
+            "start_row",
+            "start_col",
+            "end_row",
+            "end_col",
+            "unit_id",
+            "row_index",
+        ]:
+            continue
+        value = stmt._row[pos]
+        if is_available(value):
+            # 将非字符串类型的值转换为字符串
+            stmt_item_list.append(str(value))
+    stmt_str = " ".join(stmt_item_list)
+    return stmt_str.replace("\n", "").replace("\r", "")
+
+def error_and_quit_with_stmt_info(unit_path, stmt, *msg):
+    sys.stderr.write(f"{' '.join(str(item) for item in msg)}\n")
+    sys.stderr.write(f"{unit_path}:{stmt.start_row}\n")
+    sys.stderr.write(f"    {convert_stmt_to_str(stmt)}\n")
+    sys.exit(-1)
+
 def error(*msg):
     # logging.error('这是一条debug级别的日志')
     sys.stderr.write(f"[ERROR]: {' '.join(str(item) for item in msg)}\n")
@@ -356,9 +386,9 @@ class LRUCache:
         node.next = self.tail
 
 
-def read_stmt_field(stmt_field):
+def read_stmt_field(stmt_field, default=""):
     if isna(stmt_field):
-        return ""
+        return default
     return stmt_field
 
 def add_to_dict_with_default_set(d, key, value):

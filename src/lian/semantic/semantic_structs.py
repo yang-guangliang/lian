@@ -427,7 +427,8 @@ class ScopeSpace(BasicSpace):
         return results
 
 class ImportNode:
-    def __init__(self, node_type, node_id, node_name):
+    def __init__(self, scope_id, node_type, node_id, node_name):
+        self.scope_id = scope_id
         self.node_type:int = node_type
         self.node_id: int = node_id
         self.node_name: str = node_name
@@ -435,14 +436,15 @@ class ImportNode:
     def __eq__(self, value):
         if isinstance(value, ImportNode):
             return (
-                self.node_type == value.node_type
+                self.scope_id == value.scope_id
+                and self.node_type == value.node_type
                 and self.node_id == value.node_id
                 and self.node_name == value.node_name
             )
         return False
 
     def __hash__(self):
-        return hash((self.node_type, self.node_id, self.node_name))
+        return hash((self.scope_id, self.node_type, self.node_id, self.node_name))
 
 class CFGNode:
     def __init__(self, stmt, edge = None):

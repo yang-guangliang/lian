@@ -49,7 +49,8 @@ CALL_OPERATION = {
 }
 
 EXPORT_STMT_OPERATION = {
-    "export_stmt"
+    "export_stmt",
+    "from_export_stmt"
 }
 
 RETURN_STMT_OPERATION = {

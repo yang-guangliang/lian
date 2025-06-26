@@ -138,7 +138,8 @@ class UnitScopeHierarchyAnalysis:
                     scope_kind = ScopeKind.IMPORT_STMT,
                     source = util.read_stmt_field(row.source),
                     name = util.read_stmt_field(row.name),
-                    alias = util.read_stmt_field(row.alias)
+                    alias = util.read_stmt_field(row.alias),
+                    attrs = util.read_stmt_field(row.attrs, "public")
                 )
                 self.scope_space.add(import_scope)
                 self.import_stmt_ids.add(stmt_id)
@@ -402,31 +403,37 @@ class ImportHierarchy:
         self.analyzed_imported_unit_ids = set()
         self.import_graph = nx.DiGraph()
 
-        self.node_id_to_import_node = {}
-        self.node_name_to_import_node_id = {}
+        self.enable_import_all = True
 
+        self.node_id_to_import_node = {}
+        self.node_name_to_import_nodes = {}
+
+    def add_import_graph_edge(self, parent_node_id, node_type, node_id, node_name):
+        import_node = ImportNode(
+            scope_id = parent_node_id,
+            node_type = node_type,
+            node_id = node_id,
+            node_name = node_name
+        )
+
+        if node_name not in self.node_name_to_import_nodes:
+            self.node_name_to_import_nodes[node_name] = set()
+        self.node_name_to_import_nodes[node_name].add(import_node)
+        self.node_id_to_import_node[node_id] = import_node
+        if parent_node_id in self.node_id_to_import_node:
+            parent_node = self.node_id_to_import_node[parent_node_id]
+            self.import_graph.add_edge(parent_node, import_node)
 
     def initialize_import_graph(self):
         for module_item in self.loader.load_module_symbol_table():
-            node_name = module_item.symbol_name
-            node_id = module_item.module_id
-            node_type = module_item.symbol_type
-            import_node = ImportNode(
-                node_type = node_type,
-                node_id = node_id,
-                node_name = node_name
+            self.add_import_graph_edge(
+                module_item.parent_module_id,
+                module_item.symbol_type,
+                module_item.module_id,
+                module_item.symbol_name
             )
-            if node_name not in self.node_name_to_import_node_id:
-                self.node_name_to_import_node_id[node_name] = set()
-            self.node_name_to_import_node_id[node_name].add(node_id)
-
-            self.node_id_to_import_node[import_node.node_id] = import_node
-            parent_node_id = module_item.parent_module_id
-            if parent_node_id in self.node_id_to_import_node:
-                self.import_graph.add_edge(parent_node_id, import_node)
 
     def append_export_node(self, export_result, unit_id, stmt):
-
         export_result.append(ExportNode(
             unit_id = unit_id,
             stmt_id = stmt.stmt_id,
@@ -437,18 +444,9 @@ class ImportHierarchy:
         ))
         return export_result
 
-    def validate_import(self, stmt):
-        if "*" in stmt.source or "*" in stmt.name or "*" in stmt.alias:
-            util.error_and_quit("ImportError: cannot use '*' in import")
-        if stmt.operation == "from_import_stmt":
-            if stmt.source == "" or stmt.source == ".":
-                util.error_and_quit("ImportError: cannot use relative/empty path in from..import")
-        if util.is_empty(stmt.name):
-            util.error_and_quit("ImportError: cannot use empty name in import")
-
     def import_module_sync(self, unit_id, stmt_id, visited, result, module_id):
         self.analyze_unit_imports(module_id)
-        self.import_graph.add_edge(unit_id, module_id, stmt_id)
+        self.import_graph.add_edge(unit_id, module_id)
         export_symbols = self.loader.load_unit_export_symbols(module_id)
         if not export_symbols: # TODO 2024.11.11 怀疑有import的循环依赖，分析1的过程中，又要load1的import
             return
@@ -493,19 +491,6 @@ class ImportHierarchy:
                 export_type = module_type,
                 source_module_id = module_id
             ))
-
-    def convert_module_ids_to_children_ids(self, ids):
-        result = set()
-        if not ids:
-            return result
-
-        for each_id in ids:
-            result |= self.module_id_to_children_ids.get(each_id, set())
-
-        return result
-
-    def convert_module_name_to_module_ids(self, module_name):
-        return self.module_name_to_module_ids.get(module_name, set())
 
     def parse_import_module_path(self, path):
         def check_return(result):
@@ -573,39 +558,68 @@ class ImportHierarchy:
 
         return (final_ids, result)
 
-    def analyze_import_stmt(self, unit_id, stmt_id, stmt):
-        # resolve the import stmt
-        # return the list of import nodes (unit_id, stmt_id, name, source_unit_id, source_stmt_id)
-        target_name = stmt.name
+    def validate_import_stmt(self, unit_info, stmt):
+        unit_path = unit_info.original_path
+        if not self.is_strict_parse_mode:
+            if util.is_empty(stmt.name):
+                util.error(f"ImportError: cannot use empty name in import")
+            return
+
+        if stmt.source.startswith(".") or stmt.name.startswith("."):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, "ImportError: cannot use relative path in import (remove the leading dot)"
+            )
+        if stmt.source.endswith(".") or stmt.name.endswith("."):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, "ImportError: cannot use relative path in import (remove the trailing dot)"
+            )
+        if "*" in stmt.source or "*" in stmt.name or "*" in stmt.alias:
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, f"ImportError: cannot use '*' in import"
+            )
+        if stmt.operation == "from_import_stmt":
+            if stmt.source == "":
+                util.error_and_quit_with_stmt_info(
+                    unit_path, stmt, f"ImportError: cannot use empty path in from..import"
+                )
+        if util.is_empty(stmt.name):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, f"ImportError: cannot use empty name in import"
+            )
+
+    def get_import_path(self, stmt):
+        import_path = ""
+        if util.is_available(stmt.source):
+            import_path = stmt.source
+        if util.is_available(stmt.name):
+            import_path += "." + stmt.name
+            import_path = import_path.replace("..", ".")
+        return import_path
+
+    def parse_import_path_from_current_dir(self, import_path, unit_info):
+        parent_module_id = unit_info.parent_module_id
+
+    def analyze_import_stmt(self, unit_id, unit_info, stmt_id, stmt):
+        self.validate_import_stmt(unit_info, stmt)
+
+        alias = stmt.name.split(".")[-1]
         if stmt.alias:
-            target_name = stmt.alias
+            alias = stmt.alias
 
         result = []
         visited = set()
-
-        if self.is_strict_parse_mode:
-            self.validate_import(stmt)
-
-        source = None
-        if hasattr(stmt, 'source') and util.is_available(stmt.source):
-            source = stmt.source
-        elif hasattr(stmt, 'name') and util.is_available(stmt.name):
-            source = stmt.name
-        elif hasattr(stmt, 'module_path') and util.is_available(stmt.module_path):
-            source = stmt.module_path
-        # format: < import name as alias >
-
+        import_path = self.get_import_path(stmt)
 
         if not self.is_strict_parse_mode:
-            if source == "" or source == ".":
-                module_ids_result = self.loader.parse_import_module_path(stmt.name)
+            if import_path.startswith("."):
+                module_ids_result = self.loader.parse_import_path_from_current_dir(import_path, unit_info.unit_path)
                 for module_id in module_ids_result:
                     if self.loader.is_module_dir_id(module_id) or self.loader.is_unit_id(module_id):
-                        self.append_import_module_node(unit_id, stmt_id, target_name, visited, result, module_id)
+                        self.append_import_module_node(unit_id, stmt_id, alias, visited, result, module_id)
                         self.import_graph.add_edge(unit_id, module_id, stmt_id)
                     else:
                         self.import_module_sync(unit_id, stmt_id, visited, result, module_id)
-                self.may_append_unknown_node(unit_id, stmt_id, target_name, result)
+                self.may_append_unknown_node(unit_id, stmt_id, alias, result)
                 return result
 
         # format < from source import name as alias >
@@ -613,14 +627,14 @@ class ImportHierarchy:
         print("parse_import_module_path_with_extra_name: ", source, stmt.name, source_module_ids, name_module_ids)
 
         if len(source_module_ids) == 0:
-            self.may_append_unknown_node(unit_id, stmt_id, target_name, result)
+            self.may_append_unknown_node(unit_id, stmt_id, alias, result)
             return result
 
         if stmt.name != "*":
             for source_id in source_module_ids:
                 if self.loader.is_module_dir_id(source_id):
                     for name_id in name_module_ids:
-                        self.append_import_module_node(unit_id, stmt_id, target_name, visited, result, name_id)
+                        self.append_import_module_node(unit_id, stmt_id, alias, visited, result, name_id)
                         self.import_graph.add_edge(unit_id, name_id, stmt_id)
                 else:
                     self.analyze_unit_imports(source_id)
@@ -645,7 +659,7 @@ class ImportHierarchy:
             for source_id in source_module_ids:
                 if self.loader.is_module_dir_id(source_id):
                     for name_id in name_module_ids:
-                        self.append_import_module_node(unit_id, stmt_id, target_name, visited, result, name_id)
+                        self.append_import_module_node(unit_id, stmt_id, alias, visited, result, name_id)
                         self.analyze_unit_imports(name_id)
                 else:
                     self.analyze_unit_imports(source_id)
@@ -664,65 +678,150 @@ class ImportHierarchy:
                                     source_symbol_id = each_symbol.source_symbol_id
                                 ))
 
-        self.may_append_unknown_node(unit_id, stmt_id, target_name, result)
+        self.may_append_unknown_node(unit_id, stmt_id, alias, result)
         return result
 
-    def analyze_unit_imports(self, unit_id):
+    def is_private_attr(self, attrs):
+        return "private" in attrs
+
+    def get_public_symbols(self, scope_hierarchy):
+        internal_symbols = []
+
+        worklist = [0]
+        visited = set()
+        available_variable_stmt_ids = set([0])
+        while worklist:
+            scope_id = worklist.pop(0)
+            if scope_id in visited:
+                continue
+            visited.add(scope_id)
+
+            scope_results = []
+            if scope_id in available_variable_stmt_ids:
+                scope_results = scope_hierarchy.query(
+                    (
+                        scope_hierarchy.scope_id == scope_id
+                    ) & (
+                        scope_hierarchy.scope_kind.isin(
+                            ScopeKind.VARIABLE_DECL,
+                            ScopeKind.CLASS_SCOPE,
+                            ScopeKind.METHOD_SCOPE,
+                            ScopeKind.NAMESPACE_SCOPE,
+                        )
+                    )
+                )
+            else:
+                scope_results = scope_hierarchy.query(
+                    (
+                        scope_hierarchy.scope_id == scope_id
+                    ) & (
+                        scope_hierarchy.scope_kind.isin(
+                            ScopeKind.CLASS_SCOPE,
+                            ScopeKind.METHOD_SCOPE,
+                            ScopeKind.NAMESPACE_SCOPE,
+                        )
+                    )
+                )
+
+            for row in scope_results:
+                if self.is_private_attr(row.attrs):
+                    continue
+
+                internal_symbols.append(row)
+                if row.scope_kind != ScopeKind.VARIABLE_DECL:
+                    worklist.append(row.stmt_id)
+
+                if row.scope_kind == ScopeKind.NAMESPACE_SCOPE:
+                    available_variable_stmt_ids.add(row.stmt_id)
+
+        return internal_symbols
+
+    def analyze_unit_public_symbols(self, unit_id):
         if unit_id in self.analyzed_imported_unit_ids:
             return
 
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+
         # set flag to true and avoiding recursive analysis
         self.analyzed_imported_unit_ids.add(unit_id)
-        #self.import_graph.add_node(unit_id)
 
         # start analysis from scope_hierarchy
         scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
         gir = self.loader.load_unit_gir(unit_id)
-        if not scope_hierarchy or not gir:
+        if util.is_empty(scope_hierarchy) or util.is_empty(gir):
             return
 
+        # analyze each import stmt
+        unit_import_result = []
         # obtain the global import stmts
         import_stmts = scope_hierarchy.query(
             (scope_hierarchy.scope_id == 0) &
             (scope_hierarchy.scope_kind == ScopeKind.IMPORT_STMT)
         )
+        for each_stmt in import_stmts:
+            stmt_result = self.analyze_import_stmt(unit_id, unit_info, each_stmt.stmt_id, each_stmt)
+            if not self.is_private_attr(each_stmt.attrs):
+                unit_import_result.extend(stmt_result)
+                for each_stmt_result in stmt_result:
+                    self.add_import_graph_edge(
+                        unit_id,
+                        each_stmt_result.scope_kind,
+                        each_stmt_result.stmt_id,
+                        each_stmt_result.name
+                    )
 
+        internal_symbols = self.get_public_symbols(scope_hierarchy)
         export_stmts = gir.query(gir.operation == "export_stmt")
         export_from_stmts = gir.query(gir.operation == "from_export_stmt")
-
-        internal_symbols = scope_hierarchy.query(
-            scope_hierarchy.scope_kind.isin(
-                (ScopeKind.VARIABLE_DECL, ScopeKind.CLASS_SCOPE, ScopeKind.METHOD_SCOPE)
-            )
-        )
-
-        # analyze each import stmt
-        result = []
-        for each_stmt in import_stmts:
-            stmt_result = self.analyze_import_stmt(unit_id, each_stmt.stmt_id, each_stmt)
-            result.extend(stmt_result)
-        export_result = []
-        if not export_stmts and not export_from_stmts:
+        if len(export_stmts) == 0 and len(export_from_stmts) == 0:
+            export_result = []
             for each_symbol in internal_symbols:
-                if "private" not in each_symbol.attrs:
-                    export_result = self.append_export_node(export_result, unit_id, each_symbol)
-            result.extend(export_result)
+                self.add_import_graph_edge(
+                    each_symbol.scope_id,
+                    each_symbol.scope_kind,
+                    each_symbol.stmt_id,
+                    each_symbol.name
+                )
+                export_result = self.append_export_node(export_result, unit_id, each_symbol)
+            unit_import_result.extend(export_result)
         else:
+            export_result = []
             for each_stmt in export_stmts:
-                symbols = internal_symbols.query(internal_symbols.name == each_stmt.name)
-                for each_symbol in symbols:
-                    export_result = self.append_export_node(export_result, unit_id, each_symbol)
-            result.extend(export_result)
+                for each_symbol in internal_symbols:
+                    if each_symbol.name == each_stmt.name:
+                        self.add_import_graph_edge(
+                            each_symbol.scope_id,
+                            each_symbol.scope_kind,
+                            each_symbol.stmt_id,
+                            each_symbol.name
+                        )
+                        export_result = self.append_export_node(
+                            export_result, unit_id, each_symbol
+                        )
+            unit_import_result.extend(export_result)
             for each_stmt in export_from_stmts:
-                stmt_result = self.analyze_import_stmt(unit_id, each_stmt.stmt_id, each_stmt)
-                result.extend(stmt_result)
+                stmt_result = self.analyze_import_stmt(unit_id, unit_info, each_stmt.stmt_id, each_stmt)
+                for each_stmt_result in stmt_result:
+                    self.add_import_graph_edge(
+                        each_stmt_result.scope_id,
+                        each_stmt_result.scope_kind,
+                        each_stmt_result.stmt_id,
+                        each_stmt_result.name
+                    )
+                unit_import_result.extend(stmt_result)
 
-        self.loader.save_unit_export_symbols(unit_id, result)
+        self.loader.save_unit_export_symbols(unit_id, unit_import_result)
+
+    def analyze_unit_import_stmts(self, unit_id):
+        if unit_id in self.analyzed_imported_unit_ids:
+            return
 
     def run(self):
         self.initialize_import_graph()
         for unit_id in self.unit_list:
-            self.analyze_unit_imports(unit_id)
+            self.analyze_unit_public_symbols(unit_id)
+        for unit_id in self.unit_list:
+            self.analyze_unit_import_stmts(unit_id)
         self.loader.save_import_graph(self.import_graph)
         return self
 
