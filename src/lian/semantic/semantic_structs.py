@@ -446,6 +446,11 @@ class ImportNode:
     def __hash__(self):
         return hash((self.scope_id, self.node_type, self.node_id, self.node_name))
 
+@dataclasses.dataclass
+class ImportPathAnalysisResult:
+    module_id:int = -1
+    remaining_import_path: str = ""
+
 class CFGNode:
     def __init__(self, stmt, edge = None):
         self.stmt = stmt

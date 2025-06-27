@@ -403,10 +403,9 @@ class ImportHierarchy:
         self.analyzed_imported_unit_ids = set()
         self.import_graph = nx.DiGraph()
 
-        self.enable_import_all = True
-
         self.node_id_to_import_node = {}
         self.node_name_to_import_nodes = {}
+        self.unit_id_to_exportable_symbols = set()
 
     def add_import_graph_edge(self, parent_node_id, node_type, node_id, node_name):
         import_node = ImportNode(
@@ -492,6 +491,44 @@ class ImportHierarchy:
                 source_module_id = module_id
             ))
 
+    def validate_import_stmt(self, unit_info, stmt):
+        unit_path = unit_info.original_path
+        if not self.is_strict_parse_mode:
+            if util.is_empty(stmt.name):
+                util.error(f"ImportError: cannot use empty name in import")
+            return
+
+        if stmt.source.startswith(".") or stmt.name.startswith("."):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, "ImportError: cannot use relative path in import (remove the leading dot)"
+            )
+        if stmt.source.endswith(".") or stmt.name.endswith("."):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, "ImportError: cannot use relative path in import (remove the trailing dot)"
+            )
+        if "*" in stmt.source or "*" in stmt.name or "*" in stmt.alias:
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, f"ImportError: cannot use '*' in import"
+            )
+        if stmt.operation == "from_import_stmt":
+            if stmt.source == "":
+                util.error_and_quit_with_stmt_info(
+                    unit_path, stmt, f"ImportError: cannot use empty path in from..import"
+                )
+        if util.is_empty(stmt.name):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, f"ImportError: cannot use empty name in import"
+            )
+
+    def get_import_path(self, stmt):
+        import_path = ""
+        if util.is_available(stmt.source):
+            import_path = stmt.source
+        if util.is_available(stmt.name):
+            import_path += "." + stmt.name
+            import_path = import_path.replace("..", ".")
+        return import_path
+
     def parse_import_module_path(self, path):
         def check_return(result):
             if util.is_empty(result):
@@ -558,52 +595,42 @@ class ImportHierarchy:
 
         return (final_ids, result)
 
-    def validate_import_stmt(self, unit_info, stmt):
-        unit_path = unit_info.original_path
-        if not self.is_strict_parse_mode:
-            if util.is_empty(stmt.name):
-                util.error(f"ImportError: cannot use empty name in import")
-            return
+    def parse_import_path_from_current_dir(self, import_path, parent_module_id):
+        remaining_import_path = import_path.split(".")
+        if len(remaining_import_path) == 0:
+            return []
 
-        if stmt.source.startswith(".") or stmt.name.startswith("."):
-            util.error_and_quit_with_stmt_info(
-                unit_path, stmt, "ImportError: cannot use relative path in import (remove the leading dot)"
-            )
-        if stmt.source.endswith(".") or stmt.name.endswith("."):
-            util.error_and_quit_with_stmt_info(
-                unit_path, stmt, "ImportError: cannot use relative path in import (remove the trailing dot)"
-            )
-        if "*" in stmt.source or "*" in stmt.name or "*" in stmt.alias:
-            util.error_and_quit_with_stmt_info(
-                unit_path, stmt, f"ImportError: cannot use '*' in import"
-            )
-        if stmt.operation == "from_import_stmt":
-            if stmt.source == "":
-                util.error_and_quit_with_stmt_info(
-                    unit_path, stmt, f"ImportError: cannot use empty path in from..import"
-                )
-        if util.is_empty(stmt.name):
-            util.error_and_quit_with_stmt_info(
-                unit_path, stmt, f"ImportError: cannot use empty name in import"
-            )
+        child_module_ids = self.loader.convert_module_id_to_child_ids(parent_module_id)
+        worklist = []
+        for candidate_node in child_module_ids:
+            candidate_node = self.node_id_to_import_node[candidate_node]
+            worklist.append(candidate_node)
+        matched_nodes = []
 
-    def get_import_path(self, stmt):
-        import_path = ""
-        if util.is_available(stmt.source):
-            import_path = stmt.source
-        if util.is_available(stmt.name):
-            import_path += "." + stmt.name
-            import_path = import_path.replace("..", ".")
-        return import_path
+        while remaining_import_path and worklist:
+            name_to_be_matched = remaining_import_path[0]
+            new_worklist = []
+            matched_nodes = []
+            for candidate_node in worklist:
+                if candidate_node.node_name == name_to_be_matched:
+                    matched_nodes.append(candidate_node)
+                    new_worklist.extend(
+                        util.graph_successors(self.import_graph, candidate_node)
+                    )
 
-    def parse_import_path_from_current_dir(self, import_path, unit_info):
-        parent_module_id = unit_info.parent_module_id
+            worklist = new_worklist
+            if new_worklist:
+                remaining_import_path.pop(0)
+
+        return (matched_nodes, remaining_import_path)
+
+
 
     def analyze_import_stmt(self, unit_id, unit_info, stmt_id, stmt):
         self.validate_import_stmt(unit_info, stmt)
 
         alias = stmt.name.split(".")[-1]
-        if stmt.alias:
+        if util.is_available(stmt.alias):
             alias = stmt.alias
 
         result = []
@@ -612,7 +639,8 @@ class ImportHierarchy:
 
         if not self.is_strict_parse_mode:
             if import_path.startswith("."):
-                module_ids_result = self.loader.parse_import_path_from_current_dir(import_path, unit_info.unit_path)
+                import_path = import_path[1:]
+                module_ids_result = self.parse_import_path_from_current_dir(import_path, unit_info)
                 for module_id in module_ids_result:
                     if self.loader.is_module_dir_id(module_id) or self.loader.is_unit_id(module_id):
                         self.append_import_module_node(unit_id, stmt_id, alias, visited, result, module_id)
@@ -736,7 +764,7 @@ class ImportHierarchy:
 
         return internal_symbols
 
-    def analyze_unit_public_symbols(self, unit_id):
+    def analyze_unit_exported_symbols(self, unit_id):
         if unit_id in self.analyzed_imported_unit_ids:
             return
 
@@ -819,12 +847,9 @@ class ImportHierarchy:
     def run(self):
         self.initialize_import_graph()
         for unit_id in self.unit_list:
-            self.analyze_unit_public_symbols(unit_id)
-        for unit_id in self.unit_list:
-            self.analyze_unit_import_stmts(unit_id)
+            self.analyze_unit_exported_symbols(unit_id)
         self.loader.save_import_graph(self.import_graph)
         return self
-
 
 class ImportGraphTranslatorToUnitLevel:
     def __init__(self, loader, import_graph, unit_id_list):
