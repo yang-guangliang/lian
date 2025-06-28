@@ -7,7 +7,7 @@ import networkx as nx
 from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
-    ScopeKind,
+    SymbolKind,
 )
 
 from lian.semantic.semantic_structs import (
@@ -92,7 +92,7 @@ class TypeHierarchy:
     def analyze_method_in_class(self, class_decl_stmt, scope_hierarchy):
         method_decls = scope_hierarchy.query(
             (scope_hierarchy.scope_id == class_decl_stmt.stmt_id) &
-            (scope_hierarchy.scope_kind == ScopeKind.METHOD_SCOPE)
+            (scope_hierarchy.scope_kind == SymbolKind.METHOD_KIND)
         )
         all_method_info = []
         for each_method in method_decls:
@@ -115,7 +115,7 @@ class TypeHierarchy:
             return
 
         # obtain class decls
-        class_decl_stmts = scope_hierarchy.query(scope_hierarchy.scope_kind == ScopeKind.CLASS_SCOPE)
+        class_decl_stmts = scope_hierarchy.query(scope_hierarchy.scope_kind == SymbolKind.CLASS_KIND)
 
         for each_stmt in class_decl_stmts:
             # analyze each class decl

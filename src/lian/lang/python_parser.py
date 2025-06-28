@@ -219,17 +219,24 @@ class Parser(common_parser.Parser):
 
                 parameter_node_type = parameter.type
                 if parameter_node_type == "identifier":
-                    parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": self.read_node_text(parameter), "attrs": attrs}}))
+                    parameter_decls.append(self.add_col_row_info(
+                        node, {"parameter_decl": {"name": self.read_node_text(parameter), "attrs": attrs}}
+                    ))
 
                 elif parameter_node_type == "typed_parameter":
                     if parameter.named_child_count > 0:
                         parameter_name = parameter.named_children[0]
                         shadow_parameter_name = self.parse(parameter_name, statements)
 
-                    parameter_type = self.find_child_by_field(parameter, "type")
-                    shadow_type = self.read_node_text(parameter_type)
+                        parameter_type = self.find_child_by_field(parameter, "type")
+                        shadow_type = self.read_node_text(parameter_type)
 
-                    parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"data_type": shadow_type, "name": shadow_parameter_name, "attrs": attrs}}))
+                        parameter_decls.append(self.add_col_row_info(
+                            node,
+                            {"parameter_decl": {
+                                "data_type": shadow_type, "name": shadow_parameter_name, "attrs": attrs
+                            }}
+                        ) )
 
                 elif parameter_node_type == "default_parameter":
                     parameter_name = self.find_child_by_field(parameter, "name")
@@ -238,7 +245,12 @@ class Parser(common_parser.Parser):
                     shadow_parameter_name = self.parse(parameter_name, statements)
                     if self.is_literal(parameter_value) and parameter_value.type != "identifier":
                         shadow_value = self.parse(parameter_value, statements)
-                        parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs, "default_value": shadow_value}}))
+                        parameter_decls.append(self.add_col_row_info(
+                            node,
+                            {"parameter_decl": {
+                                "name": shadow_parameter_name, "attrs": attrs, "default_value": shadow_value
+                            }}
+                        ))
 
                     else:
                         tmp_body = []
@@ -253,10 +265,20 @@ class Parser(common_parser.Parser):
                         #     statements.append({"assign_stmt": {"target": tmp_parameter, "operand": shadow_value}})
                         tmp_parameter = self.default_value_variable()
                         # tmp_parameter += LianInternal.TRANS_VARIABLE_SUFF
-                        statements.append(self.add_col_row_info(node, {"variable_decl": {"name": tmp_parameter}}))
+                        statements.append(self.add_col_row_info(
+                            node, {"variable_decl": {"name": tmp_parameter}}
+                        ))
                         statements.extend(tmp_body)
-                        statements.append(self.add_col_row_info(node, {"assign_stmt": {"target": tmp_parameter, "operand": shadow_value}}))
-                        parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs, "default_value": tmp_parameter}}))
+                        statements.append(self.add_col_row_info(
+                            node,
+                            {"assign_stmt": {"target": tmp_parameter, "operand": shadow_value}}
+                        ))
+                        parameter_decls.append(self.add_col_row_info(
+                            node,
+                            {"parameter_decl": {
+                                "name": shadow_parameter_name, "attrs": attrs, "default_value": tmp_parameter
+                            }}
+                        ))
 
                 elif parameter_node_type == "typed_default_parameter":
                     parameter_name = self.find_child_by_field(parameter, "name")
@@ -280,14 +302,19 @@ class Parser(common_parser.Parser):
                         shadow_value = self.parse(parameter_value, tmp_body)
                         tmp_parameter = shadow_value
                         if shadow_value:
-                            first_char = shadow_value[0]
-                            if first_char in ["%", "$", "@"]:
-                                statements.insert(len(statements) - 1, {"variable_decl": {"name": shadow_value}})
+                            if shadow_value[0] in ["%", "$", "@"]:
+                                statements.insert(
+                                    len(statements) - 1, {"variable_decl": {"name": shadow_value}}
+                                )
                             else:
                                 tmp_parameter = self.tmp_variable()
-                                statements.append(self.add_col_row_info(node, {"variable_decl": {"name": shadow_value}}))
+                                statements.append(self.add_col_row_info(
+                                    node, {"variable_decl": {"name": tmp_parameter}}
+                                ))
                                 statements.extend(tmp_body)
-                                statements.append(self.add_col_row_info(node, {"assign_stmt": {"target": tmp_parameter, "operand": shadow_value}}))
+                                statements.append(self.add_col_row_info(
+                                    node, {"assign_stmt": {"target": tmp_parameter, "operand": shadow_value}}
+                                ))
 
                         parameter_decls.append(self.add_col_row_info(node, {
                             "parameter_decl": {
@@ -325,8 +352,18 @@ class Parser(common_parser.Parser):
 
                 self.parse(stmt, new_body)
 
-        statements.append(self.add_col_row_info(node, {"method_decl": {"attrs": modifiers, "data_type": shadow_return_type, "name": shadow_method_name,
-                                           "parameters": parameter_decls, "body": new_body}}))
+        statements.append(self.add_col_row_info(
+            node,
+            {
+                "method_decl": {
+                    "attrs": modifiers,
+                    "data_type": shadow_return_type,
+                    "name": shadow_method_name,
+                    "parameters": parameter_decls,
+                    "body": new_body
+                }
+            }
+        ))
         return shadow_method_name
 
     def class_definition(self, node: Node, statements: list):
@@ -1288,7 +1325,7 @@ class Parser(common_parser.Parser):
         #self.sync_tmp_variable(statements, true_body)
         false_body = []
         #self.sync_tmp_variable(statements, false_body)
-        
+
         shadow_condition = self.parse(condition_part, statements)
         self.parse(true_part, true_body)
         self.parse_alternative(false_part, false_body)

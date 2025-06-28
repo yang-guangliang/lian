@@ -20,7 +20,7 @@ from lian.semantic.semantic_structs import (
 )
 from lian.config.constants import (
     ExportNodeType,
-    ScopeKind,
+    SymbolKind,
     SymbolKind,
     LianInternal,
     AccessPointKind,

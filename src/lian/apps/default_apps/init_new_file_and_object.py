@@ -9,7 +9,7 @@ from lian.config.constants import (
     EventKind,
     LianInternal,
     StateTypeKind,
-    ScopeKind,
+    SymbolKind,
     AccessPointKind
 )
 import lian.apps.event_return as er
@@ -68,7 +68,7 @@ def init_imported_unit(data: EventData):
 
         unit_scope = frame.loader.load_unit_scope_hierarchy(unit_id)
         scope_item = unit_scope.query(
-            (unit_scope.scope_kind == ScopeKind.METHOD_SCOPE) &
+            (unit_scope.scope_kind == SymbolKind.METHOD_KIND) &
             (unit_scope.name == LianInternal.UNIT_INIT)
         )
         frame.analyze_method(scope_item.stmt_id)

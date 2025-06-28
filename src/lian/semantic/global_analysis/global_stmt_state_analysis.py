@@ -13,7 +13,7 @@ from lian.config import config
 from lian.util.loader import Loader
 # from lian.apps.app_template import AppTemplate
 from lian.config.constants import (
-    ScopeKind,
+    SymbolKind,
     LianInternal,
     StateTypeKind,
     LianInternal,

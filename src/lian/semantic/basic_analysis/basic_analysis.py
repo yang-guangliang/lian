@@ -9,7 +9,7 @@ import lian.util.data_model as dm
 from lian.config.constants import (
     ExportNodeType,
     SymbolDependencyGraphEdgeKind,
-    ScopeKind,
+    SymbolKind,
     SymbolKind,
     EventKind,
     CalleeType,

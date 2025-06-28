@@ -16,7 +16,7 @@ from lian.util import util
 from lian.config.constants import (
     BuiltinOrCustomDataType,
     ConditionStmtPathFlag,
-    ScopeKind,
+    SymbolKind,
     StateTypeKind,
     SymbolOrState,
     CalleeType,
@@ -389,7 +389,7 @@ class Scope(BasicElement):
     stmt_id: int = -1
     scope_id: int = -1
     parent_stmt_id: int = -1
-    scope_kind: ScopeKind = ScopeKind.METHOD_SCOPE
+    scope_kind: SymbolKind = SymbolKind.METHOD_KIND
     source: str = ""            # for from_import_stmt source import name as alis
     name: str = ""
     # attrs: list = dataclasses.field(default_factory=list)

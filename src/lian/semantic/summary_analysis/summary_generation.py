@@ -15,7 +15,7 @@ from lian.config.constants import (
     SymbolOrState,
     ControlFlowKind,
     EventKind,
-    ScopeKind,
+    SymbolKind,
     AnalysisPhaseName,
     RETURN_STMT_OPERATION,
     SUMMARY_GENERAL_SYMBOL_ID

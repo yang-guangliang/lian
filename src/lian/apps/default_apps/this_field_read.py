@@ -6,7 +6,7 @@ from lian.config.constants import (
     EventKind,
     LianInternal,
     StateTypeKind,
-    ScopeKind,
+    SymbolKind,
     AccessPointKind
 )
 import lian.apps.event_return as er

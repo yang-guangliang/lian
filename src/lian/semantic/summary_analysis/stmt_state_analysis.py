@@ -11,7 +11,7 @@ from lian.util.loader import Loader
 # from lian.apps.app_template import AppTemplate
 from lian.config.constants import (
     ConditionStmtPathFlag,
-    ScopeKind,
+    SymbolKind,
     LianInternal,
     StateTypeKind,
     LianInternal,
@@ -3222,9 +3222,9 @@ class StmtStateAnalysis:
                     if import_symbols:
                         for import_symbol in import_symbols:
                             if import_symbol.symbol_name == field_name:
-                                if import_symbol.symbol_type == ScopeKind.METHOD_SCOPE:
+                                if import_symbol.symbol_type == SymbolKind.METHOD_KIND:
                                     data_type = LianInternal.METHOD_DECL
-                                elif import_symbol.symbol_type == ScopeKind.CLASS_SCOPE:
+                                elif import_symbol.symbol_type == SymbolKind.CLASS_KIND:
                                     data_type = LianInternal.CLASS_DECL
                                 else:
                                     data_type = LianInternal.UNIT

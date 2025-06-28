@@ -7,20 +7,11 @@ import networkx as nx
 from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
-    CLASS_DECL_OPERATION,
-    NAMESPACE_DECL_OPERATION,
-    IMPORT_OPERATION,
-    METHOD_DECL_OPERATION,
-    VARIABLE_DECL_OPERATION,
-    PARAMETER_DECL_OPERATION,
-    EXPORT_STMT_OPERATION,
-    FOR_STMT_OPERATION,
-    ScopeKind,
+    SymbolKind,
     SymbolKind
 )
 
 from lian.semantic.semantic_structs import (
-    MultipleDirectedGraph,
     SymbolNodeInImportGraph,
 )
 from lian.util import util
@@ -79,7 +70,7 @@ class ImportHierarchy:
 
         worklist = [0]
         visited = set()
-        available_variable_stmt_ids = set([0])
+        public_scopes = set([0])
         while worklist:
             scope_id = worklist.pop(0)
             if scope_id in visited:
@@ -87,16 +78,16 @@ class ImportHierarchy:
             visited.add(scope_id)
 
             scope_results = []
-            if scope_id in available_variable_stmt_ids:
+            if scope_id in public_scopes:
                 scope_results = scope_hierarchy.query(
                     (
                         scope_hierarchy.scope_id == scope_id
                     ) & (
                         scope_hierarchy.scope_kind.isin((
-                            ScopeKind.VARIABLE_DECL,
-                            ScopeKind.CLASS_SCOPE,
-                            ScopeKind.METHOD_SCOPE,
-                            ScopeKind.NAMESPACE_SCOPE,
+                            SymbolKind.VARIABLE_DECL,
+                            SymbolKind.CLASS_KIND,
+                            SymbolKind.METHOD_KIND,
+                            SymbolKind.NAMESPACE_KIND,
                         ))
                     )
                 )
@@ -106,9 +97,9 @@ class ImportHierarchy:
                         scope_hierarchy.scope_id == scope_id
                     ) & (
                         scope_hierarchy.scope_kind.isin((
-                            ScopeKind.CLASS_SCOPE,
-                            ScopeKind.METHOD_SCOPE,
-                            ScopeKind.NAMESPACE_SCOPE,
+                            SymbolKind.CLASS_KIND,
+                            SymbolKind.METHOD_KIND,
+                            SymbolKind.NAMESPACE_KIND,
                         ))
                     )
                 )
@@ -117,12 +108,18 @@ class ImportHierarchy:
                 if self.is_private_attr(row.attrs):
                     continue
 
-                internal_symbols.append(row)
-                if row.scope_kind != ScopeKind.VARIABLE_DECL:
-                    worklist.append(row.stmt_id)
+                if row.scope_kind == SymbolKind.METHOD_KIND:
+                    if scope_id in public_scopes:
+                        internal_symbols.append(row)
+                    elif "static" in row.attrs:
+                        internal_symbols.append(row)
+                    continue
 
-                if row.scope_kind == ScopeKind.NAMESPACE_SCOPE:
-                    available_variable_stmt_ids.add(row.stmt_id)
+                internal_symbols.append(row)
+                if row.scope_kind in (SymbolKind.CLASS_KIND, SymbolKind.NAMESPACE_KIND):
+                    if row.scope_kind == SymbolKind.NAMESPACE_KIND:
+                        public_scopes.add(row.stmt_id)
+                    worklist.append(row.stmt_id)
 
         return internal_symbols
 
@@ -200,6 +197,10 @@ class ImportHierarchy:
     def parse_import_path_from_module_worklist(self, import_path_list, initial_worklist):
         matched_nodes = []
 
+        debug_flag = False
+        if import_path_list[-1] == "A":
+            debug_flag = True
+
         # 若导入路径列表或初始工作列表为空，直接返回
         if not import_path_list or not initial_worklist:
             return (matched_nodes, import_path_list)
@@ -223,18 +224,19 @@ class ImportHierarchy:
                     if candidate_node.symbol_type == SymbolKind.UNIT_SYMBOL:
                         self.analyze_unit_import_stmts(candidate_node.symbol_id)
                     matched_nodes.append(candidate_node)
-                    # 获取匹配节点的后继节点
-                    children_list = util.graph_successors(self.import_graph, candidate_node.symbol_id)
-                    if len(children_list) > 0:
-                        for child_id in children_list:
-                            new_worklist.append(self.symbol_id_to_symbol_node[child_id])
+
+            if len(matched_nodes) == 0:
+                return (matched_nodes, import_path_list)
+
+            import_path_list.pop(0)
+            for candidate_node in matched_nodes:
+                # 获取匹配节点的后继节点
+                children_list = util.graph_successors(self.import_graph, candidate_node.symbol_id)
+                if len(children_list) > 0:
+                    for child_id in children_list:
+                        new_worklist.append(self.symbol_id_to_symbol_node[child_id])
 
             initial_worklist = new_worklist
-            if new_worklist:
-                # 若找到匹配节点，移除已匹配
-                import_path_list.pop(0)
-            else:
-                break
 
         return (matched_nodes, import_path_list)
 
@@ -308,6 +310,7 @@ class ImportHierarchy:
         import_nodes = self.check_import_stmt_analysis_results(
             unit_info, stmt, import_nodes, remaining
         )
+
         if import_nodes:
             for each_node in import_nodes:
                 new_node = each_node.clone()
@@ -360,7 +363,7 @@ class ImportHierarchy:
 
         import_stmts = scope_hierarchy.query(
             (scope_hierarchy.scope_id == 0) &
-            (scope_hierarchy.scope_kind == ScopeKind.IMPORT_STMT)
+            (scope_hierarchy.scope_kind == SymbolKind.IMPORT_STMT)
         )
         results = []
         for each_stmt in import_stmts:
@@ -383,6 +386,8 @@ class ImportHierarchy:
 
         for unit_id in self.unit_list:
             self.analyze_unit_public_symbols(unit_id)
+
+        #self.debug_import_graph()
 
         for unit_id in self.unit_list:
             self.analyze_unit_import_stmts(unit_id)

@@ -10,7 +10,7 @@ from lian.config import config
 from lian.util.loader import Loader
 from lian.config.constants import (
     EventKind,
-    ScopeKind,
+    SymbolKind,
     LianInternal
 )
 from lian.apps.app_template import EventData
@@ -93,7 +93,7 @@ class EntryPointGenerator:
         return False
 
     def collect_entry_points_from_unit_scope(self, unit_info, unit_scope):
-        all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(ScopeKind.METHOD_SCOPE))
+        all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(SymbolKind.METHOD_KIND))
         for scope in all_method_scopes:
             name = ""
             attrs = []

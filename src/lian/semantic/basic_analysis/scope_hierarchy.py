@@ -15,7 +15,7 @@ from lian.config.constants import (
     PARAMETER_DECL_OPERATION,
     EXPORT_STMT_OPERATION,
     FOR_STMT_OPERATION,
-    ScopeKind,
+    SymbolKind,
 )
 
 from lian.semantic.semantic_structs import (
@@ -98,7 +98,7 @@ class UnitScopeHierarchyAnalysis:
             stmt_id = 0,
             scope_id = -1,
             parent_stmt_id = -1,
-            scope_kind = ScopeKind.UNIT_SCOPE
+            scope_kind = SymbolKind.UNIT_KIND
         )
         root_scope_id = 0
         self.scope_space.add(root_scope)
@@ -113,7 +113,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.PACKAGE_STMT,
+                    scope_kind = SymbolKind.PACKAGE_STMT,
                     name = util.read_stmt_field(row.name)
                 )
                 self.scope_space.add(package_scope)
@@ -125,7 +125,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.IMPORT_STMT,
+                    scope_kind = SymbolKind.IMPORT_STMT,
                     source = util.read_stmt_field(row.source),
                     name = util.read_stmt_field(row.name),
                     alias = util.read_stmt_field(row.alias),
@@ -141,7 +141,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id = row.parent_stmt_id,
-                    scope_kind = ScopeKind.VARIABLE_DECL,
+                    scope_kind = SymbolKind.VARIABLE_DECL,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.alias)
                 )
@@ -155,7 +155,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.PARAMETER_DECL,
+                    scope_kind = SymbolKind.PARAMETER_DECL,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.attrs)
                 )
@@ -169,7 +169,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.EXPORT_STMT,
+                    scope_kind = SymbolKind.EXPORT_STMT,
                     source = util.read_stmt_field(row.source),
                     name = util.read_stmt_field(row.name),
                     alias = util.read_stmt_field(row.alias)
@@ -184,7 +184,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.METHOD_SCOPE,
+                    scope_kind = SymbolKind.METHOD_KIND,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.attrs)
                 )
@@ -200,7 +200,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.FOR_SCOPE
+                    scope_kind = SymbolKind.FOR_KIND
                 )
                 self.scope_space.add(for_stmt_scope)
                 self.all_scope_ids.add(stmt_id)
@@ -213,7 +213,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.CLASS_SCOPE,
+                    scope_kind = SymbolKind.CLASS_KIND,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.attrs),
                     supers = util.read_stmt_field(row.supers)
@@ -230,7 +230,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.NAMESPACE_SCOPE,
+                    scope_kind = SymbolKind.NAMESPACE_KIND,
                     name = util.read_stmt_field(row.name),
                 )
                 self.scope_space.add(namespace_decl_scope)
@@ -243,7 +243,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = ScopeKind.BLOCK_SCOPE,
+                    scope_kind = SymbolKind.BLOCK_KIND,
                 )
                 self.scope_space.add(block_scope)
                 self.all_scope_ids.add(stmt_id)
@@ -306,12 +306,12 @@ class UnitScopeHierarchyAnalysis:
         scope_id_to_available_scope_ids = {}
         for row in self.scope_space:
             if row.scope_kind in [
-                    ScopeKind.IMPORT_STMT,
-                    ScopeKind.VARIABLE_DECL,
-                    ScopeKind.PARAMETER_DECL,
-                    ScopeKind.CLASS_SCOPE,
-                    ScopeKind.METHOD_SCOPE,
-                    ScopeKind.NAMESPACE_SCOPE,
+                    SymbolKind.IMPORT_STMT,
+                    SymbolKind.VARIABLE_DECL,
+                    SymbolKind.PARAMETER_DECL,
+                    SymbolKind.CLASS_KIND,
+                    SymbolKind.METHOD_KIND,
+                    SymbolKind.NAMESPACE_KIND,
             ]:
                 if row.name not in symbol_name_to_scope_ids:
                     symbol_name_to_scope_ids[row.name] = set()
@@ -322,11 +322,11 @@ class UnitScopeHierarchyAnalysis:
                 scope_id_to_symbol_info[row.scope_id][row.name] = row.stmt_id
 
             if row.scope_kind in [
-                    ScopeKind.CLASS_SCOPE,
-                    ScopeKind.METHOD_SCOPE,
-                    ScopeKind.BLOCK_SCOPE,
-                    ScopeKind.NAMESPACE_SCOPE,
-                    ScopeKind.FOR_SCOPE,
+                    SymbolKind.CLASS_KIND,
+                    SymbolKind.METHOD_KIND,
+                    SymbolKind.BLOCK_KIND,
+                    SymbolKind.NAMESPACE_KIND,
+                    SymbolKind.FOR_KIND,
             ]:
                 if row.stmt_id not in scope_id_to_available_scope_ids:
                     scope_id_to_available_scope_ids[row.stmt_id] = set()

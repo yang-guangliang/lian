@@ -1422,7 +1422,7 @@ class Loader:
         self._symbol_name_to_scope_ids_loader: SymbolNameToScopeIDsLoader = SymbolNameToScopeIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_SCOPE_IDS_PATH),
+            os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_KIND_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1438,7 +1438,7 @@ class Loader:
         self._scope_id_to_available_scope_ids_loader: ScopeIDToAvailableScopeIDsLoader = ScopeIDToAvailableScopeIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
+            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_KIND_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1446,7 +1446,7 @@ class Loader:
         self._call_stmt_id_to_info = ScopeIDToAvailableScopeIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
+            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_KIND_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1696,7 +1696,7 @@ class Loader:
 
         self.method_header_cache = util.LRUCache(config.METHOD_HEADER_CACHE_CAPABILITY)
         self.method_body_cache = util.LRUCache(config.METHOD_BODY_CACHE_CAPABILITY)
-        self.stmt_scope_cache = util.LRUCache(config.STMT_SCOPE_CACHE_CAPABILITY)
+        self.stmt_scope_cache = util.LRUCache(config.STMT_KIND_CACHE_CAPABILITY)
 
         self._all_loaders = self.init_loading()
 

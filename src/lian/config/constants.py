@@ -71,7 +71,7 @@ EventKind = util.SimpleEnum({
     "GIR_DATA_MODEL_GENERATED"                    : 5,
     "ENTRY_POINT_ANALYSIS_BEFORE"                   : 6,
     "ENTRY_POINT_ANALYSIS_AFTER"                    : 7,
-    "UNIT_SCOPE_HIERARCHY_GENERATED"                : 8,
+    "UNIT_KIND_HIERARCHY_GENERATED"                : 8,
     "CONTROL_FLOW_GRAPH_GENERATED"                  : 9,
 
     "P1STMT_DEF_USE_ANALYSIS_BEFORE"                : 20,
@@ -116,20 +116,25 @@ LangKind = util.SimpleEnum({
 })
 
 SymbolKind = util.SimpleEnum({
-    'MODULE'                : 0,
-    'MODULE_SYMBOL'         : 1,
-    'UNIT_SYMBOL'           : 2,
-    'PARENT_MODULE'         : 3,
-    'IMPORT'                : 4,
-    'VARIABLE'              : 5,
-    'METHOD'                : 6,
-    'CLASS'                 : 7,
-    'PARENT_CLASS'          : 8,
-    'FIELD'                 : 9,
-    'CLASS_METHOD'          : 10,
-    'PACKAGE'               : 11,
-    'MEMBER_METHOD'         : 12,
+    'MODULE_SYMBOL'                 : 0,
+    'UNIT_SYMBOL'                   : 1,
+    "PACKAGE_STMT"                  : 2,
+    "IMPORT_STMT"                   : 3,
+    "INCLUDE_STMT"                  : 4,
+    "VARIABLE_DECL"                 : 5,
+    "PARAMETER_DECL"                : 6,
+    "CALL_STMT"                     : 7,
+    "EXPORT_STMT"                   : 8,
+
+    "BLOCK_KIND"                   : 9,
+    "METHOD_KIND"                  : 10,
+    "CLASS_KIND"                   : 11,
+    "NAMESPACE_KIND"               : 12,
+    "UNIT_KIND"                    : 13,
+    "BUILTIN_KIND"                 : 14,
+    "FOR_KIND"                     : 15
 })
+
 
 MethodSummarySymbolKind = util.SimpleEnum({
     'PARARMETER_SYMBOL'             : 1,
@@ -191,24 +196,6 @@ ExternalKeyStateType = util.SimpleEnum({
 BuiltinOrCustomDataType = util.SimpleEnum({
     "BUILTIN"               : 0,
     "CUSTOM"                : 1,
-})
-
-ScopeKind = util.SimpleEnum({
-    "PACKAGE_STMT"                  : 0,
-    "IMPORT_STMT"                   : 1,
-    "INCLUDE_STMT"                  : 2,
-    "VARIABLE_DECL"                 : 3,
-    "PARAMETER_DECL"                : 4,
-    "CALL_STMT"                     : 5,
-    "EXPORT_STMT"                   : 6,
-
-    "BLOCK_SCOPE"                   : 10,
-    "METHOD_SCOPE"                  : 11,
-    "CLASS_SCOPE"                   : 12,
-    "NAMESPACE_SCOPE"               : 13,
-    "UNIT_SCOPE"                    : 14,
-    "BUILTIN_SCOPE"                 : 15,
-    "FOR_SCOPE"                     : 16
 })
 
 AnalysisPhaseName = util.SimpleEnum({

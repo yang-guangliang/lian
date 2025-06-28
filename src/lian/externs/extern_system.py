@@ -9,7 +9,7 @@ import lian.apps.event_return as er
 from lian.apps.app_template import EventData
 from lian.config import config
 from lian.config.constants import (
-    ScopeKind,
+    SymbolKind,
     RuleKind,
     ConfigurationItemKind,
     AccessPointKind
@@ -76,7 +76,7 @@ class ExternSystem:
             return
 
         method_decls = unit_scope.query(
-            (unit_scope.scope_kind == ScopeKind.METHOD_SCOPE)
+            (unit_scope.scope_kind == SymbolKind.METHOD_KIND)
         )
 
         for each_method in method_decls:

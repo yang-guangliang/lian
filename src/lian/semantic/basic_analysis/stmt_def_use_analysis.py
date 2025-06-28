@@ -10,7 +10,7 @@ from lian.config import type_table
 from lian.config.constants import (
     LianInternal,
     StateTypeKind,
-    ScopeKind,
+    SymbolKind,
     CalleeType,
     BasicCallGraphNodeKind
 )
