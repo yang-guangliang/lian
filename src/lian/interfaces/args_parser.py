@@ -35,7 +35,7 @@ class ArgsParser:
             parser.add_argument("--android", action="store_true", help="Enable the Android analysis mode")
             parser.add_argument("-a", "--apps", default=[], action='append', help="Config the <plugin> dir")
             parser.add_argument('-l', "--lang", default="", type=str, help='programming lang', required=True)
-            parser.add_argument("--strict-parse-mode", action="store_false", help="Enable the strict way to parse code")
+            parser.add_argument("--strict-parse-mode", action="store_true", help="Enable the strict way to parse code")
 
 
             parser.add_argument("-noextern", action="store_true", help="Disable the external processing module")

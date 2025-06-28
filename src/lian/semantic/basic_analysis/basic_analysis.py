@@ -28,7 +28,6 @@ from lian.semantic.semantic_structs import (
     MethodSummaryTemplate,
     MethodSummaryInstance,
     SimplyGroupedMethodTypes,
-    ExportNode,
 )
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver

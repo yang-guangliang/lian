@@ -1862,12 +1862,13 @@ class PathManager:
         return cycle_count
 
 class SymbolNodeInImportGraph:
-    def __init__(self, scope_id, symbol_type, symbol_id, symbol_name, import_stmt=-1):
-        self.scope_id = scope_id
+    def __init__(self, scope_id, symbol_type, symbol_id, symbol_name, import_stmt=-1, unit_id=-1):
+        self.scope_id:int = scope_id
         self.symbol_type:int = symbol_type
-        self.symbol_id: int = symbol_id
-        self.symbol_name: str = symbol_name
-        self.import_stmt = import_stmt
+        self.symbol_id:int = symbol_id
+        self.symbol_name:str = symbol_name
+        self.import_stmt:int = import_stmt
+        self.unit_id:int = unit_id
 
     def clone(self):
         node = SymbolNodeInImportGraph(
@@ -1875,7 +1876,8 @@ class SymbolNodeInImportGraph:
             self.symbol_type,
             self.symbol_id,
             self.symbol_name,
-            self.import_stmt
+            self.import_stmt,
+            self.unit_id
         )
         return node
 
@@ -1886,27 +1888,40 @@ class SymbolNodeInImportGraph:
                 self.symbol_type == value.symbol_type and
                 self.symbol_id == value.symbol_id and
                 self.symbol_name == value.symbol_name and
-                self.import_stmt == value.import_stmt
+                self.import_stmt == value.import_stmt and
+                self.unit_id == value.unit_id
             )
         return False
 
     def __hash__(self):
-        return hash((self.scope_id, self.symbol_type, self.symbol_id, self.symbol_name, self.import_stmt))
+        return hash((
+            self.scope_id, self.symbol_type, self.symbol_id,
+            self.symbol_name, self.import_stmt, self.unit_id
+        ))
+        #return hash((self.scope_id, self.symbol_type, self.symbol_id, self.symbol_name))
 
     def to_dict(self):
-        return {
+        result = {
             "scope_id": self.scope_id,
             "symbol_type": self.symbol_type,
             "symbol_id": self.symbol_id,
             "symbol_name": self.symbol_name,
-            "import_stmt": self.import_stmt
         }
+        if self.import_stmt > 0:
+            result["import_stmt"] = self.import_stmt
+        if self.unit_id > 0:
+            result["unit_id"] = self.unit_id
+
+        return result
 
     def to_tuple(self):
-        return (self.scope_id, self.symbol_type, self.symbol_id, self.symbol_name, self.import_stmt)
+        return (
+            self.scope_id, self.symbol_type, self.symbol_id,
+            self.symbol_name, self.import_stmt, self.unit_id
+        )
 
     def __repr__(self):
-        return f"SymbolNode(scope_id={self.scope_id}, symbol_type={self.symbol_type}, symbol_id={self.symbol_id}, symbol_name={self.symbol_name}, import_stmt={self.import_stmt})"
+        return f"SymbolNode(scope_id={self.scope_id}, symbol_type={self.symbol_type}, symbol_id={self.symbol_id}, symbol_name={self.symbol_name}, import_stmt={self.import_stmt}, unit_id={self.unit_id})"
 
 @dataclasses.dataclass
 class MethodInClass:

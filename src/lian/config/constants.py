@@ -20,7 +20,8 @@ NAMESPACE_DECL_OPERATION = {
 
 IMPORT_OPERATION = {
     "import_stmt",
-    "from_import_stmt"
+    "from_import_stmt",
+    "from_export_stmt"
 }
 
 METHOD_DECL_OPERATION = {
@@ -116,18 +117,18 @@ LangKind = util.SimpleEnum({
 
 SymbolKind = util.SimpleEnum({
     'MODULE'                : 0,
-    'UNIT_SYMBOL'           : 1,
-    'PARENT_MODULE'         : 2,
-    'IMPORT'                : 3,
-    'VARIABLE'              : 4,
-    'METHOD'                : 5,
-    'CLASS'                 : 6,
-    'PARENT_CLASS'          : 7,
-    'FIELD'                 : 8,
-    'CLASS_METHOD'          : 9,
-    'PACKAGE'               : 10,
-    'MEMBER_METHOD'         : 11,
-    'MODULE_SYMBOL'         : 12,
+    'MODULE_SYMBOL'         : 1,
+    'UNIT_SYMBOL'           : 2,
+    'PARENT_MODULE'         : 3,
+    'IMPORT'                : 4,
+    'VARIABLE'              : 5,
+    'METHOD'                : 6,
+    'CLASS'                 : 7,
+    'PARENT_CLASS'          : 8,
+    'FIELD'                 : 9,
+    'CLASS_METHOD'          : 10,
+    'PACKAGE'               : 11,
+    'MEMBER_METHOD'         : 12,
 })
 
 MethodSummarySymbolKind = util.SimpleEnum({

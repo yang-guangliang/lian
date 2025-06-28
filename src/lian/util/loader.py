@@ -276,16 +276,20 @@ class UnitLevelLoader(GeneralLoader):
         flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
         return flattened_item
 
-    def convert_content_to_dict_list(self, item_content):
+    def convert_content_to_dict_list(self, unit_id, item_content):
         results = []
         #print("@convert_content_to_dict_list", item_content)
         for item in item_content:
-            results.append(item.to_dict())
+            to_dict_result = item.to_dict()
+            if not hasattr(to_dict_result, "unit_id"):
+                to_dict_result["unit_id"] = unit_id
+            #print("to_dict_result", to_dict_result)
+            results.append(to_dict_result)
         return results
 
     def save(self, unit_id, item_content):
         # convert item_content to dataframe
-        flattened_item = self.convert_content_to_dict_list(item_content)
+        flattened_item = self.convert_content_to_dict_list(unit_id, item_content)
         item_df = DataModel(flattened_item)
         self.item_cache.put(unit_id, item_df)
 
@@ -1071,6 +1075,7 @@ class ImportGraphLoader:
     def __init__(self, path):
         self.path = path
         self.import_graph = None
+        self.import_graph_nodes = None
 
     def save(self, import_graph):
         self.import_graph = import_graph
@@ -1078,27 +1083,17 @@ class ImportGraphLoader:
     def load(self):
         return self.import_graph
 
+    def save_nodes(self, import_graph_nodes):
+        self.import_graph_nodes = import_graph_nodes
+
+    def load_nodes(self):
+        return self.import_graph_nodes
+
     def restore(self):
         df = DataModel().load(self.path)
         self.import_graph = nx.DiGraph()
         for row in df:
-            parent_node_dict = ast.literal_eval(row.parent_node)
-            parent_node = SymbolNodeInImportGraph(
-                parent_node_dict["scope_id"],
-                parent_node_dict["symbol_type"],
-                parent_node_dict["symbol_id"],
-                parent_node_dict["symbol_name"],
-                parent_node_dict["import_stmt"]
-            )
-            child_node_dict = ast.literal_eval(row.child_node)
-            child_node = SymbolNodeInImportGraph(
-                child_node_dict["scope_id"],
-                child_node_dict["symbol_type"],
-                child_node_dict["symbol_id"],
-                child_node_dict["symbol_name"],
-                child_node_dict["import_stmt"]
-            )
-            self.import_graph.add_edge(parent_node, child_node)
+            self.import_graph.add_edge(row.parent_node, row.child_node)
 
     def export(self):
         if util.is_empty(self.import_graph):
@@ -1110,13 +1105,33 @@ class ImportGraphLoader:
         for edge in self.import_graph.edges:
             # 为每条边创建一个字典，记录边的起始节点和结束节点
             edge_info = {
-                "parent_node": edge[0].to_dict(),
-                "child_node": edge[1].to_dict()
+                "parent_node": edge[0],
+                "child_node": edge[1]
             }
             # 将边的信息添加到结果列表中
             results.append(edge_info)
 
         DataModel(results).save(self.path)
+
+        # 初始化一个列表，用于存储图中节点的信息
+        node_info_list = []
+
+        # 定义排序键函数，根据节点的 unit_id 和 symbol_id 进行排序
+        def sort_key(node_key):
+            node = self.import_graph_nodes[node_key]
+            return node.unit_id, node.symbol_id
+
+        # 对图节点的键按照排序规则进行排序
+        sorted_node_keys = sorted(self.import_graph_nodes, key=sort_key)
+
+        # 遍历排序后的节点键，将节点信息转换为字典并添加到列表中
+        for node_key in sorted_node_keys:
+            node = self.import_graph_nodes[node_key]
+            node_info = node.to_dict()
+            node_info_list.append(node_info)
+
+        # 使用 DataModel 保存节点信息到文件
+        DataModel(node_info_list).save(self.path + "_nodes")
 
 class TypeGraphLoader:
     def __init__(self, path):
@@ -2065,6 +2080,10 @@ class Loader:
         return self._import_graph_loader.save(*args)
     def load_import_graph(self, *args):
         return self._import_graph_loader.load(*args)
+    def save_import_graph_nodes(self, *args):
+        return self._import_graph_loader.save_nodes(*args)
+    def load_import_graph_nodes(self, *args):
+        return self._import_graph_loader.load_nodes(*args)
 
     def save_type_graph(self, *args):
         return self._type_graph_loader.save(*args)

@@ -26,7 +26,7 @@ from lian.semantic.semantic_structs import (
 )
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
-from lian.semantic.hierarchy_analysis.scope_hierarchy import ImportHierarchy
+from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
 
 class StmtDefUseAnalysis:
     def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_result:ImportHierarchy, external_symbol_id_collection):

@@ -87,7 +87,7 @@ def convert_stmt_to_str(stmt):
 
 def error_and_quit_with_stmt_info(unit_path, stmt, *msg):
     sys.stderr.write(f"{' '.join(str(item) for item in msg)}\n")
-    sys.stderr.write(f"{unit_path}:{stmt.start_row}\n")
+    sys.stderr.write(f"  {unit_path}:{stmt.start_row}\n")
     sys.stderr.write(f"    {convert_stmt_to_str(stmt)}\n")
     sys.exit(-1)
 
@@ -251,7 +251,7 @@ def graph_predecessors(graph, node):
 
 def graph_successors(graph, node):
     if node in graph:
-        return graph.successors(node)
+        return list(graph.successors(node))
     return []
 
 def get_graph_edge_weight(graph: nx.DiGraph, src_stmt, dst_stmt):

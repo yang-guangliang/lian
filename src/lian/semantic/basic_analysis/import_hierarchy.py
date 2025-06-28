@@ -40,35 +40,35 @@ class ImportHierarchy:
         self.analyzed_imported_unit_ids = set()
         self.import_graph = nx.DiGraph()
 
-        self.symbol_id_to_import_node = {}
-        self.module_name_to_import_nodes = {}
-        self.unit_id_to_public_symbols = {}
-        self.unit_id_to_external_symbols = {}
+        self.symbol_id_to_symbol_node = {}
+        self.module_name_to_symbol_nodes = {}
 
-    def add_import_graph_node(self, symbol_type, symbol_id, symbol_name, parent_node_id = -1):
+    def add_import_graph_node(self, symbol_type, symbol_id, symbol_name, parent_node_id = -1, import_stmt = -1, unit_id = -1):
         import_node = SymbolNodeInImportGraph(
             scope_id = parent_node_id,
             symbol_type = symbol_type,
             symbol_id = symbol_id,
-            symbol_name = symbol_name
+            symbol_name = symbol_name,
+            import_stmt = import_stmt,
+            unit_id = unit_id
         )
-        self.symbol_id_to_import_node[symbol_id] = import_node
+        self.symbol_id_to_symbol_node[symbol_id] = import_node
         self.add_import_graph_edge(parent_node_id, symbol_id)
 
     def add_import_graph_edge(self, parent_node_id, node_id):
-        parent_node = self.symbol_id_to_import_node.get(parent_node_id)
-        if parent_node:
-            child_node = self.symbol_id_to_import_node.get(node_id)
-            if child_node:
-                self.import_graph.add_edge(parent_node, child_node)
+        if (
+            parent_node_id in self.symbol_id_to_symbol_node
+            and node_id in self.symbol_id_to_symbol_node
+        ):
+            self.import_graph.add_edge(parent_node_id, node_id)
 
     def initialize_import_graph(self):
         for module_item in self.loader.load_module_symbol_table():
             self.add_import_graph_node(
-                module_item.symbol_type,
-                module_item.module_id,
-                module_item.symbol_name,
-                module_item.parent_module_id,
+                symbol_type=module_item.symbol_type,
+                symbol_id=module_item.module_id,
+                symbol_name=module_item.symbol_name,
+                parent_node_id=module_item.parent_module_id,
             )
 
     def is_private_attr(self, attrs):
@@ -92,12 +92,12 @@ class ImportHierarchy:
                     (
                         scope_hierarchy.scope_id == scope_id
                     ) & (
-                        scope_hierarchy.scope_kind.isin(
+                        scope_hierarchy.scope_kind.isin((
                             ScopeKind.VARIABLE_DECL,
                             ScopeKind.CLASS_SCOPE,
                             ScopeKind.METHOD_SCOPE,
                             ScopeKind.NAMESPACE_SCOPE,
-                        )
+                        ))
                     )
                 )
             else:
@@ -105,11 +105,11 @@ class ImportHierarchy:
                     (
                         scope_hierarchy.scope_id == scope_id
                     ) & (
-                        scope_hierarchy.scope_kind.isin(
+                        scope_hierarchy.scope_kind.isin((
                             ScopeKind.CLASS_SCOPE,
                             ScopeKind.METHOD_SCOPE,
                             ScopeKind.NAMESPACE_SCOPE,
-                        )
+                        ))
                     )
                 )
 
@@ -135,11 +135,17 @@ class ImportHierarchy:
 
         internal_symbols = self.search_public_symbols_from_scope_hierarchy(scope_hierarchy)
         for each_symbol in internal_symbols:
+            if each_symbol.name.startswith("%"):
+                continue
             scope_id = each_symbol.scope_id
-            if scope_id == 0:
+            if scope_id <= 0:
                 scope_id = unit_id
             self.add_import_graph_node(
-                each_symbol.scope_kind, each_symbol.stmt_id, each_symbol.name, scope_id
+                symbol_type=each_symbol.scope_kind,
+                symbol_id=each_symbol.stmt_id,
+                symbol_name=each_symbol.name,
+                parent_node_id=scope_id,
+                unit_id=unit_id,
             )
 
     def validate_import_stmt(self, unit_info, stmt):
@@ -218,9 +224,10 @@ class ImportHierarchy:
                         self.analyze_unit_import_stmts(candidate_node.symbol_id)
                     matched_nodes.append(candidate_node)
                     # 获取匹配节点的后继节点
-                    new_worklist.extend(
-                        util.graph_successors(self.import_graph, candidate_node)
-                    )
+                    children_list = util.graph_successors(self.import_graph, candidate_node.symbol_id)
+                    if len(children_list) > 0:
+                        for child_id in children_list:
+                            new_worklist.append(self.symbol_id_to_symbol_node[child_id])
 
             initial_worklist = new_worklist
             if new_worklist:
@@ -239,7 +246,7 @@ class ImportHierarchy:
         child_module_ids = self.loader.convert_module_id_to_child_ids(parent_module_id)
         worklist = []
         for candidate_node in child_module_ids:
-            candidate_node = self.symbol_id_to_import_node[candidate_node]
+            candidate_node = self.symbol_id_to_symbol_node[candidate_node]
             worklist.append(candidate_node)
 
         return self.parse_import_path_from_module_worklist(remaining_import_path, worklist)
@@ -252,15 +259,15 @@ class ImportHierarchy:
         name_to_be_matched = remaining_import_path[0]
         worklist = []
         # 根据 self.node_name_to_import_nodes 来搜索首节点
-        if name_to_be_matched in self.module_name_to_import_nodes:
-            for import_node in self.module_name_to_import_nodes[name_to_be_matched]:
+        if name_to_be_matched in self.module_name_to_symbol_nodes:
+            for import_node in self.module_name_to_symbol_nodes[name_to_be_matched]:
                 worklist.append(import_node)
 
         return self.parse_import_path_from_module_worklist(
             remaining_import_path, worklist
         )
 
-    def check_import_stmt_analysis_results(self, unit_info, stmt_id, import_nodes, remaining):
+    def check_import_stmt_analysis_results(self, unit_info, stmt, import_nodes, remaining):
         # 若没有剩余的导入路径，说明导入路径全部匹配成功
         if len(remaining) == 0:
             if len(import_nodes) != 0:
@@ -268,18 +275,18 @@ class ImportHierarchy:
                     # 严格模式下，要求匹配节点唯一
                     if len(import_nodes) != 1:
                         util.error_and_quit_with_stmt_info(
-                            unit_info.original_path, stmt_id, "import module path is not unique"
+                            unit_info.original_path, stmt, "ImportError: import module path is not unique"
                         )
 
                 return list(import_nodes)
 
         if self.is_strict_parse_mode:
             util.error_and_quit_with_stmt_info(
-                unit_info.original_path, stmt_id, "import module path not found"
+                unit_info.original_path, stmt, "ImportError: import module path not found"
             )
         return []
 
-    def analyze_import_stmt(self, unit_id, unit_info, stmt_id, stmt, external_symbols):
+    def analyze_import_stmt(self, unit_id, unit_info, stmt, external_symbols):
         if self.validate_import_stmt(unit_info, stmt) == INVALID:
             return
 
@@ -288,7 +295,9 @@ class ImportHierarchy:
         if util.is_available(stmt.alias):
             alias = stmt.alias
         else:
-            alias = import_path_str.split(".")[-1]
+            last_name = import_path_str.split(".")[-1]
+            if "*" not in last_name and "." not in last_name:
+                alias = last_name
 
         # 搜索相对路径
         if import_path_str.startswith("."):
@@ -297,15 +306,17 @@ class ImportHierarchy:
             import_path_str, unit_info.parent_module_id
         )
         import_nodes = self.check_import_stmt_analysis_results(
-            unit_info, stmt_id, import_nodes, remaining
+            unit_info, stmt, import_nodes, remaining
         )
         if import_nodes:
             for each_node in import_nodes:
+                new_node = each_node.clone()
+                new_node.import_stmt = stmt.stmt_id
+                new_node.unit_id = unit_id
                 if len(alias) > 0:
-                    each_node = each_node.clone()
-                    each_node.symbol_name = alias
-                    each_node.stmt_id = stmt_id
-                external_symbols.append(each_node)
+                    #print("alias", alias, stmt)
+                    new_node.symbol_name = alias
+                external_symbols.append(new_node)
                 self.add_import_graph_edge(unit_id, each_node.symbol_id)
             # done
             return
@@ -317,20 +328,23 @@ class ImportHierarchy:
             import_nodes, remaining = self.parse_import_path_from_current_dir(import_path_str, 0)
         else:
             import_nodes, remaining = self.freely_parse_import_path(import_path_str)
-        import_nodes = self.check_import_stmt_analysis_results(unit_id, stmt_id, import_nodes, remaining)
+        import_nodes = self.check_import_stmt_analysis_results(unit_info, stmt, import_nodes, remaining)
         if import_nodes:
             for each_node in import_nodes:
+                new_node = each_node.clone()
+                new_node.import_stmt = stmt.stmt_id
+                new_node.unit_id = unit_id
                 if len(alias) > 0:
-                    each_node = each_node.clone()
-                    each_node.symbol_name = alias
-                external_symbols.append(each_node)
+                    #print("alias", alias, stmt)
+                    new_node.symbol_name = alias
+                external_symbols.append(new_node)
                 self.add_import_graph_edge(unit_id, each_node.symbol_id)
             # done
             return
 
         if self.is_strict_parse_mode:
             util.error_and_quit_with_stmt_info(
-                unit_info.original_path, stmt_id, "import module path not found"
+                unit_info.original_path, stmt, "ImportError: import module path not found"
             )
 
 
@@ -350,7 +364,8 @@ class ImportHierarchy:
         )
         results = []
         for each_stmt in import_stmts:
-            self.analyze_import_stmt(unit_id, unit_info, each_stmt.stmt_id, each_stmt, results)
+            self.analyze_import_stmt(unit_id, unit_info, each_stmt, results)
+
         self.loader.save_unit_export_symbols(unit_id, results)
 
     def debug_import_graph(self):
@@ -373,5 +388,7 @@ class ImportHierarchy:
             self.analyze_unit_import_stmts(unit_id)
 
         self.loader.save_import_graph(self.import_graph)
+        self.loader.save_import_graph_nodes(self.symbol_id_to_symbol_node)
+        self.loader.export()
         return self
 
