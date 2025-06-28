@@ -104,6 +104,24 @@ class Resolver:
 
         return result
 
+    def organize_return_value(self, unit_id, scope_id, symbol, summary, default_return):
+        symbol_id = summary.scope_id_to_symbol_info[scope_id][symbol.name]
+        if not self.loader.is_import_stmt(symbol_id):
+            return SourceSymbolScopeInfo(unit_id, symbol_id)
+
+        # since this is an import stmt, we need to read import information to find the real symbol_id
+        export_symbols = self.loader.load_unit_export_symbols(unit_id)
+        if util.is_empty(export_symbols):
+            return default_return
+        import_info = export_symbols.query_first(export_symbols.name == symbol.name)
+        if import_info:
+            if import_info.source_symbol_id == -1:
+                return SourceSymbolScopeInfo(import_info.unit_id, import_info.stmt_id)
+            else:
+                return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
+        else:
+            return SourceSymbolScopeInfo(unit_id, symbol_id)
+
     # locate symbol to (unit_id, decl_stmt_id]
     def resolve_symbol_source(self, unit_id, method_id, stmt_id, stmt, symbol, source_symbol_must_be_global = False):
         """
@@ -117,27 +135,8 @@ class Resolver:
         Return:
             SourceSymbolScopeInfo: source unit & source stmt
         """
-
         if symbol.name == LianInternal.THIS:
             return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID)
-
-        def organize_return_value(scope_id):
-            symbol_id = summary.scope_id_to_symbol_info[scope_id][symbol.name]
-            if not self.loader.is_import_stmt(symbol_id):
-                return SourceSymbolScopeInfo(unit_id, symbol_id)
-
-            # since this is an import stmt, we need to read import information to find the real symbol_id
-            export_symbols = self.loader.load_unit_export_symbols(unit_id)
-            if util.is_empty(export_symbols):
-                return default_return
-            import_info = export_symbols.query_first(export_symbols.name == symbol.name)
-            if import_info:
-                if import_info.source_symbol_id == -1:
-                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_module_id)
-                else:
-                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
-            else:
-                return SourceSymbolScopeInfo(unit_id, symbol_id)
 
         # default return value
         default_return = SourceSymbolScopeInfo(unit_id, stmt_id)
@@ -151,7 +150,7 @@ class Resolver:
             if symbol.name in summary.symbol_name_to_scope_ids:
                 scope_ids = summary.symbol_name_to_scope_ids[symbol.name]
                 if global_scope_id in scope_ids:
-                    return organize_return_value(global_scope_id)
+                    return self.organize_return_value(unit_id, global_scope_id, symbol, summary, default_return)
         else:
             scope_id = -1
             if stmt.parent_stmt_id in summary.scope_id_to_available_scope_ids:
@@ -166,7 +165,7 @@ class Resolver:
                 if len(target_scope_ids) != 0:
                     # find this name in this unit
                     scope_id = max(target_scope_ids)
-                    return organize_return_value(scope_id)
+                    return self.organize_return_value(unit_id, scope_id, symbol, summary, default_return)
 
         return default_return
 

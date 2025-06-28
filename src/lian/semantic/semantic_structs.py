@@ -426,31 +426,6 @@ class ScopeSpace(BasicSpace):
             results.append(row.to_dict())
         return results
 
-class ImportNode:
-    def __init__(self, scope_id, node_type, node_id, node_name):
-        self.scope_id = scope_id
-        self.node_type:int = node_type
-        self.node_id: int = node_id
-        self.node_name: str = node_name
-
-    def __eq__(self, value):
-        if isinstance(value, ImportNode):
-            return (
-                self.scope_id == value.scope_id
-                and self.node_type == value.node_type
-                and self.node_id == value.node_id
-                and self.node_name == value.node_name
-            )
-        return False
-
-    def __hash__(self):
-        return hash((self.scope_id, self.node_type, self.node_id, self.node_name))
-
-@dataclasses.dataclass
-class ImportPathAnalysisResult:
-    module_id:int = -1
-    remaining_import_path: str = ""
-
 class CFGNode:
     def __init__(self, stmt, edge = None):
         self.stmt = stmt
@@ -1886,27 +1861,52 @@ class PathManager:
 
         return cycle_count
 
-@dataclasses.dataclass
-class ExportNode:
-    unit_id: int = -1
-    stmt_id: int = -1
-    name: str = ""
-    export_type: int = ExportNodeType.MODULE_UNIT
-    source_module_id: int = -1
-    source_symbol_id: int = -1
+class SymbolNodeInImportGraph:
+    def __init__(self, scope_id, symbol_type, symbol_id, symbol_name, import_stmt=-1):
+        self.scope_id = scope_id
+        self.symbol_type:int = symbol_type
+        self.symbol_id: int = symbol_id
+        self.symbol_name: str = symbol_name
+        self.import_stmt = import_stmt
+
+    def clone(self):
+        node = SymbolNodeInImportGraph(
+            self.scope_id,
+            self.symbol_type,
+            self.symbol_id,
+            self.symbol_name,
+            self.import_stmt
+        )
+        return node
+
+    def __eq__(self, value):
+        if isinstance(value, SymbolNodeInImportGraph):
+            return (
+                self.scope_id == value.scope_id and
+                self.symbol_type == value.symbol_type and
+                self.symbol_id == value.symbol_id and
+                self.symbol_name == value.symbol_name and
+                self.import_stmt == value.import_stmt
+            )
+        return False
+
+    def __hash__(self):
+        return hash((self.scope_id, self.symbol_type, self.symbol_id, self.symbol_name, self.import_stmt))
 
     def to_dict(self):
         return {
-            "unit_id": self.unit_id,
-            "stmt_id": self.stmt_id,
-            "name": self.name,
-            "export_type": self.export_type,
-            "source_module_id": self.source_module_id,
-            "source_symbol_id": self.source_symbol_id
+            "scope_id": self.scope_id,
+            "symbol_type": self.symbol_type,
+            "symbol_id": self.symbol_id,
+            "symbol_name": self.symbol_name,
+            "import_stmt": self.import_stmt
         }
 
-    def __repr__(self) -> str:
-        return f"ExportNode(unit_id={self.unit_id}, stmt_id={self.stmt_id}, name={self.name}, export_type={self.export_type}, source_module_id={self.source_module_id}, source_symbol_id={self.source_symbol_id})"
+    def to_tuple(self):
+        return (self.scope_id, self.symbol_type, self.symbol_id, self.symbol_name, self.import_stmt)
+
+    def __repr__(self):
+        return f"SymbolNode(scope_id={self.scope_id}, symbol_type={self.symbol_type}, symbol_id={self.symbol_id}, symbol_name={self.symbol_name}, import_stmt={self.import_stmt})"
 
 @dataclasses.dataclass
 class MethodInClass:
@@ -1944,11 +1944,12 @@ class TypeNode:
             "unit_id": self.unit_id,
             "parent_name": self.parent_name,
             "parent_id": self.parent_id,
-            "parent_index": self.parent_index
+            "parent_index": self.parent_index,
+            "name": self.name
         }
 
     def __repr__(self) -> str:
-        return f"TypeSourceNode(class_stmt_id={self.class_stmt_id}, unit_id={self.unit_id}, parent_name={self.parent_name}, parent_id={self.parent_id}, parent_index={self.parent_index})"
+        return f"TypeNode(class_stmt_id={self.class_stmt_id}, unit_id={self.unit_id}, parent_name={self.parent_name}, parent_id={self.parent_id}, parent_index={self.parent_index}, name={self.name})"
 
 @dataclasses.dataclass
 class TypeGraphEdge:

@@ -44,7 +44,7 @@ from lian.semantic.semantic_structs import (
 )
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
-from lian.semantic.stmt_state_analysis import StmtStateAnalysis
+from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
 
 # from lian.config.type_table import get_lang_init_script_name
 
@@ -493,7 +493,7 @@ class SemanticSummaryGeneration:
         for symbol_id, each_symbol_in_states in symbol_id_to_state_index.items():
             # 对每个symbol的in_states按state_id合并一次，并将fusion_state添加到status.defined_states中
             state_id_to_indexes = self.group_states_with_state_ids(frame, each_symbol_in_states)
-            for state_id, states_with_same_id in state_id_to_indexes.items(): 
+            for state_id, states_with_same_id in state_id_to_indexes.items():
                 fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, status)
                 each_symbol_in_states -= states_with_same_id
                 each_symbol_in_states |= fusion_state
@@ -982,7 +982,7 @@ class SemanticSummaryGeneration:
                             fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, status)
                             fusion_states.update(fusion_state)
                         else:
-                           fusion_states.update(states_with_same_id) 
+                           fusion_states.update(states_with_same_id)
                     symbol_id_to_latest_state_indexes[symbol_id] = fusion_states
 
             # print("generate_and_save_analysis_summary@ symbol_id_to_latest_state_indexes: ")

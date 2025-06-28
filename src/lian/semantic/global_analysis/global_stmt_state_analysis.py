@@ -7,7 +7,7 @@ import pprint
 from pandas.core import frame
 
 from lian.semantic.resolver import Resolver
-from lian.semantic.stmt_state_analysis import StmtStateAnalysis
+from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
 from lian.util import util
 from lian.config import config
 from lian.util.loader import Loader
@@ -111,7 +111,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             current_parameter_mapping_list = []
             self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site)
             parameter_mapping_list.extend(current_parameter_mapping_list)
-        
+
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
             return P2ResultFlag(

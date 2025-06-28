@@ -3,7 +3,7 @@
 import dataclasses
 import os
 from lian.semantic.semantic_structs import AccessPoint, State, ComputeFrame
-from lian.semantic.stmt_state_analysis import StmtStateAnalysis
+from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
 from lian.apps.app_template import EventData
 from lian.config.constants import (
     EventKind,

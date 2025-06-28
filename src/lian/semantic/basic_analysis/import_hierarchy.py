@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+
+import pprint
+import re
+import networkx as nx
+
+from lian.config import config
+from lian.semantic.resolver import Resolver
+from lian.config.constants import (
+    CLASS_DECL_OPERATION,
+    NAMESPACE_DECL_OPERATION,
+    IMPORT_OPERATION,
+    METHOD_DECL_OPERATION,
+    VARIABLE_DECL_OPERATION,
+    PARAMETER_DECL_OPERATION,
+    EXPORT_STMT_OPERATION,
+    FOR_STMT_OPERATION,
+    ScopeKind,
+    SymbolKind
+)
+
+from lian.semantic.semantic_structs import (
+    MultipleDirectedGraph,
+    SymbolNodeInImportGraph,
+)
+from lian.util import util
+from lian.util.loader import Loader
+
+INVALID = False
+VALID = True
+
+class ImportHierarchy:
+    def __init__(self, lian, loader, resolver, unit_list):
+        self.lian = lian
+        self.options = self.lian.options
+        self.is_strict_parse_mode = self.options.strict_parse_mode
+        self.loader:Loader = loader
+        self.resolver = resolver
+        self.unit_list = unit_list
+        self.analyzed_imported_unit_ids = set()
+        self.import_graph = nx.DiGraph()
+
+        self.symbol_id_to_import_node = {}
+        self.module_name_to_import_nodes = {}
+        self.unit_id_to_public_symbols = {}
+        self.unit_id_to_external_symbols = {}
+
+    def add_import_graph_node(self, symbol_type, symbol_id, symbol_name, parent_node_id = -1):
+        import_node = SymbolNodeInImportGraph(
+            scope_id = parent_node_id,
+            symbol_type = symbol_type,
+            symbol_id = symbol_id,
+            symbol_name = symbol_name
+        )
+        self.symbol_id_to_import_node[symbol_id] = import_node
+        self.add_import_graph_edge(parent_node_id, symbol_id)
+
+    def add_import_graph_edge(self, parent_node_id, node_id):
+        parent_node = self.symbol_id_to_import_node.get(parent_node_id)
+        if parent_node:
+            child_node = self.symbol_id_to_import_node.get(node_id)
+            if child_node:
+                self.import_graph.add_edge(parent_node, child_node)
+
+    def initialize_import_graph(self):
+        for module_item in self.loader.load_module_symbol_table():
+            self.add_import_graph_node(
+                module_item.symbol_type,
+                module_item.module_id,
+                module_item.symbol_name,
+                module_item.parent_module_id,
+            )
+
+    def is_private_attr(self, attrs):
+        return "private" in attrs
+
+    def search_public_symbols_from_scope_hierarchy(self, scope_hierarchy):
+        internal_symbols = []
+
+        worklist = [0]
+        visited = set()
+        available_variable_stmt_ids = set([0])
+        while worklist:
+            scope_id = worklist.pop(0)
+            if scope_id in visited:
+                continue
+            visited.add(scope_id)
+
+            scope_results = []
+            if scope_id in available_variable_stmt_ids:
+                scope_results = scope_hierarchy.query(
+                    (
+                        scope_hierarchy.scope_id == scope_id
+                    ) & (
+                        scope_hierarchy.scope_kind.isin(
+                            ScopeKind.VARIABLE_DECL,
+                            ScopeKind.CLASS_SCOPE,
+                            ScopeKind.METHOD_SCOPE,
+                            ScopeKind.NAMESPACE_SCOPE,
+                        )
+                    )
+                )
+            else:
+                scope_results = scope_hierarchy.query(
+                    (
+                        scope_hierarchy.scope_id == scope_id
+                    ) & (
+                        scope_hierarchy.scope_kind.isin(
+                            ScopeKind.CLASS_SCOPE,
+                            ScopeKind.METHOD_SCOPE,
+                            ScopeKind.NAMESPACE_SCOPE,
+                        )
+                    )
+                )
+
+            for row in scope_results:
+                if self.is_private_attr(row.attrs):
+                    continue
+
+                internal_symbols.append(row)
+                if row.scope_kind != ScopeKind.VARIABLE_DECL:
+                    worklist.append(row.stmt_id)
+
+                if row.scope_kind == ScopeKind.NAMESPACE_SCOPE:
+                    available_variable_stmt_ids.add(row.stmt_id)
+
+        return internal_symbols
+
+    def analyze_unit_public_symbols(self, unit_id):
+        # start analysis from scope_hierarchy
+        scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
+        gir = self.loader.load_unit_gir(unit_id)
+        if util.is_empty(scope_hierarchy) or util.is_empty(gir):
+            return
+
+        internal_symbols = self.search_public_symbols_from_scope_hierarchy(scope_hierarchy)
+        for each_symbol in internal_symbols:
+            scope_id = each_symbol.scope_id
+            if scope_id == 0:
+                scope_id = unit_id
+            self.add_import_graph_node(
+                each_symbol.scope_kind, each_symbol.stmt_id, each_symbol.name, scope_id
+            )
+
+    def validate_import_stmt(self, unit_info, stmt):
+        unit_path = unit_info.original_path
+        if not self.is_strict_parse_mode:
+            if util.is_empty(stmt.name):
+                util.error(
+                    "ImportError: cannot use empty name in import"
+                    )
+                return INVALID
+
+            import_path = self.get_import_path_from_stmt(stmt)
+            if "*" in import_path:
+                if not re.match(r'^[^*]*\.\*$', import_path):
+                    util.error(
+                        "ImportError: '*' can only be used in the end of import path"
+                    )
+                    return INVALID
+            return VALID
+
+        if stmt.source.startswith(".") or stmt.name.startswith("."):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, "ImportError: cannot use relative path in import (remove the leading dot)"
+            )
+        if stmt.source.endswith(".") or stmt.name.endswith("."):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, "ImportError: wrong dot usage (remove the trailing dot)"
+            )
+        if "*" in stmt.source or "*" in stmt.name or "*" in stmt.alias:
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, f"ImportError: cannot use '*' in import"
+            )
+        if stmt.operation == "from_import_stmt":
+            if stmt.source == "":
+                util.error_and_quit_with_stmt_info(
+                    unit_path, stmt, f"ImportError: cannot use empty path in from..import"
+                )
+        if util.is_empty(stmt.name):
+            util.error_and_quit_with_stmt_info(
+                unit_path, stmt, f"ImportError: cannot use empty name in import"
+            )
+
+    def get_import_path_from_stmt(self, stmt):
+        import_path = ""
+        if util.is_available(stmt.source):
+            import_path = stmt.source
+        if util.is_available(stmt.name):
+            import_path += "." + stmt.name
+            import_path = import_path.replace("..", ".")
+        return import_path
+
+    def parse_import_path_from_module_worklist(self, import_path_list, initial_worklist):
+        matched_nodes = []
+
+        # 若导入路径列表或初始工作列表为空，直接返回
+        if not import_path_list or not initial_worklist:
+            return (matched_nodes, import_path_list)
+
+        while import_path_list and initial_worklist:
+            name_to_be_matched = import_path_list[0]
+            new_worklist = []
+            matched_nodes = []
+
+            # 处理通配符 *
+            if name_to_be_matched == "*":
+                import_path_list.pop(0)
+                for each_node in initial_worklist:
+                    if each_node.symbol_type == SymbolKind.UNIT_SYMBOL:
+                        self.analyze_unit_import_stmts(each_node.symbol_id)
+                return (initial_worklist, import_path_list)
+
+            # 遍历初始工作列表，查找匹配的节点
+            for candidate_node in initial_worklist:
+                if candidate_node.symbol_name == name_to_be_matched:
+                    if candidate_node.symbol_type == SymbolKind.UNIT_SYMBOL:
+                        self.analyze_unit_import_stmts(candidate_node.symbol_id)
+                    matched_nodes.append(candidate_node)
+                    # 获取匹配节点的后继节点
+                    new_worklist.extend(
+                        util.graph_successors(self.import_graph, candidate_node)
+                    )
+
+            initial_worklist = new_worklist
+            if new_worklist:
+                # 若找到匹配节点，移除已匹配
+                import_path_list.pop(0)
+            else:
+                break
+
+        return (matched_nodes, import_path_list)
+
+    def parse_import_path_from_current_dir(self, import_path_str, parent_module_id):
+        remaining_import_path = import_path_str.split(".")
+        if len(remaining_import_path) == 0:
+            return [], []
+
+        child_module_ids = self.loader.convert_module_id_to_child_ids(parent_module_id)
+        worklist = []
+        for candidate_node in child_module_ids:
+            candidate_node = self.symbol_id_to_import_node[candidate_node]
+            worklist.append(candidate_node)
+
+        return self.parse_import_path_from_module_worklist(remaining_import_path, worklist)
+
+    def freely_parse_import_path(self, import_path):
+        remaining_import_path = import_path.split(".")
+        if len(remaining_import_path) == 0:
+            return [], []
+
+        name_to_be_matched = remaining_import_path[0]
+        worklist = []
+        # 根据 self.node_name_to_import_nodes 来搜索首节点
+        if name_to_be_matched in self.module_name_to_import_nodes:
+            for import_node in self.module_name_to_import_nodes[name_to_be_matched]:
+                worklist.append(import_node)
+
+        return self.parse_import_path_from_module_worklist(
+            remaining_import_path, worklist
+        )
+
+    def check_import_stmt_analysis_results(self, unit_info, stmt_id, import_nodes, remaining):
+        # 若没有剩余的导入路径，说明导入路径全部匹配成功
+        if len(remaining) == 0:
+            if len(import_nodes) != 0:
+                if self.is_strict_parse_mode:
+                    # 严格模式下，要求匹配节点唯一
+                    if len(import_nodes) != 1:
+                        util.error_and_quit_with_stmt_info(
+                            unit_info.original_path, stmt_id, "import module path is not unique"
+                        )
+
+                return list(import_nodes)
+
+        if self.is_strict_parse_mode:
+            util.error_and_quit_with_stmt_info(
+                unit_info.original_path, stmt_id, "import module path not found"
+            )
+        return []
+
+    def analyze_import_stmt(self, unit_id, unit_info, stmt_id, stmt, external_symbols):
+        if self.validate_import_stmt(unit_info, stmt) == INVALID:
+            return
+
+        alias = ""
+        import_path_str = self.get_import_path_from_stmt(stmt)
+        if util.is_available(stmt.alias):
+            alias = stmt.alias
+        else:
+            alias = import_path_str.split(".")[-1]
+
+        # 搜索相对路径
+        if import_path_str.startswith("."):
+            import_path_str = import_path_str[1:]
+        import_nodes, remaining = self.parse_import_path_from_current_dir(
+            import_path_str, unit_info.parent_module_id
+        )
+        import_nodes = self.check_import_stmt_analysis_results(
+            unit_info, stmt_id, import_nodes, remaining
+        )
+        if import_nodes:
+            for each_node in import_nodes:
+                if len(alias) > 0:
+                    each_node = each_node.clone()
+                    each_node.symbol_name = alias
+                external_symbols.append(each_node)
+                self.add_import_graph_edge(unit_id, each_node.symbol_id)
+            # done
+            return
+
+        import_nodes = []
+        remaining = []
+        if self.is_strict_parse_mode:
+            # 从跟目录开始搜索
+            import_nodes, remaining = self.parse_import_path_from_current_dir(import_path_str, 0)
+        else:
+            import_nodes, remaining = self.freely_parse_import_path(import_path_str)
+        import_nodes = self.check_import_stmt_analysis_results(unit_id, stmt_id, import_nodes, remaining)
+        if import_nodes:
+            for each_node in import_nodes:
+                if len(alias) > 0:
+                    each_node = each_node.clone()
+                    each_node.symbol_name = alias
+                external_symbols.append(each_node)
+                self.add_import_graph_edge(unit_id, each_node.symbol_id)
+            # done
+            return
+
+        if self.is_strict_parse_mode:
+            util.error_and_quit_with_stmt_info(
+                unit_info.original_path, stmt_id, "import module path not found"
+            )
+
+
+    def analyze_unit_import_stmts(self, unit_id):
+        if unit_id in self.analyzed_imported_unit_ids:
+            return
+        self.analyzed_imported_unit_ids.add(unit_id)
+
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+        scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
+        if util.is_empty(scope_hierarchy):
+            return
+
+        import_stmts = scope_hierarchy.query(
+            (scope_hierarchy.scope_id == 0) &
+            (scope_hierarchy.scope_kind == ScopeKind.IMPORT_STMT)
+        )
+        results = []
+        for each_stmt in import_stmts:
+            self.analyze_import_stmt(unit_id, unit_info, each_stmt.stmt_id, each_stmt, results)
+        self.loader.save_unit_export_symbols(unit_id, results)
+
+    def debug_import_graph(self):
+        graph = self.import_graph
+        # 打印所有边
+        print("All edges in the import graph:")
+
+        for each_node in graph.nodes:
+            out_edges = graph[each_node]
+            for each_out_edge in out_edges:
+                print(f"  {each_node} -> {each_out_edge}")
+
+    def run(self):
+        self.initialize_import_graph()
+
+        for unit_id in self.unit_list:
+            self.analyze_unit_public_symbols(unit_id)
+
+        for unit_id in self.unit_list:
+            self.analyze_unit_import_stmts(unit_id)
+
+        self.loader.save_import_graph(self.import_graph)
+        return self
+

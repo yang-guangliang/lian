@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from lian.semantic.semantic_structs import AccessPoint, State, ComputeFrame, Symbol
-from lian.semantic.stmt_state_analysis import StmtStateAnalysis
+from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
 from lian.apps.app_template import EventData
 from lian.config.constants import (
     EventKind,
@@ -56,11 +56,11 @@ def resolve_this_field_method(data: EventData):
             each_field_state = frame.symbol_state_space[each_field_state_index]
             if not isinstance(each_field_state, State):
                 continue
-            field_name = str(each_field_state.value)    
+            field_name = str(each_field_state.value)
             # print("resolve_this_field_method@ field_name是",field_name)
             if len(field_name) == 0:
                 continue
-            
+
             # 如果当前receiver_this_state中已经有该field存在，就pass
             if field_name in each_receiver_state.fields and len(each_receiver_state.fields[field_name]) > 0:
                 continue
@@ -87,7 +87,7 @@ def resolve_this_field_method(data: EventData):
                             kind = AccessPointKind.FIELD_NAME,
                             key = field_name
                         )
-                    )            
+                    )
                 )
                 state_analysis.update_access_path_state_id(field_method_state_index)
                 util.add_to_dict_with_default_set(new_receiver_state.fields, field_name, field_method_state_index)

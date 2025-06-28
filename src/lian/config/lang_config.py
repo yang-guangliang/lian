@@ -12,13 +12,16 @@ from lian.lang import (
     php_parser,
     llvm_parser
 )
-LIB_DIR              = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
-LANGS_SO_PATH        = os.path.join(LIB_DIR, "lib/langs_linux.so")
-LANG_SO_PATH            = os.path.join(LIB_DIR, 
-    "lib/c_langs_macos_arm64.so" if 
-    platform.system() == 'Darwin' and platform.machine() == 'arm64'
-    else "lib/langs_linux.so")
+LIB_DIR          = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+
+REAL_LANGS_PATH  = "lib/langs_linux.so"
+if platform.system() == 'Darwin':
+    if platform.machine() == 'arm64':
+        REAL_LANGS_PATH = "lib/c_langs_macos_arm64.so"
+LANGS_SO_PATH    = os.path.join(LIB_DIR, REAL_LANGS_PATH)
+
+
 @dataclass
 class LangConfig:
     name     : str

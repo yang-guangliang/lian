@@ -34,11 +34,11 @@ from lian.config import config, constants, lang_config
 from lian.util import util
 from lian.util.loader import Loader
 from lian.lang.lang_analysis import LangAnalysis
-from lian.semantic.basic_analysis import BasicSemanticAnalysis
-from lian.semantic.summary_generation import SemanticSummaryGeneration
-from lian.semantic.global_analysis import GlobalAnalysis
+from lian.semantic.basic_analysis.basic_analysis import BasicSemanticAnalysis
+from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
+from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
-from lian.semantic.entry_points import EntryPointGenerator
+from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
 from lian.semantic import semantic_structs
 
 class Lian:

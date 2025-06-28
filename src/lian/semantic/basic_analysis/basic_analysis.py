@@ -32,14 +32,13 @@ from lian.semantic.semantic_structs import (
 )
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
-from lian.semantic.scope_hierarchy import (
-    UnitScopeHierarchyAnalysis,
-    ImportHierarchy,
-    TypeHierarchy
-)
-from lian.semantic.entry_points import EntryPointGenerator
-from lian.semantic.control_flow import ControlFlowAnalysis
-from lian.semantic.stmt_def_use_analysis import StmtDefUseAnalysis
+from lian.semantic.basic_analysis.scope_hierarchy import UnitScopeHierarchyAnalysis
+from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
+from lian.semantic.basic_analysis.type_hierarchy import TypeHierarchy
+
+from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
+from lian.semantic.basic_analysis.control_flow import ControlFlowAnalysis
+from lian.semantic.basic_analysis.stmt_def_use_analysis import StmtDefUseAnalysis
 
 class BasicSemanticAnalysis:
     def __init__(self, lian):

@@ -4,8 +4,8 @@ import os,sys
 import pprint
 import copy
 
-from lian.semantic.global_stmt_state_analysis import GlobalStmtStateAnalysis
-from lian.semantic.summary_generation import SemanticSummaryGeneration
+from lian.semantic.global_analysis.global_stmt_state_analysis import GlobalStmtStateAnalysis
+from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
 from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
@@ -40,10 +40,10 @@ from lian.semantic.semantic_structs import (
     APath,
     StmtStatus
 )
-from lian.semantic.entry_points import EntryPointGenerator
-from lian.semantic.control_flow import ControlFlowAnalysis
-from lian.semantic.stmt_def_use_analysis import StmtDefUseAnalysis
-from lian.semantic.stmt_state_analysis import StmtStateAnalysis
+from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
+from lian.semantic.basic_analysis.control_flow import ControlFlowAnalysis
+from lian.semantic.basic_analysis.stmt_def_use_analysis import StmtDefUseAnalysis
+from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
 
@@ -70,9 +70,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         for each_callee in callees:
             results[each_callee.stmt_id] = each_callee
         return results
-    
+
     def adjust_index_of_status_space(self, baseline_index, status, space):
-        
+
         for stmtstatus in status.values():
             for each_id, value in enumerate(stmtstatus.used_symbols):
                 stmtstatus.used_symbols[each_id] = value + baseline_index
@@ -521,7 +521,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # for param in frame.params_list:
             #     param.
             #     caller_frame.symbol_state_space[param_id] = param_states
-            # caller_frame.callee_param = 
+            # caller_frame.callee_param =
             frame_stack.pop()
             if config.DEBUG_FLAG:
                 util.debug(f"\n\t<method {frame.method_id}> is Done\n")

@@ -2,7 +2,7 @@
 
 import os
 import ast
-import networkx
+import networkx as nx
 import pprint
 import numpy
 from bisect import insort
@@ -34,11 +34,10 @@ from lian.semantic.semantic_structs import (
     SimplyGroupedMethodTypes,
     ParameterMapping,
     AccessPoint,
-    ExportNode,
     IndexMapInSummary,
-    SymbolDefNode,
     MethodSummaryInstance,
-    APath
+    APath,
+    SymbolNodeInImportGraph
 )
 
 class ModuleSymbolsLoader:
@@ -147,10 +146,12 @@ class ModuleSymbolsLoader:
 
         return all_units
 
-    def parse_unit_path_to_unit_id(self, unit_path):
-        return self.unit_path_to_id.get(unit_path, None)
+    def search_unit_path_to_unit_id(self, unit_path):
+        for path in  self.unit_path_to_id:
+            if path.endswith(unit_path):
+                return self.unit_path_to_id[path]
 
-    def parse_unit_id_to_unit_path(self, unit_id):
+    def convert_unit_id_to_unit_path(self, unit_id):
         return self.unit_id_to_path.get(unit_id, None)
 
 class GeneralLoader:
@@ -1079,21 +1080,42 @@ class ImportGraphLoader:
 
     def restore(self):
         df = DataModel().load(self.path)
-        self.import_graph = BasicGraph()
+        self.import_graph = nx.DiGraph()
         for row in df:
-            self.import_graph.add_edge(row.unit_id, row.imported_unit_id, row.stmt_id)
+            parent_node_dict = ast.literal_eval(row.parent_node)
+            parent_node = SymbolNodeInImportGraph(
+                parent_node_dict["scope_id"],
+                parent_node_dict["symbol_type"],
+                parent_node_dict["symbol_id"],
+                parent_node_dict["symbol_name"],
+                parent_node_dict["import_stmt"]
+            )
+            child_node_dict = ast.literal_eval(row.child_node)
+            child_node = SymbolNodeInImportGraph(
+                child_node_dict["scope_id"],
+                child_node_dict["symbol_type"],
+                child_node_dict["symbol_id"],
+                child_node_dict["symbol_name"],
+                child_node_dict["import_stmt"]
+            )
+            self.import_graph.add_edge(parent_node, child_node)
 
     def export(self):
         if util.is_empty(self.import_graph):
             return
 
+        # 初始化一个空列表，用于存储图中边的信息
         results = []
-        for edge in self.import_graph.graph.edges(data='weight'):
-            results.append({
-                "unit_id": edge[0],
-                "imported_unit_id": edge[1],
-                "stmt_id": edge[2]
-            })
+        # 遍历图中的每一条边
+        for edge in self.import_graph.edges:
+            # 为每条边创建一个字典，记录边的起始节点和结束节点
+            edge_info = {
+                "parent_node": edge[0].to_dict(),
+                "child_node": edge[1].to_dict()
+            }
+            # 将边的信息添加到结果列表中
+            results.append(edge_info)
+
         DataModel(results).save(self.path)
 
 class TypeGraphLoader:
@@ -1763,9 +1785,9 @@ class Loader:
     def convert_module_id_to_module_info(self, *args):
         return self._module_symbols_loader.convert_module_id_to_module_info(*args)
     def convert_unit_id_to_unit_path(self, *args):
-        return self._module_symbols_loader.parse_unit_id_to_unit_path(*args)
-    def convert_unit_path_to_unit_id(self, *args):
-        return self._module_symbols_loader.parse_unit_path_to_unit_id(*args)
+        return self._module_symbols_loader.convert_unit_id_to_unit_path(*args)
+    def search_unit_path_to_unit_id(self, *args):
+        return self._module_symbols_loader.search_unit_path_to_unit_id(*args)
 
     def is_module_id(self, *args):
         return self._module_symbols_loader.is_module_id(*args)
@@ -1776,7 +1798,7 @@ class Loader:
     def convert_unit_id_to_lang_name(self, *args):
         return self._module_symbols_loader.load_unit_lang_name(*args)
     def parse_require_unit_path_to_unit_id(self, *args):
-        return self._module_symbols_loader.parse_unit_path_to_unit_id(*args)
+        return self._module_symbols_loader.search_unit_path_to_unit_id(*args)
     def convert_module_id_to_child_ids(self, *args):
         return self._module_symbols_loader.convert_module_id_to_child_ids(*args)
 
