@@ -240,7 +240,7 @@ class StmtStateAnalysis:
             fields = {},
             array = []
         )
-        
+
         index = self.frame.symbol_state_space.add(item)
         state_def_node = StateDefNode(index=index, state_id=item.state_id, stmt_id=stmt_id)
         util.add_to_dict_with_default_set(
@@ -3221,24 +3221,24 @@ class StmtStateAnalysis:
                     import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
                     if import_symbols:
                         for import_symbol in import_symbols:
-                            if import_symbol.name == field_name:
-                                if import_symbol.export_type == ScopeKind.METHOD_SCOPE:
+                            if import_symbol.symbol_name == field_name:
+                                if import_symbol.symbol_type == ScopeKind.METHOD_SCOPE:
                                     data_type = LianInternal.METHOD_DECL
-                                elif import_symbol.export_type == ScopeKind.CLASS_SCOPE:
+                                elif import_symbol.symbol_type == ScopeKind.CLASS_SCOPE:
                                     data_type = LianInternal.CLASS_DECL
                                 else:
                                     data_type = LianInternal.UNIT
 
                                 state_index = self.create_state_and_add_space(
                                     status, stmt_id = stmt_id,
-                                    source_symbol_id =import_symbol.source_symbol_id,
+                                    source_symbol_id =import_symbol.symbol_id,
                                     source_state_id = each_receiver_state.source_state_id,
                                     data_type = data_type,
-                                    value = import_symbol.stmt_id,
+                                    value = import_symbol.import_stmt,
                                     access_path = self.copy_and_extend_access_path(
                                         each_receiver_state.access_path,
                                         AccessPoint(
-                                            key=import_symbol.name,
+                                            key=import_symbol.symbol_name,
                                         )
                                     )
                                 )

@@ -266,7 +266,7 @@ class Parser(common_parser.Parser):
                     arg_list.append(shadow_variable)
 
         tmp_return = self.tmp_variable()
-        statements.append({"call_stmt": {"target": tmp_return, "name": shadow_name, "args": arg_list}})
+        statements.append({"call_stmt": {"target": tmp_return, "name": shadow_name, "positional_args": arg_list}})
 
         # 返回到全局变量
         return tmp_return
@@ -1125,7 +1125,7 @@ class Parser(common_parser.Parser):
             name = node.named_children[0]
             shadow_name = self.parse(name, statements)
 
-        statements.append({"return": {"target": shadow_name}})
+        statements.append({"return_stmt": {"target": shadow_name}})
         return shadow_name
 
     def if_statement(self, node, statements):

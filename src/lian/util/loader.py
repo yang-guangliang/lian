@@ -666,7 +666,7 @@ class CFGLoader(GeneralLoader):
             cfg.add_edge(row.src_stmt_id, row.dst_stmt_id, row.control_flow_type)
         return cfg.graph
 
-    def flatten_item_when_saving(self, method_id, cfg: networkx.DiGraph):
+    def flatten_item_when_saving(self, method_id, cfg: nx.DiGraph):
         edges = []
         old_edges = cfg.edges(data='weight', default = 0)
         for e in old_edges:
@@ -1280,7 +1280,7 @@ class SymbolGraphLoader(MethodLevelAnalysisResultLoader):
                 symbol_graph.add_edge(key, row.stmt_id, row.edge_type)
         return symbol_graph.graph
 
-    def flatten_item_when_saving(self, _id, symbol_graph: networkx.DiGraph):
+    def flatten_item_when_saving(self, _id, symbol_graph: nx.DiGraph):
         method_id = _id
         edges = []
         old_edges = symbol_graph.edges(data='weight', default = 0)

@@ -19,6 +19,7 @@ REAL_LANGS_PATH  = "lib/langs_linux.so"
 if platform.system() == 'Darwin':
     if platform.machine() == 'arm64':
         REAL_LANGS_PATH = "lib/c_langs_macos_arm64.so"
+
 LANGS_SO_PATH    = os.path.join(LIB_DIR, REAL_LANGS_PATH)
 
 

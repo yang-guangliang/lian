@@ -304,6 +304,7 @@ class ImportHierarchy:
                 if len(alias) > 0:
                     each_node = each_node.clone()
                     each_node.symbol_name = alias
+                    each_node.stmt_id = stmt_id
                 external_symbols.append(each_node)
                 self.add_import_graph_edge(unit_id, each_node.symbol_id)
             # done

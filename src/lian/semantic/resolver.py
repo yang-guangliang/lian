@@ -4,7 +4,6 @@ import pprint
 from lian.config import config
 from lian.semantic.semantic_structs import (
     AccessPoint,
-    ExportNode,
     SimpleWorkList,
     SourceSymbolScopeInfo,
     Symbol,
@@ -97,7 +96,7 @@ class Resolver:
             # if it is an import stmt, check the target unit's import information
             export_symbols = self.loader.load_unit_export_symbols(unit_id)
             if export_symbols:
-                import_info = export_symbols.query(export_symbols.source_symbol_id == symbol_id)
+                import_info = export_symbols.query(export_symbols.symbol_id == symbol_id)
                 for each_import in import_info:
                     if self.loader.is_class_decl(each_import.symbol_id):
                         result.append(each_import.symbol_id)
@@ -113,12 +112,13 @@ class Resolver:
         export_symbols = self.loader.load_unit_export_symbols(unit_id)
         if util.is_empty(export_symbols):
             return default_return
-        import_info = export_symbols.query_first(export_symbols.name == symbol.name)
+        import_info = export_symbols.query_first(export_symbols.symbol_name == symbol.name)
         if import_info:
-            if import_info.source_symbol_id == -1:
-                return SourceSymbolScopeInfo(import_info.unit_id, import_info.stmt_id)
-            else:
-                return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
+            if import_info.symbol_id != -1:
+                return SourceSymbolScopeInfo(
+                    self.loader.convert_stmt_id_to_unit_id(import_info.symbol_id),
+                    import_info.symbol_id
+                )
         else:
             return SourceSymbolScopeInfo(unit_id, symbol_id)
 
