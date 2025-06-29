@@ -254,6 +254,27 @@ def graph_successors(graph, node):
         return list(graph.successors(node))
     return []
 
+def graph_successors_with_weight(graph, node, weight):
+    """
+    返回图中指定节点具有指定权重的后继节点列表。
+
+    参数:
+    - graph: networkx.DiGraph 或其他类型的图
+    - node: 要查询的节点
+    - weight: 边的权重值
+
+    返回:
+    - list: 所有出边权重等于 weight 的后继节点列表
+    """
+    if node not in graph:
+        return []
+
+    external_successors = []
+    for neighbor, data in graph[node].items():
+        if data.get('weight') == weight:
+            external_successors.append(neighbor)
+    return external_successors
+
 def get_graph_edge_weight(graph: nx.DiGraph, src_stmt, dst_stmt):
     if type(src_stmt) in (int, np.int64):
         src_stmt_id = src_stmt

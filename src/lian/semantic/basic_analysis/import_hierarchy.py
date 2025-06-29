@@ -7,6 +7,7 @@ import networkx as nx
 from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
+    ImportGraphEdgeKind,
     SymbolKind,
     SymbolKind
 )
@@ -46,12 +47,12 @@ class ImportHierarchy:
         self.symbol_id_to_symbol_node[symbol_id] = import_node
         self.add_import_graph_edge(parent_node_id, symbol_id)
 
-    def add_import_graph_edge(self, parent_node_id, node_id):
+    def add_import_graph_edge(self, parent_node_id, node_id, edge_kind = ImportGraphEdgeKind.INTERNAL_SYMBOL):
         if (
             parent_node_id in self.symbol_id_to_symbol_node
             and node_id in self.symbol_id_to_symbol_node
         ):
-            self.import_graph.add_edge(parent_node_id, node_id)
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
 
     def initialize_import_graph(self):
         for module_item in self.loader.load_module_symbol_table():
@@ -231,7 +232,11 @@ class ImportHierarchy:
             import_path_list.pop(0)
             for candidate_node in matched_nodes:
                 # 获取匹配节点的后继节点
-                children_list = util.graph_successors(self.import_graph, candidate_node.symbol_id)
+                children_list = []
+                if self.is_strict_parse_mode:
+                    children_list = util.graph_successors_with_weight(self.import_graph, candidate_node.symbol_id, ImportGraphEdgeKind.EXTERNAL_SYMBOL)
+                else:
+                    children_list = util.graph_successors(self.import_graph, candidate_node.symbol_id)
                 if len(children_list) > 0:
                     for child_id in children_list:
                         new_worklist.append(self.symbol_id_to_symbol_node[child_id])
@@ -282,10 +287,10 @@ class ImportHierarchy:
 
                 return list(import_nodes)
 
-        if self.is_strict_parse_mode:
-            util.error_and_quit_with_stmt_info(
-                unit_info.original_path, stmt, "ImportError: import module path not found"
-            )
+        # if self.is_strict_parse_mode:
+        #     util.error_and_quit_with_stmt_info(
+        #         unit_info.original_path, stmt, "ImportError: import module path not found"
+        #     )
         return []
 
     def adjust_result_symbol_node(self, node, unit_id, stmt, alias):
@@ -319,10 +324,9 @@ class ImportHierarchy:
         import_nodes = self.check_import_stmt_analysis_results(
             unit_info, stmt, import_nodes, remaining
         )
-
         if import_nodes:
             for each_node in import_nodes:
-                self.add_import_graph_edge(unit_id, each_node.symbol_id)
+                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = ImportGraphEdgeKind.EXTERNAL_SYMBOL)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
                 )
@@ -339,7 +343,7 @@ class ImportHierarchy:
         import_nodes = self.check_import_stmt_analysis_results(unit_info, stmt, import_nodes, remaining)
         if import_nodes:
             for each_node in import_nodes:
-                self.add_import_graph_edge(unit_id, each_node.symbol_id)
+                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = ImportGraphEdgeKind.EXTERNAL_SYMBOL)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
                 )

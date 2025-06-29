@@ -135,6 +135,11 @@ SymbolKind = util.SimpleEnum({
     "FOR_KIND"                     : 15
 })
 
+ImportGraphEdgeKind = util.SimpleEnum({
+    "INTERNAL_SYMBOL"              : 0,
+    "EXTERNAL_SYMBOL"              : 1,
+})
+
 
 MethodSummarySymbolKind = util.SimpleEnum({
     'PARARMETER_SYMBOL'             : 1,

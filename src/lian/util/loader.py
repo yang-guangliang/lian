@@ -1093,7 +1093,7 @@ class ImportGraphLoader:
         df = DataModel().load(self.path)
         self.import_graph = nx.DiGraph()
         for row in df:
-            self.import_graph.add_edge(row.parent_node, row.child_node)
+            self.import_graph.add_edge(row.parent_node, row.child_node, weight=row.edge_type)
 
     def export(self):
         if util.is_empty(self.import_graph):
@@ -1102,11 +1102,12 @@ class ImportGraphLoader:
         # 初始化一个空列表，用于存储图中边的信息
         results = []
         # 遍历图中的每一条边
-        for edge in self.import_graph.edges:
+        for edge in self.import_graph.edges(data=True):
             # 为每条边创建一个字典，记录边的起始节点和结束节点
             edge_info = {
                 "parent_node": edge[0],
-                "child_node": edge[1]
+                "child_node": edge[1],
+                "edge_type": edge[2].get('weight', None)
             }
             # 将边的信息添加到结果列表中
             results.append(edge_info)
