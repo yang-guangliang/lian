@@ -12,7 +12,7 @@ HTML_CSS = \
 """
 <head>
   <title>DataFrame Viewer</title>
-  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=0">
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0">
   <style>
     .zoom {
         zoom: 90%;
