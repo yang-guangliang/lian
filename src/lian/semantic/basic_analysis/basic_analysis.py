@@ -75,7 +75,7 @@ class BasicSemanticAnalysis:
         }
         self.loader.save_method_id_to_method_decl_format(method_id, method_format)
 
-    def analyze_stmt_def_use(self, method_id, import_result, external_symbol_id_collection):
+    def analyze_stmt_def_use(self, method_id, import_analysis, external_symbol_id_collection):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
@@ -97,7 +97,7 @@ class BasicSemanticAnalysis:
             self.resolver,
             self.basic_call_graph,
             compute_frame = frame,
-            import_result=import_result,
+            import_analysis=import_analysis,
             external_symbol_id_collection=external_symbol_id_collection,
         )
 
@@ -199,7 +199,7 @@ class BasicSemanticAnalysis:
             self.extern_system.display_all_installed_rules()
 
         unit_list.reverse()
-        importAnalysis = ImportHierarchy(self.lian, self.loader, self.resolver, unit_list).run()
+        import_analysis = ImportHierarchy(self.lian, self.loader, self.resolver, unit_list).run()
         TypeHierarchy(self.loader, self.resolver).analyze(unit_list)
 
         # Conduct basic analysis, i.e., context-insensitive and flow-insensitive analysis
@@ -212,7 +212,7 @@ class BasicSemanticAnalysis:
             for method_id in all_unit_methods:
                 if self.options.strict_parse_mode:
                     external_symbol_id_collection = {}
-                self.analyze_stmt_def_use(method_id, importAnalysis, external_symbol_id_collection)
+                self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection)
         self.loader.save_call_graph_p1(self.basic_call_graph)
 
         self.group_methods_by_callee_types()

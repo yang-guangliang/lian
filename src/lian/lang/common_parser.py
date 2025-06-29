@@ -301,7 +301,10 @@ class Parser:
             return self.read_node_text(node)
 
         if self.is_literal(node):
-            return self.literal(node, statements, replacement)
+            result = self.literal(node, statements, replacement)
+            if result is None:
+                return self.read_node_text(node)
+            return result
 
         if self.is_declaration(node):
             return self.declaration(node, statements)

@@ -458,8 +458,12 @@ class Parser(common_parser.Parser):
         shadow_decorator = self.parse(decorator, statements)
 
         target = self.tmp_variable()
-        statements.append(self.add_col_row_info(node, {"call_stmt": {"target": target, "name": shadow_decorator, "positional_args": [name]}}))
-        statements.append(self.add_col_row_info(node, {"assign_stmt": {"target": name, "operand": target}}))
+        statements.append(self.add_col_row_info(
+            node, {"call_stmt": {"target": target, "name": shadow_decorator, "positional_args": [name]}}
+        ))
+        statements.append(self.add_col_row_info(
+            node, {"assign_stmt": {"target": name, "operand": target}}
+        ))
 
     def check_declaration_handler(self, node):
         return self.DECLARATION_HANDLER_MAP.get(node.type, None)
@@ -515,13 +519,17 @@ class Parser(common_parser.Parser):
 
         args = self.find_child_by_field(node, "arguments")
         if args.named_child_count == 0:
-            statements.append(self.add_col_row_info(node, {"call_stmt": {"target": tmp_call, "name": shadow_call_name}}))
+            statements.append(self.add_col_row_info(
+                node, {"call_stmt": {"target": tmp_call, "name": shadow_call_name}}
+            ))
             return tmp_call
 
         positional_args = []
         named_args = None
         packed_array_args = None
         packed_record_args = None
+
+        #print("node:", str(node))
 
         if args.type == "argument_list":
             list_splat_children = self.find_children_by_type(args, "list_splat")
@@ -532,6 +540,7 @@ class Parser(common_parser.Parser):
                 for child in args.named_children:
                     if child.type not in ["list_splat", "dictionary_splat", "keyword_argument"]:
                         shadow_expr = self.parse(child, statements)
+                        #print("shadow_expr", shadow_expr)
                         positional_args.append(shadow_expr)
 
             dictionary_splats = self.find_children_by_type(args, "dictionary_splat")
@@ -566,14 +575,15 @@ class Parser(common_parser.Parser):
 
         if named_args is not None:
             named_args = str(named_args)
-        statements.append(  self.add_col_row_info(node, {"call_stmt": {
-                                "target": tmp_call,
-                                "name": shadow_call_name,
-                                "positional_args": positional_args,
-                                "packed_positional_args": packed_array_args,
-                                "packed_named_args": packed_record_args,
-                                "named_args": named_args}
-                            }))
+        statements.append(  self.add_col_row_info(
+            node, {"call_stmt": {
+                "target": tmp_call,
+                "name": shadow_call_name,
+                "positional_args": positional_args,
+                "packed_positional_args": packed_array_args,
+                "packed_named_args": packed_record_args,
+                "named_args": named_args}
+            }))
 
         return tmp_call
 

@@ -29,7 +29,7 @@ from lian.semantic.resolver import Resolver
 from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
 
 class StmtDefUseAnalysis:
-    def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_result:ImportHierarchy, external_symbol_id_collection):
+    def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_analysis:ImportHierarchy, external_symbol_id_collection):
         """
         初始化语句定义使用分析器：
         1. 注册各类语句的处理回调函数
@@ -43,6 +43,7 @@ class StmtDefUseAnalysis:
         self.stmt_id_to_status = compute_frame.stmt_id_to_status
         self.method_id = compute_frame.method_id
         self.unit_id = loader.convert_method_id_to_unit_id(self.method_id)
+        self.unit_info = loader.convert_module_id_to_module_info(self.unit_id)
         self.frame = compute_frame
         self.callees = compute_frame.basic_callees
         self.tmp_variable_to_define = {}
@@ -50,7 +51,7 @@ class StmtDefUseAnalysis:
         self.unit_lang = self.loader.convert_unit_id_to_lang_name(self.unit_id)
         self.external_symbol_id_collection = external_symbol_id_collection
 
-        self.import_hierarchy_analysis = import_result
+        self.import_hierarchy_analysis = import_analysis
 
         self.def_use_analysis_handlers = {
             "comment_stmt"                          : self.comment_stmt_def_use,
@@ -400,6 +401,9 @@ class StmtDefUseAnalysis:
         packed_positional_args_info = []
         named_args_info = []
         packed_named_args_info = []
+        # print("stmt", stmt)
+        # print("positional_args", positional_args)
+        # print("args_list", args_list)
         if positional_args:
             for index, arg in enumerate(positional_args):
                 index =  arg_symbol_list[index]
@@ -752,11 +756,13 @@ class StmtDefUseAnalysis:
         self.common_import_def_use(stmt_id, stmt, used_symbol_list)
 
     def common_import_def_use(self, stmt_id, stmt, used_symbol_list):
-        target = stmt.alias
-        if util.is_empty(target):
-            target = stmt.name
+        alias = stmt.alias
+        if util.is_empty(alias):
+            alias = stmt.name
 
-        defined_symbol_index = self.create_symbol_and_add_space(stmt_id, target)
+        name = stmt.name.split(".")[-1]
+
+        defined_symbol_index = self.create_symbol_and_add_space(stmt_id, alias)
         status = StmtStatus(
             stmt_id,
             defined_symbol = defined_symbol_index,
@@ -765,26 +771,22 @@ class StmtDefUseAnalysis:
         self.stmt_id_to_status[stmt_id] = status
 
         defined_symbol = self.symbol_state_space[defined_symbol_index]
-        result = self.import_hierarchy_analysis.analyze_import_stmt(self.unit_id, stmt_id, stmt)
+        result = self.import_hierarchy_analysis.analyze_import_stmt(self.unit_id, self.unit_info, stmt)
+        found_flag = False
         for each_node in result:
-            if not isinstance(defined_symbol, Symbol):
-                continue
+            if each_node.symbol_name == name:
+                defined_symbol.source_unit_id = self.loader.convert_stmt_id_to_unit_id(each_node.symbol_id)
+                defined_symbol.symbol_id = each_node.symbol_id
+                found_flag = True
+                break
 
-            if each_node.source_symbol_id == -1:
-                each_node.source_symbol_id = self.loader.assign_new_unsolved_symbol_id()
-
-            if defined_symbol.source_unit_id == -1:
-                if each_node.name == stmt.name:
-                    defined_symbol.source_unit_id = each_node.source_module_id
-                    defined_symbol.symbol_id = each_node.source_symbol_id
-                    continue
-
-            index = self.create_symbol_and_add_space(stmt_id, each_node.name)
+        if not found_flag:
+            index = self.create_symbol_and_add_space(stmt_id, name)
             if index != -1:
                 status.implicitly_defined_symbols.append(index)
                 symbol = self.symbol_state_space[index]
-                symbol.source_unit_id = each_node.source_module_id
-                symbol.symbol_id = each_node.source_symbol_id
+                symbol.source_unit_id = self.unit_id
+                symbol.symbol_id = self.loader.assign_new_unsolved_symbol_id()
 
     def export_stmt_def_use(self, stmt_id, stmt):
         target = stmt.alias

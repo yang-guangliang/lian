@@ -288,9 +288,9 @@ class ImportHierarchy:
             )
         return []
 
-    def analyze_import_stmt(self, unit_id, unit_info, stmt, external_symbols):
+    def analyze_import_stmt(self, unit_id, unit_info, stmt, external_symbols = []):
         if self.validate_import_stmt(unit_info, stmt) == INVALID:
-            return
+            return external_symbols
 
         alias = ""
         import_path_str = self.get_import_path_from_stmt(stmt)
@@ -322,7 +322,7 @@ class ImportHierarchy:
                 external_symbols.append(new_node)
                 self.add_import_graph_edge(unit_id, each_node.symbol_id)
             # done
-            return
+            return external_symbols
 
         import_nodes = []
         remaining = []
@@ -343,12 +343,13 @@ class ImportHierarchy:
                 external_symbols.append(new_node)
                 self.add_import_graph_edge(unit_id, each_node.symbol_id)
             # done
-            return
+            return external_symbols
 
         if self.is_strict_parse_mode:
             util.error_and_quit_with_stmt_info(
                 unit_info.original_path, stmt, "ImportError: import module path not found"
             )
+        return external_symbols
 
 
     def analyze_unit_import_stmts(self, unit_id):
@@ -394,6 +395,6 @@ class ImportHierarchy:
 
         self.loader.save_import_graph(self.import_graph)
         self.loader.save_import_graph_nodes(self.symbol_id_to_symbol_node)
-        self.loader.export()
+        #self.loader.export()
         return self
 
