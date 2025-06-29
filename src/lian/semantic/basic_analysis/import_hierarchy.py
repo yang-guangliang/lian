@@ -313,6 +313,8 @@ class ImportHierarchy:
 
         if import_nodes:
             for each_node in import_nodes:
+                self.add_import_graph_edge(unit_id, each_node.symbol_id)
+
                 new_node = each_node.clone()
                 new_node.import_stmt = stmt.stmt_id
                 new_node.unit_id = unit_id
@@ -320,7 +322,6 @@ class ImportHierarchy:
                     #print("alias", alias, stmt)
                     new_node.symbol_name = alias
                 external_symbols.append(new_node)
-                self.add_import_graph_edge(unit_id, each_node.symbol_id)
             # done
             return external_symbols
 
@@ -334,6 +335,8 @@ class ImportHierarchy:
         import_nodes = self.check_import_stmt_analysis_results(unit_info, stmt, import_nodes, remaining)
         if import_nodes:
             for each_node in import_nodes:
+                self.add_import_graph_edge(unit_id, each_node.symbol_id)
+
                 new_node = each_node.clone()
                 new_node.import_stmt = stmt.stmt_id
                 new_node.unit_id = unit_id
@@ -341,7 +344,6 @@ class ImportHierarchy:
                     #print("alias", alias, stmt)
                     new_node.symbol_name = alias
                 external_symbols.append(new_node)
-                self.add_import_graph_edge(unit_id, each_node.symbol_id)
             # done
             return external_symbols
 
