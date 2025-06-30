@@ -1057,7 +1057,7 @@ class Parser(common_parser.Parser):
                                 "data_type": shadow_type,
                                 "name": name}})
             if has_init:
-                if value and value.type == "number_literal":
+                if value and (value.type == "number_literal" or value.type == "char_literal"):
                     value = self.parse(value, statements)
                     statements.append({"assign_stmt":
                                    {"target": name,
