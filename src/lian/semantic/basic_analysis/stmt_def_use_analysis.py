@@ -113,6 +113,7 @@ class StmtDefUseAnalysis:
             "parameter_decl"                        : self.parameter_decl_def_use,
             "variable_decl"                         : self.variable_decl_def_use,
             "method_decl"                           : self.method_decl_def_use,
+            "method_header"                         : self.method_decl_def_use,
 
             "new_array"                             : self.new_array_def_use,
             "new_object"                            : self.new_object_def_use,

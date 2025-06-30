@@ -25,7 +25,8 @@ IMPORT_OPERATION = {
 }
 
 METHOD_DECL_OPERATION = {
-    "method_decl"
+    "method_decl",
+    "method_header"
 }
 
 FOR_STMT_OPERATION = {

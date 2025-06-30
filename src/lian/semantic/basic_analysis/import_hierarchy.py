@@ -234,7 +234,7 @@ class ImportHierarchy:
                 # 获取匹配节点的后继节点
                 children_list = []
                 if self.is_strict_parse_mode:
-                    children_list = util.graph_successors_with_weight(self.import_graph, candidate_node.symbol_id, ImportGraphEdgeKind.EXTERNAL_SYMBOL)
+                    children_list = util.graph_successors_with_weight(self.import_graph, candidate_node.symbol_id, ImportGraphEdgeKind.INTERNAL_SYMBOL)
                 else:
                     children_list = util.graph_successors(self.import_graph, candidate_node.symbol_id)
                 if len(children_list) > 0:
