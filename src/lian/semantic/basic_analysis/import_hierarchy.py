@@ -150,9 +150,9 @@ class ImportHierarchy:
         unit_path = unit_info.original_path
         if not self.is_strict_parse_mode:
             if util.is_empty(stmt.name):
-                util.error(
-                    "ImportError: cannot use empty name in import"
-                    )
+                # util.error(
+                #     "ImportError: cannot use empty name in import"
+                #     )
                 return INVALID
 
             import_path = self.get_import_path_from_stmt(stmt)
@@ -350,10 +350,10 @@ class ImportHierarchy:
             # done
             return external_symbols
 
-        if self.is_strict_parse_mode:
-            util.error_and_quit_with_stmt_info(
-                unit_info.original_path, stmt, "ImportError: import module path not found"
-            )
+        # if self.is_strict_parse_mode:
+        #     util.error_and_quit_with_stmt_info(
+        #         unit_info.original_path, stmt, "ImportError: import module path not found"
+        #     )
         return external_symbols
 
 
