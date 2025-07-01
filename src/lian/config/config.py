@@ -45,7 +45,7 @@ GIR_CACHE_CAPACITY                          = LRU_CACHE_CAPACITY / 2
 
 METHOD_HEADER_CACHE_CAPABILITY              = 10000
 METHOD_BODY_CACHE_CAPABILITY                = 1000
-STMT_KIND_CACHE_CAPABILITY                 = 1000
+STMT_SCOPE_CACHE_CAPABILITY                 = 1000
 
 MODULE_SYMBOLS_PATH                         = "module_symbols"
 LOADER_INDEXING_PATH                        = "indexing"
@@ -53,10 +53,11 @@ GIR_BUNDLE_PATH                             = "gir"
 CFG_BUNDLE_PATH                             = "cfg"
 SCOPE_HIERARCHY_BUNDLE_PATH                 = "scope_hierarchy"
 METHOD_INTERNAL_CALLEES_PATH                = "method_internal_callees"
-SYMBOL_NAME_TO_KIND_IDS_PATH               = "symbol_name_to_scope_ids"
+SYMBOL_NAME_TO_SCOPE_IDS_PATH               = "symbol_name_to_scope_ids"
 SCOPE_ID_TO_SYMBOL_INFO_PATH                = "scope_to_symbol_info"
-SCOPE_ID_TO_AVAILABLE_KIND_IDS_PATH        = "scope_to_available_scope_ids"
+SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH        = "scope_to_available_scope_ids"
 
+CALL_STMT_ID_TO_INFO_PATH                   = "call_stmt_id_to_info"
 CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH       = "call_stmt_format"
 METHOD_ID_TO_METHOD_DECL_FORMAT_PATH        = "method_decl_format"
 

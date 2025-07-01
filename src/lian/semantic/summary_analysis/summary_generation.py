@@ -248,7 +248,7 @@ class SemanticSummaryGeneration:
                 continue
 
             state_id = defined_state.state_id
-            state_node = StateDefNode(index=defined_state_index, state_id=state_id, stmt_id=stmt_id, stmt_counter=frame.stmt_counters[stmt_id])
+            state_node = StateDefNode(index=defined_state_index, state_id=state_id, stmt_id=stmt_id)
             state_current_bits = self.update_current_state_bit(state_node, frame, state_current_bits, new_defined_state_set)
         status.out_state_bits = state_current_bits
 

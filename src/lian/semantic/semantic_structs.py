@@ -1001,7 +1001,6 @@ class SymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     stmt_id: int = -1
-    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.stmt_id))
@@ -1015,19 +1014,17 @@ class SymbolDefNode:
             "bit_pos": bit_pos,
             "index": self.index,
             "symbol_id": self.symbol_id,
-            "stmt_id": self.stmt_id,
-            "stmt_counter": self.stmt_counter,
+            "stmt_id": self.stmt_id
         }
 
     def to_tuple(self):
-        return (self.index, self.symbol_id, self.stmt_id, self.stmt_counter)
+        return (self.index, self.symbol_id, self.stmt_id,)
 
 @dataclasses.dataclass
 class LastSymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     last_stmt_id: int= -1
-    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.last_stmt_id))
@@ -1040,7 +1037,6 @@ class StateDefNode:
     index: int = -1
     state_id: int = -1
     stmt_id: int = -1
-    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.state_id, self.stmt_id))

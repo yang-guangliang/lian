@@ -53,7 +53,7 @@ class ModuleSymbolsLoader:
         self.unit_id_to_lang = {}
         self.module_name_to_module_ids = {}
         self.module_id_to_children_ids = {}
-        self.unit_ids = set()
+        self.module_unit_ids = set()
         self.all_module_ids = set()
         self.module_dir_ids = set()
         self.unit_path_to_id = {}
@@ -75,7 +75,7 @@ class ModuleSymbolsLoader:
             module_id = row.module_id
 
             if row.symbol_type == SymbolKind.UNIT_SYMBOL:
-                self.unit_ids.add(module_id)
+                self.module_unit_ids.add(module_id)
 
             # cache all module ids
             self.all_module_ids.add(module_id)
@@ -102,7 +102,7 @@ class ModuleSymbolsLoader:
                 self.unit_path_to_id[row.unit_path] = module_id
                 self.unit_id_to_path[module_id] = row.unit_path
 
-        self.module_dir_ids = self.all_module_ids - self.unit_ids
+        self.module_dir_ids = self.all_module_ids - self.module_unit_ids
 
     def export(self):
         if util.is_available(self.module_symbol_table):
@@ -112,7 +112,7 @@ class ModuleSymbolsLoader:
         return unit_id in self.all_module_ids
 
     def is_unit_id(self, unit_id):
-        return unit_id in self.unit_ids
+        return unit_id in self.module_unit_ids
 
     def is_module_dir_id(self, unit_id):
         return unit_id in self.module_dir_ids
@@ -269,7 +269,15 @@ class GeneralLoader:
         df = DataModel().load(self.loader_indexing_path)
         for row in df:
             data = row.raw_data()
-            self.item_id_to_bundle_id[data[0]] = data[1]
+            # TODO
+            #  TEMPORARY FIX, EXPECTED TO BE IMPROVED LATER
+            #  This is due to pandas feather format saving tuples but loading numpy.ndarray
+            try:
+                self.item_id_to_bundle_id[data[0]] = data[1]
+            except TypeError:
+                key_tuple = tuple(data[0])
+                self.item_id_to_bundle_id[key_tuple] = data[1]
+
 
 class UnitLevelLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
@@ -703,9 +711,9 @@ class BitVectorManagerLoader(MethodLevelAnalysisResultLoader):
             counter += 1
             bit_id = None
             if row.state_id:
-                bit_id = StateDefNode(index = int(row.index), state_id = int(row.state_id), stmt_id = int(row.stmt_id, stmt_counter = int(row.stmt_counter)))
+                bit_id = StateDefNode(index = int(row.index), state_id = int(row.state_id), stmt_id = int(row.stmt_id))
             elif row.symbol_id:
-                bit_id = SymbolDefNode(index = int(row.index), symbol_id = int(row.symbol_id), stmt_id = int(row.stmt_id), stmt_counter= int(row.stmt_counter))
+                bit_id = SymbolDefNode(index = int(row.index), symbol_id = int(row.symbol_id), stmt_id = int(row.stmt_id))
             if not bit_id:
                 continue
             bit_pos_to_id[int(row.bit_pos)] = bit_id
@@ -885,6 +893,8 @@ class MethodSummaryLoader:
         self.method_summary_records[_id] = method_summary
 
     def convert_list_to_dict(self, l):
+        if l is None:
+            return {}
         if len(l) == 0:
             return {}
 
@@ -1059,7 +1069,7 @@ class UnsolvedSymbolIDAssignerLoader:
         for row in df:
             self.symbol_name_to_id[row.name] = row.symbol_id
         if self.symbol_name_to_id:
-            self.symbol_id = min(self.symbol_id, self.symbol_name_to_id.values()) - 1
+            self.symbol_id = min(self.symbol_id, min(self.symbol_name_to_id.values())) - 1
 
     def export(self):
         if len(self.symbol_name_to_id) == 0:
@@ -1288,11 +1298,11 @@ class SymbolGraphLoader(MethodLevelAnalysisResultLoader):
         for row in item_df:
             if not util.isna(row.defined):
                 defined_tuple = row.defined
-                key = SymbolDefNode(defined_tuple[0], defined_tuple[1], defined_tuple[2], defined_tuple[3])
+                key = SymbolDefNode(defined_tuple[0], defined_tuple[1], defined_tuple[2])
                 symbol_graph.add_edge(row.stmt_id, key, row.edge_type)
             else:
                 used_tuple = row.used
-                key = SymbolDefNode(used_tuple[0], used_tuple[1], used_tuple[2], used_tuple[3])
+                key = SymbolDefNode(used_tuple[0], used_tuple[1], used_tuple[2])
                 symbol_graph.add_edge(key, row.stmt_id, row.edge_type)
         return symbol_graph.graph
 
@@ -1423,7 +1433,7 @@ class Loader:
         self._symbol_name_to_scope_ids_loader: SymbolNameToScopeIDsLoader = SymbolNameToScopeIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_KIND_IDS_PATH),
+            os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_SCOPE_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1439,18 +1449,18 @@ class Loader:
         self._scope_id_to_available_scope_ids_loader: ScopeIDToAvailableScopeIDsLoader = ScopeIDToAvailableScopeIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_KIND_IDS_PATH),
+            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._call_stmt_id_to_info = ScopeIDToAvailableScopeIDsLoader(
-            options,
-            [],
-            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_KIND_IDS_PATH),
-            config.LRU_CACHE_CAPACITY,
-            config.BUNDLE_CACHE_CAPACITY
-        )
+        # self._call_stmt_id_to_info = ScopeIDToAvailableScopeIDsLoader(
+        #     options,
+        #     [],
+        #     os.path.join(self.semantic_path_p1, config.CALL_STMT_ID_TO_INFO_PATH),
+        #     config.LRU_CACHE_CAPACITY,
+        #     config.BUNDLE_CACHE_CAPACITY
+        # )
 
         self._unit_symbol_decl_summary_loader: UnitSymbolDeclSummaryLoader = UnitSymbolDeclSummaryLoader(
             self._symbol_name_to_scope_ids_loader,
@@ -1697,7 +1707,7 @@ class Loader:
 
         self.method_header_cache = util.LRUCache(config.METHOD_HEADER_CACHE_CAPABILITY)
         self.method_body_cache = util.LRUCache(config.METHOD_BODY_CACHE_CAPABILITY)
-        self.stmt_scope_cache = util.LRUCache(config.STMT_KIND_CACHE_CAPABILITY)
+        self.stmt_scope_cache = util.LRUCache(config.STMT_SCOPE_CACHE_CAPABILITY)
 
         self._all_loaders = self.init_loading()
 
@@ -1780,9 +1790,19 @@ class Loader:
     def restore(self):
         for loader in self._all_loaders:
             if hasattr(loader, 'restore_indexing'):
-                loader.restore_indexing()
+                #util.debug(loader.__class__.__name__ + " is restoring index")
+                try:
+                    loader.restore_indexing()
+                except FileNotFoundError:
+                    pass
+                # except TypeError as e:
+                    # util.warn(e)
             if hasattr(loader, 'restore'):
-                loader.restore()
+                #util.debug(loader.__class__.__name__ + " is restoring")
+                try:
+                    loader.restore()
+                except FileNotFoundError:
+                    pass
 
     ############################################################
     # The following is used to forwarding calls; This may be better for autocomplete in editor
