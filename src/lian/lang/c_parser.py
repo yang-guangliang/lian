@@ -690,7 +690,7 @@ class Parser(common_parser.Parser):
         # 将类型attr并入modifiers
         modifiers.extend(type_modifiers)
 
-        statements.append({"parameter_decl": {"attrs": modifiers, "type": shadow_type, "name": shadow_name}})
+        statements.append({"parameter_decl": {"attrs": modifiers, "data_type": shadow_type, "name": shadow_name}})
 
 
     STRUCT_TYPE_MAP = {
