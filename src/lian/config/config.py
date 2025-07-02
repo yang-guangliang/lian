@@ -108,7 +108,8 @@ TYPE_GRAPH_PATH                             = "type_graph"
 
 SYMBOL_GRAPH_BUNDLE_PATH                    = "symbol_graph"
 SYMBOL_GRAPH_BUNDLE_PATH_P3                 = "symbol_graph_p3"
-CALLEE_PARAMETER_MAPPING_BUNDLE_PATH        = "callee_parameter_mapping"
+CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2        = "callee_parameter_mapping_p2"
+CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3        = "callee_parameter_mapping_p3"
 
 METHOD_DEF_USE_SUMMARY_PATH                 = "method_def_use_summary"
 METHOD_SUMMARY_TEMPLATE_PATH                = "method_summary_template"

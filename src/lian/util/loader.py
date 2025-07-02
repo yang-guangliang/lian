@@ -1700,7 +1700,7 @@ class Loader:
         self._callee_parameter_mapping_p2_loader: CalleeParameterMapping = CalleeParameterMapping(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH),
+            os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1708,7 +1708,7 @@ class Loader:
         self._callee_parameter_mapping_p3_loader: CalleeParameterMapping = CalleeParameterMapping(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH),
+            os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
