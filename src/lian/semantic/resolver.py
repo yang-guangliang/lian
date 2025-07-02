@@ -342,7 +342,7 @@ class Resolver:
         current_space = caller_frame.symbol_state_space
         source_states.clear()
         # print(f"{callee_id, caller_id, call_stmt_id} load_parameter_mapping")
-        parameter_mapping_list: list[ParameterMapping] = self.loader.load_parameter_mapping(callee_frame.call_site)
+        parameter_mapping_list: list[ParameterMapping] = self.loader.load_parameter_mapping_p2(callee_frame.call_site)
         # print("parameter_mapping_list")
         # pprint.pprint(parameter_mapping_list)
         if not parameter_mapping_list:
@@ -773,7 +773,7 @@ class Resolver:
             # 收集初始的arg_indexes
             arg_state_indexes = set()
             call_site = (caller_frame.method_id, stmt_id, callee_id)
-            parameter_mapping_list = self.loader.load_parameter_mapping(call_site)
+            parameter_mapping_list = self.loader.load_parameter_mapping_p2(call_site)
             if util.is_empty(parameter_mapping_list):
                 return
             for each_mapping in parameter_mapping_list:

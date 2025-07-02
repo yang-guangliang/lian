@@ -1697,7 +1697,15 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._callee_parameter_mapping_loader: CalleeParameterMapping = CalleeParameterMapping(
+        self._callee_parameter_mapping_p2_loader: CalleeParameterMapping = CalleeParameterMapping(
+            options,
+            [],
+            os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+        
+        self._callee_parameter_mapping_p3_loader: CalleeParameterMapping = CalleeParameterMapping(
             options,
             [],
             os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH),
@@ -2173,11 +2181,15 @@ class Loader:
     def save_method_summary_instance(self, *args):
         return self._method_summary_template_instance.save(*args)
 
-    def load_parameter_mapping(self, *args):
-        return self._callee_parameter_mapping_loader.load(*args)
-    def save_parameter_mapping(self, *args):
-        return self._callee_parameter_mapping_loader.save(*args)
+    def load_parameter_mapping_p2(self, *args):
+        return self._callee_parameter_mapping_p2_loader.load(*args)
+    def save_parameter_mapping_p2(self, *args):
+        return self._callee_parameter_mapping_p2_loader.save(*args)
 
+    def load_parameter_mapping_p3(self, *args):
+        return self._callee_parameter_mapping_p3_loader.load(*args)
+    def save_parameter_mapping_p3(self, *args):
+        return self._callee_parameter_mapping_p3_loader.save(*args)
     def stmt_to_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
         stmt = self.load_stmt_gir(stmt_id)

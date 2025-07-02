@@ -109,7 +109,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             # current_parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
             # if util.is_empty(current_parameter_mapping_list):
             current_parameter_mapping_list = []
-            self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site)
+            self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site, 3)
             parameter_mapping_list.extend(current_parameter_mapping_list)
 
         if len(callee_ids_to_be_analyzed) != 0:

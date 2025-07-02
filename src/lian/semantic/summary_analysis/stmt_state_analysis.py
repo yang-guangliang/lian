@@ -1116,7 +1116,7 @@ class StmtStateAnalysis:
 
     def map_arguments(
         self, args: MethodCallArguments, parameters: MethodDeclParameters,
-        parameter_mapping_list: list[ParameterMapping], call_site
+        parameter_mapping_list: list[ParameterMapping], call_site, phase
     ):
         """
         Mapping arguments and parameters in terms of symbol_ids
@@ -1254,8 +1254,10 @@ class StmtStateAnalysis:
                             is_default_value = True
                         )
                     )
-
-        self.loader.save_parameter_mapping(call_site, parameter_mapping_list)
+        if phase == 2:
+            self.loader.save_parameter_mapping_p2(call_site, parameter_mapping_list)
+        elif phase == 3:
+            self.loader.save_parameter_mapping_p3(call_site, parameter_mapping_list)
 
     def fuse_states_to_one_state(self, state_indexes:set, stmt_id, status: StmtStatus):
         """
@@ -1780,7 +1782,7 @@ class StmtStateAnalysis:
         caller_id = self.frame.method_id
         call_stmt_id = stmt_id
         # print(f"load_parameter_mapping: {callee_id, caller_id, call_stmt_id}")
-        parameter_mapping_list = self.loader.load_parameter_mapping((caller_id, call_stmt_id, callee_id))
+        parameter_mapping_list = self.loader.load_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
 
         # apply parameter's state in callee_summary to args
         self.apply_parameter_semantic_summary(
@@ -1948,10 +1950,10 @@ class StmtStateAnalysis:
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
             new_call_site = (caller_id, stmt_id, each_callee_id)
             callee_method_def_use_summary:MethodDefUseSummary = self.loader.load_method_def_use_summary(each_callee_id)
-            parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
+            parameter_mapping_list = self.loader.load_parameter_mapping_p2(new_call_site)
             if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
-                self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
+                self.map_arguments(args, parameters, parameter_mapping_list, new_call_site, 2)
 
         if len(callee_ids_to_be_analyzed) != 0:
             self.frame.symbol_changed_stmts.add(stmt_id)
