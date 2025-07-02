@@ -1086,6 +1086,13 @@ class ImportGraphLoader:
         self.path = path
         self.import_graph = None
         self.import_graph_nodes = None
+        self.import_deps = None
+
+        self.import_graph_nodes_save_path = self.path + "_nodes"
+
+        dir_path = os.path.dirname(self.path)
+        new_save_path = os.path.join(dir_path, "import_deps")
+        self.import_deps_save_path = new_save_path
 
     def save(self, import_graph):
         self.import_graph = import_graph
@@ -1099,11 +1106,24 @@ class ImportGraphLoader:
     def load_nodes(self):
         return self.import_graph_nodes
 
+    def save_deps(self, import_deps):
+        self.import_deps = import_deps
+
+    def load_deps(self):
+        return self.import_deps
+
     def restore(self):
         df = DataModel().load(self.path)
         self.import_graph = nx.DiGraph()
         for row in df:
             self.import_graph.add_edge(row.parent_node, row.child_node, weight=row.edge_type)
+
+        self.import_graph_nodes = DataModel().load(self.import_graph_nodes_save_path)
+
+        df = DataModel().load(self.import_deps_save_path)
+        self.import_deps = nx.DiGraph()
+        for row in df:
+            self.import_deps.add_edge(row.unit_id, row.imported_unit_id)
 
     def export(self):
         if util.is_empty(self.import_graph):
@@ -1142,7 +1162,22 @@ class ImportGraphLoader:
             node_info_list.append(node_info)
 
         # 使用 DataModel 保存节点信息到文件
-        DataModel(node_info_list).save(self.path + "_nodes")
+        DataModel(node_info_list).save(self.import_graph_nodes_save_path)
+
+        # 初始化一个空列表，用于存储图中边的信息
+        results = []
+        # 遍历图中的每一条边
+        for edge in self.import_deps.edges:
+            # 为每条边创建一个字典，记录边的起始节点和结束节点
+            edge_info = {
+                "unit_id": edge[0],
+                "imported_unit_id": edge[1]
+            }
+            # 将边的信息添加到结果列表中
+            results.append(edge_info)
+
+        # 使用 DataModel 保存边信息到文件
+        DataModel(results).save(self.import_deps_save_path)
 
 class TypeGraphLoader:
     def __init__(self, path):
@@ -1704,7 +1739,7 @@ class Loader:
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
-        
+
         self._callee_parameter_mapping_p3_loader: CalleeParameterMapping = CalleeParameterMapping(
             options,
             [],
@@ -2113,6 +2148,10 @@ class Loader:
         return self._import_graph_loader.save_nodes(*args)
     def load_import_graph_nodes(self, *args):
         return self._import_graph_loader.load_nodes(*args)
+    def save_import_deps(self, *args):
+        return self._import_graph_loader.save_deps(*args)
+    def load_import_deps(self, *args):
+        return self._import_graph_loader.load_deps(*args)
 
     def save_type_graph(self, *args):
         return self._type_graph_loader.save(*args)

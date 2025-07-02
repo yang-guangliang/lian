@@ -323,7 +323,7 @@ class SemanticSummaryGeneration:
                 continue
             # pprint.pprint(defined_symbol)
             symbol_id = defined_symbol.symbol_id
-            key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id, stmt_counter = frame.stmt_counters[stmt_id])
+            key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id)
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
 
             edge_type = SymbolDependencyGraphEdgeKind.EXPLICITLY_DEFINED
@@ -358,7 +358,7 @@ class SemanticSummaryGeneration:
             if not isinstance(defined_symbol, Symbol):
                 continue
             symbol_id = defined_symbol.symbol_id
-            key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id, stmt_counter=frame.stmt_counters[stmt_id])
+            key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id)
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
             frame.symbol_graph.add_edge(stmt_id, key, SymbolDependencyGraphEdgeKind.IMPLICITLY_DEFINED)
         status.out_symbol_bits = current_bits

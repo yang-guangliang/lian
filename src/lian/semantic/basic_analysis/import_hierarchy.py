@@ -31,6 +31,7 @@ class ImportHierarchy:
         self.unit_list = unit_list
         self.analyzed_imported_unit_ids = set()
         self.import_graph = nx.DiGraph()
+        self.import_deps = nx.DiGraph()
 
         self.symbol_id_to_symbol_node = {}
         self.module_name_to_symbol_nodes = {}
@@ -53,6 +54,15 @@ class ImportHierarchy:
             and node_id in self.symbol_id_to_symbol_node
         ):
             self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
+
+    def add_import_deps(self, unit_id, node_id):
+        if self.loader.is_unit_id(node_id):
+            self.import_deps.add_edge(unit_id, node_id)
+            return
+
+        import_unit_id = self.loader.convert_stmt_id_to_unit_id(node_id)
+        if import_unit_id is not None and import_unit_id > 0:
+            self.import_deps.add_edge(unit_id, import_unit_id)
 
     def initialize_import_graph(self):
         for module_item in self.loader.load_module_symbol_table():
@@ -327,6 +337,7 @@ class ImportHierarchy:
         if import_nodes:
             for each_node in import_nodes:
                 self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = ImportGraphEdgeKind.EXTERNAL_SYMBOL)
+                self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
                 )
@@ -344,6 +355,7 @@ class ImportHierarchy:
         if import_nodes:
             for each_node in import_nodes:
                 self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = ImportGraphEdgeKind.EXTERNAL_SYMBOL)
+                self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
                 )
@@ -400,6 +412,7 @@ class ImportHierarchy:
 
         self.loader.save_import_graph(self.import_graph)
         self.loader.save_import_graph_nodes(self.symbol_id_to_symbol_node)
+        self.loader.save_import_deps(self.import_deps)
         #self.loader.export()
         return self
 
