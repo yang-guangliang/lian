@@ -18,7 +18,7 @@ class Parser(common_parser.Parser):
         else:
             print("No function_body node found")
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "function_decl": {
                 **header_info,
                 "body": body_statements
@@ -138,7 +138,7 @@ class Parser(common_parser.Parser):
         else:
             var_type = "unknown"
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "variable_decl": {
                 "data_type": var_type,
                 "name": var_name,
@@ -161,7 +161,7 @@ class Parser(common_parser.Parser):
         else:
             const_value = None
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "const_decl": {
                 "data_type": const_type,
                 "name": const_name,
@@ -184,11 +184,11 @@ class Parser(common_parser.Parser):
                 self.statement(child, block_statements)
             elif child.type == "terminator":
                 terminator = self.terminator(child, block_statements)
-                block_statements.append({"terminator": terminator})
+                block_self.append_stmts(statements, node, {"terminator": terminator})
             else:
                 print(f"Unprocessed node in basic_block: {child.type}")
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "basic_block": {
                 "label": label,
                 "body": block_statements
@@ -356,7 +356,7 @@ class Parser(common_parser.Parser):
                 "jump_targets": jump_targets
             }
         }
-        statements.append(switch_stmt)
+        self.append_stmts(statements, node, switch_stmt)
 
     def assignment_statement(self, node, statements):
         left_node = self.find_child_by_field(node, "left")
@@ -369,7 +369,7 @@ class Parser(common_parser.Parser):
         else:
             right_expr = None
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "assign_stmt": {
                 "target": left_expr,
                 "operand": right_expr
@@ -380,7 +380,7 @@ class Parser(common_parser.Parser):
         value_node = self.find_child_by_field(node, "value")
         value = self.expression(value_node, statements) if value_node else None
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "return_stmt": {
                 "operand": value
             }
@@ -393,7 +393,7 @@ class Parser(common_parser.Parser):
         value_node = self.find_child_by_field(node, "value")
         value = self.lvalue(value_node, statements) if value_node else "unknown_value"
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "drop_stmt": {
                 "kind": kind,
                 "value": value
@@ -415,7 +415,7 @@ class Parser(common_parser.Parser):
             else:
                 print(f"Unprocessed node in scope: {child.type}")
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "scope": {
                 "label": scope_label,
                 "body": scope_statements
@@ -434,7 +434,7 @@ class Parser(common_parser.Parser):
         else:
             value = "unknown_value"
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "debug_stmt": {
                 "variable": variable,
                 "value": value
@@ -471,7 +471,7 @@ class Parser(common_parser.Parser):
         message = self.read_node_text(message_node) if message_node else None
         expressions = [self.expression(expr, statements) for expr in expressions_nodes]
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "assert_stmt": {
                 "negate": negate,
                 "condition": condition,
@@ -481,12 +481,12 @@ class Parser(common_parser.Parser):
         })
 
     def unreach_statement(self, node, statements):
-        statements.append({
+        self.append_stmts(statements, node, {
             "unreach_stmt": "unreachable"
         })
 
     def resume_statement(self, node, statements):
-        statements.append({
+        self.append_stmts(statements, node, {
             "resume_stmt": "resume"
         })
 
@@ -534,7 +534,7 @@ class Parser(common_parser.Parser):
             call_stmt["call_stmt"]["unwind_expression"] = unwind_expression
         if jump_targets:
             call_stmt["call_stmt"]["jump_targets"] = jump_targets
-        statements.append(call_stmt)
+        self.append_stmts(statements, node, call_stmt)
 
         return temp_var
 
@@ -609,7 +609,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "unary_expr": {
                 "target": temp_var,
                 "operator": operator,
@@ -635,7 +635,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "struct_init": {
                 "target": temp_var,
                 "struct_type": struct_type,
@@ -654,7 +654,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "as_expr": {
                 "target": temp_var,
                 "expression": expr,
@@ -715,7 +715,7 @@ class Parser(common_parser.Parser):
             }
         }
 
-        statements.append(const_stmt)
+        self.append_stmts(statements, node, const_stmt)
 
         return temp_var
 
@@ -833,7 +833,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "field_access_expr": {
                 "target": temp_var,
                 "obj": obj,

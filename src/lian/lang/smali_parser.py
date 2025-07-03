@@ -145,59 +145,59 @@ class Parser(common_parser.Parser):
             if "result" in shadow_opcode in shadow_opcode:
                 v0 = self.read_node_text(values["variable"][0])
                 global tmp_return
-                statements.append({"assign_stmt": {"target": v0, "operand": tmp_return, "operator": "result"}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": tmp_return, "operator": "result"}})
             elif "exception" in shadow_opcode:
                 v0 = self.read_node_text(values["variable"][0])
-                statements.append({"assign_stmt": {"target": v0, "operand": tmp_exception, "operator": "exception"}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": tmp_exception, "operator": "exception"}})
             else:
                 v0 = self.read_node_text(values["variable"][0])
                 v1 = self.read_node_text(values["variable"][1])
-                statements.append({"assign_stmt": {"target": v0, "operand": v1}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": v1}})
             return v0
         elif re.compile(r'^return.*').match(shadow_opcode):
             if "void" in shadow_opcode:
-                statements.append({"return_stmt": {"name": ''}})
+                self.append_stmts(statements, node, {"return_stmt": {"name": ''}})
                 return ''
             else:
                 v0 = self.read_node_text(values["variable"][0])
-                statements.append({"return_stmt": {"name": v0}})
+                self.append_stmts(statements, node, {"return_stmt": {"name": v0}})
                 return v0
         elif re.compile(r'^const.*').match(shadow_opcode):
             v0 = self.read_node_text(values["variable"][0])
             if 'string' in shadow_opcode:
                 string = self.find_child_by_type(values["string"][0], 'string_fragment')
                 shadow_string = self.read_node_text(string)
-                statements.append({"assign_stmt": {"target": v0, "operand": shadow_string}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": shadow_string}})
             elif 'class' in shadow_opcode:
                 class_identifier = values['class_identifier'][0]
                 shadow_class = self.read_node_text(class_identifier)
-                statements.append({"assign_stmt": {"target": v0, "operand": shadow_class}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": shadow_class}})
             else:
                 number = values["number"][0]
                 shadow_number = self.read_node_text(number)
-                statements.append({"assign_stmt": {"target": v0, "operand": shadow_number}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": shadow_number}})
             return v0
         elif re.compile(r'^check.*').match(shadow_opcode):
             #print(node.sexp())
             v0 = self.read_node_text(node.named_children[1])
             class_identifier = node.named_children[2]
             shadow_class = self.read_node_text(class_identifier)
-            statements.append({"type_cast_stmt": {"target": self.tmp_variable(), "data_type": shadow_class, "source":v0,"error":self.tmp_variable(statements)}})
+            self.append_stmts(statements, node, {"type_cast_stmt": {"target": self.tmp_variable(), "data_type": shadow_class, "source":v0,"error":self.tmp_variable()}})
             return v0
         elif shadow_opcode == "instance-of":
             v1 = self.read_node_text(values["variable"][1])
             v2 = self.read_node_text(values["variable"][1])
             tmp_var = self.tmp_variable()
-            statements.append({"assign_stmt":
+            self.append_stmts(statements, node, {"assign_stmt":
                                    {"target": tmp_var, "operator": "instanceof", "operand": v1,
                                     "operand2": v2}})
             v0 = self.read_node_text(values["variable"][0])
-            statements.append({"assign_stmt": {"target": v0, "operand": tmp_var}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": tmp_var}})
             return v0
         elif shadow_opcode == 'array-length':
             v0 = self.read_node_text(values["variable"][0])
             v1 = self.read_node_text(values["variable"][1])
-            statements.append({"assign_stmt": {"target": v0, "operand": v1, "operator": "array-length"}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": v1, "operator": "array-length"}})
             return v0
         elif re.compile(r'^new.*').match(shadow_opcode):
             if shadow_opcode == "new-instance":
@@ -206,17 +206,17 @@ class Parser(common_parser.Parser):
                 gir_node["data_type"] = mytype
                 tmp_var = self.tmp_variable()
                 gir_node["target"] = tmp_var
-                statements.append({"new_object": gir_node})
+                self.append_stmts(statements, node, {"new_object": gir_node})
                 v0 = self.read_node_text(values["variable"][0])
-                statements.append({"assign_stmt": {"target": v0, "operand": tmp_var}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": tmp_var}})
                 return v0
             else:
                 type = self.read_node_text(node.named_children[3])
                 v0 = self.read_node_text(node.named_children[1])
                 v1 = self.read_node_text(node.named_children[2])
                 tmp_var = self.tmp_variable()
-                statements.append({"new_array": {"type": type, "attrs": v1, "target": tmp_var}})
-                statements.append({"assign_stmt": {"target": v0, "operand": tmp_var}})
+                self.append_stmts(statements, node, {"new_array": {"type": type, "attrs": v1, "target": tmp_var}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": tmp_var}})
                 return v0
         elif re.compile(r'^filled.*').match(shadow_opcode):
             if "range" in shadow_opcode:
@@ -224,9 +224,9 @@ class Parser(common_parser.Parser):
                 range_node = self.read_node_text(self.find_child_by_type(node,"range"))
                 matches = re.findall(r'v(\d+)', range_node)
                 tmp_var = self.tmp_variable()
-                statements.append({"new_array": {"type": type, "target": tmp_var}})
+                self.append_stmts(statements, node, {"new_array": {"type": type, "target": tmp_var}})
                 for i in range(int(matches[0]),int(matches[1])+1):
-                    statements.append({"assign_stmt": {"target": f'v{i}', "operand": tmp_var, "operator": "filled-new-array/range"}})
+                    self.append_stmts(statements, node, {"assign_stmt": {"target": f'v{i}', "operand": tmp_var, "operator": "filled-new-array/range"}})
                 return tmp_var
             else:
                 type = self.read_node_text(self.find_child_by_type_type(node, "array_type", "primitive_type"))
@@ -234,10 +234,10 @@ class Parser(common_parser.Parser):
                 list = self.find_child_by_type(node, "list")
                 vs = self.find_children_by_type(list,"variable")
                 tmp_var = self.tmp_variable()
-                statements.append({"new_array": {"type": type, "target": tmp_var}})
+                self.append_stmts(statements, node, {"new_array": {"type": type, "target": tmp_var}})
                 for i in range(len(vs)):
                     name = self.read_node_text(vs[i])
-                    statements.append({"assign_stmt": {"target": name, "operand": f'{tmp_var}[{i}]'}})
+                    self.append_stmts(statements, node, {"assign_stmt": {"target": name, "operand": f'{tmp_var}[{i}]'}})
                 return tmp_var
         elif re.compile(r'^fill-.*').match(shadow_opcode):
             v0 = self.read_node_text(node.named_children[1])
@@ -245,17 +245,17 @@ class Parser(common_parser.Parser):
             if array_label in array_data_list.keys():
                 shadow_values= array_data_list[array_label]
                 for i in range(len(shadow_values)):
-                    statements.append({"array_write": {"array": v0 , "index":i , "src":shadow_values[i] }})
+                    self.append_stmts(statements, node, {"array_write": {"array": v0 , "index":i , "src":shadow_values[i] }})
             else:
                 unsolved_array_data[array_label] = {'array': v0, 'stmt_id':len(statements)}
             return v0
         elif re.compile(r'^throw.*').match(shadow_opcode):
             shadow_expr = self.read_node_text(values["variable"][0])
-            statements.append({"throw_stmt": {"name": shadow_expr}})
+            self.append_stmts(statements, node, {"throw_stmt": {"name": shadow_expr}})
             return
         elif re.compile(r'^goto.*').match(shadow_opcode):
             label = self.read_node_text(self.find_child_by_type(node, "label"))
-            statements.append({"goto_stmt": {"name": label}})
+            self.append_stmts(statements, node, {"goto_stmt": {"name": label}})
             return
         elif re.search(r'-switch$', shadow_opcode):
             p0 = self.read_node_text(node.named_children[1])
@@ -265,7 +265,7 @@ class Parser(common_parser.Parser):
                 cases = switch_table[switch_label]
             else:
                 unsolved_switch[switch_label]= len(statements)
-            statements.append({"switch_stmt": {"condition": p0, "body": cases}})
+            self.append_stmts(statements, node, {"switch_stmt": {"condition": p0, "body": cases}})
             return p0
         elif re.compile(r'^cmp.*').match(shadow_opcode):
             v0 = self.read_node_text(values["variable"][0])
@@ -273,10 +273,10 @@ class Parser(common_parser.Parser):
             v2 = self.read_node_text(values["variable"][2])
             tmp_var = self.tmp_variable()
             if 'cmpl' in shadow_opcode:
-                statements.append({"assign_stmt": {"target": tmp_var, "operator": '<', "operand": v1,"operand2": v2}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": tmp_var, "operator": '<', "operand": v1,"operand2": v2}})
             else:
-                statements.append({"assign_stmt": {"target": tmp_var, "operator": '>', "operand": v1,"operand2": v2}})
-            statements.append({"assign_stmt": {"target": v0, "operand": tmp_var}})
+                self.append_stmts(statements, node, {"assign_stmt": {"target": tmp_var, "operator": '>', "operand": v1,"operand2": v2}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": v0, "operand": tmp_var}})
             return v0
         elif re.compile(r'^if-.*').match(shadow_opcode):
             op = re.findall(r'if-([^ \n\r\t]+)', shadow_opcode)
@@ -286,21 +286,21 @@ class Parser(common_parser.Parser):
             else:
                 v1 = "0"
             tmp_var = self.tmp_variable()
-            statements.append({"assign_stmt": {"target": tmp_var, "operator": op[0], "operand": v0,"operand2": v1}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": tmp_var, "operator": op[0], "operand": v0,"operand2": v1}})
             label = self.read_node_text(self.find_child_by_type(node, "label"))
-            statements.append({"if_stmt":{"condition": tmp_var,"then_body":[{"goto_stmt": {"name": label}}]}})
+            self.append_stmts(statements, node, {"if_stmt":{"condition": tmp_var,"then_body":[{"goto_stmt": {"name": label}}]}})
             return tmp_var
         elif re.compile(r'^aget.*').match(shadow_opcode):
             v0 = self.read_node_text(values["variable"][0])
             v1 = self.read_node_text(values["variable"][1])
             v2 = self.read_node_text(values["variable"][2])
-            statements.append({"array_read": {"target": v0, "array": v1, "index": v2}})
+            self.append_stmts(statements, node, {"array_read": {"target": v0, "array": v1, "index": v2}})
             return v0
         elif re.compile(r'^aput.*').match(shadow_opcode):
             v0 = self.read_node_text(values["variable"][0])
             v1 = self.read_node_text(values["variable"][1])
             v2 = self.read_node_text(values["variable"][2])
-            statements.append({"array_write": {"array": v1, "index": v2, "src": v0}})
+            self.append_stmts(statements, node, {"array_write": {"array": v1, "index": v2, "src": v0}})
             return v0
 
         elif re.compile(r'^invoke.*').match(shadow_opcode) or shadow_opcode=='execute-inline' or shadow_opcode=='excute-inline-range':
@@ -333,13 +333,13 @@ class Parser(common_parser.Parser):
                 prototype=self.read_node_text(node.named_children[3])
             else :
                 prototype=""
-            statements.append({"call_stmt": {"target": tmp_return, "name": method_name, "args": args_list,"data_type":data_type,"prototype":prototype}})
+            self.append_stmts(statements, node, {"call_stmt": {"target": tmp_return, "name": method_name, "args": args_list,"data_type":data_type,"prototype":prototype}})
 
         elif re.compile(r'^rsub.*').match(shadow_opcode):
             dest = self.parse(node.named_children[1], statements)
             source1 = self.parse(node.named_children[2], statements)
             source2 = self.parse(node.named_children[3], statements)
-            statements.append({"assign_stmt": {"target": dest, "operator": '-', "operand": source2,"operand2": source2}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": dest, "operator": '-', "operand": source2,"operand2": source2}})
             return dest
         elif re.compile(r'^add.*/2addr').match(shadow_opcode):
             return self.binary_expression_2addr(node, statements, "+")
@@ -395,13 +395,13 @@ class Parser(common_parser.Parser):
             receiver_object = self.parse(node.named_children[2], statements)
             field=self.find_child_by_type(node.named_children[3],"field_identifier")
             shadow_field=self.read_node_text(field)
-            statements.append({"field_write": {"receiver_object": receiver_object, "field": shadow_field, "source": source}})
+            self.append_stmts(statements, node, {"field_write": {"receiver_object": receiver_object, "field": shadow_field, "source": source}})
         elif re.compile(r'^iget.*').match(shadow_opcode) or shadow_opcode=='instance-get':
             target = self.parse(node.named_children[1], statements)
             receiver_object = self.parse(node.named_children[2], statements)
             field=self.find_child_by_type(node.named_children[3],"field_identifier")
             shadow_field=self.read_node_text(field)
-            statements.append({"field_read": {"target": target, "receiver_object": receiver_object, "field": shadow_field}})
+            self.append_stmts(statements, node, {"field_read": {"target": target, "receiver_object": receiver_object, "field": shadow_field}})
         elif re.compile(r'^sget.*').match(shadow_opcode) or shadow_opcode=='static-get':
             target = self.parse(node.named_children[1], statements)
             source = node.named_children[2]
@@ -409,7 +409,7 @@ class Parser(common_parser.Parser):
             shadow_receiver_object=self.read_node_text(receiver_object)
             field = self.find_child_by_type(source,"field_identifier")
             shadow_field = self.read_node_text(field)
-            statements.append({"field_read": {"target": target, "receiver_object": shadow_receiver_object, "field": shadow_field}})
+            self.append_stmts(statements, node, {"field_read": {"target": target, "receiver_object": shadow_receiver_object, "field": shadow_field}})
         elif re.compile(r'^sput.*').match(shadow_opcode) or shadow_opcode=='static-put':
             source = self.parse(node.named_children[1], statements)
             target = node.named_children[2]
@@ -417,7 +417,7 @@ class Parser(common_parser.Parser):
             shadow_receiver_object=self.read_node_text(receiver_object)
             field = self.find_child_by_type(target,"field_identifier")
             shadow_field = self.read_node_text(field)
-            statements.append({"field_write": {"receiver_object": shadow_receiver_object, "field": shadow_field, "source": source}})
+            self.append_stmts(statements, node, {"field_write": {"receiver_object": shadow_receiver_object, "field": shadow_field, "source": source}})
 
         elif shadow_opcode in ['int-to-long','int-to-float','int-to-double','long-to-int',
                                'long-to-float','long-to-double','float-to-int','float-to-long',
@@ -429,20 +429,20 @@ class Parser(common_parser.Parser):
     def unary_expression(self, node, statements,op):
         dest = self.parse(node.named_children[1], statements)
         source = self.parse(node.named_children[2], statements)
-        statements.append({"assign_stmt": {"target": dest, "operator": op, "operand": source}})
+        self.append_stmts(statements, node, {"assign_stmt": {"target": dest, "operator": op, "operand": source}})
         return dest
 
     def binary_expression_2addr(self, node, statements, op):
         dest = self.parse(node.named_children[1], statements)
         source = self.parse(node.named_children[2], statements)
-        statements.append({"assign_stmt": {"target": dest, "operator": op, "operand": dest,"operand2": source}})
+        self.append_stmts(statements, node, {"assign_stmt": {"target": dest, "operator": op, "operand": dest,"operand2": source}})
         return dest
 
     def binary_expression(self, node, statements, op):
         dest = self.parse(node.named_children[1], statements)
         source1 = self.parse(node.named_children[2], statements)
         source2 = self.parse(node.named_children[3], statements)
-        statements.append({"assign_stmt": {"target": dest, "operator": op, "operand": source1,"operand2": source2}})
+        self.append_stmts(statements, node, {"assign_stmt": {"target": dest, "operator": op, "operand": source1,"operand2": source2}})
         return dest
 
     def param_directive(self, node, statements):
@@ -454,14 +454,14 @@ class Parser(common_parser.Parser):
                 self.annotation_directive(annotation, statements)
         else:
             shadow_value = self.read_node_text(node.named_children[1])
-            statements.append({"parameter_decl": {"name": name}})
-            statements.append({"assign_stmt": {"target": name, "operand": shadow_value}})
+            self.append_stmts(statements, node, {"parameter_decl": {"name": name}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": name, "operand": shadow_value}})
         return name
 
     def parameter_directive(self, node, statements):
         # print(node.sexp())
         name = self.read_node_text(node.named_children[0])
-        statements.append({"parameter_decl": {"name": name}})
+        self.append_stmts(statements, node, {"parameter_decl": {"name": name}})
         annotation_list = self.find_children_by_type(node, "annotation_directive")
         if len(annotation_list):
             for annotation in annotation_list:
@@ -477,12 +477,12 @@ class Parser(common_parser.Parser):
             if self.find_child_by_type(node, "array_type"):
                 array_node = self.find_child_by_type(node, "array_type")
                 shadow_data_type = self.read_node_text(array_node)
-                statements.append({"variable_decl": {"name": shadow_local, "attrs": ["array"], "data_type": shadow_data_type}})
+                self.append_stmts(statements, node, {"variable_decl": {"name": shadow_local, "attrs": ["array"], "data_type": shadow_data_type}})
             else:
-                statements.append({"variable_decl": {"name": shadow_local, "data_type": shadow_data_type}})
-            statements.append({"assign_stmt": {"target": shadow_local, "operand": shadow_register}})
+                self.append_stmts(statements, node, {"variable_decl": {"name": shadow_local, "data_type": shadow_data_type}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": shadow_local, "operand": shadow_register}})
         else:
-            statements.append({"variable_decl": {"name": shadow_register}})
+            self.append_stmts(statements, node, {"variable_decl": {"name": shadow_register}})
         return
 
     def annotation_directive(self, node, statements):
@@ -495,7 +495,7 @@ class Parser(common_parser.Parser):
             annotation_key = annotation_property.named_children[0]
             annotation_value = self.find_child_by_type(annotation_property, "annotation_value")
             gir_init_dict[self.read_node_text(annotation_key)] = self.read_node_text(annotation_value)
-        statements.append({"annotation_type_decl": {"attrs": [shadow_annotation_visibility], "name": shadow_class_identifier, "init": [gir_init_dict]}})
+        self.append_stmts(statements, node, {"annotation_type_decl": {"attrs": [shadow_annotation_visibility], "name": shadow_class_identifier, "init": [gir_init_dict]}})
         return
 
     def notmatch_directive(self, node, statements):
@@ -505,16 +505,16 @@ class Parser(common_parser.Parser):
     def restart_local_directive(self, node, statements):
         #print(node.sexp())
         register = self.read_node_text(node.named_children[0])
-        statements.append({"variable_decl": { "name": register }})
+        self.append_stmts(statements, node, {"variable_decl": { "name": register }})
         return register
 
     def end_local_directive(self, node, statements):
         register = self.read_node_text(node.named_children[0])
-        statements.append({"del_stmt": { "name": register }})
+        self.append_stmts(statements, node, {"del_stmt": { "name": register }})
 
     def label_statement(self, node, statements):
         label= self.read_node_text(node)
-        statements.append({"label_stmt": { "name": label }})
+        self.append_stmts(statements, node, {"label_stmt": { "name": label }})
         label_list[label]= len(statements)
         global latest_label
         latest_label = label
@@ -597,7 +597,7 @@ class Parser(common_parser.Parser):
             catch_body=[{"catch_clause":{"exception":exception,"body":[{"goto_stmt":{"name":handler_label}}]}}]
         else:
             catch_body=[{"catch_stmt":{"body":[{"goto_stmt":{"name":handler_label}}]}}]
-        statements.append({"try_stmt":{"body":body,"catch_body":catch_body}})
+        self.append_stmts(statements, node, {"try_stmt":{"body":body,"catch_body":catch_body}})
         for key,value in label_list.items():
             if value > stmt_end_id:
                 label_list[key] -= stmt_end_id - stmt_start_id - 1
@@ -635,7 +635,7 @@ class Parser(common_parser.Parser):
                 self.field_definition(child,fields,static_init,init,statements)
             if child.type == "annotation_directive":
                 self.parse(child,statements)
-        statements.append({"class_decl":{"attrs":attrs,"name":class_name,"supers":supers,"static_init":static_init,"init":init,"fields":fields,"methods":methods}})
+        self.append_stmts(statements, node, {"class_decl":{"attrs":attrs,"name":class_name,"supers":supers,"static_init":static_init,"init":init,"fields":fields,"methods":methods}})
 
     def method_definition(self,node, statements):
         #print(node.sexp())
@@ -681,7 +681,7 @@ class Parser(common_parser.Parser):
             shadow_type=parameters_type[type_index]
             type_index+=1
             parameters.append({"parameter_decl":{"name":None,"data_type":shadow_type}})
-        statements.append({"method_decl":{"attrs":attrs,"data_type":data_type,"name":method_name,"parameters":parameters,"body":body}})
+        self.append_stmts(statements, node, {"method_decl":{"attrs":attrs,"data_type":data_type,"name":method_name,"parameters":parameters,"body":body}})
 
 
     def field_definition(self,node, fields,static_init,init,body):

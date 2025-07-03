@@ -287,7 +287,7 @@ class Parser(common_parser.Parser):
 
         body = self.find_child_by_field(node, "body")
         self.parse(body, decl["body"])
-        statements.append({"method_decl": decl})
+        self.append_stmts(statements, node, {"method_decl": decl})
 
     def is_declaration(self, node: Node):
         return self.check_declaration_handler(node) is not None
@@ -300,7 +300,7 @@ class Parser(common_parser.Parser):
         asm = self.find_child_by_type(node, "asm")
         if asm:
             data = self.read_node_text(asm)
-            statements.append({"asm_stmt": {"attrs": ["module"], "data": data}})
+            self.append_stmts(statements, node, {"asm_stmt": {"attrs": ["module"], "data": data}})
 
     def global_global(self, node: Node, statements: list):
         variable_node = self.find_child_by_type(node, "global_var")
@@ -364,7 +364,7 @@ class Parser(common_parser.Parser):
         if "*" in shadow_type:
             attrs.append(LianInternal.POINTER)
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "variable_decl": {
                 "attrs": attrs,
                 "data_type": shadow_type,
@@ -373,7 +373,7 @@ class Parser(common_parser.Parser):
         })
 
         if shadow_value:
-            statements.append({
+            self.append_stmts(statements, node, {
                 "assign_stmt": {
                     "target": shadow_variable,
                     "operand": shadow_value
@@ -414,7 +414,7 @@ class Parser(common_parser.Parser):
             })
             counter += 1
 
-        statements.append({"struct_decl": class_decl})
+        self.append_stmts(statements, node, {"struct_decl": class_decl})
         return class_name
 
     def packed_struct_type(self, node, statements):
@@ -469,7 +469,7 @@ class Parser(common_parser.Parser):
                 last_node["struct_decl"]["name"] = shadow_name
                 return
 
-            statements.append({"type_alias_stmt": {"target": shadow_name, "source": shadow_type}})
+            self.append_stmts(statements, node, {"type_alias_stmt": {"target": shadow_name, "source": shadow_type}})
 
     def type_entry(self, node: Node, statements: list):
         type_node = node.children[0]
@@ -497,7 +497,7 @@ class Parser(common_parser.Parser):
         return handler(node, statements)
 
     def parse_type(self, node, statements) -> str:
-        type_node = data_type.named_children[0]
+        type_node = node.named_children[0]
         self.parse(type_node, statements)
 
     def value_entry(self, node, statements):
@@ -517,12 +517,12 @@ class Parser(common_parser.Parser):
             return
 
         struct_name = self.tmp_variable()
-        statements.append({"new_object": {"target": struct_name, "data_type": LianInternal.UNDEFINED}})
+        self.append_stmts(statements, node, {"new_object": {"target": struct_name, "data_type": LianInternal.UNDEFINED}})
 
         counter = 0
         for each_operand in operands:
             shadow_type, shadow_value = self.parse_type_and_value(each_operand, statements)
-            statements.append({"field_write": {"receiver_object": struct_name, "field": f"_{counter}", "source": shadow_value}})
+            self.append_stmts(statements, node, {"field_write": {"receiver_object": struct_name, "field": f"_{counter}", "source": shadow_value}})
 
             counter += 1
 
@@ -547,12 +547,12 @@ class Parser(common_parser.Parser):
             return
 
         array_name = self.tmp_variable()
-        statements.append({"new_array": {"target": array_name, "data_type": LianInternal.UNDEFINED}})
+        self.append_stmts(statements, node, {"new_array": {"target": array_name, "data_type": LianInternal.UNDEFINED}})
 
         counter = 0
         for each_operand in operands:
             shadow_type, shadow_value = self.parse_type_and_value(each_operand, statements)
-            statements.append({"array_write": {"array": array_name, "index": str(counter), "source": shadow_value}})
+            self.append_stmts(statements, node, {"array_write": {"array": array_name, "index": str(counter), "source": shadow_value}})
             counter += 1
         return array_name
 
@@ -577,7 +577,7 @@ class Parser(common_parser.Parser):
 
         value = self.find_child_by_type(argument, "value")
         shadow_value = self.parse(value, statements)
-        statements.append({"parameter_decl": {"attrs": attrs, "data_type": shadow_type, "name": shadow_value}})
+        self.append_stmts(statements, argument, {"parameter_decl": {"attrs": attrs, "data_type": shadow_type, "name": shadow_value}})
 
     def instruction_entry(self, node: Node, statements: list):
         left = self.find_child_by_type(node, "local_var")
@@ -593,17 +593,17 @@ class Parser(common_parser.Parser):
 
         shadow_right = self.parse(right, statements)
         if shadow_left and shadow_right:
-            statements.append({"assign_stmt": {"target": shadow_left, "operand": shadow_right}})
+            self.append_stmts(statements, node, {"assign_stmt": {"target": shadow_left, "operand": shadow_right}})
 
     def unreachable_stmt(self, node: Node, statements: list):
-        # statements.append({"unreachable_stmt": {"target": ""}})
+        # self.append_stmts(statements, node, {"unreachable_stmt": {"target": ""}})
         pass
 
     def ret_stmt(self, node: Node, statements: list):
         type_and_value = self.find_child_by_type(node, "type_and_value")
 
         value = self.parse_only_value(type_and_value, statements)
-        statements.append({"return_stmt": {"name": value}})
+        self.append_stmts(statements, node, {"return_stmt": {"name": value}})
 
         return value
 
@@ -612,7 +612,7 @@ class Parser(common_parser.Parser):
 
         if len(type_and_values) == 1:
             target = self.parse_only_value(type_and_values[0], statements)
-            statements.append({"goto_stmt": {"name": target}})
+            self.append_stmts(statements, node, {"goto_stmt": {"name": target}})
 
         if len(type_and_values) < 3:
             return
@@ -627,7 +627,7 @@ class Parser(common_parser.Parser):
         shadow_true_part = self.parse_only_value(true_part, true_body)
         shadow_false_part = self.parse_only_value(false_part, false_body)
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "if_stmt": {
                 "condition": shadow_condition,
                 "then_body": [{"goto_stmt": {"name": shadow_true_part}}],
@@ -645,7 +645,7 @@ class Parser(common_parser.Parser):
         default = self.parse_only_value(default_part, statements)
 
         switch_body = []
-        statements.append({"switch_stmt": {"condition": condition, "body": switch_body}})
+        self.append_stmts(statements, node, {"switch_stmt": {"condition": condition, "body": switch_body}})
 
         counter = 2
         while counter + 1  < len(type_and_values):
@@ -678,7 +678,7 @@ class Parser(common_parser.Parser):
             name = name[:-1]
 
         if name:
-            statements.append({
+            self.append_stmts(statements, node, {
                 "label_stmt": {
                     "name": name
                 }
@@ -698,7 +698,7 @@ class Parser(common_parser.Parser):
         type_and_values = self.find_children_by_type(node, "type_and_value")
         operand1 = self.parse_only_value(type_and_values[0], statements)
         operand2 = self.parse_only_value(type_and_values[1], statements)
-        statements.append({"array_read": {"target": target, "name": operand1, "index": operand2}})
+        self.append_stmts(statements, node, {"array_read": {"target": target, "name": operand1, "index": operand2}})
         return target
 
     def insertelement_stmt(self, node: Node, statements: list):
@@ -707,12 +707,12 @@ class Parser(common_parser.Parser):
         operand2 = self.parse_only_value(type_and_values[1], statements)
         operand3 = self.parse_only_value(type_and_values[2], statements)
         if operand1:
-            statements.append({"array_insert": {"array": operand1, "index": operand3, "source": operand2}})
+            self.append_stmts(statements, node, {"array_insert": {"array": operand1, "index": operand3, "source": operand2}})
             return operand1
 
         target = self.tmp_variable()
-        statements.append({"new_array": {"target": target, "data_type": type1}})
-        statements.append({"array_insert": {"array": target, "index": operand3, "source": operand2}})
+        self.append_stmts(statements, node, {"new_array": {"target": target, "data_type": type1}})
+        self.append_stmts(statements, node, {"array_insert": {"array": target, "index": operand3, "source": operand2}})
         return target
 
     def select_stmt(self, node: Node, statements: list):
@@ -721,7 +721,7 @@ class Parser(common_parser.Parser):
         operand1 = self.parse_only_value(type_and_values[0], statements)
         operand2 = self.parse_only_value(type_and_values[1], statements)
         operand3 = self.parse_only_value(type_and_values[2], statements)
-        statements.append({
+        self.append_stmts(statements, node, {
             "if_stmt" : {
                 "condition" : operand1,
                 "then_body": [{"assign_stmt": {"target": target, "operand": operand2}}],
@@ -737,7 +737,7 @@ class Parser(common_parser.Parser):
         target = self.tmp_variable()
         type_and_value = self.find_child_by_type(node, "type_and_value")
         operand = self.parse_only_value(type_and_value, statements)
-        statements.append({"assign_stmt": {"target": target, "operand": operand, "operator": "-"}})
+        self.append_stmts(statements, node, {"assign_stmt": {"target": target, "operand": operand, "operator": "-"}})
         return target
 
     def bin_op_stmt(self, node: Node, statements: list):
@@ -749,7 +749,7 @@ class Parser(common_parser.Parser):
         operand = self.parse_only_value(type_and_value, statements)
         value = self.find_child_by_type(node, "value")
         operand2 = self.parse(value, statements)
-        statements.append({"assign_stmt": {"target": target, "operator": shadow_name, "operand": operand, "operand2": operand2}})
+        self.append_stmts(statements, node, {"assign_stmt": {"target": target, "operator": shadow_name, "operand": operand, "operand2": operand2}})
         return target
 
     def cleanupret_stmt(self, node: Node, statements: list):
@@ -792,7 +792,7 @@ class Parser(common_parser.Parser):
             extra_value = ""
             if extra:
                 extra_value = self.read_node_text(extra)
-            statements.append({
+            self.append_stmts(statements, node, {
                 "asm_stmt": {
                     "data_type": shadow_type,
                     "target": target,
@@ -806,7 +806,7 @@ class Parser(common_parser.Parser):
 
         shadow_callee = self.parse(callee, statements)
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "call_stmt": {
                 "target": target,
                 "name": shadow_callee,
@@ -858,7 +858,7 @@ class Parser(common_parser.Parser):
         # shadow_false_part = self.parse_only_value(false_target, false_body)
         # false_body.append({"goto_stmt": {"name": shadow_false_part}})
 
-        # statements.append({
+        # self.append_stmts(statements, node, {
         #     "if_stmt": {
         #         "condition": target,
         #         "then_body": true_body,
@@ -906,7 +906,7 @@ class Parser(common_parser.Parser):
                 pass
             return target
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "assign_stmt": {
                 "target": target,
                 "operand": operand1_value,
@@ -931,7 +931,7 @@ class Parser(common_parser.Parser):
         source = self.parse_only_value(type_and_value, statements)
         shadow_type = self.read_node_text(data_type)
 
-        statements.append({"type_cast_stmt": {"target": target, "data_type": shadow_type, "source": source, "cast_action": action_value}})
+        self.append_stmts(statements, node, {"type_cast_stmt": {"target": target, "data_type": shadow_type, "source": source, "cast_action": action_value}})
 
         return target
 
@@ -943,10 +943,10 @@ class Parser(common_parser.Parser):
         address = self.parse_only_value(type_and_value, statements)
         shadow_type = self.read_node_text(node)
 
-        statements.append({"mem_read": {"target": target1, "address": address}})
+        self.append_stmts(statements, node, {"mem_read": {"target": target1, "address": address}})
         target2 = self.tmp_variable()
-        statements.append({"call_stmt":{"target": target2, "name": "sizeof", "args": [shadow_type]}})
-        statements.append({"assign_stmt":{"target": address, "operator": "+", "operand": address, "operand2": target2}})
+        self.append_stmts(statements, node, {"call_stmt":{"target": target2, "name": "sizeof", "args": [shadow_type]}})
+        self.append_stmts(statements, node, {"assign_stmt":{"target": address, "operator": "+", "operand": address, "operand2": target2}})
 
         return target1
 
@@ -967,7 +967,7 @@ class Parser(common_parser.Parser):
             shadow_label = self.parse(labels[i], statements)
             phi_labels.append(shadow_label)
 
-        statements.append({"phi_stmt": {"target": target, "phi_values": phi_values, "phi_labels": phi_labels}})
+        self.append_stmts(statements, node, {"phi_stmt": {"target": target, "phi_values": phi_values, "phi_labels": phi_labels}})
 
         return target
 
@@ -989,7 +989,7 @@ class Parser(common_parser.Parser):
                 else:
                     shadow_type = f"{shadow_type}[]"
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "variable_decl": {
                 "data_type": shadow_type,
                 "name": name
@@ -997,7 +997,7 @@ class Parser(common_parser.Parser):
         })
 
         target = self.tmp_variable()
-        statements.append({
+        self.append_stmts(statements, node, {
             "addr_of": {
                 "target": target,
                 "source": name
@@ -1014,7 +1014,7 @@ class Parser(common_parser.Parser):
         address = self.parse_only_value(type_and_value, statements)
 
         if address:
-            statements.append({"mem_read": {"target": target, "address": address, "data_type": shadow_type}})
+            self.append_stmts(statements, node, {"mem_read": {"target": target, "address": address, "data_type": shadow_type}})
             return target
 
     def store_stmt(self, node: Node, statements: list):
@@ -1023,7 +1023,7 @@ class Parser(common_parser.Parser):
         shadow_address = self.parse_only_value(operands[1], statements)
 
         if shadow_address and shadow_source:
-            statements.append({"mem_write": {"address": shadow_address, "source": shadow_source}})
+            self.append_stmts(statements, node, {"mem_write": {"address": shadow_address, "source": shadow_source}})
             return shadow_source
 
     def cmpxchg_stmt(self, node: Node, statements: list):
@@ -1043,10 +1043,10 @@ class Parser(common_parser.Parser):
         operand1 = self.tmp_variable()
         operand2 = self.tmp_variable()
 
-        statements.append({
+        self.append_stmts(statements, node, {
             "mem_read": {"target": operand1, "address": shadow_ptr}
         })
-        statements.append({
+        self.append_stmts(statements, node, {
             "assign_stmt": {
                 "target": operand2,
                 "operator": "==",
@@ -1054,7 +1054,7 @@ class Parser(common_parser.Parser):
                 "operand2": shadow_cmp
             }
         })
-        statements.append({
+        self.append_stmts(statements, node, {
             "if_stmt": {
                 "condition": operand2,
                 "then_body": [
@@ -1079,7 +1079,7 @@ class Parser(common_parser.Parser):
         value_type, value_content = self.parse_type_and_value(pointer_node, statements)
 
         if shadow_opcode == "xchg":
-            statements.append({
+            self.append_stmts(statements, node, {
                 "mem_write": {
                     "address": pointer_addr,
                     "source": value_content
@@ -1088,7 +1088,7 @@ class Parser(common_parser.Parser):
             return
 
         pointer_value = self.tmp_variable()
-        statements.append({
+        self.append_stmts(statements, node, {
             "mem_read": {
                 "target": pointer_value,
                 "address": pointer_addr,
@@ -1097,7 +1097,7 @@ class Parser(common_parser.Parser):
         target = self.tmp_variable()
 
         if shadow_opcode in ("add", "fadd"):
-            statements.append({
+            self.append_stmts(statements, node, {
                 "assign_stmt": {
                     "target": target,
                     "operand": pointer_value,
@@ -1106,7 +1106,7 @@ class Parser(common_parser.Parser):
                 }
             })
         elif shadow_opcode in ("sub", "fsub"):
-            statements.append({
+            self.append_stmts(statements, node, {
                 "assign_stmt": {
                     "target": target,
                     "operand": pointer_value,
@@ -1115,7 +1115,7 @@ class Parser(common_parser.Parser):
                 }
             })
         elif shadow_opcode == "and":
-            statements.append({
+            self.append_stmts(statements, node, {
                 "assign_stmt": {
                     "target": target,
                     "operand": pointer_value,
@@ -1125,7 +1125,7 @@ class Parser(common_parser.Parser):
             })
         elif shadow_opcode == "nand":
             tmp_var = self.tmp_variable()
-            statements.append([
+            self.append_stmts(statements, node, [
                 {
                     "assign_stmt": {
                         "target": tmp_var,
@@ -1143,7 +1143,7 @@ class Parser(common_parser.Parser):
                 }
             ])
         elif shadow_opcode == "or":
-            statements.append({
+            self.append_stmts(statements, node, {
                 "assign_stmt": {
                     "target": target,
                     "operand": pointer_value,
@@ -1152,7 +1152,7 @@ class Parser(common_parser.Parser):
                 }
             })
         elif shadow_opcode == "xor":
-            statements.append({
+            self.append_stmts(statements, node, {
                 "assign_stmt": {
                     "target": target,
                     "operand": pointer_value,
@@ -1314,7 +1314,7 @@ class Parser(common_parser.Parser):
                     }
                 }
             ])
-        statements.append({
+        self.append_stmts(statements, node, {
             "mem_write" : {
                 "address": pointer_addr,
                 "source": target
@@ -1363,7 +1363,7 @@ class Parser(common_parser.Parser):
         target = base_pointer
         if first_index != 0:
             tmp_var = self.tmp_variable()
-            statements.append({
+            self.append_stmts(statements, node, {
                 "array_read" : {
                     "target": tmp_var,
                     "array": target,
@@ -1371,7 +1371,7 @@ class Parser(common_parser.Parser):
                 }
             })
             tmp_var2 = self.tmp_variable()
-            statements.append({
+            self.append_stmts(statements, node, {
                 "addr_of": {
                     "target": tmp_var2,
                     "source": tmp_var
@@ -1388,7 +1388,7 @@ class Parser(common_parser.Parser):
 
                 tmp_var = self.tmp_variable()
                 if raw_type.startswith("["):
-                    statements.append({
+                    self.append_stmts(statements, node, {
                         "array_read": {
                             "target": tmp_var,
                             "array": target,
@@ -1399,7 +1399,7 @@ class Parser(common_parser.Parser):
                     field_name = each_index
                     if isinstance(each_index, int):
                         field_name = f"_{each_index}"
-                    statements.append({
+                    self.append_stmts(statements, node, {
                         "field_read": {
                             "target": tmp_var,
                             "receiver_object": target,
@@ -1408,7 +1408,7 @@ class Parser(common_parser.Parser):
                     })
 
                 tmp_var2 = self.tmp_variable()
-                statements.append({
+                self.append_stmts(statements, node, {
                     "addr_of": {
                         "target": tmp_var2,
                         "source": tmp_var
@@ -1431,7 +1431,7 @@ class Parser(common_parser.Parser):
         if shadow_number.isdigit():
             shadow_number = "_" + shadow_number
 
-        statements.append({"array_read": {"target": target, "source": shadow_source, "index": shadow_number}})
+        self.append_stmts(statements, node, {"array_read": {"target": target, "source": shadow_source, "index": shadow_number}})
 
         return target
 
@@ -1447,12 +1447,12 @@ class Parser(common_parser.Parser):
         shadow_number = self.parse(number, statements)
 
         if shadow_target:
-            statements.append({"array_insert": {"array": shadow_target, "index": shadow_number, "source": shadow_source}})
+            self.append_stmts(statements, node, {"array_insert": {"array": shadow_target, "index": shadow_number, "source": shadow_source}})
             return shadow_target
 
         target = self.tmp_variable()
-        statements.append({"new_array": {"target": target, "data_type": type1}})
-        statements.append({"array_insert": {"array": target, "index": shadow_number, "source": shadow_source}})
+        self.append_stmts(statements, node, {"new_array": {"target": target, "data_type": type1}})
+        self.append_stmts(statements, node, {"array_insert": {"array": target, "index": shadow_number, "source": shadow_source}})
         return target
 
     def is_expression(self, node: Node):

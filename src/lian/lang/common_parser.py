@@ -83,6 +83,12 @@ class Parser:
         self.class_id += 1
         return LianInternal.CLASS_DECL_PREF + str(self.class_id)
 
+    def append_stmts(self, stmts, node, content):
+        if node:
+            stmts.append(self.add_col_row_info(node, content))
+        else:
+            stmts.append(content)
+
     def handle_hex_string(self, input_string):
         """
         处理十六进制字符串转义：
