@@ -12,6 +12,7 @@ from lian.config import schema
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
+    ImportGraphEdgeKind,
     SymbolOrState,
     SymbolKind
 )
@@ -1087,6 +1088,7 @@ class ImportGraphLoader:
         self.import_graph = None
         self.import_graph_nodes = None
         self.import_deps = None
+        self.symbol_id_to_import_node = {}
 
         self.import_graph_nodes_save_path = self.path + "_nodes"
 
@@ -1102,6 +1104,8 @@ class ImportGraphLoader:
 
     def save_nodes(self, import_graph_nodes):
         self.import_graph_nodes = import_graph_nodes
+        for each_node in import_graph_nodes:
+            self.symbol_id_to_import_node[each_node.symbol_id] = each_node
 
     def load_nodes(self):
         return self.import_graph_nodes
@@ -1112,6 +1116,26 @@ class ImportGraphLoader:
     def load_deps(self):
         return self.import_deps
 
+    def get_successor_nodes_from_ids(self, successor_ids):
+        result = []
+        for each_succ in successor_ids:
+            import_node = self.symbol_id_to_import_node.get(each_succ)
+            if import_node:
+                result.append(import_node)
+        return result
+
+    def get_internal_successor_nodes(self, node_id):
+        successor_ids = util.graph_successors_with_weight(
+            self.import_graph, node_id, ImportGraphEdgeKind.INTERNAL_SYMBOL
+        )
+        return self.get_successor_nodes_from_ids(successor_ids)
+
+    def get_external_successor_nodes(self, node_id):
+        successor_ids = util.graph_successors_with_weight(
+            self.import_graph, node_id, ImportGraphEdgeKind.EXTERNAL_SYMBOL
+        )
+        return self.get_successor_nodes_from_ids(successor_ids)
+
     def restore(self):
         df = DataModel().load(self.path)
         self.import_graph = nx.DiGraph()
@@ -1119,6 +1143,8 @@ class ImportGraphLoader:
             self.import_graph.add_edge(row.parent_node, row.child_node, weight=row.edge_type)
 
         self.import_graph_nodes = DataModel().load(self.import_graph_nodes_save_path)
+        for each_node in self.import_graph_nodes:
+            self.symbol_id_to_import_node[each_node.symbol_id] = each_node
 
         df = DataModel().load(self.import_deps_save_path)
         self.import_deps = nx.DiGraph()
@@ -2152,6 +2178,10 @@ class Loader:
         return self._import_graph_loader.save_deps(*args)
     def load_import_deps(self, *args):
         return self._import_graph_loader.load_deps(*args)
+    def get_internal_successor_nodes_in_import_graph(self, node_id):
+        return self._import_graph_loader.get_internal_successor_nodes(node_id)
+    def get_external_successor_nodes_in_import_graph(self, node_id):
+        return self._import_graph_loader.get_external_successor_nodes(node_id)
 
     def save_type_graph(self, *args):
         return self._type_graph_loader.save(*args)
