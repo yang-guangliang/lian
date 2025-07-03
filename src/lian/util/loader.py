@@ -1086,7 +1086,7 @@ class ImportGraphLoader:
     def __init__(self, path):
         self.path = path
         self.import_graph = None
-        self.import_graph_nodes = None
+        self.import_graph_nodes = []
         self.import_deps = None
         self.symbol_id_to_import_node = {}
 
@@ -1102,10 +1102,19 @@ class ImportGraphLoader:
     def load(self):
         return self.import_graph
 
-    def save_nodes(self, import_graph_nodes):
-        self.import_graph_nodes = import_graph_nodes
-        for each_node in import_graph_nodes:
-            self.symbol_id_to_import_node[each_node.symbol_id] = each_node
+    def save_nodes(self, symbol_id_to_symbol_node):
+        # 定义排序键函数，根据节点的 unit_id 和 symbol_id 进行排序
+        def sort_key(node_key):
+            node = symbol_id_to_symbol_node[node_key]
+            return node.unit_id, node.symbol_id
+
+        result = []
+        for node_key in sorted(symbol_id_to_symbol_node, key=sort_key):
+            result.append(symbol_id_to_symbol_node[node_key])
+
+        # 对图节点的键按照排序规则进行排序
+        self.import_graph_nodes = result
+        self.symbol_id_to_import_node = symbol_id_to_symbol_node
 
     def load_nodes(self):
         return self.import_graph_nodes
@@ -1173,19 +1182,9 @@ class ImportGraphLoader:
         # 初始化一个列表，用于存储图中节点的信息
         node_info_list = []
 
-        # 定义排序键函数，根据节点的 unit_id 和 symbol_id 进行排序
-        def sort_key(node_key):
-            node = self.import_graph_nodes[node_key]
-            return node.unit_id, node.symbol_id
-
-        # 对图节点的键按照排序规则进行排序
-        sorted_node_keys = sorted(self.import_graph_nodes, key=sort_key)
-
         # 遍历排序后的节点键，将节点信息转换为字典并添加到列表中
-        for node_key in sorted_node_keys:
-            node = self.import_graph_nodes[node_key]
-            node_info = node.to_dict()
-            node_info_list.append(node_info)
+        for each_node in self.import_graph_nodes:
+            node_info_list.append(each_node.to_dict())
 
         # 使用 DataModel 保存节点信息到文件
         DataModel(node_info_list).save(self.import_graph_nodes_save_path)
