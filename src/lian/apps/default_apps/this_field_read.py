@@ -32,8 +32,16 @@ def resolve_this_field_method(data: EventData):
     defined_states = in_data.defined_states
     app_return = er.config_event_unprocessed()
 
+    this_flag = False
+    if len(receiver_states) != 0:
+        for each_receiver_state_index in receiver_states:
+            each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
+            if each_receiver_state.data_type == LianInternal.THIS:
+                this_flag = True
+                break
+
     # 只处理对self的field_read
-    if receiver_symbol.name != LianInternal.THIS:
+    if receiver_symbol.name != LianInternal.THIS and this_flag == False:
         data.out_data.receiver_states = receiver_states
         app_return = er.config_continue_event_processing(app_return)
         return app_return

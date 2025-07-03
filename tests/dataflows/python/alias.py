@@ -41,12 +41,19 @@
 #     x.f = w
 
 
-a = deviceInfo.default.brand
+# a = deviceInfo.default.brand
 
-send_brand(a)
+# send_brand(a)
 
 
-def send_brand(brand):
+# def send_brand(brand):
 
-    b = brand
-    sink(b)
+#     b = brand
+#     sink(b)
+
+class A:
+    def func1(self):
+        pass
+    def func2(self):
+        a = self
+        a.func1()
