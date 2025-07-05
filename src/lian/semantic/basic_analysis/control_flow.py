@@ -34,8 +34,6 @@ class ControlFlowAnalysis:
             "try_stmt"      : self.analyze_try_stmt,
             "switch_stmt"   : self.analyze_switch_stmt,
             "return_stmt"   : self.analyze_return_stmt,
-            """ "goto_stmt"     : self.analyze_goto_stmt, """
-            """ "label_stmt"    : self.analyze_label_stmt, """
             "yield"         : self.analyze_yield_stmt,
             "method_decl"   : self.analyze_method_decl_stmt,
             "class_decl"    : self.analyze_decl_stmt,
@@ -60,7 +58,7 @@ class ControlFlowAnalysis:
         last_stmts_of_body_block = self.analyze_block(self.method_body, last_stmts_of_init_block)
         if last_stmts_of_body_block:
             self.cfg.add_edge(last_stmts_of_body_block, -1, control_flow_type = ControlFlowKind.EMPTY)
-        # util.debug("cfg "*20)
+        util.debug("cfg "*20)
         # util.debug(list(self.cfg.graph.edges(data=True)))
         self.merge_multiple_edges_between_two_nodes()
 
@@ -71,7 +69,7 @@ class ControlFlowAnalysis:
         for goto in self.goto:
             self.cfg.graph.remove_edges_from(list(self.cfg.graph.out_edges(goto.stmt_id)))
             for label in self.label:
-                if goto.target == label.name:
+                if goto.name == label.name:
                     self.cfg.graph.add_edge(goto.stmt_id, label.stmt_id)
 
 

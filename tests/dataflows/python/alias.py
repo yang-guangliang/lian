@@ -51,9 +51,52 @@
 #     b = brand
 #     sink(b)
 
-class A:
-    def func1(self):
-        pass
-    def func2(self):
-        a = self
-        a.func1()
+# class A:
+#     def __init__(self) -> None:
+#         self.brand = None
+#     def func1(self):
+#         b = self.brand 
+#         pass
+#     def func2(self):
+#         self.brand = "abc"
+#         self.func1()
+
+# c = A()
+# c.func2()
+# c.func1()
+# ff = c.brand
+
+
+# import random
+# from android import TelephonyManager, SmsManager
+
+# class A:
+#     def __init__(self):
+#         self.b = "Y"
+
+class B:
+    def __init__(self):
+        self.attr = None
+
+def alias_flow_test(self):
+    mgr = self.getSystemService(Context.TELEPHONY_SERVICE)
+    device_id = mgr.getDeviceId()  # source
+    
+
+    a = B()
+    a1 = a
+    p = B()
+    
+    b = A()
+    q = A()
+    q1 = q
+    
+  
+    x = a1
+    y = q1
+    
+    x.attr = y
+    q1.b = device_id
+
+    sms = SmsManager.getDefault()
+    sms.sendTextMessage("+49 1234", None, a.attr.b, None, None)  # sink, leak
