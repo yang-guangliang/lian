@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import os
 import platform
+from compiler.config.config import LANG_SO_PATH
 from lian.lang import (
     c_parser,
     csharp_parser,
@@ -15,20 +16,12 @@ from lian.lang import (
 
 LIB_DIR          = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
-REAL_LANGS_PATH  = "lib/langs_linux.so"
-if platform.system() == 'Darwin':
-    if platform.machine() == 'arm64':
-        REAL_LANGS_PATH = "lib/c_langs_macos_arm64.so"
-
-LANGS_SO_PATH    = os.path.join(LIB_DIR, REAL_LANGS_PATH)
-
-
 @dataclass
 class LangConfig:
     name     : str
     parser   : object
     extension: list     = None
-    so_path  : str      = LANGS_SO_PATH
+    so_path  : str      = LANG_SO_PATH
 
 
 LANG_TABLE = [
