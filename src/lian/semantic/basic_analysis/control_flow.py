@@ -58,7 +58,7 @@ class ControlFlowAnalysis:
         last_stmts_of_body_block = self.analyze_block(self.method_body, last_stmts_of_init_block)
         if last_stmts_of_body_block:
             self.cfg.add_edge(last_stmts_of_body_block, -1, control_flow_type = ControlFlowKind.EMPTY)
-        util.debug("cfg "*20)
+        #util.debug("cfg "*20)
         # util.debug(list(self.cfg.graph.edges(data=True)))
         self.merge_multiple_edges_between_two_nodes()
 
