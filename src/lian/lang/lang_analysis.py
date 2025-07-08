@@ -138,6 +138,10 @@ class GIRProcessing:
         for mykey, myvalue in stmt_content.items():
             if isinstance(myvalue, list):
                 if not self.is_gir_format(myvalue):
+                    if flattened_node["operation"] == "method_decl" and mykey == "body":
+                        block_id = self.flatten_block(myvalue, flattened_node["stmt_id"], dataframe)
+                        flattened_node[mykey] = block_id
+                        continue
                     if myvalue == []:
                         flattened_node[mykey] = None
                     else:
