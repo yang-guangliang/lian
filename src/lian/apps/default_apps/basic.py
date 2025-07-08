@@ -288,7 +288,7 @@ def add_main_func(data: EventData):
     last_stmt_id = -1
     length = len(in_data)
     index = 0
-    exclude_stmts = ("import_stmt", "from_import_stmt", "export_stmt")
+    exclude_stmts = ("import_stmt", "from_import_stmt", "export_stmt", "type_alias_stmt")
 
     while index < length:
         stmt = in_data[index]
