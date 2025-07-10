@@ -369,6 +369,7 @@ def remove_unnecessary_tmp_variables(data: EventData):
             stmt["operation"] == "assign_stmt"
             and not stmt.get("operand2", "")
             and pre_stmt.get("target")
+            and not stmt.get("operator", None)
             and pre_stmt["operation"] in key_stmts
             and pre_stmt["target"].startswith(LianInternal.VARIABLE_DECL_PREF)
             and (stmt["operand"] == pre_stmt["target"])
