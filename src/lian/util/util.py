@@ -100,7 +100,7 @@ def debug(*msg):
         sys.stdout.write(f"[DEBUG]: {' '.join(str(item) for item in msg)}\n")
 
 def warn(*msg):
-    sys.stderr.write(f"[WARNING]: {''.join(str(item) for item in msg)}\n")
+    sys.stdout.write(f"[WARNING]: {''.join(str(item) for item in msg)}\n")
 
 def log(*msg):
     print(*msg)
