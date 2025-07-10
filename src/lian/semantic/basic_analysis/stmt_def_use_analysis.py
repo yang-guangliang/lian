@@ -977,12 +977,22 @@ class StmtDefUseAnalysis:
             else:
                 used_symbol_list.append(-1)
 
+        defined_symbol = -1
+        is_decl = False
+        if util.is_available(stmt.name):
+            defined_symbol = self.create_symbol_or_state_and_add_space(
+                stmt_id, stmt.name, LianInternal.CASE_AS
+            )
+            is_decl = True
+
         self.add_status_with_symbol_id_sync(
             stmt,
             StmtStatus(
                 stmt_id,
-                used_symbols = used_symbol_list,
-            )
+                defined_symbol = defined_symbol,
+                used_symbols = used_symbol_list
+            ),
+            is_decl_stmt = is_decl
         )
 
     def default_stmt_def_use(self, stmt_id, stmt):

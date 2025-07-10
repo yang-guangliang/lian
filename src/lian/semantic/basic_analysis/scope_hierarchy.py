@@ -7,6 +7,7 @@ import networkx as nx
 from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
+    CASE_AS_OPERATION,
     CLASS_DECL_OPERATION,
     NAMESPACE_DECL_OPERATION,
     IMPORT_OPERATION,
@@ -147,6 +148,20 @@ class UnitScopeHierarchyAnalysis:
                 )
                 self.scope_space.add(variable_decl_scope)
                 self.variable_ids.add(stmt_id)
+
+            elif row.operation in CASE_AS_OPERATION:
+                if util.is_available(row.name):
+                    scope_id = row.body
+                    variable_decl_scope = Scope(
+                        unit_id = self.unit_id,
+                        stmt_id = stmt_id,
+                        scope_id = scope_id,
+                        parent_stmt_id = row.stmt_id,
+                        scope_kind = SymbolKind.VARIABLE_DECL,
+                        name = util.read_stmt_field(row.name)
+                    )
+                    self.scope_space.add(variable_decl_scope)
+                    self.variable_ids.add(stmt_id)
 
             elif row.operation in PARAMETER_DECL_OPERATION:
                 scope_id = self.determine_scope(row.parent_stmt_id)

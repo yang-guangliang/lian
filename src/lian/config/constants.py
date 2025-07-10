@@ -37,6 +37,10 @@ VARIABLE_DECL_OPERATION = {
     "variable_decl"
 }
 
+CASE_AS_OPERATION = {
+    "case_stmt"
+}
+
 PARAMETER_DECL_OPERATION = {
     "parameter_decl"
 }
@@ -359,7 +363,9 @@ LianInternal = util.SimpleEnum({
 
     #Prototype
     "PROTOTYPE"                     : "%prototype",
-    "PROTO"                          : "%__proto__",
+    "PROTO"                         : "%__proto__",
+
+    "CASE_AS"                       : "%case_as",
 })
 
 JsPrototype = util.SimpleEnum({
