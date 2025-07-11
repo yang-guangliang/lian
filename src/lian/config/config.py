@@ -1,6 +1,6 @@
 
 import os
-from sys import platform
+import platform
 
 EMPTY                                       = 0
 START_INDEX                                 = 10
@@ -23,7 +23,6 @@ FIRST_GLOBAL_ROUND                          = 1
 
 ANY_LANG                                    = "%"
 
-
 DEFAULT_WORKSPACE                           = "lian_workspace"
 MODULE_SYMBOLS_FILE                         = "module_symbols"
 SOURCE_CODE_DIR                             = "src"
@@ -33,7 +32,15 @@ SEMANTIC_DIR_P1                             = "semantic_p1"
 SEMANTIC_DIR_P2                             = "semantic_p2"
 SEMANTIC_DIR_P3                             = "semantic_p3"
 
-SRC_LIAN_DIR                                = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+ROOT_DIR                                    = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+
+DEFAULT_SO_PATH         = "lib/langs_linux.so"
+# if platform.system() == 'Darwin':
+#     if platform.machine() == 'arm64':
+#         DEFAULT_SO_PATH = ""
+LANG_SO_PATH            = os.path.join(ROOT_DIR, DEFAULT_SO_PATH)
+
+SRC_LIAN_DIR                                = os.path.join(ROOT_DIR, "src/lian")
 EXTERNS_MOCK_CODE_DIR                       = os.path.join(SRC_LIAN_DIR, "externs/mock")
 EXTERN_RULES_DIR                            = os.path.join(SRC_LIAN_DIR, "externs/rules")
 EXTERN_MODEL_CODE_DIR                       = os.path.join(SRC_LIAN_DIR, "externs/modeling")

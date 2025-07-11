@@ -187,7 +187,7 @@ class BasicSemanticAnalysis:
             unit_id = unit_info.module_id
             unit_list.append(unit_id)
             unit_gir = self.loader.load_unit_gir(unit_id)
-            unit_scope = UnitScopeHierarchyAnalysis(self.loader, unit_id, unit_gir).analyze()
+            unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).analyze()
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
             if not self.options.noextern:
                 self.extern_system.install_mock_code_file(unit_info, unit_scope)

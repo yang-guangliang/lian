@@ -29,10 +29,13 @@ from lian.util import util
 from lian.util.loader import Loader
 
 class UnitScopeHierarchyAnalysis:
-    def __init__(self, loader: Loader, unit_id, unit_gir):
+    def __init__(self, lian, loader, unit_id, unit_info, unit_gir):
+        self.lian = lian
+        self.options = lian.options
         self.loader:Loader = loader
         self.unit_gir = unit_gir
         self.unit_id = unit_id
+        self.unit_info = unit_info
         self.stmt_id_to_gir = {}
         self.stmt_id_to_scope_id_cache = {}
         self.class_stmt_ids = set()
@@ -331,6 +334,17 @@ class UnitScopeHierarchyAnalysis:
                 if row.name not in symbol_name_to_scope_ids:
                     symbol_name_to_scope_ids[row.name] = set()
                 symbol_name_to_scope_ids[row.name].add(row.scope_id)
+
+
+                if self.options.strict_parse_mode:
+                    if row.scope_id in scope_id_to_symbol_info:
+                        previous_decl_id = scope_id_to_symbol_info[row.scope_id][row.name]
+                        previous_stmt = self.loader.load_stmt_gir(previous_decl_id)
+                        util.error_and_quit_with_stmt_info(
+                            self.unit_info.original_path,
+                            self.loader.load_stmt_gir(row.stmt_id),
+                            f"{row.name} already declared in {self.unit_info.original_path}:{previous_stmt.start_row}"
+                        )
 
                 if row.scope_id not in scope_id_to_symbol_info:
                     scope_id_to_symbol_info[row.scope_id] = {}

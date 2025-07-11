@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import os
-import platform
-from compiler.config.config import LANG_SO_PATH
+from lian.config.config import LANG_SO_PATH
 from lian.lang import (
     c_parser,
     csharp_parser,
@@ -13,8 +12,6 @@ from lian.lang import (
     php_parser,
     llvm_parser
 )
-
-LIB_DIR          = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
 @dataclass
 class LangConfig:
