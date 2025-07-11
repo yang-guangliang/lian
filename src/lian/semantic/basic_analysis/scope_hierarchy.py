@@ -335,16 +335,19 @@ class UnitScopeHierarchyAnalysis:
                     symbol_name_to_scope_ids[row.name] = set()
                 symbol_name_to_scope_ids[row.name].add(row.scope_id)
 
+                if util.is_empty(row.name):
+                    continue
 
                 if self.options.strict_parse_mode:
                     if row.scope_id in scope_id_to_symbol_info:
-                        previous_decl_id = scope_id_to_symbol_info[row.scope_id][row.name]
-                        previous_stmt = self.loader.load_stmt_gir(previous_decl_id)
-                        util.error_and_quit_with_stmt_info(
-                            self.unit_info.original_path,
-                            self.loader.load_stmt_gir(row.stmt_id),
-                            f"{row.name} already declared in {self.unit_info.original_path}:{previous_stmt.start_row}"
-                        )
+                        if row.name in scope_id_to_symbol_info[row.scope_id]:
+                            previous_decl_id = scope_id_to_symbol_info[row.scope_id][row.name]
+                            previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)
+                            util.error_and_quit_with_stmt_info(
+                                self.unit_info.original_path,
+                                previous_stmt,
+                                f"{row.name} already declared in {self.unit_info.original_path}:{previous_stmt.start_row}"
+                            )
 
                 if row.scope_id not in scope_id_to_symbol_info:
                     scope_id_to_symbol_info[row.scope_id] = {}
