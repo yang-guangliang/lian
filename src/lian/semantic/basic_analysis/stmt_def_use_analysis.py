@@ -1138,13 +1138,23 @@ class StmtDefUseAnalysis:
             args_list = ast.literal_eval(stmt.positional_args)
 
         used_symbol_list = []
-        for symbol in [stmt.data_type, *args_list]:
-            if not util.isna(symbol):
-                used_symbol_list.append(
-                    self.create_symbol_or_state_and_add_space(stmt_id, symbol)
-                )
-            else:
-                used_symbol_list.append(-1)
+
+        if util.is_available(stmt.init_value):
+            for symbol in [stmt.data_type, stmt.init_value]:
+                if not util.isna(symbol):
+                    used_symbol_list.append(
+                        self.create_symbol_or_state_and_add_space(stmt_id, symbol)
+                    )
+                else:
+                    used_symbol_list.append(-1)
+        else:
+            for symbol in [stmt.data_type, *args_list]:
+                if not util.isna(symbol):
+                    used_symbol_list.append(
+                        self.create_symbol_or_state_and_add_space(stmt_id, symbol)
+                    )
+                else:
+                    used_symbol_list.append(-1)
 
         defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.target, stmt.data_type)
         self.add_status_with_symbol_id_sync(
