@@ -261,10 +261,7 @@ class Parser(common_parser.Parser):
             for child in arguments.named_children:
                 if self.is_comment(child):
                     continue
-
-                shadow_variable = self.parse(child, statements)
-                if shadow_variable:
-                    arg_list.append(shadow_variable)
+                arg_list.append(self.parse(child, statements))
 
         tmp_return = self.tmp_variable()
         self.append_stmts(statements,  node, {"call_stmt": {"target": tmp_return, "name": shadow_name, "positional_args": arg_list}})
@@ -784,7 +781,8 @@ class Parser(common_parser.Parser):
                                               "data_type": shadow_decl_type_copy,
                                               "name": shadow_declarator}})
 
-                gir_node["fields"].append(field_statements)
+
+                gir_node["fields"].extend(field_statements)
 
     def struct_array(self, node, struct_name, statements):
         tmp_var = self.tmp_variable()
@@ -1018,13 +1016,10 @@ class Parser(common_parser.Parser):
             shadow_mytype = enum_name
         # 结构体类型变量声明
         elif mytype.type in ["struct_specifier","union_specifier"]:
-
             struct_name = self.struct_specifier(mytype,statements)
-
             shadow_mytype = struct_name
 
         declarators = self.find_children_by_field(node, "declarator")
-
         for declarator in declarators:
             shadow_type = shadow_mytype
             shadow_value = None
@@ -1052,7 +1047,7 @@ class Parser(common_parser.Parser):
                 shadow_value = self.initializer_list(value, statements, array_list)
             else:
                 has_init = True
-                self.parse(value, statements)
+                shadow_value = self.parse(value, statements)
             name = self.read_node_text(declarator)
 
             self.append_stmts(statements,  node, {"variable_decl":
@@ -1098,7 +1093,7 @@ class Parser(common_parser.Parser):
         if body:
             self.enum_body(body, enum_constants)
             self.append_stmts(statements,  node, {"enum_decl": {"name": name, "attrs": attrs, "enum_constants": enum_constants}})
-        return f"enum {name}"
+        return f"name"
 
     def enum_body(self, node, enum_constants_list):
         enumerator_children = self.find_children_by_type(node, "enumerator")

@@ -270,7 +270,9 @@ class UnitScopeHierarchyAnalysis:
         for stmt_id in self.class_stmt_ids:
             stmt = self.access_by_stmt_id(stmt_id)
             if util.is_available(stmt.fields):
+                print(stmt)
                 fields_block = self.read_block(stmt.fields)
+                print(fields_block)
                 variable_decl_stmts = fields_block.query(fields_block.operation == "variable_decl")
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
