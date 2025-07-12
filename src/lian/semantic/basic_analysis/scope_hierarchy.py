@@ -226,6 +226,7 @@ class UnitScopeHierarchyAnalysis:
             elif row.operation in CLASS_DECL_OPERATION:
                 self.class_stmt_ids.add(stmt_id)
                 scope_id = self.determine_scope(row.parent_stmt_id)
+                #print("scope_id:", scope_id, "row", row)
                 class_decl_scope = Scope(
                     unit_id = self.unit_id,
                     stmt_id = stmt_id,
@@ -270,9 +271,9 @@ class UnitScopeHierarchyAnalysis:
         for stmt_id in self.class_stmt_ids:
             stmt = self.access_by_stmt_id(stmt_id)
             if util.is_available(stmt.fields):
-                print(stmt)
+                #print(stmt)
                 fields_block = self.read_block(stmt.fields)
-                print(fields_block)
+                #print(fields_block)
                 variable_decl_stmts = fields_block.query(fields_block.operation == "variable_decl")
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
@@ -281,6 +282,7 @@ class UnitScopeHierarchyAnalysis:
                     util.add_to_dict_with_default_set(
                         self.class_id_to_class_field_ids, stmt_id, variable_decl.stmt_id
                     )
+
             if util.is_available(stmt.methods):
                 methods_block = self.read_block(stmt.methods)
                 method_decl_stmts = methods_block.query(methods_block.operation == "method_decl")
@@ -337,23 +339,21 @@ class UnitScopeHierarchyAnalysis:
                     symbol_name_to_scope_ids[row.name] = set()
                 symbol_name_to_scope_ids[row.name].add(row.scope_id)
 
-                if util.is_empty(row.name):
-                    continue
+                if util.is_available(row.name):
+                    if self.options.strict_parse_mode:
+                        if row.scope_id in scope_id_to_symbol_info:
+                            if row.name in scope_id_to_symbol_info[row.scope_id]:
+                                previous_decl_id = scope_id_to_symbol_info[row.scope_id][row.name]
+                                previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)
+                                util.error_and_quit_with_stmt_info(
+                                    self.unit_info.original_path,
+                                    previous_stmt,
+                                    f"{row.name} already declared in {self.unit_info.original_path}:{previous_stmt.start_row}"
+                                )
 
-                if self.options.strict_parse_mode:
-                    if row.scope_id in scope_id_to_symbol_info:
-                        if row.name in scope_id_to_symbol_info[row.scope_id]:
-                            previous_decl_id = scope_id_to_symbol_info[row.scope_id][row.name]
-                            previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)
-                            util.error_and_quit_with_stmt_info(
-                                self.unit_info.original_path,
-                                previous_stmt,
-                                f"{row.name} already declared in {self.unit_info.original_path}:{previous_stmt.start_row}"
-                            )
-
-                if row.scope_id not in scope_id_to_symbol_info:
-                    scope_id_to_symbol_info[row.scope_id] = {}
-                scope_id_to_symbol_info[row.scope_id][row.name] = row.stmt_id
+                    if row.scope_id not in scope_id_to_symbol_info:
+                        scope_id_to_symbol_info[row.scope_id] = {}
+                    scope_id_to_symbol_info[row.scope_id][row.name] = row.stmt_id
 
             if row.scope_kind in [
                     SymbolKind.CLASS_KIND,
