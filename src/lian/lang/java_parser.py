@@ -1106,10 +1106,14 @@ class Parser(common_parser.Parser):
         #self.sync_tmp_variable(new_while_body, statements)
         self.parse(body, new_while_body)
 
-        statements.extend(new_condition_init)
-        new_while_body.extend(new_condition_init)
+        #statements.extend(new_condition_init)
+        #new_while_body.extend(new_condition_init)
 
-        self.append_stmts(statements, node, {"while_stmt": {"condition": shadow_condition, "body": new_while_body}})
+        self.append_stmts(statements, node, {
+            "while_stmt": {
+                "condition": shadow_condition, "condition_prebody": new_condition_init, "body": new_while_body
+            }
+        })
 
     def for_statement(self, node, statements):
         init_children = self.find_children_by_field(node, "init")
@@ -1184,9 +1188,12 @@ class Parser(common_parser.Parser):
         do_body = []
         #self.sync_tmp_variable(do_body, statements)
         self.parse(body, do_body)
-        shadow_condition = self.parse(condition, do_body)
+        condition_body = []
+        shadow_condition = self.parse(condition, condition_body)
 
-        self.append_stmts(statements, node, {"dowhile_stmt": {"body": do_body, "condition": shadow_condition}})
+        self.append_stmts(statements, node, {"dowhile_stmt": {
+            "body": do_body, "condition_prebody": condition_body, "condition": shadow_condition
+        }})
 
     def break_statement(self, node, statements):
         shadow_name = ""

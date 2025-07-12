@@ -1157,10 +1157,12 @@ class Parser(common_parser.Parser):
         #self.sync_tmp_variable(new_while_body, statements)
         self.parse(body, new_while_body)
 
-        statements.extend(new_condition_init)
-        new_while_body.extend(new_condition_init)
+        #statements.extend(new_condition_init)
+        #new_while_body.extend(new_condition_init)
 
-        self.append_stmts(statements,  node, {"while_stmt": {"condition": shadow_condition, "body": new_while_body}})
+        self.append_stmts(statements,  node, {"while_stmt": {
+            "condition": shadow_condition, "condition_prebody": new_condition_init, "body": new_while_body
+        }})
 
     def for_statement(self, node, statements):
         init_children = self.find_children_by_field(node, "initializer")
@@ -1259,21 +1261,18 @@ class Parser(common_parser.Parser):
         return switch_ret  # ?
 
     def dowhile_statement(self, node, statements):
-        condition = self.find_child_by_field(node, "condition")
         body = self.find_child_by_field(node, "body")
+        condition = self.find_child_by_field(node, "condition")
 
-        new_condition_init = []
-        #self.sync_tmp_variable(new_condition_init, statements)
-        shadow_condition = self.parse(condition, new_condition_init)
+        do_body = []
+        #self.sync_tmp_variable(do_body, statements)
+        self.parse(body, do_body)
+        condition_body = []
+        shadow_condition = self.parse(condition, condition_body)
 
-        new_dowhile_body = []
-        #self.sync_tmp_variable(new_dowhile_body, statements)
-        self.parse(body, new_dowhile_body)
-
-        statements.extend(new_condition_init)
-        new_dowhile_body.extend(new_condition_init)
-
-        self.append_stmts(statements,  node, {"while_stmt": {"condition": shadow_condition, "body": new_dowhile_body}})
+        self.append_stmts(statements, node, {"dowhile_stmt": {
+            "body": do_body, "condition_prebody": condition_body, "condition": shadow_condition
+        }})
 
     def break_statement(self, node, statements):
         self.append_stmts(statements,  node, {"break_stmt": {}})

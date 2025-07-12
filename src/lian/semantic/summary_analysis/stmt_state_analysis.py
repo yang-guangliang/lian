@@ -2483,8 +2483,10 @@ class StmtStateAnalysis:
         old_id_list = self.obtain_states(address_index)
         address_id_list = self.read_used_states(address_index, in_states)
 
+        print("address_id_list:", address_id_list)
+
         target_states = set()
-        reaching_defs = self.frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        reaching_symbol_defs = self.frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         for symbol_id_index in address_id_list:
             symbol_id_state = self.frame.symbol_state_space[symbol_id_index]
             if not isinstance(symbol_id_state, State):
@@ -2513,7 +2515,7 @@ class StmtStateAnalysis:
 
             symbol_id = symbol_id_state.value
             all_defs = self.frame.symbol_to_define[symbol_id]
-            all_defs &= reaching_defs
+            all_defs &= reaching_symbol_defs
             for def_stmt_id, def_source in all_defs:
                 reaching_status = self.frame.stmt_id_to_status[def_stmt_id]
                 defined_symbol = self.frame.symbol_state_space[reaching_status.defined_symbol]

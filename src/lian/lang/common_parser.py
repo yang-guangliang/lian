@@ -2,6 +2,7 @@
 
 import re
 import ast
+import sys
 
 from tree_sitter import Node
 from lian.util import util
@@ -251,9 +252,9 @@ class Parser:
         if not node:
             return
         if field:
-            print("   "*level + field, ":", node.type)
+            print("   "*level + field, "-", node.type + f":{node.start_point.row+1}" + f"({node.text[:10]})")
         else:
-            print("   "*level + node.type + f"({node.text[:40]})")
+            print("   "*level + node.type + f":{node.start_point.row+1}" + f"({node.text[:10]})")
         children = node.children
         for index, child in enumerate(children):
             if child.is_named:
@@ -334,6 +335,8 @@ class Parser:
         pass
 
     def parse_gir(self, node, statements):
+        self.print_tree(node)
+
         replacement = []
         self.start_parse(node, statements)
         self.parse(node, statements, replacement)

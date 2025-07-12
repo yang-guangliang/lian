@@ -423,13 +423,14 @@ class StmtDefUseAnalysis:
             args_keys = sorted(ast.literal_eval(stmt.named_args).keys())
 
             named_symbol_list = arg_symbol_list[positional_arg_index:]
-            for index, arg in enumerate(named_args):
-                space_index =  named_symbol_list[index]
-                arg_symbol = self.symbol_state_space[space_index]
-                if isinstance(arg_symbol, State):
-                    named_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value, "key": args_keys[index]})
-                else:
-                    named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name, "key": args_keys[index]})
+            if named_symbol_list:
+                for index, arg in enumerate(named_args):
+                    space_index =  named_symbol_list[index]
+                    arg_symbol = self.symbol_state_space[space_index]
+                    if isinstance(arg_symbol, State):
+                        named_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value, "key": args_keys[index]})
+                    else:
+                        named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name, "key": args_keys[index]})
         elif packed_named_args:
             index = used_symbols[-1]
             arg_symbol = self.symbol_state_space[index]
