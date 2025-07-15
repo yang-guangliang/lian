@@ -6,7 +6,7 @@
 | namespace_decl                | name<br>body                                                 | namespace name {body}                                        |
 | comment_stmt                  | data                                                         |                                                              |
 | package_stmt                  | name                                                         | 表示package声明语句，格式为package name                      |
-| import_stmt                   | attrs<br>module_path<br>alias                                | 表示import语句，格式为import module_path或者import module_path as alias <br><br/>注意：module_path是目录路径或是文件路径 |
+| import_stmt                   | attrs<br>name<br>alias                                | 表示import语句 |
 | from_import_stmt              | attrs<br>source<br>name<br>alias                        | attrs说明： <br/>- unit : 表示name必须是文件名字，而不是文件夹名字<br/>- init：import时，必须对目标文件进行初始化 |
 | export_stmt                   | attrs<br>name<br>alias                                       | 表示导出命令，格式为export <name> as <alias> <br/>attrs用于标识是否是export default(仅用于js) |
 | from_export_stmt              | attrs<br>module_path<br>name<br>alias                        |                                                              |
