@@ -345,10 +345,11 @@ class UnitScopeHierarchyAnalysis:
                             if row.name in scope_id_to_symbol_info[row.scope_id]:
                                 previous_decl_id = scope_id_to_symbol_info[row.scope_id][row.name]
                                 previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)
+                                current_stmt = self.stmt_id_to_gir.get(row.stmt_id)
                                 util.error_and_quit_with_stmt_info(
                                     self.unit_info.original_path,
-                                    previous_stmt,
-                                    f"{row.name} already declared in {self.unit_info.original_path}:{int(previous_stmt.start_row+1)}"
+                                    current_stmt,
+                                    f"Duplicate Definition Error: {row.name} already declared in {self.unit_info.original_path}:{int(previous_stmt.start_row+1)}"
                                 )
 
                     if row.scope_id not in scope_id_to_symbol_info:

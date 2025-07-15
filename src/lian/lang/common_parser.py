@@ -56,7 +56,7 @@ class Parser:
 
     def syntax_error(self, node: Node, msg: str):
         sys.stderr.write(
-            f"SyntaxError: {msg}\n"
+            f"Syntax Error: {msg}\n"
             f"--> {self.unit_path}:{node.start_point.row + 1}:{node.start_point.column}\n"
             f"      {self.read_node_text(node)}\n"
         )

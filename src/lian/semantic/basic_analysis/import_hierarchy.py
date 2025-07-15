@@ -161,7 +161,7 @@ class ImportHierarchy:
         if not self.is_strict_parse_mode:
             if util.is_empty(stmt.name):
                 # util.error(
-                #     "ImportError: cannot use empty name in import"
+                #     "Import Error: cannot use empty name in import"
                 #     )
                 return INVALID
 
@@ -169,31 +169,31 @@ class ImportHierarchy:
             if "*" in import_path:
                 if not re.match(r'^[^*]*\.\*$', import_path):
                     util.error(
-                        "ImportError: '*' can only be used in the end of import path"
+                        "Import Error: '*' can only be used in the end of import path"
                     )
                     return INVALID
             return VALID
 
         if stmt.source.startswith(".") or stmt.name.startswith("."):
             util.error_and_quit_with_stmt_info(
-                unit_path, stmt, "ImportError: cannot use relative path in import (remove the leading dot)"
+                unit_path, stmt, "Import Error: cannot use relative path in import (remove the leading dot)"
             )
         if stmt.source.endswith(".") or stmt.name.endswith("."):
             util.error_and_quit_with_stmt_info(
-                unit_path, stmt, "ImportError: wrong dot usage (remove the trailing dot)"
+                unit_path, stmt, "Import Error: wrong dot usage (remove the trailing dot)"
             )
         if "*" in stmt.source or "*" in stmt.name or "*" in stmt.alias:
             util.error_and_quit_with_stmt_info(
-                unit_path, stmt, f"ImportError: cannot use '*' in import"
+                unit_path, stmt, f"Import Error: cannot use '*' in import"
             )
         if stmt.operation == "from_import_stmt":
             if stmt.source == "":
                 util.error_and_quit_with_stmt_info(
-                    unit_path, stmt, f"ImportError: cannot use empty path in from..import"
+                    unit_path, stmt, f"Import Error: cannot use empty path in from..import"
                 )
         if util.is_empty(stmt.name):
             util.error_and_quit_with_stmt_info(
-                unit_path, stmt, f"ImportError: cannot use empty name in import"
+                unit_path, stmt, f"Import Error: cannot use empty name in import"
             )
 
     def get_import_path_from_stmt(self, stmt):
@@ -292,14 +292,14 @@ class ImportHierarchy:
                     # 严格模式下，要求匹配节点唯一
                     if len(import_nodes) != 1:
                         util.error_and_quit_with_stmt_info(
-                            unit_info.original_path, stmt, "ImportError: import module path is not unique"
+                            unit_info.original_path, stmt, "Import Error: import module path is not unique"
                         )
 
                 return list(import_nodes)
 
         # if self.is_strict_parse_mode:
         #     util.error_and_quit_with_stmt_info(
-        #         unit_info.original_path, stmt, "ImportError: import module path not found"
+        #         unit_info.original_path, stmt, "Import Error: import module path not found"
         #     )
         return []
 
@@ -364,7 +364,7 @@ class ImportHierarchy:
 
         # if self.is_strict_parse_mode:
         #     util.error_and_quit_with_stmt_info(
-        #         unit_info.original_path, stmt, "ImportError: import module path not found"
+        #         unit_info.original_path, stmt, "Import Error: import module path not found"
         #     )
         return external_symbols
 

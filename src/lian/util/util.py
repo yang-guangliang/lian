@@ -87,7 +87,7 @@ def convert_stmt_to_str(stmt):
 
 def error_and_quit_with_stmt_info(unit_path, stmt, *msg):
     sys.stderr.write(f"{' '.join(str(item) for item in msg)}\n")
-    sys.stderr.write(f"  {unit_path}:{int(stmt.start_row + 1)}\n")
+    sys.stderr.write(f"--> {unit_path}:{int(stmt.start_row + 1)}\n")
     sys.stderr.write(f"    {convert_stmt_to_str(stmt)}\n")
     sys.exit(-1)
 
