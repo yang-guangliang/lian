@@ -38,8 +38,6 @@ from lian.semantic.basic_analysis.basic_analysis import BasicSemanticAnalysis
 from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
 from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
-from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
-from lian.semantic import semantic_structs
 
 class Lian:
     def __init__(self):
@@ -72,6 +70,11 @@ class Lian:
                     if hasattr(self.options, key):
                         setattr(self.options, key, value)
 
+        return self
+
+    def adjust_workspace_dir(self, default_workspace_dir = config.DEFAULT_WORKSPACE):
+        if default_workspace_dir not in self.options.workspace:
+            self.options.workspace = os.path.join(self.options.workspace, default_workspace_dir)
         return self
 
     def update_lang_config(self):
@@ -145,7 +148,7 @@ class Lian:
         return self
 
     def run(self):
-        self.parse_cmds().init_submodules().dispatch_command()
+        self.parse_cmds().adjust_workspace_dir().init_submodules().dispatch_command()
 
         return self
 

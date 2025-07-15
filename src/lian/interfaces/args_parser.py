@@ -60,6 +60,7 @@ class ArgsParser:
             force = False,
             recursive = True,
             workspace = config.DEFAULT_WORKSPACE,
+            default_workspace_dir = config.DEFAULT_WORKSPACE,
             sub_command = "",
             in_path = "",
         )
