@@ -676,7 +676,7 @@ class StmtDefUseAnalysis:
 
     def type_alias_decl_def_use(self, stmt_id, stmt):
         used_symbol_list = []
-        for symbol in [stmt.source]:
+        for symbol in [stmt.data_type]:
             if not util.isna(symbol):
                 used_symbol_list.append(
                     self.create_symbol_or_state_and_add_space(stmt_id, symbol)
@@ -684,30 +684,15 @@ class StmtDefUseAnalysis:
             else:
                 used_symbol_list.append(-1)
 
-        defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target, stmt.data_type)
-        self.add_status_with_symbol_id_sync(
-            stmt,
-            StmtStatus(
-                stmt_id,
-                defined_symbol = defined_symbol,
-                used_symbols = used_symbol_list
-            )
-        )
-
-        #=========
-
         defined_symbol = self.create_symbol_or_state_and_add_space(
             stmt_id, stmt.name, stmt.data_type,
         )
         status = StmtStatus(
             stmt_id,
-            defined_symbol = defined_symbol
+            defined_symbol = defined_symbol,
+            used_symbols = used_symbol_list
         )
         self.add_status_with_symbol_id_sync(stmt, status, is_decl_stmt = True)
-        if status.defined_symbol != -1:
-            symbol = self.symbol_state_space[status.defined_symbol]
-            if isinstance(symbol, Symbol):
-                self.frame.method_def_use_summary.local_symbol_ids.add(symbol.symbol_id)
 
     def phi_stmt_def_use(self, stmt_id, stmt):
         used_symbol_list = []
