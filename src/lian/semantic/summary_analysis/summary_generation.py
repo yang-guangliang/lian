@@ -220,7 +220,7 @@ class SemanticSummaryGeneration:
 
         return current_bits
 
-    def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set()):
+    def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set(), phase = 2):
         """
         为每个defined_states创建一个StateDefNode，并更新out_state_bits，(kill/gen也在这个过程中进行)。
         如果该语句有defined_symbol且defined_symbol没有任何state，说明没解析出来，人为创建一个UNSOLVED的state给defined_symbol。
@@ -229,7 +229,7 @@ class SemanticSummaryGeneration:
         # 这条语句新产生的状态
         new_defined_state_set = set()
         for index in status.defined_states:
-            if index >= old_index_ceiling: # newly generated states
+            if index >= old_index_ceiling or phase == 3: # newly generated states
                 new_defined_state_set.add(index)
 
         if old_status_defined_states:
@@ -376,8 +376,19 @@ class SemanticSummaryGeneration:
         used_symbol_id = used_symbol.symbol_id
         # print(f"stmt_id: {stmt_id}, used_symbol: {used_symbol.name}")
         reachable_symbol_defs = set()
+        # print(f"in check reachable: {frame.symbol_to_define}")
         if used_symbol_id in frame.symbol_to_define:
-            reachable_symbol_defs = available_symbol_defs & frame.symbol_to_define[used_symbol_id]
+            # print(f"used_symbol: {frame.symbol_to_define[used_symbol_id]}")
+            # print(f"available_symbol_defs: {available_symbol_defs}")
+            available_symbol_defs_list = list(available_symbol_defs)
+            used_define_list = list(frame.symbol_to_define[used_symbol_id])
+            if len(available_symbol_defs_list) != 0 and len(used_define_list) != 0:
+                for node1 in available_symbol_defs_list:
+                    for node2 in used_define_list:
+                        if node1 == node2:
+                            reachable_symbol_defs.add(node1)
+            # reachable_symbol_defs = available_symbol_defs & frame.symbol_to_define[used_symbol_id]
+            # print(reachable_symbol_defs)
         else:
             if used_symbol_id not in frame.all_local_symbol_ids:
                 if used_symbol_id not in frame.method_def_use_summary.used_external_symbol_ids:
@@ -445,6 +456,7 @@ class SemanticSummaryGeneration:
         in_symbols = []
 
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        # print(f"available_defs: {available_defs}")
         all_used_symbols = status.used_symbols + status.implicitly_used_symbols
         all_reachable_defs = set()
         for used_symbol_index in all_used_symbols:
@@ -453,7 +465,7 @@ class SemanticSummaryGeneration:
                 continue
 
             all_reachable_defs.update(self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs))
-
+        # print(f"all_reachable_defs{all_reachable_defs}")
         for node in all_reachable_defs:
             if not isinstance(node, SymbolDefNode):
                 continue
@@ -609,7 +621,7 @@ class SemanticSummaryGeneration:
         dynamic_call_stmt: set = method_summary.dynamic_call_stmt
         change_flag = False
         if (
-            self.phase_name == AnalysisPhaseName.SemanticSummaryGeneration and
+            self.phase_name in [AnalysisPhaseName.SemanticSummaryGeneration, AnalysisPhaseName.GlobalAnalysis] and
             frame.stmt_counters[stmt_id] == config.FIRST_ROUND
         ):
             change_flag = True

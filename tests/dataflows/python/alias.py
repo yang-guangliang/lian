@@ -74,29 +74,40 @@
 #     def __init__(self):
 #         self.b = "Y"
 
-class B:
-    def __init__(self):
-        self.attr = None
+# class B:
+#     def __init__(self):
+#         self.attr = None
 
-def alias_flow_test(self):
-    mgr = self.getSystemService(Context.TELEPHONY_SERVICE)
-    device_id = mgr.getDeviceId()  # source
+# def alias_flow_test(self):
+#     mgr = self.getSystemService(Context.TELEPHONY_SERVICE)
+#     device_id = mgr.getDeviceId()  # source
     
 
-    a = B()
-    a1 = a
-    p = B()
+#     a = B()
+#     a1 = a
+#     p = B()
     
-    b = A()
-    q = A()
-    q1 = q
+#     b = A()
+#     q = A()
+#     q1 = q
     
   
-    x = a1
-    y = q1
+#     x = a1
+#     y = q1
     
-    x.attr = y
-    q1.b = device_id
+#     x.attr = y
+#     q1.b = device_id
 
-    sms = SmsManager.getDefault()
-    sms.sendTextMessage("+49 1234", None, a.attr.b, None, None)  # sink, leak
+#     sms = SmsManager.getDefault()
+#     sms.sendTextMessage("+49 1234", None, a.attr.b, None, None)  # sink, leak
+
+def func1(num):
+    num = num + 1
+    print(66666666)
+    return num
+
+a = 3
+
+b = func1(a)
+
+c = b

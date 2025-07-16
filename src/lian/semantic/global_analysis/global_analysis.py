@@ -71,8 +71,11 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_index_of_status_space(self, baseline_index, status, space):
-
+    def adjust_index_of_status_space(self, baseline_index, status, space, symbol_to_define):
+        
+        for symbol_def_nodes in symbol_to_define.values():
+            for node in symbol_def_nodes:
+                node.index += baseline_index
         for stmtstatus in status.values():
             for each_id, value in enumerate(stmtstatus.used_symbols):
                 stmtstatus.used_symbols[each_id] = value + baseline_index
@@ -129,7 +132,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             analyzed_method_list = self.analyzed_method_list
         )
 
-        frame.symbol_to_define = self.loader.load_method_symbol_to_define_p2(method_id).copy()
+        # frame.symbol_to_define = self.loader.load_method_symbol_to_define_p2(method_id).copy()
         all_defs = set()
         for stmt_id in frame.symbol_to_define:
             symbol_def_set = frame.symbol_to_define[stmt_id]
@@ -153,9 +156,10 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         # avoid changing the content of the loader
         status = copy.deepcopy(self.loader.load_stmt_status_p2(method_id))
         symbol_state_space = self.loader.load_symbol_state_space_p2(method_id).copy()
-
-        self.adjust_index_of_status_space(len(global_space), status, symbol_state_space)
+        symbol_to_define = self.loader.load_method_symbol_to_define_p2(method_id).copy()
+        self.adjust_index_of_status_space(len(global_space), status, symbol_state_space, symbol_to_define)
         frame.stmt_id_to_status = status
+        frame.symbol_to_define = symbol_to_define
         for item in symbol_state_space:
             global_space.add(item)
 
@@ -294,8 +298,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
-
+        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling, set(), 3)
+        print(stmt_id)
+        print(new_out_states)
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
             new_defined_symbol_states = defined_symbol.states
@@ -313,6 +318,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             frame.symbol_changed_stmts.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
+        # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
+
 
         return change_flag
 
@@ -513,6 +520,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
             # self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
             self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
+            self.loader.save_method_symbol_to_define_p3(0, frame.symbol_to_define)
+            # self.loader.save_method_symbol_to_define(method_id, frame.symbol_to_define)
             # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
             # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)

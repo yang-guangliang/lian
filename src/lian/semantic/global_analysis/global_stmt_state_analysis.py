@@ -199,7 +199,8 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
             else:
                 unsolved_callee_ids.add(each_state.value)
-
+        print(callee_method_ids)
+        print(9999999999999999999)
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set
         )
@@ -220,6 +221,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                     parameter_state_index = each_pair.arg_index_in_space
                     # self.update_access_path_state_id(parameter_state_index)
                     parameter_name_symbol.states.add(parameter_state_index)
+                    status.defined_states.add(parameter_state_index)
             if len(status.used_symbols) > 0:
                 default_value_index = status.used_symbols[0]
                 default_value = self.frame.symbol_state_space[default_value_index]

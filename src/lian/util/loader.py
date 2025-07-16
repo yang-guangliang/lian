@@ -1713,6 +1713,14 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
+        self._symbol_to_define_p3_loader = MethodSymbolToDefinedLoader(
+            options,
+            [],
+            os.path.join(self.semantic_path_p3, config.SYMBOL_TO_DEFINE_PATH_P3),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
         self._state_to_define_p1_loader = MethodStateToDefinedLoader(
             options,
             [],
@@ -2211,7 +2219,12 @@ class Loader:
         return self._symbol_to_define_p2_loader.load(*args)
     def save_method_symbol_to_define_p2(self, *args):
         return self._symbol_to_define_p2_loader.save(*args)
-
+    
+    def load_method_symbol_to_define_p3(self, *args):
+        return self._symbol_to_define_p3_loader.load(*args)
+    def save_method_symbol_to_define_p3(self, *args):
+        return self._symbol_to_define_p3_loader.save(*args)
+    
     def load_method_state_to_define_p1(self, *args):
         return self._state_to_define_p1_loader.load(*args)
     def save_method_state_to_define_p1(self, *args):
