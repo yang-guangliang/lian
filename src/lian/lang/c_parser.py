@@ -871,12 +871,11 @@ class Parser(common_parser.Parser):
         declarators = self.find_child_by_field(node, "declarator")
         target = self.read_node_text(declarators)
         while child_declarator := self.find_child_by_field(declarators, "declarator"):
-
             declarators = child_declarator
             target = self.read_node_text(child_declarator)
-        #print(f"typedef{source_type}")
-        #print({"type_alias_stmt" : {"target" : target, "source" : source_type}})
-        self.append_stmts(statements,  node, {"type_alias_stmt" : {"target" : target, "source" : source_type}})
+            #print(f"typedef{source_type}")
+            #print({"type_alias_decl" : {"target" : target, "source" : source_type}})
+            self.append_stmts(statements,  node, {"type_alias_decl" : {"name" : target, "data_type" : source_type}})
 
     def internal_struct_init(self, node, statements, value, mytype, struct_name):
         struct_or_union = "struct" if mytype.type == "struct_specifier" else "union"

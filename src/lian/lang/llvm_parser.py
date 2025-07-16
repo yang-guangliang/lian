@@ -469,7 +469,7 @@ class Parser(common_parser.Parser):
                 last_node["struct_decl"]["name"] = shadow_name
                 return
 
-            self.append_stmts(statements, node, {"type_alias_stmt": {"target": shadow_name, "source": shadow_type}})
+            self.append_stmts(statements, node, {"type_alias_decl": {"name": shadow_name, "data_type": shadow_type}})
 
     def type_entry(self, node: Node, statements: list):
         type_node = node.children[0]

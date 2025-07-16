@@ -75,7 +75,7 @@ class StmtDefUseAnalysis:
             "global_stmt"                           : self.global_stmt_def_use,
             "nonlocal_stmt"                         : self.nonlocal_stmt_def_use,
             "type_cast_stmt"                        : self.type_cast_stmt_def_use,
-            "type_alias_stmt"                       : self.type_alias_stmt_def_use,
+            "type_alias_decl"                       : self.type_alias_decl_def_use,
             "phi_stmt"                              : self.phi_stmt_def_use,
             "unsafe_block"                          : self.unsafe_block_stmt_def_use,
             "block"                                 : self.block_stmt_def_use,
@@ -674,7 +674,7 @@ class StmtDefUseAnalysis:
             )
         )
 
-    def type_alias_stmt_def_use(self, stmt_id, stmt):
+    def type_alias_decl_def_use(self, stmt_id, stmt):
         used_symbol_list = []
         for symbol in [stmt.source]:
             if not util.isna(symbol):
@@ -693,6 +693,21 @@ class StmtDefUseAnalysis:
                 used_symbols = used_symbol_list
             )
         )
+
+        #=========
+
+        defined_symbol = self.create_symbol_or_state_and_add_space(
+            stmt_id, stmt.name, stmt.data_type,
+        )
+        status = StmtStatus(
+            stmt_id,
+            defined_symbol = defined_symbol
+        )
+        self.add_status_with_symbol_id_sync(stmt, status, is_decl_stmt = True)
+        if status.defined_symbol != -1:
+            symbol = self.symbol_state_space[status.defined_symbol]
+            if isinstance(symbol, Symbol):
+                self.frame.method_def_use_summary.local_symbol_ids.add(symbol.symbol_id)
 
     def phi_stmt_def_use(self, stmt_id, stmt):
         used_symbol_list = []

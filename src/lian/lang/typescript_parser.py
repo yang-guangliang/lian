@@ -1001,7 +1001,7 @@ class Parser(common_parser.Parser):
         typ = self.find_child_by_field(node, "value")
         shadow_type = self.read_node_text(typ)
 
-        self.append_stmts(statements, node, {"type_alias_stmt": {"target": name, "type": type_parameters, "source": [shadow_type]}})
+        self.append_stmts(statements, node, {"type_alias_decl": {"name": name, "type_parameters": type_parameters, "data_type": shadow_type}})
 
     def function_expression(self, node: Node, statements: list):
         return self.method_declaration(node, statements)
@@ -1427,7 +1427,7 @@ class Parser(common_parser.Parser):
             als = self.find_child_by_field(child,"alias")
             if als:
                 alias = self.read_node_text(als)
-                self.append_stmts(statements, node, {"type_alias_stmt":{"source": name, "target": alias}})
+                self.append_stmts(statements, node, {"import_stmt":{"name": name, "alias": alias}})
                 import_specifiers.append(name)
             else:
                 import_specifiers.append(name)

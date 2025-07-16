@@ -1297,7 +1297,7 @@ class Parser(common_parser.Parser):
         types = self.find_children_by_type(node, "type")
         type1 = self.parse_type(types[0], statements)
         type2 = self.parse_type(types[1], statements)
-        self.append_stmts(statements, node, {"type_alias_stmt": {"target": type1, "source": type2}})
+        self.append_stmts(statements, node, {"type_alias_decl": {"name": type1, "data_type": type2}})
 
     def parse_alternative(self, alter_list, statements):
         if len(alter_list) == 0:

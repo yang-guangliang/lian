@@ -119,7 +119,7 @@ class StmtStateAnalysis:
             "global_stmt"                           : self.global_stmt_state,
             "nonlocal_stmt"                         : self.nonlocal_stmt_state,
             "type_cast_stmt"                        : self.type_cast_stmt_state,
-            "type_alias_stmt"                       : self.type_alias_stmt_state,
+            "type_alias_decl"                       : self.type_alias_decl_state,
             "phi_stmt"                              : self.phi_stmt_state,
 
             "namespace_decl"                        : self.namespace_decl_stmt_state,
@@ -2109,9 +2109,9 @@ class StmtStateAnalysis:
         return P2ResultFlag()
 
     # TODO:
-    def type_alias_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+    def type_alias_decl_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
-        type_alias_stmt target source
+        type_alias_decl target source
         typedef source target
         """
         source_symbol_index = status.used_symbols[0]
