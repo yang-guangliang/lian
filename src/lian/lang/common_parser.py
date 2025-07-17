@@ -10,7 +10,7 @@ from lian.util import util
 from lian.config.constants import LianInternal
 
 class Parser:
-    def __init__(self, options, unit_info = None):
+    def __init__(self, options, unit_info):
         """
         初始化解析器上下文：
         1. 初始化临时变量计数器（变量/方法/类）
@@ -24,9 +24,7 @@ class Parser:
         self.options = options
         self.printed_flag = False
         self.unit_info = unit_info
-        self.unit_path = None
-        if unit_info:
-            self.unit_path = unit_info.origin_path
+        self.unit_path = unit_info.original_path
 
         # self.CONSTANTS_MAP = {
         #     "None"                          : LianInternal.NULL,
@@ -56,7 +54,7 @@ class Parser:
 
     def syntax_error(self, node: Node, msg: str):
         sys.stderr.write(
-            f"Syntax Error: {msg}\n"
+            f"Syntax Error: {msg}\n\n"
             f"--> {self.unit_path}:{node.start_point.row + 1}:{node.start_point.column}\n"
             f"      {self.read_node_text(node)}\n"
         )
@@ -334,8 +332,18 @@ class Parser:
     def end_parse(self, node, statements):
         pass
 
+    def validate_ast_tree(self, node):
+        if node.type == 'ERROR':
+            self.syntax_error(node, f"Found an error AST node in code ({self.read_node_text(node)[:40]})")
+
+        for child in node.named_children:
+            self.validate_ast_tree(child)
+
     def parse_gir(self, node, statements):
-        # self.print_tree(node)
+        #self.print_tree(node)
+
+        if self.options.strict_parse_mode:
+            self.validate_ast_tree(node)
 
         replacement = []
         self.start_parse(node, statements)
