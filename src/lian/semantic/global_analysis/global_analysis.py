@@ -534,6 +534,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             #     param.
             #     caller_frame.symbol_state_space[param_id] = param_states
             # caller_frame.callee_param =
+            
             frame_stack.pop()
             if config.DEBUG_FLAG:
                 util.debug(f"\n\t<method {frame.method_id}> is Done\n")
