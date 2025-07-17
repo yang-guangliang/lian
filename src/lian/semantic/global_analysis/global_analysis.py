@@ -477,6 +477,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 self.path_manager.add_path(frame_path)
                 summary_instance: MethodSummaryInstance = self.loader.load_method_summary_instance(frame.call_site)
                 summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p3(frame.call_site)
+                print("summary_instance")
+                print(summary_instance)
                 if summary_instance and summary_compact_space:
                     self.save_analysis_summary_and_space(frame, summary_instance.copy(), summary_compact_space.copy(), caller_frame)
                     frame_stack.pop()
@@ -484,6 +486,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
                 # check if there is an available method summary
                 p2_summary_template = self.loader.load_method_summary_template(frame.method_id)
+                print(p2_summary_template)
                 # 如果没有summary->函数体为空->跳过
                 if util.is_empty(p2_summary_template):
                     frame_stack.pop()
@@ -519,12 +522,11 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 if new_callee:
                     continue
 
-            # summary_data = self.generate_analysis_summary_and_s2space(frame)
-            # self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
-            # self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
+            summary_data = self.generate_analysis_summary_and_s2space(frame)
+            self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
+            self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
             self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
             self.loader.save_method_symbol_to_define_p3(0, frame.symbol_to_define)
-            # self.loader.save_method_symbol_to_define(method_id, frame.symbol_to_define)
             # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
             # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)

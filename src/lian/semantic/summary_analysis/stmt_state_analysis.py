@@ -76,7 +76,7 @@ class StmtStateAnalysis:
             "package_stmt"                          : self.regular_stmt_state,
             "echo_stmt"                             : self.regular_stmt_state,
             "exit_stmt"                             : self.regular_stmt_state,
-            "return_stmt"                           : self.return_stmt_state,
+            "return_stmt"                           : self.regular_stmt_state,
             "yield_stmt"                            : self.regular_stmt_state,
             "sync_stmt"                             : self.regular_stmt_state,
             "label_stmt"                            : self.regular_stmt_state,
@@ -3706,6 +3706,4 @@ class StmtStateAnalysis:
 
         target_symbol.states = []
         return P2ResultFlag()
-    
-    def return_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        return P2ResultFlag()
+

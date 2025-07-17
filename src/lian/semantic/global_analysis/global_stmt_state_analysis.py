@@ -237,9 +237,3 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                     parameter_name_symbol.states.add(default_value_index)
         return P2ResultFlag()
     
-    def return_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-
-        target_index = status.used_symbols[0]
-        target_symbol: Symbol = self.frame.symbol_state_space[target_index]
-        self.frame
-        return P2ResultFlag()
