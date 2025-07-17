@@ -199,8 +199,6 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
             else:
                 unsolved_callee_ids.add(each_state.value)
-        print(callee_method_ids)
-        print(9999999999999999999)
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set
         )

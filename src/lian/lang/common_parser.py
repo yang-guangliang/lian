@@ -335,7 +335,7 @@ class Parser:
         pass
 
     def parse_gir(self, node, statements):
-        self.print_tree(node)
+        # self.print_tree(node)
 
         replacement = []
         self.start_parse(node, statements)

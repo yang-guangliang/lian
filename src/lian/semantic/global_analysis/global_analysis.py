@@ -93,7 +93,10 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 each_space.states = new_set
             else:
                 for each_id, stmtstatus in enumerate(each_space.array):
-                    each_space.array[each_id] = stmtstatus + baseline_index
+                    new_set = set()
+                    for index in stmtstatus:
+                        new_set.add(index + baseline_index)
+                    each_space.array[each_id] = new_set
                 for each_field, value_set in each_space.fields.items():
                     new_set = set()
                     for index in value_set:
