@@ -34,7 +34,8 @@ FOR_STMT_OPERATION = {
 }
 
 VARIABLE_DECL_OPERATION = {
-    "variable_decl"
+    "variable_decl",
+    "type_alias_decl"
 }
 
 CASE_AS_OPERATION = {
