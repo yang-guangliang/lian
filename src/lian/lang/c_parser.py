@@ -882,7 +882,7 @@ class Parser(common_parser.Parser):
         # 此时，相应的结构体类型声明的处理应该已经结束了。因此去已经处理的statements列表中找到对应的结构体类型，取出里面的字段名，并赋值
         tmp_var_id = self.tmp_variable()
 
-        self.append_stmts(statements,  node, {"new_strcut" :{"data_type" :struct_name, "target" : tmp_var_id}})
+        self.append_stmts(statements,  node, {"new_struct" :{"data_type" :struct_name, "target" : tmp_var_id}})
         # 处理stru = {.field1 = value1,.field2 = value2}的初始化情况
         initializer_pairs = self.find_children_by_type(value,"initializer_pair")
         if initializer_pairs:
