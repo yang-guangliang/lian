@@ -126,26 +126,26 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                 ),
             )
 
-        # for each_callee_id in callee_method_ids:
-        #     new_path = APath(self.frame.path + (stmt_id, each_callee_id))
-        #     self.path_manager.add_path(new_path)
-        #     new_call_site = (caller_id, stmt_id, each_callee_id)
-        #     # prepare callee summary instance and compact space
-        #     if new_call_site in self.frame.summary_collection:
-        #         callee_summary = self.frame.summary_collection[new_call_site]
-        #     else:
-        #         continue
-        #     callee_summary = callee_summary.copy()
+        for each_callee_id in callee_method_ids:
+            new_path = APath(self.frame.path + (stmt_id, each_callee_id))
+            self.path_manager.add_path(new_path)
+            new_call_site = (caller_id, stmt_id, each_callee_id)
+            # prepare callee summary instance and compact space
+            if new_call_site in self.frame.summary_collection:
+                callee_summary = self.frame.summary_collection[new_call_site]
+            else:
+                continue
+            callee_summary = callee_summary.copy()
 
-        #     if new_call_site in self.frame.symbol_state_space_collection:
-        #         callee_compact_space = self.frame.symbol_state_space_collection[new_call_site]
-        #     else:
-        #         continue
-        #     callee_compact_space = callee_compact_space.copy()
-        #     self.apply_callee_semantic_summary(
-        #         stmt_id, each_callee_id, args, callee_summary,
-        #         callee_compact_space, this_state_set, new_object_flag
-        #     )
+            if new_call_site in self.frame.symbol_state_space_collection:
+                callee_compact_space = self.frame.symbol_state_space_collection[new_call_site]
+            else:
+                continue
+            callee_compact_space = callee_compact_space.copy()
+            self.apply_callee_semantic_summary(
+                stmt_id, each_callee_id, args, callee_summary,
+                callee_compact_space, this_state_set, new_object_flag
+            )
 
         return P2ResultFlag()
 
