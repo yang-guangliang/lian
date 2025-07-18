@@ -1060,8 +1060,9 @@ class SemanticSummaryGeneration:
         compact_space = frame.symbol_state_space.extract_related_elements_to_new_space(all_indexes)
         # adjust ids and save summary template
         method_summary.adjust_ids(compact_space.old_index_to_new_index)
-        # print(compact_space)
+        print(compact_space)
         self.save_analysis_summary_and_space(frame, method_summary, compact_space)
+        return method_summary, compact_space
         # print(f"dynamic_call_stmt: {frame.method_summary_template.dynamic_call_stmt}")
 
     def analyze_stmts(self, frame: ComputeFrame):

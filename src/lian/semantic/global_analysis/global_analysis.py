@@ -524,7 +524,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
             summary_data = self.generate_analysis_summary_and_s2space(frame)
             self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
-            self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
+            summary, space = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
+            self.save_analysis_summary_and_space(frame, summary, space, caller_frame)
             self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
             self.loader.save_method_symbol_to_define_p3(0, frame.symbol_to_define)
             # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
