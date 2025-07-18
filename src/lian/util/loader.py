@@ -1896,6 +1896,8 @@ class Loader:
         return self._module_symbols_loader.load_all_unit_info()
     def convert_module_id_to_module_info(self, *args):
         return self._module_symbols_loader.convert_module_id_to_module_info(*args)
+    def convert_unit_id_to_info(self, *args):
+        return self._module_symbols_loader.convert_module_id_to_module_info(*args)
     def convert_unit_id_to_unit_path(self, *args):
         return self._module_symbols_loader.convert_unit_id_to_unit_path(*args)
     def search_unit_path_to_unit_id(self, *args):

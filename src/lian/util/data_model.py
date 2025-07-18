@@ -317,6 +317,13 @@ class Row:
         #util.error(f"Failed to obtain key <{item}> from the dataframe row{self._row}")
         return None
 
+    def to_dict(self):
+        result = {}
+        #print(self._schema)
+        for key, pos in self._schema.items():
+            result[key] = self._row[pos]
+        return result
+
     def __setattr__(self, name, value):
         if name.startswith("_"):
             object.__setattr__(self, name, value)

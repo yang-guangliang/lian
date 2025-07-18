@@ -54,6 +54,8 @@ class Lian:
             "run":          self.run_all,
         }
 
+        self.set_workspace_dir_flag = False
+
         self.args_parser = args_parser.ArgsParser()
         self.options = self.args_parser.obtain_default_options()
 
@@ -72,7 +74,8 @@ class Lian:
 
         return self
 
-    def adjust_workspace_dir(self, default_workspace_dir = config.DEFAULT_WORKSPACE):
+    def set_workspace_dir(self, default_workspace_dir = config.DEFAULT_WORKSPACE):
+        self.set_workspace_dir_flag = True
         if default_workspace_dir not in self.options.workspace:
             self.options.workspace = os.path.join(self.options.workspace, default_workspace_dir)
         return self
@@ -90,6 +93,9 @@ class Lian:
         config.DEBUG_FLAG = self.options.debug
         if self.options.debug:
             util.debug(self.options)
+
+        if not self.set_workspace_dir_flag:
+            self.set_workspace_dir()
 
         # update lang config & options.lang_extensions
         self.update_lang_config()
@@ -148,7 +154,7 @@ class Lian:
         return self
 
     def run(self):
-        self.parse_cmds().adjust_workspace_dir().init_submodules().dispatch_command()
+        self.parse_cmds().init_submodules().dispatch_command()
 
         return self
 

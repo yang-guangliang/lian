@@ -121,8 +121,13 @@ class GIRProcessing:
             util.error("[Input format error] The input node should not be a dictionary: " + str(stmt))
             return
 
+        # pprint.pprint(stmt)
+        # print(last_node)
+
         flattened_node = {}
         dataframe.append(flattened_node)
+
+        # return flattened_node
 
         flattened_node["operation"] = list(stmt.keys())[0]
         stmt_content = stmt[flattened_node["operation"]]

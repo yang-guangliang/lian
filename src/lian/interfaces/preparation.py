@@ -242,6 +242,7 @@ class ModuleSymbolsBuilder:
 
                 self.module_symbol_results.append({
                     "module_id": unit_id,
+                    "unit_id": unit_id,
                     "symbol_name": unit_name,
                     "unit_ext": unit_ext,
                     "lang": EXTENSIONS_LANG.get(unit_ext, "unknown"),
