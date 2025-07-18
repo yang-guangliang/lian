@@ -204,12 +204,14 @@ class ModuleSymbolsBuilder:
         self.file_counter = 0
         self.dst_file_to_src_file = dst_file_to_src_file
 
+        self.target_src_path = os.path.join(self.options.workspace, config.SOURCE_CODE_DIR)
+
     def generate_module_id(self):
         result = self.global_module_id
         self.global_module_id += 1
         return result
 
-    def scan_modules(self, module_path, parent_module_id = 0, is_extern = False):
+    def scan_modules(self, module_path, prefix_path,  parent_module_id = 0, is_extern = False):
         if util.is_empty(module_path):
             return
 
@@ -226,13 +228,18 @@ class ModuleSymbolsBuilder:
                     "symbol_type": SymbolKind.MODULE_SYMBOL,
                     "is_extern": is_extern
                 })
-                self.scan_modules(entry.path, module_id, is_extern)
+                self.scan_modules(entry.path, prefix_path, module_id, is_extern)
 
             # scan each .gl file, and extract the unit-level symbols
             elif entry.is_file():
                 self.file_counter += 1
                 unit_id = self.generate_module_id()
                 unit_name, unit_ext = os.path.splitext(entry.name)
+
+                exported_name = entry.path.replace(prefix_path, "")
+                exported_name = os.path.splitext(exported_name)[0]
+                exported_name = exported_name.replace(os.path.sep, ".")
+
                 self.module_symbol_results.append({
                     "module_id": unit_id,
                     "symbol_name": unit_name,
@@ -242,14 +249,17 @@ class ModuleSymbolsBuilder:
                     "symbol_type": SymbolKind.UNIT_SYMBOL,
                     "unit_path": entry.path,
                     "original_path": self.dst_file_to_src_file.get(entry.path, ""),
-                    "is_extern": is_extern
+                    "is_extern": is_extern,
+                    "exported_name": exported_name,
                 })
 
     def run(self):
-        self.scan_modules(module_path = os.path.join(self.options.workspace, config.SOURCE_CODE_DIR))
+        target_path = os.path.join(self.options.workspace, config.SOURCE_CODE_DIR + "/")
+        self.scan_modules(module_path = target_path, prefix_path = target_path)
         if len(self.module_symbol_results) == 0:
             util.error_and_quit("No target file found.")
-        self.scan_modules(module_path = os.path.join(self.options.workspace, config.EXTERNS_DIR), is_extern = True)
+        target_path = os.path.join(self.options.workspace, config.EXTERNS_DIR + "/")
+        self.scan_modules(module_path = target_path, prefix_path = target_path, is_extern = True)
         self.loader.save_module_symbols(self.module_symbol_results)
 
 def run(options, loader):
