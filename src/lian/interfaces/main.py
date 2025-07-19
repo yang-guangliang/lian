@@ -78,6 +78,7 @@ class Lian:
         self.set_workspace_dir_flag = True
         if default_workspace_dir not in self.options.workspace:
             self.options.workspace = os.path.join(self.options.workspace, default_workspace_dir)
+        self.options.default_workspace_dir = default_workspace_dir
         return self
 
     def update_lang_config(self):
