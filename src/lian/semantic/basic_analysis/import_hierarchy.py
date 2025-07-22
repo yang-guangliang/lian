@@ -400,14 +400,17 @@ class ImportHierarchy:
                 print(f"  {each_node} -> {each_out_edge}")
 
     def run(self):
+        # 把所有的文件和目录全部拉出来，构建初始版的import_graph（node：id， node info -> import_graph_nodes）
         self.initialize_import_graph()
 
         for unit_id in self.unit_list:
+            # 开始分析文件内部所有public函数、class、全局变量等
             self.analyze_unit_public_symbols(unit_id)
 
         #self.debug_import_graph()
 
         for unit_id in self.unit_list:
+            # 分析不同文件之间的索引
             self.analyze_unit_import_stmts(unit_id)
 
         self.loader.save_import_graph(self.import_graph)
