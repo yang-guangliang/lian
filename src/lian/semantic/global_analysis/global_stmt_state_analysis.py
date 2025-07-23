@@ -51,6 +51,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
     ):
         super().__init__(app_manager, loader, resolver, compute_frame, None, analyzed_method_list)
         self.path_manager = path_manager
+        self.phase = 3
 
     def get_method_summary(self, method_id):
         pass

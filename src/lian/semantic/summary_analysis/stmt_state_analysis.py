@@ -70,6 +70,7 @@ class StmtStateAnalysis:
         self.analyzed_method_list = analyzed_method_list
         self.unit_id = self.frame.unit_id
         self.lang = self.frame.lang
+        self.phase = 2
 
         self.state_analysis_handlers = {
             "comment_stmt"                          : self.regular_stmt_state,
@@ -1782,8 +1783,10 @@ class StmtStateAnalysis:
         caller_id = self.frame.method_id
         call_stmt_id = stmt_id
         # print(f"load_parameter_mapping: {callee_id, caller_id, call_stmt_id}")
-        parameter_mapping_list = self.loader.load_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
-
+        if self.phase == 2:
+            parameter_mapping_list = self.loader.load_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
+        else:
+            parameter_mapping_list = self.loader.load_parameter_mapping_p3((caller_id, call_stmt_id, callee_id)) 
         # apply parameter's state in callee_summary to args
         self.apply_parameter_semantic_summary(
             stmt_id, callee_id, callee_summary, callee_compact_space, parameter_mapping_list
