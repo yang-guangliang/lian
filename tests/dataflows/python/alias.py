@@ -121,7 +121,7 @@ def funcinfunc(a):
     bb = a[0]
 def funcarr(a):
     cc = a[0]
-    funcinfunc(arr)
+    funcinfunc(a)
 funcarr(arr)
 # # hh = 5
 # def func1(num):

@@ -71,8 +71,10 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_index_of_status_space(self, baseline_index, status, space, symbol_to_define):
-        
+    def adjust_index_of_status_space(self, baseline_index, status, space, symbol_to_define, symbol_bit_vector, state_bit_vector):
+
+        for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
+            symbol_def_nodes.index += baseline_index
         for symbol_def_nodes in symbol_to_define.values():
             for node in symbol_def_nodes:
                 node.index += baseline_index
@@ -160,7 +162,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         status = copy.deepcopy(self.loader.load_stmt_status_p2(method_id))
         symbol_state_space = self.loader.load_symbol_state_space_p2(method_id).copy()
         symbol_to_define = self.loader.load_method_symbol_to_define_p2(method_id).copy()
-        self.adjust_index_of_status_space(len(global_space), status, symbol_state_space, symbol_to_define)
+        symbol_bit_vector = copy.deepcopy(self.loader.load_symbol_bit_vector_p2(method_id))
+        state_bit_vector = self.loader.load_state_bit_vector_p2(method_id).copy()
+        self.adjust_index_of_status_space(len(global_space), status, symbol_state_space, symbol_to_define, symbol_bit_vector, state_bit_vector)
         frame.stmt_id_to_status = status
         frame.symbol_to_define = symbol_to_define
         for item in symbol_state_space:
@@ -170,7 +174,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(self.loader.load_method_internal_callees(method_id))
 
-        frame.symbol_bit_vector_manager = self.loader.load_symbol_bit_vector_p2(method_id).copy()
+        frame.symbol_bit_vector_manager = symbol_bit_vector
         frame.state_bit_vector_manager = self.loader.load_state_bit_vector_p2(method_id).copy()
         frame.method_def_use_summary = self.loader.load_method_def_use_summary(method_id).copy()
         frame.method_summary_template = self.loader.load_method_summary_template(method_id).copy()
@@ -302,8 +306,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling, set(), 3)
-        print(stmt_id)
-        print(new_out_states)
         new_defined_symbol_states = set()
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
             new_defined_symbol_states = defined_symbol.states
@@ -321,7 +323,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             frame.symbol_changed_stmts.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
-        # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
+        print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
 
 
         return change_flag
@@ -477,8 +479,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 self.path_manager.add_path(frame_path)
                 summary_instance: MethodSummaryInstance = self.loader.load_method_summary_instance(frame.call_site)
                 summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p3(frame.call_site)
-                print("summary_instance")
-                print(summary_instance)
                 if summary_instance and summary_compact_space:
                     self.save_analysis_summary_and_space(frame, summary_instance.copy(), summary_compact_space.copy(), caller_frame)
                     frame_stack.pop()
@@ -486,7 +486,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
                 # check if there is an available method summary
                 p2_summary_template = self.loader.load_method_summary_template(frame.method_id)
-                print(p2_summary_template)
                 # 如果没有summary->函数体为空->跳过
                 if util.is_empty(p2_summary_template):
                     frame_stack.pop()
