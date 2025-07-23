@@ -271,9 +271,7 @@ class UnitScopeHierarchyAnalysis:
         for stmt_id in self.class_stmt_ids:
             stmt = self.access_by_stmt_id(stmt_id)
             if util.is_available(stmt.fields):
-                #print(stmt)
                 fields_block = self.read_block(stmt.fields)
-                #print(fields_block)
                 variable_decl_stmts = fields_block.query(fields_block.operation == "variable_decl")
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
@@ -293,6 +291,18 @@ class UnitScopeHierarchyAnalysis:
                     util.add_to_dict_with_default_set(
                         self.class_id_to_class_method_ids, stmt_id, method_decl.stmt_id
                     )
+
+            if util.is_available(stmt.nested):
+                nested_block = self.read_block(stmt.nested)
+                class_decl_stmts = nested_block.query(nested_block.operation == "class_decl")
+                for class_decl in class_decl_stmts:
+                    item = self.scope_space.find_first_by_id(class_decl.stmt_id)
+                    item.scope_id = stmt_id
+
+                    util.add_to_dict_with_default_set(
+                        self.class_id_to_class_method_ids, stmt_id, method_decl.stmt_id
+                    )
+
 
         for stmt_id in self.method_stmt_ids:
             parameter_ids = set()

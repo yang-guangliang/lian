@@ -3261,12 +3261,14 @@ class StmtStateAnalysis:
 
                                 if method_class_id != first_found_class_id:
                                     continue
-
+                                data_type = LianInternal.METHOD_DECL
+                                if self.loader.is_class_decl(method.stmt_id):
+                                    data_type = LianInternal.CLASS_DECL
                                 state_index = self.create_state_and_add_space(
                                     status, stmt_id = stmt_id,
                                     source_symbol_id = method.stmt_id,
                                     source_state_id = each_receiver_state.source_state_id,
-                                    data_type = LianInternal.METHOD_DECL,
+                                    data_type = data_type,
                                     value = method.stmt_id,
                                     access_path = self.copy_and_extend_access_path(
                                         each_receiver_state.access_path,
