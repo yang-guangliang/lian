@@ -1122,6 +1122,14 @@ class StmtDefUseAnalysis:
             self.frame.method_def_use_summary.local_symbol_ids.add(symbol.symbol_id)
 
     def new_array_def_use(self, stmt_id, stmt):
+        used_symbol_list = []
+        for symbol in [stmt.data_type, stmt.length]:
+            if not util.isna(symbol):
+                used_symbol_list.append(
+                    self.create_symbol_or_state_and_add_space(stmt_id, symbol)
+                )
+            else:
+                used_symbol_list.append(-1)
         defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.target, stmt.data_type)
         self.add_status_with_symbol_id_sync(
             stmt,
