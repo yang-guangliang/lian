@@ -18,7 +18,7 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 CMD="python $ROOT_DIR/src/lian/interfaces/main.py"
 OUTPUT_PATH="$ROOT_DIR/tests/lian_workspace"
 # OPTIONS="run -f -p -d -l python,java,c -w $OUTPUT_PATH"
-OPTIONS="run -noextern -f -d -l python,php,javascript,java -w $OUTPUT_PATH"
+OPTIONS="run  -f -d -l python,php,javascript,java -w $OUTPUT_PATH"
 
 # echo $CMD $OPTIONS $TARGET_PATH
 # $CMD $OPTIONS $TARGET_PATH

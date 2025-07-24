@@ -51,6 +51,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
     ):
         super().__init__(app_manager, loader, resolver, compute_frame, None, analyzed_method_list)
         self.path_manager = path_manager
+        self.analyzed_method_list = analyzed_method_list
         self.phase = 3
 
     def get_method_summary(self, method_id):
@@ -150,59 +151,74 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
         return P2ResultFlag()
 
-    def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        # pprint.pprint(status)
-        target_index = status.defined_symbol
-        target_symbol: Symbol = self.frame.symbol_state_space[target_index]
+    # def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+    #     # pprint.pprint(status)
+    #     target_index = status.defined_symbol
+    #     target_symbol: Symbol = self.frame.symbol_state_space[target_index]
 
-        name_index = status.used_symbols[0]
-        name_symbol = self.frame.symbol_state_space[name_index]
-        name_states = self.read_used_states(name_index, in_states)
-        callee_method_ids = set()
-        callee_class_ids = set()
-        unsolved_callee_ids = set()
+    #     name_index = status.used_symbols[0]
+    #     name_symbol = self.frame.symbol_state_space[name_index]
+    #     name_states = self.read_used_states(name_index, in_states)
+    #     callee_method_ids = set()
+    #     callee_class_ids = set()
+    #     unsolved_callee_ids = set()
 
-        args = self.prepare_args(stmt_id, stmt, status, in_states)
+    #     args = self.prepare_args(stmt_id, stmt, status, in_states)
+    #     if util.is_empty(callee_info):
+    #         result = self.trigger_extern_callee(
+    #             stmt_id, stmt, status, in_states, unsolved_callee_ids, name_symbol, defined_symbol, args
+    #         )
+    #         if util.is_available(result):
+    #             return result
+    #         return P2ResultFlag()
+    #     if self.frame.callee_param != None:
+    #         # 放置到status中
+    #         self.frame.callee_param = None
+    #         pass
+    #     # TODO: JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
+    #     if name_symbol.name == LianInternal.THIS:
+    #         caller_id = self.frame.method_id
+    #         class_id = self.loader.convert_method_id_to_class_id(caller_id)
+    #         class_name = self.loader.convert_class_id_to_class_name(class_id)
+    #         methods_in_class = self.loader.load_methods_in_class(class_id)
+    #         for each_method in methods_in_class:
+    #             if each_method.name == class_name:
+    #                 if each_method.stmt_id != caller_id: # 不加自己
+    #                     if callee_id := util.str_to_int(each_method.stmt_id):
+    #                         callee_method_ids.add(callee_id)
 
-        if self.frame.callee_param != None:
-            # 放置到status中
-            self.frame.callee_param = None
-            pass
-        # TODO: JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
-        if name_symbol.name == LianInternal.THIS:
-            caller_id = self.frame.method_id
-            class_id = self.loader.convert_method_id_to_class_id(caller_id)
-            class_name = self.loader.convert_class_id_to_class_name(class_id)
-            methods_in_class = self.loader.load_methods_in_class(class_id)
-            for each_method in methods_in_class:
-                if each_method.name == class_name:
-                    if each_method.stmt_id != caller_id: # 不加自己
-                        if callee_id := util.str_to_int(each_method.stmt_id):
-                            callee_method_ids.add(callee_id)
+    #     this_state_set = set()
+    #     for each_state_index in name_states:
+    #         each_state = self.frame.symbol_state_space[each_state_index]
 
-        this_state_set = set()
-        for each_state_index in name_states:
-            each_state = self.frame.symbol_state_space[each_state_index]
+    #         if self.is_state_a_method_decl(each_state):
+    #             if each_state.value:
+    #                 source_state_id = each_state.source_state_id
+    #                 if source_state_id != each_state.state_id:
+    #                     this_state_set.update(
+    #                         self.resolver.obtain_parent_states(stmt_id, self.frame, status, each_state_index)
+    #                     )
+    #                 if callee_id := util.str_to_int(each_state.value):
+    #                     callee_method_ids.add(callee_id)
 
-            if self.is_state_a_method_decl(each_state):
-                if each_state.value:
-                    source_state_id = each_state.source_state_id
-                    if source_state_id != each_state.state_id:
-                        this_state_set.update(
-                            self.resolver.obtain_parent_states(stmt_id, self.frame, status, each_state_index)
-                        )
-                    if callee_id := util.str_to_int(each_state.value):
-                        callee_method_ids.add(callee_id)
+    #         elif self.is_state_a_class_decl(each_state):
+    #             callee_class_ids.add(each_state.value)
+    #             return self.new_object_stmt_state(stmt_id, stmt, status, in_states)
 
-            elif self.is_state_a_class_decl(each_state):
-                callee_class_ids.add(each_state.value)
-                return self.new_object_stmt_state(stmt_id, stmt, status, in_states)
+    #         else:
+    #             unsolved_callee_ids.add(each_state.value)
 
-            else:
-                unsolved_callee_ids.add(each_state.value)
-        return self.compute_target_method_states(
-            stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set
-        )
+    #     if len(callee_method_ids) == 0 and len(unsolved_callee_ids) != 0:
+    #         result = self.trigger_extern_callee(
+    #             stmt_id, stmt, status, in_states, unsolved_callee_ids, name_symbol, target_symbol, args
+    #         )
+    #         if util.is_available(result):
+    #             return result
+    #         return P2ResultFlag()
+        
+    #     return self.compute_target_method_states(
+    #         stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set
+    #     )
 
 
     def parameter_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):

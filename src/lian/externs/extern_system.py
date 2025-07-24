@@ -279,7 +279,7 @@ class ExternSystem:
     def exec_mock_code(self, rule, data):
         in_data = data.in_data
         args = in_data.args
-        in_data.state_analysis.compute_target_method_states(
+        data.out_data = in_data.state_analysis.compute_target_method_states(
             in_data.stmt_id, in_data.stmt, in_data.status, in_data.in_states, {rule.mock_id}, in_data.defined_symbol, args
         )
 

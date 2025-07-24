@@ -1828,8 +1828,8 @@ class StmtStateAnalysis:
             }
         )
         app_return = self.app_manager.notify(event)
-        if p2result_flag.interruption_flag:
-            return p2result_flag
+        if hasattr(event.out_data, "interruption_flag") and event.out_data.interruption_flag:
+            return event.out_data
 
         if er.is_event_unprocessed(app_return):
             unsolved_state_index = self.create_state_and_add_space(

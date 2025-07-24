@@ -48,16 +48,16 @@ from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
 
 class GlobalAnalysis(SemanticSummaryGeneration):
-    def __init__(self, lian):
+    def __init__(self, lian, analyzed_method_list):
         """
         初始化全局分析上下文：
         1. 定义敏感操作类型集合（调用语句、数组读取等）
         2. 初始化分析方法列表、路径管理器
         3. 调用父类初始化方法设置符号状态基础结构
         """
-        self.analyzed_method_list = set()
         self.path_manager = PathManager()
         super().__init__(lian)
+        self.analyzed_method_list = analyzed_method_list
         self.phase_name = AnalysisPhaseName.GlobalAnalysis
 
     def get_stmt_id_to_callee_info(self, callees):
@@ -75,6 +75,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
             symbol_def_nodes.index += baseline_index
+        for state_def_nodes in state_bit_vector.bit_pos_to_id.values():
+            state_def_nodes.index += baseline_index
         for symbol_def_nodes in symbol_to_define.values():
             for node in symbol_def_nodes:
                 node.index += baseline_index
@@ -127,7 +129,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             for row in method_body:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
-
+        print(self.analyzed_method_list)
+        print(666666666666666)
         frame.stmt_state_analysis = GlobalStmtStateAnalysis(
             app_manager = self.app_manager,
             loader = self.loader,

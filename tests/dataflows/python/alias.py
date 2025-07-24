@@ -116,23 +116,55 @@
 # ff = A.B
 # c = ff.func3
 
-arr = [1,2,3]
-def funcinfunc(a):
-    bb = a[0]
-def funcarr(a):
-    cc = a[0]
-    funcinfunc(a)
-funcarr(arr)
-# # hh = 5
-# def func1(num):
+# arr = [1,2,3]
+# # def funcinfunc(a):
+# #     bb = a[0]
+# t1 =  A()
+# t1.
+# def funcarr(a):
+#     cc = a[0]
+#     a[0] = 100
+#     # funcinfunc(a)
+# funcarr(arr)
+# dd = arr[0]
+# # # hh = 5
+# # def func1(num):
 
-#     num = num + 1
-#     # p = hh
-#     # print(66666666)
-#     # return num
+# #     num = num + 1
+# #     # p = hh
+# #     # print(66666666)
+# #     # return num
 
-# a = 3
+# # a = 3
 
-# b = func1(a)
+# # b = func1(a)
 
+# a = A()
+# b = a.g
 
+# # a1 = r1.f1
+# # b1 = a1.g1
+
+# foo(a)
+# www = b.f
+# p = a
+# sink(b.f)
+
+# def foo(z):
+#     x = z.g
+#     v = z
+#     w = nnn
+#     x.f = w
+#     hh = z
+#     pp = z.g
+#     dd = z.g.f
+def aa():
+    pass
+
+def bb():
+    c = aa
+    c()
+vvv = bb()
+
+a = b
+a = "b"
