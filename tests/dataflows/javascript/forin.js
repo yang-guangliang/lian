@@ -36,6 +36,7 @@ const fruits = ['apple', 'banana', 'cherry'];
 fruits.forEach((fruit, index) => {
   console.log(`Index ${index}: ${fruit}`);
 });
+call(adasdsadsa)
 
 // a = fruits.forEach
 

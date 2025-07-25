@@ -23,7 +23,7 @@ class EntryPointRule:
     unit_path: str = ""
     unit_name: str = ""
     method_id: int = -1
-    method_name: str = ""
+    method_name: list[str] = dataclasses.field(default_factory=list)
     attrs: list[str] = dataclasses.field(default_factory=list)
     args: str = ""
     return_type: str = ""
@@ -35,9 +35,9 @@ class EntryPointGenerator:
         self.loader:Loader = loader
         self.entry_points = set()
         self.entry_point_rules = [
-            EntryPointRule(method_name = LianInternal.UNIT_INIT),
-            EntryPointRule(lang = "java", method_name = "main", attrs = ["static"]),
-            EntryPointRule(lang = "abc", method_name = "func_main_0", attrs = ["static"]),
+            EntryPointRule(method_name = [LianInternal.UNIT_INIT]),
+            EntryPointRule(lang = "java", method_name = ["main"], attrs = ["static"]),
+            EntryPointRule(lang = "abc", method_name = ["func_main_0", "onWindowStageCreate"], attrs = ["static"]),
         ]
 
     def scan_js_ts_exported_method(self):
@@ -66,8 +66,8 @@ class EntryPointGenerator:
                     return True
                 continue
 
-            if rule.method_name:
-                if rule.method_name != method_name:
+            if len(rule.method_name) > 0:
+                if method_name not in rule.method_name:
                     continue
 
             if rule.attrs:
