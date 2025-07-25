@@ -1136,6 +1136,7 @@ class StmtDefUseAnalysis:
             StmtStatus(
                 stmt_id,
                 defined_symbol = defined_symbol,
+                used_symbols=used_symbol_list,
                 # default_data_type = stmt.data_type
             )
         )
