@@ -129,8 +129,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             for row in method_body:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
-        print(self.analyzed_method_list)
-        print(666666666666666)
+
         frame.stmt_state_analysis = GlobalStmtStateAnalysis(
             app_manager = self.app_manager,
             loader = self.loader,
