@@ -2273,29 +2273,46 @@ class Loader:
         return self._callee_parameter_mapping_p3_loader.load(*args)
     def save_parameter_mapping_p3(self, *args):
         return self._callee_parameter_mapping_p3_loader.save(*args)
-    def stmt_to_method_source_code(self, stmt_id):
+
+
+    def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
-        stmt = self.load_stmt_gir(stmt_id)
+        unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+        unit_gir = self.load_unit_gir(unit_id)
+        stmt_id_to_stmt = {}
+        for row in unit_gir:
+            stmt_id_to_stmt[row.stmt_id] = row
 
-        while(stmt.operation != 'method_decl'):
+        currrent_stmt = stmt_id_to_stmt.get(stmt_id)
+        while currrent_stmt and currrent_stmt.operation != 'method_decl':
+            parent_stmt_id = currrent_stmt.parent_stmt_id
+            currrent_stmt = stmt_id_to_stmt.get(parent_stmt_id)
 
-            stmt_id = stmt.parent_stmt_id
-            stmt = self.load_stmt_gir(stmt_id)
+        method_start_line = 0
+        method_end_line = -1
+        if currrent_stmt:
+            method_start_line = int(currrent_stmt.start_row)
+            method_end_line = int(currrent_stmt.end_row) + 1
 
-        method_start_line = int(stmt.start_row)
-        method_end_line = int(stmt.end_row) + 1
-        unit_id = stmt.unit_id
-        lang_name = self.convert_unit_id_to_lang_name(unit_id)
-        unit_path = self.convert_unit_id_to_unit_path(unit_id)
+        unit_info = self.convert_module_id_to_module_info(unit_id)
+        lang_name = unit_info.lang
+        unit_path = unit_info.original_path
 
         with open(unit_path, 'r') as f:
             lines = f.readlines()
         lines = [line.rstrip() for line in lines]
-        comment_start = method_start_line - 1
 
-        comment_start = util.determine_comment_line(lang_name, comment_start, lines)
+        method_start_line = method_start_line - 1
+        if method_start_line > 0:
+            method_start_line = util.determine_comment_line(lang_name, method_start_line, lines)
+        else:
+            method_start_line = 0
 
-        code_with_comment = lines[comment_start: method_end_line]
+        code_with_comment = []
+        if method_end_line > 0 and method_end_line < len(lines):
+            code_with_comment = lines[method_start_line: method_end_line]
+        else:
+            code_with_comment = lines[method_start_line:]
         return code_with_comment
 
     def print_context_info_for_debug(self, stmt_id, method_id):

@@ -256,15 +256,18 @@ class GIRParser:
         if util.is_empty(code):
             return
 
-        if f"{config.DEFAULT_WORKSPACE}/{config.EXTERNS_DIR}" in file_path:
-            event = EventData(lang_option, EventKind.MOCK_SOURCE_CODE_READY, code)
+        if not self.options.strict_parse_mode:
+            if f"{config.DEFAULT_WORKSPACE}/{config.EXTERNS_DIR}" in file_path:
+                event = EventData(lang_option, EventKind.MOCK_SOURCE_CODE_READY, code)
+                self.app_manager.notify(event)
+                code = event.out_data
+
+            event = EventData(lang_option, EventKind.ORIGINAL_SOURCE_CODE_READY, code)
             self.app_manager.notify(event)
             code = event.out_data
 
-        event = EventData(lang_option, EventKind.ORIGINAL_SOURCE_CODE_READY, code)
-        self.app_manager.notify(event)
         try:
-            tree = tree_sitter_parser.parse(bytes(event.out_data, 'utf8'))
+            tree = tree_sitter_parser.parse(bytes(code, 'utf8'))
         except:
             util.error("Failed to parse AST:", file_path)
             return
@@ -384,8 +387,13 @@ class LangAnalysis:
         current_node_id = self.init_start_stmt_id()
         for unit_info in all_units:
             # if row.symbol_type == constants.SymbolKind.UNIT_SYMBOL and row.unit_ext in extensions:
+            unit_path = ""
+            if self.options.strict_parse_mode:
+                unit_path = unit_info.original_path
+            else:
+                unit_path = unit_info.unit_path
             current_node_id, gir = gir_parser.deal_with_file_unit(
-                current_node_id, unit_info, unit_info.unit_path, lang_table = self.lang_table
+                current_node_id, unit_info, unit_path, lang_table = self.lang_table
             )
             gir_parser.add_unit_gir(unit_info, gir)
             current_node_id = self.adjust_node_id(current_node_id)
