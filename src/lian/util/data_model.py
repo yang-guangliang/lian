@@ -332,7 +332,9 @@ class Row:
                 pos = self._schema[name]
                 self._row[pos] = value
             else:
-                raise AttributeError(f"Unable to set properties '{name}'")
+                self._row.append(value)
+                self._schema[name] = len(self._row) - 1
+                #raise AttributeError(f"Unable to set properties '{name}'")
 
     def add_new_column(self, column_name, column_data):
         if column_name in self._schema:
