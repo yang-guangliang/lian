@@ -159,6 +159,8 @@
 #     pp = z.g
 #     dd = z.g.f
 def aa():
+    def infunc1():
+        pass
     pass
 
 def bb():

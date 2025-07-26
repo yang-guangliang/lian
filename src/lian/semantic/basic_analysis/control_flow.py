@@ -67,7 +67,8 @@ class ControlFlowAnalysis:
         # - search label;
         # - connect new edge
         for goto in self.goto:
-            self.cfg.graph.remove_edges_from(list(self.cfg.graph.out_edges(goto.stmt_id)))
+            if goto.stmt_id in self.cfg.graph:  # 检查节点是否存在
+                self.cfg.graph.remove_edges_from(list(self.cfg.graph.out_edges(goto.stmt_id)))
             for label in self.label:
                 if goto.name == label.name:
                     self.cfg.graph.add_edge(goto.stmt_id, label.stmt_id)
