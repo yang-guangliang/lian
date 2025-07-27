@@ -30,7 +30,8 @@ METHOD_DECL_OPERATION = {
 }
 
 FOR_STMT_OPERATION = {
-    "for_stmt"
+    "for_stmt",
+    "forin_stmt"
 }
 
 VARIABLE_DECL_OPERATION = {

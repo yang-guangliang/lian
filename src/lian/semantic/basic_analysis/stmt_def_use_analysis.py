@@ -920,12 +920,12 @@ class StmtDefUseAnalysis:
             else:
                 used_symbol_list.append(-1)
 
-        defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.name)
+        #defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.name)
         self.add_status_with_symbol_id_sync(
             stmt,
             StmtStatus(
                 stmt_id,
-                defined_symbol = defined_symbol,
+                #efined_symbol = defined_symbol,
                 used_symbols = used_symbol_list
             )
         )
