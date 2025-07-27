@@ -311,7 +311,7 @@ class UnitLevelLoader(GeneralLoader):
 
         return item_df
 
-class GLangIRLoader(UnitLevelLoader):
+class UnitGIRLoader(UnitLevelLoader):
     def save(self, unit_id, flattened_item):
         # print("flattened_item", flattened_item)
         # convert item_content to dataframe
@@ -1406,10 +1406,10 @@ class Loader:
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
             options,
-            os.path.join(options.workspace, config.MODULE_SYMBOLS_PATH),
+            os.path.join(self.semantic_path_p1, config.MODULE_SYMBOLS_PATH),
         )
 
-        self._gir_loader = GLangIRLoader(
+        self._gir_loader = UnitGIRLoader(
             options,
             # schema.gir_schema,
             [],
