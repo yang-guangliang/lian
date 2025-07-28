@@ -174,14 +174,10 @@
 class ABC:
     def func1(self):
         pass
-class BCD:
-    def func3(self):
-        pass
+
 def func2():
     pass
 a = ABC()
-dd = a.func1
 b = ABC.then
 c = func2
 b(c)
-h.then(func1).then(func2).then(func3)

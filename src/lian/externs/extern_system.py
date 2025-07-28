@@ -387,6 +387,7 @@ class ExternSystem:
 
         all_modelings["javascript"] = [
             Rule(method_name="call", model_method=js_api.js_call),
+            Rule(method_name="then", model_method=js_api.js_then),
         ]
 
         results = []
