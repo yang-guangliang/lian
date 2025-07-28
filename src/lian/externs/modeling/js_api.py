@@ -8,6 +8,7 @@ from lian.semantic.semantic_structs import (
 )
 
 def js_call(data: EventData):
+    print(33333333333333333333333)
     in_data = data.in_data
     stmt_id = in_data.stmt_id
     stmt = in_data.stmt
@@ -18,7 +19,7 @@ def js_call(data: EventData):
     frame = in_data.frame
     state_analysis = in_data.state_analysis
     args = in_data.args
-
+    
     this_symbol_index = status.used_symbols.pop(0)
     name_symbol: Symbol = frame.symbol_state_space[this_symbol_index]
     this_states = state_analysis.read_used_states(this_symbol_index, in_states)

@@ -38,6 +38,8 @@ fruits.forEach((fruit, index) => {
 });
 call(adasdsadsa)
 
+h.then(func1).then(func2).then(func3)
+
 // a = fruits.forEach
 
 // a = source()

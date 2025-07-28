@@ -963,7 +963,8 @@ class SemanticSummaryGeneration:
                 if symbol_id in current_symbol_ids: # 说明是我们需要放到summary中去的symbol
                      symbol = symbol_state_space[symbol_def_node.index]
                      # get old_states
-                     util.add_to_dict_with_default_set(symbol_id_to_old_state_indexes, symbol_id, symbol.states)
+                     if symbol:
+                        util.add_to_dict_with_default_set(symbol_id_to_old_state_indexes, symbol_id, symbol.states)
 
             # 统一更新所有小弟
             state_index_old_to_new = {}

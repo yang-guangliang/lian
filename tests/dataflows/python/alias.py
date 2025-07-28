@@ -158,15 +158,30 @@
 #     hh = z
 #     pp = z.g
 #     dd = z.g.f
-def aa():
-    def infunc1():
+# def aa():
+#     def infunc1():
+#         pass
+#     pass
+
+# def bb():
+#     c = aa
+#     c()
+# vvv = bb()
+
+# a = b
+# a = "b"
+
+class ABC:
+    def func1(self):
         pass
+class BCD:
+    def func3(self):
+        pass
+def func2():
     pass
-
-def bb():
-    c = aa
-    c()
-vvv = bb()
-
-a = b
-a = "b"
+a = ABC()
+dd = a.func1
+b = ABC.then
+c = func2
+b(c)
+h.then(func1).then(func2).then(func3)
