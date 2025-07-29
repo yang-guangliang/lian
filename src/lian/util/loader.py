@@ -452,6 +452,9 @@ class CallStmtIDToCallFormatInfoLoader:
         self.call_stmt_id_to_call_format_info = {}
         self.path = path
 
+    def load_all_call_stmt_id_to_call_format_info(self):
+        return self.call_stmt_id_to_call_format_info
+
     def save(self, call_stmt_id, call_format_info):
         self.call_stmt_id_to_call_format_info[call_stmt_id] = call_format_info
 
@@ -1950,6 +1953,8 @@ class Loader:
         return self._call_stmt_id_to_call_format_info_loader.load(stmt_id)
     def save_stmt_id_to_call_stmt_format(self, stmt_id, call_format_info):
         return self._call_stmt_id_to_call_format_info_loader.save(stmt_id, call_format_info)
+    def load_all_call_stmt_id_to_call_format_info(self):
+        return self._call_stmt_id_to_call_format_info_loader.load_all_call_stmt_id_to_call_format_info()
 
     def convert_method_id_to_method_decl_format(self, method_id):
         return self._method_id_to_method_decl_format_loader.load(method_id)

@@ -38,7 +38,7 @@ class ArgsParser:
             parser.add_argument("--strict-parse-mode", action="store_true", help="Enable the strict way to parse code")
 
 
-            parser.add_argument("-noextern", action="store_true", help="Disable the external processing module")
+            parser.add_argument("--noextern", action="store_true", help="Disable the external processing module")
 
         return self
 
