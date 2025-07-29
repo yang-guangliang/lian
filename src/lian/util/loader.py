@@ -1042,44 +1042,45 @@ class CallPathLoader:
         all_pathTuples = [(index, ap.path) for index, ap in enumerate(self.all_APaths)]
         DataModel(all_pathTuples,columns=schema.call_path_schema).save(self.path)
 
-class UnsolvedSymbolIDAssignerLoader:
+class UniqueSymbolIDAssignerLoader:
     def __init__(self, path):
         self.path = path
-        self.symbol_name_to_id = {}
-        self.symbol_id = config.BUILTIN_SYMBOL_START_ID
+        self.negative_symbol_id = config.BUILTIN_SYMBOL_START_ID
+        self.max_gir_id = config.DEFAULT_MAX_GIR_ID
+        self.positive_symbol_id = self.max_gir_id + config.POSITIVE_GIR_INTERVAL
 
-    def assign_new_id(self):
-        result = self.symbol_id
-        self.symbol_name_to_id[config.UNSOLVED_SYMBOL_NAME] = result
-        self.symbol_id -= 1
-        return result
+    def save_max_gir_id(self, max_gir_id):
+        self.max_gir_id = max_gir_id
+        self.positive_symbol_id = self.max_gir_id + config.POSITIVE_GIR_INTERVAL
 
-    def load(self, symbol_name):
-        if symbol_name in self.symbol_name_to_id:
-            return self.symbol_name_to_id[symbol_name]
+    def load_max_gir_id(self):
+        return self.max_gir_id
 
-        self.symbol_name_to_id[symbol_name] = self.symbol_id
-        self.symbol_id -= 1
-        return self.symbol_name_to_id[symbol_name]
+    def is_great_than_max_gir_id(self, symbol_id):
+        return symbol_id > self.max_gir_id
 
-    def save(self, symbol_name, symbol_id):
-        self.symbol_name_to_id[symbol_name] = symbol_id
+    def assign_new_unique_negative_id(self):
+        self.negative_symbol_id -= 1
+        return self.negative_symbol_id
+
+    def assign_new_unique_positive_id(self):
+        self.positive_symbol_id += 1
+        return self.positive_symbol_id
 
     def restore(self):
         df = DataModel().load(self.path)
         for row in df:
-            self.symbol_name_to_id[row.name] = row.symbol_id
-        if self.symbol_name_to_id:
-            self.symbol_id = min(self.symbol_id, min(self.symbol_name_to_id.values())) - 1
+            self.negative_symbol_id = row['negative_symbol_id']
+            self.positive_symbol_id = row['positive_symbol_id']
+            self.max_gir_id = row['max_gir_id']
+            break
 
     def export(self):
-        if len(self.symbol_name_to_id) == 0:
-            return
-
-        results = []
-        for symbol_name in sorted(self.symbol_name_to_id.keys()):
-            symbol_id = self.symbol_name_to_id[symbol_name]
-            results.append({"name": symbol_name, "symbol_id": symbol_id})
+        results = {
+            "negative_symbol_id": self.negative_symbol_id,
+            "positive_symbol_id": self.positive_symbol_id,
+            "max_gir_id": self.max_gir_id
+        }
         DataModel(results).save(self.path)
 
 class ImportGraphLoader:
@@ -1681,8 +1682,8 @@ class Loader:
             os.path.join(self.semantic_path_p3, config.METHOD_SUMMARY_INSTANCE_PATH),
         )
 
-        self._unsolved_symbol_id_assigner_loader = UnsolvedSymbolIDAssignerLoader(
-            os.path.join(self.semantic_path_p1, config.UNSOLVED_SYMBOL_ID_ASSIGNER_LOADER),
+        self._unique_symbol_id_assigner_loader = UniqueSymbolIDAssignerLoader(
+            os.path.join(self.gir_path, config.UNIQUE_SYMBOL_ID_ASSIGNER_LOADER),
         )
 
         self._call_graph_p1_loader = CallGraphP1Loader(
@@ -2066,12 +2067,16 @@ class Loader:
     def load_unit_symbol_decl_summary(self, unit_id):
         return self._unit_symbol_decl_summary_loader.load(unit_id)
 
-    def save_unsolved_symbol_name_and_id(self, symbol_name, symbol_id):
-        return self._unsolved_symbol_id_assigner_loader.save(symbol_name, symbol_id)
-    def load_unsolved_symbol_id_by_name(self, symbol_name):
-        return self._unsolved_symbol_id_assigner_loader.load(symbol_name)
-    def assign_new_unsolved_symbol_id(self):
-        return self._unsolved_symbol_id_assigner_loader.assign_new_id()
+    def save_max_gir_id(self, max_gir_id):
+        return self._unique_symbol_id_assigner_loader.save_max_gir_id(max_gir_id)
+    def load_max_gir_id(self):
+        return self._unique_symbol_id_assigner_loader.load_max_gir_id()
+    def is_great_than_max_gir_id(self, symbol_id):
+        return self._unique_symbol_id_assigner_loader.is_great_than_max_gir_id(symbol_id)
+    def assign_new_unique_positive_id(self):
+        return self._unique_symbol_id_assigner_loader.assign_new_unique_positive_id()
+    def assign_new_unique_negative_id(self):
+        return self._unique_symbol_id_assigner_loader.assign_new_unique_negative_id()
 
     def save_symbol_name_to_scope_ids(self, *args):
         return self._symbol_name_to_scope_ids_loader.save(*args)

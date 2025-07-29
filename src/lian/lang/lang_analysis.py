@@ -399,6 +399,8 @@ class LangAnalysis:
             current_node_id = self.adjust_node_id(current_node_id)
             # if self.options.debug:
             #     gir_parser.export()
+
+        self.loader.save_max_gir_id(current_node_id)
         gir_parser.export()
 
         self.loader.export()

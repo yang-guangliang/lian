@@ -122,5 +122,8 @@ METHOD_DEF_USE_SUMMARY_PATH                 = "method_def_use_summary"
 METHOD_SUMMARY_TEMPLATE_PATH                = "method_summary_template"
 METHOD_SUMMARY_INSTANCE_PATH                = "method_summary_instance"
 
-UNSOLVED_SYMBOL_ID_ASSIGNER_LOADER          = "unsolved_symbol_ids"
+UNIQUE_SYMBOL_ID_ASSIGNER_LOADER            = "unique_symbol_ids"
 UNSOLVED_SYMBOL_NAME                        = "%%%%unsolved_symbols"
+POSITIVE_GIR_INTERVAL                       = 10000
+DEFAULT_MAX_GIR_ID                          = 100000000
+
