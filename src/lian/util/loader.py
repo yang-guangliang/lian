@@ -1051,7 +1051,10 @@ class UniqueSymbolIDAssignerLoader:
 
     def save_max_gir_id(self, max_gir_id):
         self.max_gir_id = max_gir_id
-        self.positive_symbol_id = self.max_gir_id + config.POSITIVE_GIR_INTERVAL
+        # 计算基础值（原逻辑）
+        base_value = self.max_gir_id + config.POSITIVE_GIR_INTERVAL
+        # 向上取整到 POSITIVE_GIR_INTERVAL 的整数倍（抹掉后面几位）
+        self.positive_symbol_id = (base_value + config.POSITIVE_GIR_INTERVAL - 1) // config.POSITIVE_GIR_INTERVAL * config.POSITIVE_GIR_INTERVAL
 
     def load_max_gir_id(self):
         return self.max_gir_id
@@ -1076,11 +1079,11 @@ class UniqueSymbolIDAssignerLoader:
             break
 
     def export(self):
-        results = {
+        results = [{
             "negative_symbol_id": self.negative_symbol_id,
             "positive_symbol_id": self.positive_symbol_id,
             "max_gir_id": self.max_gir_id
-        }
+        }]
         DataModel(results).save(self.path)
 
 class ImportGraphLoader:
