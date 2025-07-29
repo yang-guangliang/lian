@@ -647,6 +647,44 @@ class MethodsInClassLoader(UnitIDToMethodIDLoader):
                 results.append([method.unit_id, method.class_id, method.name, method.stmt_id])
         DataModel(results, columns = schema.class_id_to_method_id_schema).save(self.path)
 
+class SaveExternalSymbolIDCollectionLoader:
+    def __init__(self, path):
+        self.path = path
+        self.method_id_to_external_symbol_id_collection = {}
+
+    def save_external_symbol_id_collection(self, method_id, external_symbol_id_collection):
+        results = set()
+        if isinstance(external_symbol_id_collection, dict):
+            for symbol_name, symbol_id in external_symbol_id_collection.items():
+                results.add(symbol_id)
+        elif isinstance(external_symbol_id_collection, list):
+            results = set(external_symbol_id_collection)
+        else:
+            results = external_symbol_id_collection
+        self.method_id_to_external_symbol_id_collection[method_id] = results
+
+    def load_external_symbol_id_collection(self, method_id):
+        return self.method_id_to_external_symbol_id_collection.get(method_id, {})
+
+    def export(self):
+        if len(self.method_id_to_external_symbol_id_collection) == 0:
+            return
+        results = []
+        for (method_id, external_symbol_id_collection) in self.method_id_to_external_symbol_id_collection.items():
+            results.append({
+                'method_id': method_id,
+                'external_symbol_id_collection': external_symbol_id_collection
+            })
+        DataModel(results).save(self.path)
+
+    def restore(self):
+        df = DataModel().load(self.path)
+        for row in df:
+            method_id = row.raw_data()['method_id']
+            external_symbol_id_collection = row.raw_data()['external_symbol_id_collection']
+            self.method_id_to_external_symbol_id_collection[method_id] = external_symbol_id_collection
+
+
 class EntryPointsLoader:
     def __init__(self, path):
         self.path = path
@@ -1539,6 +1577,10 @@ class Loader:
             os.path.join(self.semantic_path_p1, config.ENTRY_POINTS_PATH)
         )
 
+        self._external_symbol_id_collection_loader = SaveExternalSymbolIDCollectionLoader(
+            os.path.join(self.gir_path, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
+        )
+
         self._cfg_loader: CFGLoader = CFGLoader(
             options,
             schema.control_flow_graph_schema,
@@ -1971,6 +2013,11 @@ class Loader:
         return self._unit_id_to_stmt_id_loader.load_all_stmt_ids(*args)
     def load_all_unit_ids(self, *args):
         return self._unit_id_to_stmt_id_loader.load_all_unit_ids(*args)
+
+    def save_method_external_symbol_id_collection(self, *args):
+        self._external_symbol_id_collection_loader.save_external_symbol_id_collection(*args)
+    def load_method_external_symbol_id_collection(self, *args):
+        return self._external_symbol_id_collection_loader.load_external_symbol_id_collection(*args)
 
     def convert_unit_id_to_variable_ids(self, *args):
         return self._unit_id_to_variable_id_loader.load_key_to_values(*args)

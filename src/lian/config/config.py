@@ -64,6 +64,8 @@ SYMBOL_NAME_TO_SCOPE_IDS_PATH               = "symbol_name_to_scope_ids"
 SCOPE_ID_TO_SYMBOL_INFO_PATH                = "scope_to_symbol_info"
 SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH        = "scope_to_available_scope_ids"
 
+EXTERNAL_SYMBOL_ID_COLLECTION_PATH          = "external_symbol_id_collection"
+
 CALL_STMT_ID_TO_INFO_PATH                   = "call_stmt_id_to_info"
 CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH       = "call_stmt_format"
 METHOD_ID_TO_METHOD_DECL_FORMAT_PATH        = "method_decl_format"
