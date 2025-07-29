@@ -264,7 +264,7 @@ class StmtDefUseAnalysis:
                 self.unit_id, self.method_id, stmt_id, stmt, used_symbol
             )
             if util.is_available(source_info):
-                if source_info.symbol_id == stmt_id or source_info.symbol_id < 0:
+                if source_info.symbol_id == stmt_id or self.loader.is_great_than_max_gir_id(source_info.symbol_id):
                     if used_symbol.name in self.external_symbol_id_collection:
                         source_info.symbol_id = self.external_symbol_id_collection[used_symbol.name]
                     else:

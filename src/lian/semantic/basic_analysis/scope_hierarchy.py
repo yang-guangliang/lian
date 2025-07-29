@@ -124,6 +124,12 @@ class UnitScopeHierarchyAnalysis:
 
             elif row.operation in IMPORT_OPERATION:
                 scope_id = self.determine_scope(row.parent_stmt_id)
+                alias = util.read_stmt_field(row.alias)
+                name = util.read_stmt_field(row.name)
+                if self.options.strict_parse_mode:
+                    if util.is_empty(alias):
+                        alias = name.split(".")[-1]
+
                 import_scope = Scope(
                     unit_id = self.unit_id,
                     stmt_id = stmt_id,
@@ -131,8 +137,8 @@ class UnitScopeHierarchyAnalysis:
                     parent_stmt_id= row.parent_stmt_id,
                     scope_kind = SymbolKind.IMPORT_STMT,
                     source = util.read_stmt_field(row.source),
-                    name = util.read_stmt_field(row.name),
-                    alias = util.read_stmt_field(row.alias),
+                    name = name,
+                    alias = alias,
                     attrs = util.read_stmt_field(row.attrs, "public")
                 )
                 self.scope_space.add(import_scope)
