@@ -3,6 +3,7 @@
 import os
 import pprint
 import re
+import sys
 import yaml
 import dataclasses
 import lian.apps.event_return as er
@@ -365,30 +366,39 @@ class ExternSystem:
         return er.EventHandlerReturnKind.SUCCESS
 
     def register_model_methods(self):
+        # 不要写死，用options配置
         all_modelings = dict()
+        if hasattr(self.options, "extern_path") and self.options.extern_path:
+            all_modelings[self.options.lang] = []
+            sys.path.append(self.options.extern_path)  # 添加绝对路径
+            from extern.modeling import abc_modeling
+            method_name_to_model = abc_modeling.METHOD_NAME_TO_MODEL
+            for key, value in method_name_to_model:
+                all_modelings[self.options.lang].append(Rule(method_name=key, model_method=value))
+                
+        else:
+            all_modelings[config.ANY_LANG] = []
 
-        all_modelings[config.ANY_LANG] = []
+            all_modelings["python"] = []
 
-        all_modelings["python"] = []
+            all_modelings["java"] = []
 
-        all_modelings["java"] = []
+            all_modelings["csharp"] = []
 
-        all_modelings["csharp"] = []
+            all_modelings["llvm"] = []
 
-        all_modelings["llvm"] = []
+            all_modelings["abc"] = []
 
-        all_modelings["abc"] = []
+            all_modelings["php"] = []
 
-        all_modelings["php"] = []
+            all_modelings["typescript"] = []
 
-        all_modelings["typescript"] = []
+            all_modelings["arkts"] = []
 
-        all_modelings["arkts"] = []
-
-        all_modelings["javascript"] = [
-            Rule(method_name="call", model_method=js_api.js_call),
-            Rule(method_name="then", model_method=js_api.js_then),
-        ]
+            all_modelings["javascript"] = [
+                Rule(method_name="call", model_method=js_api.js_call),
+                Rule(method_name="then", model_method=js_api.js_then),
+            ]
 
         results = []
         for lang in all_modelings:

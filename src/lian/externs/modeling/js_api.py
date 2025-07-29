@@ -106,3 +106,5 @@ def js_then(data: EventData):
     data.out_data = state_analysis.compute_target_method_states(
         stmt_id, stmt, status, in_states, real_method_ids, defined_symbol, real_args, this_states
     )
+
+METHOD_NAME_TO_MODEL = {'then':js_then, 'call':js_call}
