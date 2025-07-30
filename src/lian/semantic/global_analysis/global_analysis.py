@@ -187,6 +187,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         frame.symbol_graph.graph = symbol_graph
 
         frame.method_summary_instance.copy_template_to_instance(frame.method_summary_template)
+        self.adjust_symbol_to_define_and_init_bit_vector(frame, method_id)
         return frame
 
     def collect_external_symbol_states(self, frame: ComputeFrame, stmt_id, stmt, symbol_id, summary: MethodSummaryTemplate, old_key_state_indexes: set):
