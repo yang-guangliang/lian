@@ -576,15 +576,15 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             util.debug("\n\t++++++++++++++++++++++++++++++++++++++++++++++++\n"
                        "\t======== Phase III analysis is ongoing =========\n"
                        "\t++++++++++++++++++++++++++++++++++++++++++++++++\n")
-
+        global_space = SymbolStateSpace()
         for entry_point in self.loader.load_entry_points():
             # for path in self.call_graph.find_paths(entry_point):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
-            global_space = SymbolStateSpace()
+            
             frame_stack = self.init_frame_stack(entry_point, global_space)
             result = self.analyze_frame_stack(frame_stack, global_space)
-            self.loader.save_symbol_state_space_p3((0, 0, 0), global_space)
+        self.loader.save_symbol_state_space_p3((0, 0, 0), global_space)
 
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader._call_path_p3_loader.export()
