@@ -369,12 +369,12 @@ class ExternSystem:
         # 不要写死，用options配置
         all_modelings = dict()
         if hasattr(self.options, "extern_path") and self.options.extern_path:
-            all_modelings[self.options.lang] = []
+            all_modelings["abc"] = []
             sys.path.append(self.options.extern_path)  # 添加绝对路径
-            from extern.modeling import abc_modeling
+            from externs.modeling import abc_modeling
             method_name_to_model = abc_modeling.METHOD_NAME_TO_MODEL
-            for key, value in method_name_to_model:
-                all_modelings[self.options.lang].append(Rule(method_name=key, model_method=value))
+            for key, value in method_name_to_model.items():
+                all_modelings["abc"].append(Rule(method_name=key, model_method=value))
                 
         else:
             all_modelings[config.ANY_LANG] = []

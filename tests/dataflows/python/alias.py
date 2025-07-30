@@ -171,13 +171,27 @@
 # a = b
 # a = "b"
 
-class ABC:
-    def func1(self):
+# class ABC:
+#     def func1(self):
+#         pass
+
+# def func2():
+#     pass
+# a = ABC()
+# b = ABC.then
+# c = func2
+# b(c)
+
+def func1():
+    def infunc():
         pass
 
+    c = infunc
+    
 def func2():
+    def infunc():
+        pass
+
+    c = infunc
+    
     pass
-a = ABC()
-b = ABC.then
-c = func2
-b(c)
