@@ -127,17 +127,17 @@
 #     # funcinfunc(a)
 # funcarr(arr)
 # dd = arr[0]
-# # # hh = 5
-# # def func1(num):
+# hh = 5
+def func1(num):
 
-# #     num = num + 1
-# #     # p = hh
-# #     # print(66666666)
-# #     # return num
+    num = num + 1
+    # p = hh
+    print(66666666)
+    return num
 
-# # a = 3
+a = 3
 
-# # b = func1(a)
+b = func1(a)
 
 # a = A()
 # b = a.g

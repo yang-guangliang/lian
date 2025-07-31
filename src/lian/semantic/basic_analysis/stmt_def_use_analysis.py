@@ -1225,7 +1225,7 @@ class StmtDefUseAnalysis:
 
     def addr_of_def_use(self, stmt_id, stmt):
         used_symbol_list = []
-        for symbol in [stmt.source]:
+        for symbol in [stmt.source, stmt.array, stmt.index, stmt.receiver, stmt.field]:
             if not util.isna(symbol):
                 used_symbol_list.append(
                     self.create_symbol_or_state_and_add_space(stmt_id, symbol)

@@ -582,7 +582,6 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # for path in self.call_graph.find_paths(entry_point):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
-            
             frame_stack = self.init_frame_stack(entry_point, global_space)
             result = self.analyze_frame_stack(frame_stack, global_space)
         self.loader.save_symbol_state_space_p3((0, 0, 0), global_space)
