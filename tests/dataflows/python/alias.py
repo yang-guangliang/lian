@@ -128,16 +128,21 @@
 # funcarr(arr)
 # dd = arr[0]
 # hh = 5
+def func2():
+    a = b
+    pass
 def func1(num):
 
     num = num + 1
     # p = hh
-    print(66666666)
+    # print(66666666)
+    # func2()
+    # func2()
     return num
 
 a = 3
 
-b = func1(a)
+c = func1(a)
 
 # a = A()
 # b = a.g
@@ -182,16 +187,16 @@ b = func1(a)
 # c = func2
 # b(c)
 
-def func1():
-    def infunc():
-        pass
+# def func1():
+#     def infunc():
+#         pass
 
-    c = infunc
+#     c = infunc
     
-def func2():
-    def infunc():
-        pass
+# def func2():
+#     def infunc():
+#         pass
 
-    c = infunc
+#     c = infunc
     
-    pass
+#     pass

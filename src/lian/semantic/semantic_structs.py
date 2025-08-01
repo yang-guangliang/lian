@@ -526,6 +526,7 @@ class State(BasicElement):
     source_symbol_id: int = -1
     source_state_id: int = -1
     access_path: list[AccessPoint] = dataclasses.field(default_factory=list)
+    call_site: tuple[int, int, int] = (0, 0, 0)
 
     def __post_init__(self):
         if self.state_id == -1:
@@ -549,6 +550,7 @@ class State(BasicElement):
             "stmt_id"               : self.stmt_id,
             "state_id"              : self.state_id,
             "name"                  : None,
+            "call_site"             : str(self.call_site),
             "default_data_type"     : None,
             "states"                : None,
             "state_type"            : self.state_type,
@@ -563,13 +565,13 @@ class State(BasicElement):
             "access_path"           : [p.to_dict_str() for p in self.access_path],
         }
 
-        if isinstance(_id, tuple):
-            result["caller_id"] = _id[0]
-            result["call_stmt_id"] = _id[1]
-            result["method_id"] = _id[2]
-            result["hash_id"] = hash(_id)
-        else:
-            result["method_id"] = _id
+        # if isinstance(_id, tuple):
+        #     result["caller_id"] = _id[0]
+        #     result["call_stmt_id"] = _id[1]
+        #     result["method_id"] = _id[2]
+        #     result["hash_id"] = hash(_id)
+        # else:
+        result["method_id"] = _id
 
         return result
 
@@ -591,6 +593,7 @@ class State(BasicElement):
         return State(
             stmt_id = stmt_id,
             state_id = self.state_id,
+            call_site = copy.deepcopy(self.call_site),
             symbol_or_state = self.symbol_or_state,
             state_type = self.state_type,
             data_type = self.data_type,
@@ -627,6 +630,7 @@ class Symbol(BasicElement):
     symbol_or_state: SymbolOrState = SymbolOrState.SYMBOL
     symbol_id: int = -1
     source_unit_id: int = -1
+    call_site: tuple[int, int, int] = (0, 0, 0)
 
     # def get_id(self):
     #     return self.symbol_id
@@ -643,6 +647,7 @@ class Symbol(BasicElement):
             symbol_or_state = self.symbol_or_state,
             symbol_id = self.symbol_id,
             source_unit_id = self.source_unit_id,
+            call_site = copy.deepcopy(self.call_site),
         )
 
     def to_dict(self, counter, _id):
@@ -653,6 +658,7 @@ class Symbol(BasicElement):
             "source_unit_id": self.source_unit_id,
             "symbol_id": self.symbol_id,
             "name": self.name,
+            "call_site": str(self.call_site),
             "default_data_type": self.default_data_type,
             "states": list(self.states),
             "state_id": -1,
@@ -662,13 +668,13 @@ class Symbol(BasicElement):
             "array": None,
         }
 
-        if isinstance(_id, tuple):
-            result["caller_id"] = _id[0]
-            result["call_stmt_id"] = _id[1]
-            result["method_id"] = _id[2]
-            result["hash_id"] = hash(_id)
-        else:
-            result["method_id"] = _id
+        # if isinstance(_id, tuple):
+        #     result["caller_id"] = _id[0]
+        #     result["call_stmt_id"] = _id[1]
+        #     result["method_id"] = _id[2]
+        #     result["hash_id"] = hash(_id)
+        # else:
+        result["method_id"] = _id
 
         return result
 

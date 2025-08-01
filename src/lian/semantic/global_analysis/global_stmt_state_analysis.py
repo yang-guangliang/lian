@@ -27,6 +27,7 @@ from lian.semantic.semantic_structs import (
     Argument,
     MethodCallArguments,
     PathManager,
+    StateDefNode,
     StmtStatus,
     Symbol,
     State,
@@ -73,7 +74,52 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             path_str += f"-@-{path[i-2]}->-{path[i-1]}"
 
         print(f"current path: {path_str}")
+    def create_state_and_add_space(
+            self, status: StmtStatus, stmt_id, source_symbol_id = -1, source_state_id = -1, value = "", data_type = "",
+            state_type = StateTypeKind.REGULAR, access_path = [], overwritten_flag = False
+    ):
+        """
+        创建新状态并加入符号空间：
+        1. 构造State对象
+        2. 添加至符号状态空间
+        3. 更新状态定义集合
+        4. 处理外部符号关联
+        """
+        item = State(
+            stmt_id = stmt_id,
+            value = value,
+            source_symbol_id = source_symbol_id,
+            source_state_id = source_state_id,
+            data_type = str(data_type),
+            state_type = state_type,
+            access_path = access_path,
+            fields = {},
+            array = [],
+            call_site = self.frame.path[-3:]
+        )
 
+        index = self.frame.symbol_state_space.add(item)
+        state_def_node = StateDefNode(index=index, state_id=item.state_id, stmt_id=stmt_id)
+        util.add_to_dict_with_default_set(
+            self.frame.state_to_define,
+            item.state_id,
+            state_def_node
+        )
+
+        # if state_def_node not in self.frame.all_state_defs:
+        #     self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
+        #     self.frame.all_state_defs.add(state_def_node)
+        # status.defined_states.add(index)
+
+        # 如果新建的state是基于我们在generate_external_state里手动给的state，说明该symbol也被我们define了，需添加到define集合中
+        if overwritten_flag and source_state_id in self.frame.initial_state_to_external_symbol:
+            symbol_id = self.frame.initial_state_to_external_symbol[source_state_id]
+            if symbol_id in self.frame.method_def_use_summary.used_this_symbol_id:
+                self.frame.method_def_use_summary.defined_this_symbol_id.add(symbol_id)
+            else:
+                self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
+        return index
+    
     def compute_target_method_states(
         self, stmt_id, stmt, status, in_states,
         callee_method_ids, target_symbol, args,

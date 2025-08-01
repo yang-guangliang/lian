@@ -71,7 +71,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_index_of_status_space(self, baseline_index, status, space, symbol_to_define, symbol_bit_vector, state_bit_vector):
+    def adjust_index_of_status_space(self, baseline_index, status, frame, space, symbol_to_define, symbol_bit_vector, state_bit_vector):
 
         for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
             symbol_def_nodes.index += baseline_index
@@ -106,6 +106,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                     for index in value_set:
                         new_set.add(index + baseline_index)
                     each_space.fields[each_field] = new_set
+            each_space.call_site = frame.path[-3:]
         # print(space)
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
@@ -157,16 +158,16 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         if len(frame_stack) > 2:
             frame.path = frame_stack[-2].path + (frame.call_stmt_id, frame.method_id)
+            
             frame_path = APath(frame.path)
             self.path_manager.add_path(frame_path)
-
         # avoid changing the content of the loader
         status = copy.deepcopy(self.loader.load_stmt_status_p2(method_id))
         symbol_state_space = self.loader.load_symbol_state_space_p2(method_id).copy()
         symbol_to_define = self.loader.load_method_symbol_to_define_p2(method_id).copy()
         symbol_bit_vector = copy.deepcopy(self.loader.load_symbol_bit_vector_p2(method_id))
         state_bit_vector = self.loader.load_state_bit_vector_p2(method_id).copy()
-        self.adjust_index_of_status_space(len(global_space), status, symbol_state_space, symbol_to_define, symbol_bit_vector, state_bit_vector)
+        self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, symbol_to_define, symbol_bit_vector, state_bit_vector)
         frame.stmt_id_to_status = status
         frame.symbol_to_define = symbol_to_define
         for item in symbol_state_space:
@@ -584,7 +585,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             # print(f"all paths in II: {self.path_manager.paths}")
             frame_stack = self.init_frame_stack(entry_point, global_space)
             result = self.analyze_frame_stack(frame_stack, global_space)
-        self.loader.save_symbol_state_space_p3((0, 0, 0), global_space)
+        self.loader.save_symbol_state_space_p3(0, global_space)
 
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader._call_path_p3_loader.export()
