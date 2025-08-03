@@ -308,10 +308,7 @@ class SemanticSummaryGeneration:
             if each_parent_stmt_id in frame.stmt_id_to_status:
                 status.in_symbol_bits |= frame.stmt_id_to_status[each_parent_stmt_id].out_symbol_bits
 
-        if self.phase_name == AnalysisPhaseName.SemanticSummaryGeneration:
-            if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
-                return
-        elif self.phase_name == AnalysisPhaseName.GlobalAnalysis:
+        if self.phase_name in [AnalysisPhaseName.SemanticSummaryGeneration, AnalysisPhaseName.GlobalAnalysis]:
             if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
 

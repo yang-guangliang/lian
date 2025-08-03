@@ -100,18 +100,19 @@
 
 #     sms = SmsManager.getDefault()
 #     sms.sendTextMessage("+49 1234", None, a.attr.b, None, None)  # sink, leak
-# class A:
-#     class B:
-#         def __init__(self):
-#             self.b = 7
-#         def func3(self):
-#             return self.b
-#     def __init__(self):
-#         self.attr = 5
-#     def func1(self):
-#         self.attr = 6
-#     def func2(self):
-#         self.func1()
+class A:
+    class B:
+        def __init__(self):
+            self.b = 7
+        def func3(self):
+            return self.b
+    def __init__(self):
+        self.attr = 5
+    def func1(cls):
+        cls.attr = 6
+        cls()
+    def func2(self):
+        self.func1()
 
 # ff = A.B
 # c = ff.func3
@@ -130,8 +131,7 @@
 # hh = 5
 def func2(p):
     a = b
-    p = p + 1
-    return p 
+    return p + 1
 def func1(num):
 
     num = num + 1

@@ -2334,7 +2334,20 @@ class Loader:
     def save_parameter_mapping_p3(self, *args):
         return self._callee_parameter_mapping_p3_loader.save(*args)
 
+    def convert_stmt_id_to_method_id(self, stmt_id):
+        unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+        unit_gir = self.load_unit_gir(unit_id)
+        stmt_id_to_stmt = {}
+        for row in unit_gir:
+            stmt_id_to_stmt[row.stmt_id] = row
 
+        currrent_stmt = stmt_id_to_stmt.get(stmt_id)
+        while currrent_stmt and currrent_stmt.operation != 'method_decl':
+            parent_stmt_id = currrent_stmt.parent_stmt_id
+            currrent_stmt = stmt_id_to_stmt.get(parent_stmt_id)
+
+        return currrent_stmt.stmt_id
+    
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)

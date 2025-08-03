@@ -1908,7 +1908,7 @@ class StmtStateAnalysis:
                         callee_method_ids.add(callee_id)
 
             #  what if it calls class_constructor.  e.g., o = A()
-            elif self.is_state_a_class_decl(each_state):
+            elif self.is_state_a_class_decl(each_state) or each_state.data_type == LianInternal.THIS:
                 return self.new_object_stmt_state(stmt_id, stmt, status, in_states)
 
             else:
