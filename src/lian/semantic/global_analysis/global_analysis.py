@@ -512,6 +512,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
             result: P2ResultFlag = self.analyze_stmts(frame)
             if util.is_available(result) and result.interruption_flag:
+                frame.interruption_flag = True
                 data: InterruptionData = result.interruption_data
                 new_callee = False
                 frame.args_list = data.args_list
@@ -530,7 +531,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             summary, space = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
             self.save_analysis_summary_and_space(frame, summary, space, caller_frame)
             self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
-            self.loader.save_method_symbol_to_define_p3(0, frame.symbol_to_define)
+            self.loader.save_method_symbol_to_define_p3(frame.call_site, frame.symbol_to_define)
             # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
             # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)

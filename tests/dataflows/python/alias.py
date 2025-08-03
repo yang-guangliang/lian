@@ -128,21 +128,23 @@
 # funcarr(arr)
 # dd = arr[0]
 # hh = 5
-def func2():
+def func2(p):
     a = b
-    pass
+    p = p + 1
+    return p 
 def func1(num):
 
     num = num + 1
     # p = hh
     # print(66666666)
     # func2()
-    # func2()
+    c = func2(3)
+    nn = c
     return num
 
 a = 3
 
-c = func1(a)
+b = func1(a)
 
 # a = A()
 # b = a.g

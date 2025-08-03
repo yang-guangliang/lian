@@ -312,7 +312,7 @@ class SemanticSummaryGeneration:
             if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
         elif self.phase_name == AnalysisPhaseName.GlobalAnalysis:
-            if status.in_symbol_bits == old_in_symbol_bits:
+            if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
         current_bits = status.in_symbol_bits
