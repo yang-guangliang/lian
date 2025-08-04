@@ -3,15 +3,14 @@ from vllm.executor.tpu_executor import TPUExecutor
 
 # class ExecutorBase(ABC):
 #     def __init__(self, vllm_config):
-#         self.vllm_config = vllm_config
-#         self._init_executor()
+#         self._init_executor(vllm_config)
 
 # class NeuronExecutor(ExecutorBase):
-#     def _init_executor(self) -> None:
-#         torch.load(self.vllm_config.bin_file)
+#     def _init_executor(self, vllm_config) -> None:
+#         torch.load(vllm_config.bin_file)
 
 # class TPUExecutor(ExecutorBase):
-#     def _init_executor(self) -> None:
+#     def _init_executor(self, vllm_config) -> None:
 #         self.worker()
 
 class LLMEngine: # 污点是vllm_config

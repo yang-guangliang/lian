@@ -96,7 +96,7 @@ class Resolver:
             # if it is an import stmt, check the target unit's import information
             export_symbols = self.loader.load_unit_export_symbols(unit_id)
             if export_symbols:
-                import_info = export_symbols.query(export_symbols.symbol_id == symbol_id)
+                import_info = export_symbols.query(export_symbols.import_stmt == symbol_id)
                 for each_import in import_info:
                     if self.loader.is_class_decl(each_import.symbol_id):
                         result.append(each_import.symbol_id)
