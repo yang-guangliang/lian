@@ -396,8 +396,7 @@ class ImportHierarchy:
         for each_stmt in import_stmts:
             self.analyze_import_stmt(unit_id, unit_info, each_stmt, results)
 
-        print(results)
-        print(55555555555555555555555555555)
+
         self.loader.save_unit_export_symbols(unit_id, results)
 
     def debug_import_graph(self):

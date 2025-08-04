@@ -36,7 +36,6 @@ def resolve_this_field_method(data: EventData):
     if len(receiver_states) != 0:
         for each_receiver_state_index in receiver_states:
             each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
-            print(each_receiver_state)
             if hasattr(each_receiver_state, "data_type") and each_receiver_state.data_type == LianInternal.THIS:
                 this_flag = True
                 break
