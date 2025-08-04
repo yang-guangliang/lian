@@ -160,6 +160,12 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             self.map_arguments(args, parameters, current_parameter_mapping_list, new_call_site, 3)
             parameter_mapping_list.extend(current_parameter_mapping_list)
 
+        classes_of_method = []
+        for index in this_state_set:
+            print(index)
+            instance_state = self.frame.symbol_state_space[index]
+            if self.is_state_a_class_decl(instance_state):
+                classes_of_method.append(instance_state.value)
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
             return P2ResultFlag(
@@ -170,7 +176,8 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                     caller_id = self.frame.method_id,
                     call_stmt_id = stmt_id,
                     callee_ids = callee_ids_to_be_analyzed,
-                    args_list = parameter_mapping_list
+                    args_list = parameter_mapping_list,
+                    classes_of_method = classes_of_method,
                 ),
             )
 
