@@ -1557,7 +1557,7 @@ class MetaComputeFrame:
     content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)
 
 class ComputeFrame(MetaComputeFrame):
-    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None):
+    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = []):
         super().__init__(method_id)
         self.has_been_inited = False
         self.method_id = method_id
@@ -1620,6 +1620,8 @@ class ComputeFrame(MetaComputeFrame):
         self.args_list = None
         self.params_list = params_list
         self.callee_param = None
+        self.classes_of_method = classes_of_method
+        self.callee_classes_of_method = []
 
 class ComputeFrameStack:
     def __init__(self):
@@ -1672,6 +1674,7 @@ class InterruptionData:
     call_stmt_id: int = -1
     callee_ids: list = dataclasses.field(default_factory=list)
     args_list: list = dataclasses.field(default_factory=list)
+    classes_of_method: list = dataclasses.field(default_factory=list)
 
 @dataclasses.dataclass
 class P2ResultFlag:

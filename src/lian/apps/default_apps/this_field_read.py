@@ -50,6 +50,10 @@ def resolve_this_field_method(data: EventData):
     current_method_id = frame.method_id
     current_class_id = loader.convert_method_id_to_class_id(current_method_id)
     methods_in_class = loader.load_methods_in_class(current_class_id)
+
+    for each_class in frame.classes_of_method:
+        method_in_current_class = loader.load_methods_in_class(each_class)
+        methods_in_class.extend(method_in_current_class)
     method_name = loader.convert_method_id_to_method_name(current_method_id)
     class_name = loader.convert_class_id_to_class_name(current_class_id)
     # print("methods_in_class: \n",methods_in_class)

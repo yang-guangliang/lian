@@ -3,7 +3,7 @@
 import pprint
 import re
 import networkx as nx
-
+import pdb
 from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
@@ -256,6 +256,7 @@ class ImportHierarchy:
         return (matched_nodes, import_path_list)
 
     def parse_import_path_from_current_dir(self, import_path_str, parent_module_id):
+        pdb.set_trace()
         remaining_import_path = import_path_str.split(".")
         if len(remaining_import_path) == 0:
             return [], []
@@ -313,6 +314,8 @@ class ImportHierarchy:
         return new_node
 
     def analyze_import_stmt(self, unit_id, unit_info, stmt, external_symbols = []):
+        # if unit_id == 13:
+        # pdb.set_trace()
         if self.validate_import_stmt(unit_info, stmt) == INVALID:
             return external_symbols
 
@@ -387,6 +390,8 @@ class ImportHierarchy:
         for each_stmt in import_stmts:
             self.analyze_import_stmt(unit_id, unit_info, each_stmt, results)
 
+        print(results)
+        print(55555555555555555555555555555)
         self.loader.save_unit_export_symbols(unit_id, results)
 
     def debug_import_graph(self):
