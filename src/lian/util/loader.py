@@ -2341,12 +2341,71 @@ class Loader:
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
 
-        currrent_stmt = stmt_id_to_stmt.get(stmt_id)
-        while currrent_stmt and currrent_stmt.operation != 'method_decl':
-            parent_stmt_id = currrent_stmt.parent_stmt_id
-            currrent_stmt = stmt_id_to_stmt.get(parent_stmt_id)
+        current_stmt = stmt_id_to_stmt.get(stmt_id)
+        while current_stmt and current_stmt.operation != 'method_decl':
+            parent_stmt_id = current_stmt.parent_stmt_id
+            current_stmt = stmt_id_to_stmt.get(parent_stmt_id)
 
-        return currrent_stmt.stmt_id
+        return current_stmt.stmt_id
+    
+    # llm_driven_sec 项目所需API
+    def get_call_stmt_context(self, stmt_id):
+        context = {}
+        # 获取文件信息
+        unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+        unit_info = self.convert_module_id_to_module_info(unit_id)
+        unit_path = unit_info.original_path
+        context["file_path"] = unit_path        # 拿到文件路径
+        # 获取 GIR 通过 GIR 找到 class 和 caller 信息
+        unit_gir = self.load_unit_gir(unit_id)
+        stmt_id_to_stmt = {}
+        for row in unit_gir:
+            stmt_id_to_stmt[row.stmt_id] = row
+
+        current_stmt = stmt_id_to_stmt.get(stmt_id)
+        method_stmt = current_stmt
+        while method_stmt and method_stmt.operation != 'method_decl':
+            parent_stmt_id = method_stmt.parent_stmt_id
+            method_stmt = stmt_id_to_stmt.get(parent_stmt_id)
+        context["method_name"] = method_stmt.name # 拿到方法名
+        class_id = self.convert_method_id_to_class_id(method_stmt.stmt_id)
+        class_name = self.convert_class_id_to_class_name(class_id)
+        if util.is_empty(class_name):
+            class_name = "None"
+        context["class_name"] = class_name # 拿到类名
+
+        method_start_line = int(method_stmt.start_row)
+        method_end_line = int(method_stmt.end_row) + 1
+
+        with open(unit_path, 'r') as f:
+            lines = f.readlines()
+        lines = [line.rstrip() for line in lines]
+
+        method_start_line = method_start_line - 1
+        if method_start_line > 0:
+            method_start_line = util.determine_comment_line(lang_name, method_start_line, lines)
+        else:
+            method_start_line = 0
+
+        code_with_comment = []
+        if method_end_line > 0 and method_end_line < len(lines):
+            code_with_comment = lines[method_start_line: method_end_line]
+        else:
+            code_with_comment = lines[method_start_line:]
+        context["method_source_code"] = code_with_comment
+        
+        stmt_start_line = int(current_stmt.start_row)
+        stmt_end_line = int(current_stmt.end_row) + 1
+        if stmt_end_line > 0 and stmt_end_line < len(lines):
+            stmt_source_code = lines[stmt_start_line: stmt_end_line]
+        else:
+            stmt_source_code = lines[stmt_start_line:]
+        context["stmt_source_code"] = stmt_source_code
+        context["callee_name"] = current_stmt.name
+        context["call_site"] = (method_name, stmt_source_code)
+
+        # 获取文件的 import 语句
+        
     
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
@@ -2356,16 +2415,16 @@ class Loader:
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
 
-        currrent_stmt = stmt_id_to_stmt.get(stmt_id)
-        while currrent_stmt and currrent_stmt.operation != 'method_decl':
-            parent_stmt_id = currrent_stmt.parent_stmt_id
-            currrent_stmt = stmt_id_to_stmt.get(parent_stmt_id)
+        current_stmt = stmt_id_to_stmt.get(stmt_id)
+        while current_stmt and current_stmt.operation != 'method_decl':
+            parent_stmt_id = current_stmt.parent_stmt_id
+            current_stmt = stmt_id_to_stmt.get(parent_stmt_id)
 
         method_start_line = 0
         method_end_line = -1
-        if currrent_stmt:
-            method_start_line = int(currrent_stmt.start_row)
-            method_end_line = int(currrent_stmt.end_row) + 1
+        if current_stmt:
+            method_start_line = int(current_stmt.start_row)
+            method_end_line = int(current_stmt.end_row) + 1
 
         unit_info = self.convert_module_id_to_module_info(unit_id)
         lang_name = unit_info.lang
