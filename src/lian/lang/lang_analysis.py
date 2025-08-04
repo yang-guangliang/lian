@@ -139,12 +139,6 @@ class GIRProcessing:
 
         if not isinstance(stmt_content, dict):
             return
-
-        if flattened_node["stmt_id"] == 27:
-            print(3333333333333333333333333333333)
-            print(stmt_content)
-            print(stmt)
-
             
         for mykey, myvalue in stmt_content.items():
             if isinstance(myvalue, list):

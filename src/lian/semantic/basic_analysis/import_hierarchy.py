@@ -256,7 +256,6 @@ class ImportHierarchy:
         return (matched_nodes, import_path_list)
 
     def parse_import_path_from_current_dir(self, import_path_str, parent_module_id):
-        pdb.set_trace()
         remaining_import_path = import_path_str.split(".")
         if len(remaining_import_path) == 0:
             return [], []
@@ -332,6 +331,7 @@ class ImportHierarchy:
         if import_path_str.startswith("."):
             import_path_str = import_path_str[1:]
         import_path: list = import_path_str.split(".")
+        parent_module_id = 0
         if len(import_path) > 0:
             first_path = import_path[0]
             for each_node in self.symbol_id_to_symbol_node.values():
