@@ -471,7 +471,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                             call_stmt_id = call_stmt_id,
                             loader = self.loader,
                             space = global_space,
-                            params_list = frame.args_list
+                            params_list = frame.args_list,
+                            classes_of_method = frame.callee_classes_of_method,
                         )
                         frame_stack.add(new_frame)
                         children_done_flag = False
@@ -516,6 +517,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 data: InterruptionData = result.interruption_data
                 new_callee = False
                 frame.args_list = data.args_list
+                frame.callee_classes_of_method = data.classes_of_method
                 for callee_id in data.callee_ids:
                     key = (data.caller_id, data.call_stmt_id, callee_id)
                     # print(key)

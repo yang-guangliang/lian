@@ -3,7 +3,7 @@
 import pprint
 import re
 import networkx as nx
-
+import pdb
 from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
@@ -313,6 +313,8 @@ class ImportHierarchy:
         return new_node
 
     def analyze_import_stmt(self, unit_id, unit_info, stmt, external_symbols = []):
+        # if unit_id == 13:
+        # pdb.set_trace()
         if self.validate_import_stmt(unit_info, stmt) == INVALID:
             return external_symbols
 
@@ -328,8 +330,15 @@ class ImportHierarchy:
         # 搜索相对路径
         if import_path_str.startswith("."):
             import_path_str = import_path_str[1:]
+        import_path: list = import_path_str.split(".")
+        parent_module_id = 0
+        if len(import_path) > 0:
+            first_path = import_path[0]
+            for each_node in self.symbol_id_to_symbol_node.values():
+                if each_node.symbol_name == first_path:
+                    parent_module_id = each_node.scope_id
         import_nodes, remaining = self.parse_import_path_from_current_dir(
-            import_path_str, unit_info.parent_module_id
+            import_path_str, parent_module_id
         )
         import_nodes = self.check_import_stmt_analysis_results(
             unit_info, stmt, import_nodes, remaining
@@ -386,6 +395,7 @@ class ImportHierarchy:
         results = []
         for each_stmt in import_stmts:
             self.analyze_import_stmt(unit_id, unit_info, each_stmt, results)
+
 
         self.loader.save_unit_export_symbols(unit_id, results)
 
