@@ -1856,6 +1856,8 @@ class Loader:
 
         unit_id = self._unit_id_to_method_id_loader.load_value_to_key(method_id)
         unit_gir = self._gir_loader.load(unit_id)
+        if util.is_empty(unit_gir):
+            return (None, None)
         method_decl_stmt = unit_gir.query_first(unit_gir.stmt_id.eq(method_id))
         method_parameters = unit_gir.read_block(method_decl_stmt.parameters)
         result = (method_decl_stmt, method_parameters)
@@ -2351,61 +2353,97 @@ class Loader:
     # llm_driven_sec 项目所需API
     def get_call_stmt_context(self, stmt_id):
         context = {}
-        # 获取文件信息
+        # 获取文件路径
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         unit_info = self.convert_module_id_to_module_info(unit_id)
-        unit_path = unit_info.original_path
-        context["file_path"] = unit_path        # 拿到文件路径
-        # 获取 GIR 通过 GIR 找到 class 和 caller 信息
-        unit_gir = self.load_unit_gir(unit_id)
-        stmt_id_to_stmt = {}
-        for row in unit_gir:
-            stmt_id_to_stmt[row.stmt_id] = row
+        context["file_path"] = unit_info.original_path
 
-        current_stmt = stmt_id_to_stmt.get(stmt_id)
+        # 加载 GIR 和构建映射
+        unit_gir = self.load_unit_gir(unit_id)
+        stmt_map = {row.stmt_id: row for row in unit_gir}
+
+        # 获取当前语句和方法信息
+        current_stmt = stmt_map.get(stmt_id)
         method_stmt = current_stmt
         while method_stmt and method_stmt.operation != 'method_decl':
-            parent_stmt_id = method_stmt.parent_stmt_id
-            method_stmt = stmt_id_to_stmt.get(parent_stmt_id)
-        context["method_name"] = method_stmt.name # 拿到方法名
-        class_id = self.convert_method_id_to_class_id(method_stmt.stmt_id)
-        class_name = self.convert_class_id_to_class_name(class_id)
-        if util.is_empty(class_name):
-            class_name = "None"
-        context["class_name"] = class_name # 拿到类名
-
-        method_start_line = int(method_stmt.start_row)
-        method_end_line = int(method_stmt.end_row) + 1
-
-        with open(unit_path, 'r') as f:
-            lines = f.readlines()
-        lines = [line.rstrip() for line in lines]
-
-        method_start_line = method_start_line - 1
-        if method_start_line > 0:
-            method_start_line = util.determine_comment_line(lang_name, method_start_line, lines)
-        else:
-            method_start_line = 0
-
-        code_with_comment = []
-        if method_end_line > 0 and method_end_line < len(lines):
-            code_with_comment = lines[method_start_line: method_end_line]
-        else:
-            code_with_comment = lines[method_start_line:]
-        context["method_source_code"] = code_with_comment
+            method_stmt = stmt_map.get(method_stmt.parent_stmt_id)
         
-        stmt_start_line = int(current_stmt.start_row)
-        stmt_end_line = int(current_stmt.end_row) + 1
+        # 设置方法和类信息
+        context["caller_name"] = method_stmt.name # 拿到方法名
+        class_id = self.convert_method_id_to_class_id(method_stmt.stmt_id)
+        context["class_name"] = self.convert_class_id_to_class_name(class_id) or "None"
+
+        # 读取文件内容
+        with open(unit_info.original_path, 'r') as f:
+            lines = [line.rstrip() for line in f]
+
+        # 获取方法源码
+        method_start = max(0, int(method_stmt.start_row) - 1)
+        if method_start > 0:
+            method_start = util.determine_comment_line(unit_info.lang, method_start, lines)
+        method_end = min(len(lines), int(method_stmt.end_row) + 1)
+        context["caller_source_code"] = lines[method_start: method_end]
+        
+        # 获取当前语句源码
+        context["callee_source_code"] = self.get_stmt_source_code(lines, current_stmt)
+        context["callee_name"] = current_stmt.name
+        context["call_site"] = [method_stmt.name, current_stmt.name, "true_call_name"]
+
+        # 获取文件的 import 语句
+        scope_hierarchy = self.load_unit_scope_hierarchy(unit_id)
+        if scope_hierarchy:
+            import_stmts = scope_hierarchy.query(
+                (scope_hierarchy.scope_id == 0) &
+                (scope_hierarchy.scope_kind == SymbolKind.IMPORT_STMT)
+            )
+            context["import_stmts"] = [
+                self.get_stmt_source_code(lines, stmt_map.get(each_stmt.stmt_id)) 
+                for each_stmt in import_stmts
+            ]
+        else:
+            context["import_stmts"] = []
+        
+        # 获取类继承信息
+        type_graph = self.load_type_graph()
+        if util.is_empty(type_graph):
+            context["class_inheritance"] = "None"
+        else: 
+            class_inheritance = []
+            for edge in type_graph.graph.edges(data='weight'):
+                class_inheritance.append({
+                    "type_id": edge[0],
+                    "parent_type_id": edge[1],
+                    "name": edge[2].name,
+                    "parent_pos": edge[2].parent_pos,
+                    "parent_name": edge[2].parent_name
+                })
+        # 从类继承信息中找到父类，子类信息
+        class_inheritance_info = {
+            "parent_name": "无父类",
+            "child_name": "无子类"
+        }
+        for each_class in class_inheritance:
+            if each_class["type_id"] == class_id and each_class["parent_type_id"] != -1:
+                class_inheritance_info["parent_name"] = each_class["parent_name"]
+            if each_class["parent_type_id"] == class_id:
+                class_inheritance_info["child_name"] = each_class["name"]
+        context["class_inheritance"] = class_inheritance_info
+        
+
+        return context
+    
+    def get_stmt_source_code(self, lines, stmt):
+        stmt_start_line = 0
+        stmt_end_line = -1
+        stmt_start_line = int(stmt.start_row)
+        stmt_end_line = int(stmt.end_row) + 1
+
+        stmt_source_code = []
         if stmt_end_line > 0 and stmt_end_line < len(lines):
             stmt_source_code = lines[stmt_start_line: stmt_end_line]
         else:
             stmt_source_code = lines[stmt_start_line:]
-        context["stmt_source_code"] = stmt_source_code
-        context["callee_name"] = current_stmt.name
-        context["call_site"] = (method_name, stmt_source_code)
-
-        # 获取文件的 import 语句
-        
+        return stmt_source_code
     
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
