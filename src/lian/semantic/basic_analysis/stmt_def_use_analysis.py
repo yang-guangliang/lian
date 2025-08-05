@@ -263,8 +263,9 @@ class StmtDefUseAnalysis:
             source_info = self.resolver.resolve_symbol_source(
                 self.unit_id, self.method_id, stmt_id, stmt, used_symbol
             )
+            #print("source_info:", self.unit_id, self.method_id, stmt_id, stmt, used_symbol, source_info)
             if util.is_available(source_info):
-                if source_info.symbol_id == stmt_id or self.loader.is_great_than_max_gir_id(source_info.symbol_id):
+                if source_info.symbol_id == stmt_id or source_info.symbol_id < 0:
                     if used_symbol.name in self.external_symbol_id_collection:
                         source_info.symbol_id = self.external_symbol_id_collection[used_symbol.name]
                     else:
@@ -784,12 +785,14 @@ class StmtDefUseAnalysis:
                 break
 
         if not found_flag:
-            index = self.create_symbol_and_add_space(stmt_id, name)
-            if index != -1:
-                status.implicitly_defined_symbols.append(index)
-                symbol = self.symbol_state_space[index]
-                symbol.source_unit_id = self.unit_id
-                symbol.symbol_id = self.loader.assign_new_unique_positive_id()
+            # index = self.create_symbol_and_add_space(stmt_id, name)
+            # if index != -1:
+            #     status.implicitly_defined_symbols.append(index)
+            #     symbol = self.symbol_state_space[index]
+            #     symbol.source_unit_id = self.unit_id
+            #     symbol.symbol_id = self.loader.assign_new_unique_positive_id()
+            defined_symbol.source_unit_id = self.unit_id
+            defined_symbol.symbol_id = self.loader.assign_new_unique_positive_id()
 
     def export_stmt_def_use(self, stmt_id, stmt):
         target = stmt.alias

@@ -133,18 +133,20 @@ SymbolKind = util.SimpleEnum({
     "CALL_STMT"                     : 7,
     "EXPORT_STMT"                   : 8,
 
-    "BLOCK_KIND"                   : 9,
-    "METHOD_KIND"                  : 10,
-    "CLASS_KIND"                   : 11,
-    "NAMESPACE_KIND"               : 12,
-    "UNIT_KIND"                    : 13,
-    "BUILTIN_KIND"                 : 14,
-    "FOR_KIND"                     : 15
+    "BLOCK_KIND"                    : 9,
+    "METHOD_KIND"                   : 10,
+    "CLASS_KIND"                    : 11,
+    "NAMESPACE_KIND"                : 12,
+    "UNIT_KIND"                     : 13,
+    "BUILTIN_KIND"                  : 14,
+    "FOR_KIND"                      : 15,
+    "UNKNOWN_KIND"                  : 16,
 })
 
 ImportGraphEdgeKind = util.SimpleEnum({
     "INTERNAL_SYMBOL"              : 0,
     "EXTERNAL_SYMBOL"              : 1,
+    "UNSOLVED_SYMBOL"              : 2,
 })
 
 

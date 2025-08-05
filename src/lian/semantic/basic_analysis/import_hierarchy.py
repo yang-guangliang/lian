@@ -47,12 +47,15 @@ class ImportHierarchy:
         )
         self.symbol_id_to_symbol_node[symbol_id] = import_node
         self.add_import_graph_edge(parent_node_id, symbol_id)
+        return import_node
 
     def add_import_graph_edge(self, parent_node_id, node_id, edge_kind = ImportGraphEdgeKind.INTERNAL_SYMBOL):
         if (
             parent_node_id in self.symbol_id_to_symbol_node
             and node_id in self.symbol_id_to_symbol_node
         ):
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
+        elif edge_kind == ImportGraphEdgeKind.UNSOLVED_SYMBOL:
             self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
 
     def add_import_deps(self, unit_id, node_id):
@@ -375,6 +378,20 @@ class ImportHierarchy:
         #     util.error_and_quit_with_stmt_info(
         #         unit_info.original_path, stmt, "Import Error: import module path not found"
         #     )
+
+        fake_node_id = self.loader.assign_new_unique_positive_id()
+        fake_node = self.add_import_graph_node(
+            symbol_type=SymbolKind.UNKNOWN_KIND,
+            symbol_id=fake_node_id,
+            symbol_name=alias,
+            parent_node_id=stmt.parent_stmt_id,
+            import_stmt=stmt.stmt_id,
+            unit_id=unit_id,
+        )
+        self.add_import_graph_edge(unit_id, fake_node_id, edge_kind = ImportGraphEdgeKind.UNSOLVED_SYMBOL)
+        external_symbols.append(fake_node)
+
+        #print(external_symbols)
         return external_symbols
 
 
