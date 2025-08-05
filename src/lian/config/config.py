@@ -3,7 +3,7 @@ import os
 import platform
 
 EMPTY                                       = 0
-START_INDEX                                 = 10
+START_INDEX                                 = 100
 DEBUG_FLAG                                  = False
 STRING_MAX_LEN                              = 200
 MAX_PRIORITY                                = 100
