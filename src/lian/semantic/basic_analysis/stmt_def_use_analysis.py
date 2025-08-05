@@ -402,9 +402,10 @@ class StmtDefUseAnalysis:
         packed_positional_args_info = []
         named_args_info = []
         packed_named_args_info = []
-        # print("stmt", stmt)
-        # print("positional_args", positional_args)
-        # print("args_list", args_list)
+        print("stmt", stmt)
+        print("positional_args", positional_args)
+        print("args_list", args_list)
+        print(stmt_id)
         if positional_args:
             for index, arg in enumerate(positional_args):
                 index =  arg_symbol_list[index]

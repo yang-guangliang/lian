@@ -458,12 +458,12 @@ class Parser(common_parser.Parser):
         shadow_decorator = self.parse(decorator, statements)
 
         target = self.tmp_variable()
-        self.append_stmts(statements,
-            node, {"call_stmt": {"target": target, "name": shadow_decorator, "positional_args": [name]}}
-        )
-        self.append_stmts(statements,
-            node, {"assign_stmt": {"target": name, "operand": target}}
-        )
+        # self.append_stmts(statements,
+        #     node, {"call_stmt": {"target": target, "name": shadow_decorator, "positional_args": [name]}}
+        # )
+        # self.append_stmts(statements,
+        #     node, {"assign_stmt": {"target": name, "operand": target}}
+        # )
 
     def check_declaration_handler(self, node):
         return self.DECLARATION_HANDLER_MAP.get(node.type, None)
