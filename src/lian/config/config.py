@@ -27,7 +27,7 @@ DEFAULT_WORKSPACE                           = "lian_workspace"
 MODULE_SYMBOLS_FILE                         = "module_symbols"
 SOURCE_CODE_DIR                             = "src"
 EXTERNS_DIR                                 = "externs"
-GIR_DIR                                     = "unit_gir"
+BASIC_DIR                                   = "basic"
 SEMANTIC_DIR_P1                             = "semantic_p1"
 SEMANTIC_DIR_P2                             = "semantic_p2"
 SEMANTIC_DIR_P3                             = "semantic_p3"
@@ -65,6 +65,7 @@ SCOPE_ID_TO_SYMBOL_INFO_PATH                = "scope_to_symbol_info"
 SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH        = "scope_to_available_scope_ids"
 
 EXTERNAL_SYMBOL_ID_COLLECTION_PATH          = "external_symbol_id_collection"
+UNIQUE_SYMBOL_IDS_PATH                      = "unique_symbol_ids"
 
 CALL_STMT_ID_TO_INFO_PATH                   = "call_stmt_id_to_info"
 CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH       = "call_stmt_format"
@@ -117,14 +118,13 @@ TYPE_GRAPH_PATH                             = "type_graph"
 
 SYMBOL_GRAPH_BUNDLE_PATH                    = "symbol_graph"
 SYMBOL_GRAPH_BUNDLE_PATH_P3                 = "symbol_graph_p3"
-CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2        = "callee_parameter_mapping_p2"
-CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3        = "callee_parameter_mapping_p3"
+CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2     = "callee_parameter_mapping_p2"
+CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3     = "callee_parameter_mapping_p3"
 
 METHOD_DEF_USE_SUMMARY_PATH                 = "method_def_use_summary"
 METHOD_SUMMARY_TEMPLATE_PATH                = "method_summary_template"
 METHOD_SUMMARY_INSTANCE_PATH                = "method_summary_instance"
 
-UNIQUE_SYMBOL_ID_ASSIGNER_LOADER            = "unique_symbol_ids"
 UNSOLVED_SYMBOL_NAME                        = "%%%%unsolved_symbols"
 POSITIVE_GIR_INTERVAL                       = 10000
 DEFAULT_MAX_GIR_ID                          = 100000000

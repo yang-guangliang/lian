@@ -20,7 +20,7 @@ class WorkspaceBuilder:
         self.clang_installed = False
         self.c_like_extensions = LANG_EXTENSIONS.get('c', []) + LANG_EXTENSIONS.get('cpp', [])
         self.required_subdirs = [
-            config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.GIR_DIR,
+            config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.BASIC_DIR,
             config.SEMANTIC_DIR_P1, config.SEMANTIC_DIR_P2, config.SEMANTIC_DIR_P3
         ]
         self.header_keywords = [

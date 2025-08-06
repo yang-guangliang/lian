@@ -139,7 +139,7 @@ class GIRProcessing:
 
         if not isinstance(stmt_content, dict):
             return
-            
+
         for mykey, myvalue in stmt_content.items():
             if isinstance(myvalue, list):
                 if not self.is_gir_format(myvalue):
@@ -374,7 +374,7 @@ class LangAnalysis:
             self.options,
             self.app_manager,
             self.loader,
-            os.path.join(self.options.workspace, config.GIR_DIR)
+            os.path.join(self.options.workspace, config.BASIC_DIR)
         )
         all_units = self.loader.load_all_unit_info()
         #all_units = [unit for unit in all_units if unit.lang !='c' or (unit.lang == 'c' and unit.unit_ext == '.i')]

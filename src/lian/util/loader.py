@@ -647,7 +647,7 @@ class MethodsInClassLoader(UnitIDToMethodIDLoader):
                 results.append([method.unit_id, method.class_id, method.name, method.stmt_id])
         DataModel(results, columns = schema.class_id_to_method_id_schema).save(self.path)
 
-class SaveExternalSymbolIDCollectionLoader:
+class ExternalSymbolIDCollectionLoader:
     def __init__(self, path):
         self.path = path
         self.method_id_to_external_symbol_id_collection = {}
@@ -680,9 +680,7 @@ class SaveExternalSymbolIDCollectionLoader:
     def restore(self):
         df = DataModel().load(self.path)
         for row in df:
-            method_id = row.raw_data()['method_id']
-            external_symbol_id_collection = row.raw_data()['external_symbol_id_collection']
-            self.method_id_to_external_symbol_id_collection[method_id] = external_symbol_id_collection
+            self.method_id_to_external_symbol_id_collection[row.method_id] = row.external_symbol_id_collection
 
 
 class EntryPointsLoader:
@@ -1100,7 +1098,7 @@ class UniqueSymbolIDAssignerLoader:
     def load_max_gir_id(self):
         return self.max_gir_id
 
-    def is_great_than_max_gir_id(self, symbol_id):
+    def is_greater_than_max_gir_id(self, symbol_id):
         return symbol_id > self.max_gir_id
 
     def assign_new_unique_negative_id(self):
@@ -1114,9 +1112,9 @@ class UniqueSymbolIDAssignerLoader:
     def restore(self):
         df = DataModel().load(self.path)
         for row in df:
-            self.negative_symbol_id = row['negative_symbol_id']
-            self.positive_symbol_id = row['positive_symbol_id']
-            self.max_gir_id = row['max_gir_id']
+            self.negative_symbol_id = row.negative_symbol_id
+            self.positive_symbol_id = row.positive_symbol_id
+            self.max_gir_id = row.max_gir_id
             break
 
     def export(self):
@@ -1443,7 +1441,7 @@ class Loader:
     # This is our file system manager
     def __init__(self, options, apps):
         self.options = options
-        self.gir_path = os.path.join(options.workspace, config.GIR_DIR)
+        self.basic_path = os.path.join(options.workspace, config.BASIC_DIR)
         self.semantic_path_p1 = os.path.join(options.workspace, config.SEMANTIC_DIR_P1)
         self.semantic_path_p2 = os.path.join(options.workspace, config.SEMANTIC_DIR_P2)
         self.semantic_path_p3 = os.path.join(options.workspace, config.SEMANTIC_DIR_P3)
@@ -1458,8 +1456,24 @@ class Loader:
             options,
             # schema.gir_schema,
             [],
-            os.path.join(self.gir_path, config.GIR_BUNDLE_PATH),
+            os.path.join(self.basic_path, config.GIR_BUNDLE_PATH),
             config.GIR_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
+        self._unique_symbol_id_assigner_loader = UniqueSymbolIDAssignerLoader(
+            os.path.join(self.basic_path, config.UNIQUE_SYMBOL_IDS_PATH),
+        )
+
+        self._external_symbol_id_collection_loader = ExternalSymbolIDCollectionLoader(
+            os.path.join(self.basic_path, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
+        )
+
+        self._cfg_loader: CFGLoader = CFGLoader(
+            options,
+            schema.control_flow_graph_schema,
+            os.path.join(self.basic_path, config.CFG_BUNDLE_PATH),
+            config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
@@ -1492,7 +1506,7 @@ class Loader:
         )
 
         self._unit_id_to_stmt_id_loader: UnitIDToStmtIDLoader = UnitIDToStmtIDLoader(
-            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_STMT_ID_PATH)
+            os.path.join(self.basic_path, config.UNIT_ID_TO_STMT_ID_PATH)
         )
 
         self._unit_id_to_method_id_loader: UnitIDToMethodIDLoader = UnitIDToMethodIDLoader(
@@ -1575,18 +1589,6 @@ class Loader:
 
         self._entry_points_loader: EntryPointsLoader = EntryPointsLoader(
             os.path.join(self.semantic_path_p1, config.ENTRY_POINTS_PATH)
-        )
-
-        self._external_symbol_id_collection_loader = SaveExternalSymbolIDCollectionLoader(
-            os.path.join(self.gir_path, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
-        )
-
-        self._cfg_loader: CFGLoader = CFGLoader(
-            options,
-            schema.control_flow_graph_schema,
-            os.path.join(self.semantic_path_p1, config.CFG_BUNDLE_PATH),
-            config.LRU_CACHE_CAPACITY,
-            config.BUNDLE_CACHE_CAPACITY
         )
 
         self._import_graph_loader = ImportGraphLoader(
@@ -1728,10 +1730,6 @@ class Loader:
 
         self._method_summary_template_instance = MethodSummaryLoader(
             os.path.join(self.semantic_path_p3, config.METHOD_SUMMARY_INSTANCE_PATH),
-        )
-
-        self._unique_symbol_id_assigner_loader = UniqueSymbolIDAssignerLoader(
-            os.path.join(self.gir_path, config.UNIQUE_SYMBOL_ID_ASSIGNER_LOADER),
         )
 
         self._call_graph_p1_loader = CallGraphP1Loader(
@@ -2128,8 +2126,8 @@ class Loader:
         return self._unique_symbol_id_assigner_loader.save_max_gir_id(max_gir_id)
     def load_max_gir_id(self):
         return self._unique_symbol_id_assigner_loader.load_max_gir_id()
-    def is_great_than_max_gir_id(self, symbol_id):
-        return self._unique_symbol_id_assigner_loader.is_great_than_max_gir_id(symbol_id)
+    def is_greater_than_max_gir_id(self, symbol_id):
+        return self._unique_symbol_id_assigner_loader.is_greater_than_max_gir_id(symbol_id)
     def assign_new_unique_positive_id(self):
         return self._unique_symbol_id_assigner_loader.assign_new_unique_positive_id()
     def assign_new_unique_negative_id(self):
@@ -2349,7 +2347,7 @@ class Loader:
             current_stmt = stmt_id_to_stmt.get(parent_stmt_id)
 
         return current_stmt.stmt_id
-    
+
     # llm_driven_sec 项目所需API
     def get_call_stmt_context(self, stmt_id):
         context = {}
@@ -2367,7 +2365,7 @@ class Loader:
         method_stmt = current_stmt
         while method_stmt and method_stmt.operation != 'method_decl':
             method_stmt = stmt_map.get(method_stmt.parent_stmt_id)
-        
+
         # 设置方法和类信息
         context["caller_name"] = method_stmt.name # 拿到方法名
         class_id = self.convert_method_id_to_class_id(method_stmt.stmt_id)
@@ -2383,7 +2381,7 @@ class Loader:
             method_start = util.determine_comment_line(unit_info.lang, method_start, lines)
         method_end = min(len(lines), int(method_stmt.end_row) + 1)
         context["caller_source_code"] = lines[method_start: method_end]
-        
+
         # 获取当前语句源码
         context["callee_source_code"] = self.get_stmt_source_code(lines, current_stmt)
         context["callee_name"] = current_stmt.name
@@ -2397,17 +2395,17 @@ class Loader:
                 (scope_hierarchy.scope_kind == SymbolKind.IMPORT_STMT)
             )
             context["import_stmts"] = [
-                self.get_stmt_source_code(lines, stmt_map.get(each_stmt.stmt_id)) 
+                self.get_stmt_source_code(lines, stmt_map.get(each_stmt.stmt_id))
                 for each_stmt in import_stmts
             ]
         else:
             context["import_stmts"] = []
-        
+
         # 获取类继承信息
         type_graph = self.load_type_graph()
         if util.is_empty(type_graph):
             context["class_inheritance"] = "None"
-        else: 
+        else:
             class_inheritance = []
             for edge in type_graph.graph.edges(data='weight'):
                 class_inheritance.append({
@@ -2428,10 +2426,10 @@ class Loader:
             if each_class["parent_type_id"] == class_id:
                 class_inheritance_info["child_name"] = each_class["name"]
         context["class_inheritance"] = class_inheritance_info
-        
+
 
         return context
-    
+
     def get_stmt_source_code(self, lines, stmt):
         stmt_start_line = 0
         stmt_end_line = -1
@@ -2444,7 +2442,7 @@ class Loader:
         else:
             stmt_source_code = lines[stmt_start_line:]
         return stmt_source_code
-    
+
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
