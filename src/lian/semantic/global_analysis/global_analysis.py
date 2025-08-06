@@ -327,7 +327,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             frame.symbol_changed_stmts.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
-        print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
+        # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
 
 
         return change_flag
