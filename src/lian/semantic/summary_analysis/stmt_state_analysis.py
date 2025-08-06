@@ -10,15 +10,15 @@ from lian.config import config, type_table
 from lian.util.loader import Loader
 # from lian.apps.app_template import AppTemplate
 from lian.config.constants import (
-    ConditionStmtPathFlag,
-    SymbolKind,
-    LianInternal,
-    StateTypeKind,
-    LianInternal,
-    CalleeType,
-    EventKind,
-    SymbolOrState,
-    AccessPointKind,
+    CONDITION_STMT_PATH_FLAG,
+    LIAN_SYMBOL_KIND,
+    LIAN_INTERNAL,
+    STATE_TYPE_KIND,
+    LIAN_INTERNAL,
+    CALLEE_TYPE,
+    EVENT_KIND,
+    SYMBOL_OR_STATE,
+    ACCESS_POINT_KIND,
 )
 import lian.apps.event_return as er
 from lian.semantic.semantic_structs import (
@@ -194,14 +194,14 @@ class StmtStateAnalysis:
         1. 检查状态数据类型
         2. 验证符号是否为类声明
         """
-        if state.data_type == LianInternal.CLASS_DECL:
+        if state.data_type == LIAN_INTERNAL.CLASS_DECL:
             return True
         if self.loader.is_class_decl(state.value):
             return True
         return False
 
     def is_state_a_unit(self, state):
-        if state.data_type == LianInternal.UNIT:
+        if state.data_type == LIAN_INTERNAL.UNIT:
             return True
 
     def is_state_a_method_decl(self, state):
@@ -210,7 +210,7 @@ class StmtStateAnalysis:
         1. 检查状态数据类型
         2. 验证符号是否为方法声明
         """
-        if state.data_type == LianInternal.METHOD_DECL:
+        if state.data_type == LIAN_INTERNAL.METHOD_DECL:
             return True
         if self.loader.is_method_decl(state.value):
             return True
@@ -221,7 +221,7 @@ class StmtStateAnalysis:
 
     def create_state_and_add_space(
             self, status: StmtStatus, stmt_id, source_symbol_id = -1, source_state_id = -1, value = "", data_type = "",
-            state_type = StateTypeKind.REGULAR, access_path = [], overwritten_flag = False
+            state_type = STATE_TYPE_KIND.REGULAR, access_path = [], overwritten_flag = False
     ):
         """
         创建新状态并加入符号空间：
@@ -312,7 +312,7 @@ class StmtStateAnalysis:
         return new_symbol_index
 
     def create_unsolved_state_and_update_symbol(
-        self, status, stmt_id, receiver_symbol, data_type = "", state_type = StateTypeKind.UNSOLVED
+        self, status, stmt_id, receiver_symbol, data_type = "", state_type = STATE_TYPE_KIND.UNSOLVED
     ):
         """创建未解决状态并更新关联符号的状态集合"""
         if isinstance(receiver_symbol, Symbol):
@@ -366,8 +366,8 @@ class StmtStateAnalysis:
         if not(key_state and isinstance(key_state, State)):
             return
 
-        if key_state.symbol_or_state == SymbolOrState.EXTERNAL_KEY_STATE:
-            key_state.symbol_or_state = SymbolOrState.STATE
+        if key_state.symbol_or_state == SYMBOL_OR_STATE.EXTERNAL_KEY_STATE:
+            key_state.symbol_or_state = SYMBOL_OR_STATE.STATE
             key_dynamic_content = self.frame.method_summary_template.key_dynamic_content
             if symbol_id in key_dynamic_content:
                 values = key_dynamic_content[symbol_id]
@@ -382,7 +382,7 @@ class StmtStateAnalysis:
         if not(key_state and isinstance(key_state, State)):
             return
 
-        key_state.symbol_or_state = SymbolOrState.EXTERNAL_KEY_STATE
+        key_state.symbol_or_state = SYMBOL_OR_STATE.EXTERNAL_KEY_STATE
         key_dynamic_content = self.frame.method_summary_template.key_dynamic_content
         # print("tag_key_state@add_state_index",state_index)
         util.add_to_dict_with_default_set(
@@ -398,23 +398,23 @@ class StmtStateAnalysis:
         condition_index = status.used_symbols[0]
         condition_states = self.read_used_states(condition_index, in_states)
 
-        condition_flag = ConditionStmtPathFlag.NO_PATH
+        condition_flag = CONDITION_STMT_PATH_FLAG.NO_PATH
         for each_state_index in condition_states:
             each_state = self.frame.symbol_state_space[each_state_index]
             if not each_state:
                 continue
             #print("each_state:", each_state)
             if len(each_state.fields) != 0 or len(each_state.array) != 0 or len(each_state.tangping_elements) != 0:
-                condition_flag |= ConditionStmtPathFlag.TRUE_PATH
+                condition_flag |= CONDITION_STMT_PATH_FLAG.TRUE_PATH
             else:
-                if each_state.value == LianInternal.FALSE:
-                    condition_flag |= ConditionStmtPathFlag.FALSE_PATH
+                if each_state.value == LIAN_INTERNAL.FALSE:
+                    condition_flag |= CONDITION_STMT_PATH_FLAG.FALSE_PATH
                 elif each_state.value == 0:
-                    condition_flag |= ConditionStmtPathFlag.FALSE_PATH
+                    condition_flag |= CONDITION_STMT_PATH_FLAG.FALSE_PATH
                 else:
-                    condition_flag |= ConditionStmtPathFlag.TRUE_PATH
+                    condition_flag |= CONDITION_STMT_PATH_FLAG.TRUE_PATH
 
-            if condition_flag == ConditionStmtPathFlag.ANY_PATH:
+            if condition_flag == CONDITION_STMT_PATH_FLAG.ANY_PATH:
                 break
 
         return P2ResultFlag(condition_path_flag = condition_flag)
@@ -487,7 +487,7 @@ class StmtStateAnalysis:
                 # print(f"current_round: {current_round}")
                 all_sorted_keys = sorted(receiver_state.fields.keys())
                 real_sorted_keys = []
-                if receiver_state.data_type == LianInternal.ARRAY:
+                if receiver_state.data_type == LIAN_INTERNAL.ARRAY:
                     for key in all_sorted_keys:
                         if key.isdigit():
                             real_sorted_keys.append(key)
@@ -501,13 +501,13 @@ class StmtStateAnalysis:
                 current_key = real_sorted_keys[current_round]
                 # print(f"current_key: {current_key}")
                 current_key_index = self.create_state_and_add_space(
-                    status, stmt_id=stmt_id, value=f'{current_key}', data_type=LianInternal.STRING,
+                    status, stmt_id=stmt_id, value=f'{current_key}', data_type=LIAN_INTERNAL.STRING,
                     source_state_id= receiver_state.source_state_id,
                     source_symbol_id=receiver_state.source_symbol_id,
                     access_path=self.copy_and_extend_access_path(
                         receiver_state.access_path,
                         AccessPoint(
-                            kind = AccessPointKind.FIELD_NAME,
+                            kind = ACCESS_POINT_KIND.FIELD_NAME,
                             key = current_key
                         )
                     )
@@ -516,7 +516,7 @@ class StmtStateAnalysis:
 
                 defined_symbol_states.add(current_key_index)
 
-            elif receiver_state.state_type == StateTypeKind.ANYTHING:
+            elif receiver_state.state_type == STATE_TYPE_KIND.ANYTHING:
                 self.tag_key_state(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
 
                 if util.is_empty(new_receiver_symbol_index):
@@ -531,11 +531,11 @@ class StmtStateAnalysis:
                     stmt_id = stmt_id,
                     source_symbol_id=receiver_state.source_symbol_id,
                     source_state_id=receiver_state.source_state_id,
-                    state_type = StateTypeKind.ANYTHING,
+                    state_type = STATE_TYPE_KIND.ANYTHING,
                     access_path = self.copy_and_extend_access_path(
                         new_receiver_state.access_path,
                         AccessPoint(
-                            kind = AccessPointKind.FORIN_ELEMENT
+                            kind = ACCESS_POINT_KIND.FORIN_ELEMENT
                         )
                     )
                 )
@@ -614,7 +614,7 @@ class StmtStateAnalysis:
                 current_key = all_sorted_keys[current_round]
                 defined_symbol_states.update(receiver_state.fields[current_key])
 
-            elif receiver_state.state_type == StateTypeKind.ANYTHING:
+            elif receiver_state.state_type == STATE_TYPE_KIND.ANYTHING:
                 self.tag_key_state(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
 
                 if util.is_empty(new_receiver_symbol_index):
@@ -628,11 +628,11 @@ class StmtStateAnalysis:
                     stmt_id = stmt_id,
                     source_symbol_id=receiver_state.source_symbol_id,
                     source_state_id=receiver_state.source_state_id,
-                    state_type = StateTypeKind.ANYTHING,
+                    state_type = STATE_TYPE_KIND.ANYTHING,
                     access_path = self.copy_and_extend_access_path(
                         receiver_state.access_path,
                         AccessPoint(
-                            kind = AccessPointKind.FORIN_ELEMENT
+                            kind = ACCESS_POINT_KIND.FORIN_ELEMENT
                         )
                     )
                 )
@@ -686,10 +686,10 @@ class StmtStateAnalysis:
                 state_index = self.create_state_and_add_space(
                     status, stmt_id,
                     source_symbol_id = defined_symbol.symbol_id,
-                    data_type = LianInternal.REQUIRED_MODULE,
+                    data_type = LIAN_INTERNAL.REQUIRED_MODULE,
                     value = each_name_state.value,
                     access_path = [AccessPoint(
-                        kind = AccessPointKind.REQUIRED_MODULE,
+                        kind = ACCESS_POINT_KIND.REQUIRED_MODULE,
                         key = util.read_stmt_field(each_name_state.value),
                     )]
                 )
@@ -724,7 +724,7 @@ class StmtStateAnalysis:
         data_type2 = state2.data_type
         operator = stmt.operator
 
-        if not (state_type1 == state_type2 == StateTypeKind.REGULAR):
+        if not (state_type1 == state_type2 == STATE_TYPE_KIND.REGULAR):
             return set()
 
         if not (value1 and type_table.is_builtin_type(data_type1) and value2 and type_table.is_builtin_type(data_type2)):
@@ -737,25 +737,25 @@ class StmtStateAnalysis:
         tmp_value2 = value2
 
         is_string = False
-        if data_type1 == LianInternal.STRING:
+        if data_type1 == LIAN_INTERNAL.STRING:
             if not value1.isdigit():
                 is_string = True
         if not is_string:
-            if data_type2 == LianInternal.STRING:
+            if data_type2 == LIAN_INTERNAL.STRING:
                 if not value2.isdigit():
                     is_string = True
 
         if is_string:
             tmp_value1 = f'"{tmp_value1}"'
             tmp_value2 = f'"{tmp_value2}"'
-            data_type = LianInternal.STRING
+            data_type = LIAN_INTERNAL.STRING
         else:
             is_float = False
-            if data_type1 == LianInternal.FLOAT or data_type2 == LianInternal.FLOAT:
+            if data_type1 == LIAN_INTERNAL.FLOAT or data_type2 == LIAN_INTERNAL.FLOAT:
                 is_float = True
-                data_type = LianInternal.FLOAT
+                data_type = LIAN_INTERNAL.FLOAT
             else:
-                data_type = LianInternal.INT
+                data_type = LIAN_INTERNAL.INT
 
             tmp_value1 = f'{tmp_value1}'
             tmp_value2 = f'{tmp_value2}'
@@ -766,7 +766,7 @@ class StmtStateAnalysis:
         except:
             # value = ""
             value = str(value1) + str(operator) + str(value2)
-            data_type = LianInternal.STRING
+            data_type = LIAN_INTERNAL.STRING
 
         # else:
         #     value = str(value1) + str(operator) + str(value2)
@@ -776,7 +776,7 @@ class StmtStateAnalysis:
             result_state_index = self.create_state_and_add_space(
                 status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id, value=value, data_type=data_type,
                 access_path = [AccessPoint(
-                    kind = AccessPointKind.BINARY_ASSIGN,
+                    kind = ACCESS_POINT_KIND.BINARY_ASSIGN,
                     key = defined_symbol.name
                 )]
             )
@@ -893,7 +893,7 @@ class StmtStateAnalysis:
                         value = None,
                         data_type = "",
                         source_symbol_id = source_symbol_id,
-                        state_type =  StateTypeKind.ANYTHING
+                        state_type =  STATE_TYPE_KIND.ANYTHING
                     )
                 new_states = {tmp_index}
             defined_symbol.states = new_states
@@ -907,13 +907,13 @@ class StmtStateAnalysis:
             operand_state = self.frame.symbol_state_space[operand_state_index]
             if not isinstance(operand_state, State):
                 continue
-            if operand_state.state_type != StateTypeKind.REGULAR:
+            if operand_state.state_type != STATE_TYPE_KIND.REGULAR:
                 continue
             for operand2_state_index in operand2_states:
                 operand2_state = self.frame.symbol_state_space[operand2_state_index]
                 if not isinstance(operand2_state, State):
                     continue
-                if operand2_state.state_type != StateTypeKind.REGULAR:
+                if operand2_state.state_type != STATE_TYPE_KIND.REGULAR:
                     continue
 
                 # if operand_state.state_type == StateTypeKind.ANYTHING or operand2_state.state_type == StateTypeKind.ANYTHING:
@@ -941,7 +941,7 @@ class StmtStateAnalysis:
                     value = None,
                     data_type = "",
                     source_symbol_id = source_symbol_id,
-                    state_type =  StateTypeKind.ANYTHING
+                    state_type =  STATE_TYPE_KIND.ANYTHING
                 )
             new_states = {state_index}
         defined_symbol.states = new_states
@@ -1000,7 +1000,7 @@ class StmtStateAnalysis:
                             each_state = self.frame.symbol_state_space[each_state_index]
                             if not(each_state and isinstance(each_state, State)):
                                 continue
-                            if each_state.state_type == StateTypeKind.ANYTHING:
+                            if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
                                 self.tag_key_state(stmt_id, each_arg.symbol_id, each_state_index)
                         named_args[each_key] = each_arg.states
                     elif isinstance(each_arg, State):
@@ -1036,7 +1036,7 @@ class StmtStateAnalysis:
                         each_state = self.frame.symbol_state_space[each_state_index]
                         if not(each_state and isinstance(each_state, State)):
                             continue
-                        if each_state.state_type == StateTypeKind.ANYTHING:
+                        if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
                             self.tag_key_state(stmt_id, each_arg.symbol_id, each_state_index)
                     positional_args.append(each_arg.states)
                 elif isinstance(each_arg, State):
@@ -1104,9 +1104,9 @@ class StmtStateAnalysis:
             )
             is_attr = not util.isna(row.attrs)
             result.all_parameters.add(p)
-            if is_attr and LianInternal.PACKED_NAMED_PARAMETER in row.attrs:
+            if is_attr and LIAN_INTERNAL.PACKED_NAMED_PARAMETER in row.attrs:
                 result.packed_named_parameter = p
-            elif is_attr and LianInternal.PACKED_POSITIONAL_PARAMETER in row.attrs:
+            elif is_attr and LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER in row.attrs:
                 result.packed_positional_parameter = p
             else:
                 result.positional_parameters.append(p)
@@ -1197,9 +1197,9 @@ class StmtStateAnalysis:
                                 arg_source_symbol_id = arg.source_symbol_id,
                                 arg_access_path = arg.access_path,
                                 parameter_symbol_id = id,
-                                parameter_type = LianInternal.PACKED_POSITIONAL_PARAMETER,
+                                parameter_type = LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER,
                                 parameter_access_path = AccessPoint(
-                                    kind = AccessPointKind.ARRAY_ELEMENT,
+                                    kind = ACCESS_POINT_KIND.ARRAY_ELEMENT,
                                     key = parameter_index,
                                     state_id = arg.state_id
                                 )
@@ -1225,9 +1225,9 @@ class StmtStateAnalysis:
                                 arg_source_symbol_id = each_arg.source_symbol_id,
                                 arg_access_path = each_arg.access_path,
                                 parameter_symbol_id = id,
-                                parameter_type = LianInternal.PACKED_NAMED_PARAMETER,
+                                parameter_type = LIAN_INTERNAL.PACKED_NAMED_PARAMETER,
                                 parameter_access_path = AccessPoint(
-                                    kind = AccessPointKind.FIELD_ELEMENT,
+                                    kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
                                     key = str(each_arg_name),
                                     state_id = each_arg.state_id
                                 )
@@ -1312,7 +1312,7 @@ class StmtStateAnalysis:
                 return cache[cache_key]
 
             # state_type默认为REGULAR，如果任意一个输入状态的 state_type 是 ANYTHING，则结果也标记为 ANYTHING。
-            state_type = StateTypeKind.REGULAR
+            state_type = STATE_TYPE_KIND.REGULAR
             # summary_states_fields / arg_state_fields：分别用来收集summary和arg两组状态的字段映射（字段名 → 值集合）。
             summary_states_fields = {}
             arg_state_fields = {}
@@ -1327,8 +1327,8 @@ class StmtStateAnalysis:
                 # pprint.pprint(each_state)
                 if not (each_state and isinstance(each_state, State)):
                     continue
-                if each_state.state_type == StateTypeKind.ANYTHING:
-                    state_type = StateTypeKind.ANYTHING
+                if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                    state_type = STATE_TYPE_KIND.ANYTHING
                 if each_state.tangping_flag:
                     tangping_flag = True
                     tangping_elements.update(each_state.tangping_elements)
@@ -1401,7 +1401,7 @@ class StmtStateAnalysis:
                     new_access_path = self.copy_and_extend_access_path(
                         original_access_path = access_path,
                         access_point = AccessPoint(
-                            kind = AccessPointKind.FIELD_ELEMENT,
+                            kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
                             key = field_name
                         )
                     )
@@ -1459,7 +1459,7 @@ class StmtStateAnalysis:
                 array_states = state_array_copy[index]
                 for each_array_state_index in array_states:
                     each_array_state = self.frame.symbol_state_space[each_array_state_index]
-                    if each_array_state.state_type == StateTypeKind.ANYTHING:
+                    if each_array_state.state_type == STATE_TYPE_KIND.ANYTHING:
                         self.resolver.resolve_anything_in_summary_generation(each_array_state_index, self.frame, stmt_id, callee_id, set_to_update=state_array[index])
 
             # collect all fields of all states in summary
@@ -1476,7 +1476,7 @@ class StmtStateAnalysis:
             # [未测]
             for each_tangping_element_index in tangping_elements.copy():
                 each_tangping_element = self.frame.symbol_state_space[each_tangping_element_index]
-                if each_tangping_element.state_type == StateTypeKind.ANYTHING:
+                if each_tangping_element.state_type == STATE_TYPE_KIND.ANYTHING:
                     self.resolver.resolve_anything_in_summary_generation(each_tangping_element_index, self.frame, stmt_id, callee_id, set_to_update=tangping_elements)
             new_arg_state.tangping_elements.update(tangping_elements)
             # print(f"new_arg_state: {new_arg_state}")
@@ -1495,7 +1495,7 @@ class StmtStateAnalysis:
                 access_path = self.copy_and_extend_access_path(
                     original_access_path = arg_base_access_path,
                     access_point = AccessPoint(
-                        kind = AccessPointKind.FIELD_ELEMENT,
+                        kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
                         key = field_name
                     )
                 )
@@ -1511,7 +1511,7 @@ class StmtStateAnalysis:
         for field_name, field_states in copy.deepcopy(new_arg_state_fields).items():
             for each_field_state_index in field_states:
                 each_field_state = self.frame.symbol_state_space[each_field_state_index]
-                if each_field_state.state_type == StateTypeKind.ANYTHING:
+                if each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     # if config.DEBUG_FLAG:
                     #     print(f"\n\napply_parameter时, each_field_state {each_field_state_index} 是anything, field_name是{field_name}")
                     #     pprint.pprint(each_field_state)
@@ -1564,7 +1564,7 @@ class StmtStateAnalysis:
         index_to_add = self.frame.symbol_state_space.add(
             Symbol(
                 stmt_id = stmt_id,
-                name = LianInternal.THIS,
+                name = LIAN_INTERNAL.THIS,
                 symbol_id = config.BUILTIN_THIS_SYMBOL_ID,
                 states = new_this_states
             )
@@ -1590,7 +1590,7 @@ class StmtStateAnalysis:
             last_states: set[State] = set()
             last_state_indexes = set()
             if each_mapping.is_default_value:
-                default_value_state_type = StateTypeKind.REGULAR
+                default_value_state_type = STATE_TYPE_KIND.REGULAR
                 parameter_symbol_id = each_mapping.parameter_symbol_id # 直接取parameter_symbol的last_states
                 default_value_symbol_id = each_mapping.arg_state_id
                 for index_pair in callee_summary.parameter_symbols.get(parameter_symbol_id, []):
@@ -1600,9 +1600,9 @@ class StmtStateAnalysis:
                     if not (each_default_value_last_state and isinstance(each_default_value_last_state, State)):
                         continue
 
-                    if default_value_state_type != StateTypeKind.ANYTHING:
-                        if each_default_value_last_state.state_type == StateTypeKind.ANYTHING:
-                            default_value_state_type = StateTypeKind.ANYTHING
+                    if default_value_state_type != STATE_TYPE_KIND.ANYTHING:
+                        if each_default_value_last_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                            default_value_state_type = STATE_TYPE_KIND.ANYTHING
 
                     last_states.add(each_default_value_last_state)
                     last_state_indexes.add(index_in_appended_space)
@@ -1642,11 +1642,11 @@ class StmtStateAnalysis:
                 if not (each_parameter_last_state and isinstance(each_parameter_last_state, State)):
                     continue
 
-                if each_mapping.parameter_type == LianInternal.PARAMETER_DECL:
+                if each_mapping.parameter_type == LIAN_INTERNAL.PARAMETER_DECL:
                     last_states.add(each_parameter_last_state)
                     last_state_indexes.add(index_in_appended_space)
 
-                elif each_mapping.parameter_type == LianInternal.PACKED_POSITIONAL_PARAMETER:
+                elif each_mapping.parameter_type == LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER:
                     parameter_access_path = each_mapping.parameter_access_path
                     parameter_index_in_array = parameter_access_path.key
                     if len(each_parameter_last_state.array) > parameter_index_in_array:
@@ -1655,7 +1655,7 @@ class StmtStateAnalysis:
                             last_states.add(self.frame.symbol_state_space[last_state_index])
                             last_state_indexes.add(last_state_index)
 
-                elif each_mapping.parameter_type == LianInternal.PACKED_NAMED_PARAMETER:
+                elif each_mapping.parameter_type == LIAN_INTERNAL.PACKED_NAMED_PARAMETER:
                     parameter_access_path = each_mapping.parameter_access_path
                     parameter_field_name = parameter_access_path.key
                     last_state_index_set = each_parameter_last_state.fields.get(parameter_field_name, set())
@@ -1786,7 +1786,7 @@ class StmtStateAnalysis:
         if self.phase == 2:
             parameter_mapping_list = self.loader.load_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
         else:
-            parameter_mapping_list = self.loader.load_parameter_mapping_p3((caller_id, call_stmt_id, callee_id)) 
+            parameter_mapping_list = self.loader.load_parameter_mapping_p3((caller_id, call_stmt_id, callee_id))
         # apply parameter's state in callee_summary to args
         self.apply_parameter_semantic_summary(
             stmt_id, callee_id, callee_summary, callee_compact_space, parameter_mapping_list
@@ -1811,7 +1811,7 @@ class StmtStateAnalysis:
         p2result_flag = P2ResultFlag()
         event = EventData(
             self.lang,
-            EventKind.P2STATE_EXTERN_CALLEE,
+            EVENT_KIND.P2STATE_EXTERN_CALLEE,
             {
                 "resolver": self.resolver,
                 "stmt_id": stmt_id,
@@ -1835,10 +1835,10 @@ class StmtStateAnalysis:
             unsolved_state_index = self.create_state_and_add_space(
                     status, stmt_id,
                     source_symbol_id=defined_symbol.symbol_id,
-                    state_type = StateTypeKind.UNSOLVED,
+                    state_type = STATE_TYPE_KIND.UNSOLVED,
                     data_type = util.read_stmt_field(stmt.data_type), # LianInternal.RETURN_VALUE,
                     access_path=[AccessPoint(
-                        kind=AccessPointKind.CALL_RETURN,
+                        kind=ACCESS_POINT_KIND.CALL_RETURN,
                         key=util.read_stmt_field(defined_symbol.name)
                     )]
                 )
@@ -1893,7 +1893,7 @@ class StmtStateAnalysis:
             if not isinstance(each_state, State):
                 continue
 
-            if each_state.state_type == StateTypeKind.ANYTHING:
+            if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
                 self.tag_key_state(stmt_id, name_symbol.symbol_id, each_state_index)
 
             if self.is_state_a_method_decl(each_state):
@@ -1908,7 +1908,7 @@ class StmtStateAnalysis:
                         callee_method_ids.add(callee_id)
 
             #  what if it calls class_constructor.  e.g., o = A()
-            elif self.is_state_a_class_decl(each_state) or each_state.data_type == LianInternal.THIS:
+            elif self.is_state_a_class_decl(each_state) or each_state.data_type == LIAN_INTERNAL.THIS:
                 return self.new_object_stmt_state(stmt_id, stmt, status, in_states)
 
             else:
@@ -1987,10 +1987,10 @@ class StmtStateAnalysis:
             unsolved_state_index = self.create_state_and_add_space(
                 status, stmt_id,
                 source_symbol_id=defined_symbol.symbol_id,
-                state_type = StateTypeKind.UNSOLVED,
+                state_type = STATE_TYPE_KIND.UNSOLVED,
                 data_type = util.read_stmt_field(stmt.data_type), # LianInternal.RETURN_VALUE,
                 access_path=[AccessPoint(
-                    kind=AccessPointKind.CALL_RETURN,
+                    kind=ACCESS_POINT_KIND.CALL_RETURN,
                     key=util.read_stmt_field(defined_symbol.name)
                 )]
             )
@@ -2044,9 +2044,9 @@ class StmtStateAnalysis:
         state_index = self.create_state_and_add_space(
                 status, stmt_id, source_symbol_id=global_symbol.symbol_id,
             data_type = util.read_stmt_field(stmt.data_type),
-            state_type = StateTypeKind.ANYTHING,
+            state_type = STATE_TYPE_KIND.ANYTHING,
             access_path=[AccessPoint(
-                kind=AccessPointKind.EXTERNAL,
+                kind=ACCESS_POINT_KIND.EXTERNAL,
                 key=util.read_stmt_field(stmt.name),
             )]
         )
@@ -2068,9 +2068,9 @@ class StmtStateAnalysis:
             status, stmt_id,
             source_symbol_id=defined_symbol.symbol_id,
             data_type = util.read_stmt_field(stmt.data_type),
-            state_type = StateTypeKind.ANYTHING,
+            state_type = STATE_TYPE_KIND.ANYTHING,
             access_path=[AccessPoint(
-                kind=AccessPointKind.EXTERNAL,
+                kind=ACCESS_POINT_KIND.EXTERNAL,
                 key=util.read_stmt_field(stmt.name),
             )]
         )
@@ -2168,7 +2168,7 @@ class StmtStateAnalysis:
         index = self.create_state_and_add_space(
             status, stmt_id,
             source_symbol_id=defined_symbol.symbol_id,
-            data_type = LianInternal.NAMESPACE_DECL,
+            data_type = LIAN_INTERNAL.NAMESPACE_DECL,
             value = stmt_id,
             access_path=[AccessPoint(
                 key = util.read_stmt_field(stmt.name),
@@ -2194,7 +2194,7 @@ class StmtStateAnalysis:
         index = self.create_state_and_add_space(
             status, stmt_id,
             source_symbol_id=defined_symbol.symbol_id,
-            data_type = LianInternal.CLASS_DECL,
+            data_type = LIAN_INTERNAL.CLASS_DECL,
             value = stmt_id,
             access_path=[AccessPoint(
                 key = util.read_stmt_field(stmt.name),
@@ -2217,7 +2217,7 @@ class StmtStateAnalysis:
                 status, stmt_id,
                 source_symbol_id = parameter_name_symbol.symbol_id,
                 data_type = util.read_stmt_field(stmt.data_type),
-                state_type = StateTypeKind.ANYTHING,
+                state_type = STATE_TYPE_KIND.ANYTHING,
                 access_path=[AccessPoint(
                     key = util.read_stmt_field(stmt.name),
                 )]
@@ -2276,7 +2276,7 @@ class StmtStateAnalysis:
                 stmt_id,
                 source_symbol_id=method_name_symbol.symbol_id,
                 value = stmt_id,
-                data_type = LianInternal.METHOD_DECL,
+                data_type = LIAN_INTERNAL.METHOD_DECL,
                 access_path=[AccessPoint(
                     key = util.read_stmt_field(stmt.name),
                 )]
@@ -2304,7 +2304,7 @@ class StmtStateAnalysis:
 
         event = EventData(
             self.lang,
-            EventKind.P2STATE_NEW_OBJECT_BEFORE,
+            EVENT_KIND.P2STATE_NEW_OBJECT_BEFORE,
             {
                 "resolver": self.resolver,
                 "stmt_id": stmt_id,
@@ -2333,7 +2333,7 @@ class StmtStateAnalysis:
                 each_state = self.frame.symbol_state_space[each_state_index]
                 init_state_index = self.create_state_and_add_space(
                     status, stmt_id, source_symbol_id = defined_symbol.symbol_id,
-                    data_type = LianInternal.CLASS_DECL, value=each_state.value,
+                    data_type = LIAN_INTERNAL.CLASS_DECL, value=each_state.value,
                     access_path=[AccessPoint(
                         key = each_state.value,
                     )]
@@ -2346,7 +2346,7 @@ class StmtStateAnalysis:
         p2result_flag = P2ResultFlag()
         event = EventData(
             self.lang,
-            EventKind.P2STATE_NEW_OBJECT_AFTER,
+            EVENT_KIND.P2STATE_NEW_OBJECT_AFTER,
             {
                 "resolver": self.resolver,
                 "stmt_id": stmt_id,
@@ -2377,7 +2377,7 @@ class StmtStateAnalysis:
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
         init_state_index = self.create_state_and_add_space(
-            status, stmt_id, source_symbol_id=defined_symbol.symbol_id, data_type = LianInternal.ARRAY,
+            status, stmt_id, source_symbol_id=defined_symbol.symbol_id, data_type = LIAN_INTERNAL.ARRAY,
             access_path=[AccessPoint(
                 key = util.read_stmt_field(stmt.data_type),
             )]
@@ -2398,7 +2398,7 @@ class StmtStateAnalysis:
             return P2ResultFlag()
 
         init_state_index = self.create_state_and_add_space(
-            status, stmt_id, source_symbol_id=defined_symbol.symbol_id, data_type = LianInternal.RECORD,
+            status, stmt_id, source_symbol_id=defined_symbol.symbol_id, data_type = LIAN_INTERNAL.RECORD,
             access_path=[AccessPoint(
                 key = util.read_stmt_field(stmt.data_type),
             )]
@@ -2418,7 +2418,7 @@ class StmtStateAnalysis:
             return P2ResultFlag()
 
         init_state_index = self.create_state_and_add_space(
-            status, stmt_id, source_symbol_id=defined_symbol.symbol_id, data_type = LianInternal.SET,
+            status, stmt_id, source_symbol_id=defined_symbol.symbol_id, data_type = LIAN_INTERNAL.SET,
             access_path=[AccessPoint(
                 key = util.read_stmt_field(stmt.data_type),
             )]
@@ -2458,7 +2458,7 @@ class StmtStateAnalysis:
             status, stmt_id, source_symbol_id=stmt_id, value=source_symbol.symbol_id,
             access_path = self.copy_and_extend_access_path(
                 source_symbol.access_path,
-                AccessPoint(kind = AccessPointKind.ADDR_OF)
+                AccessPoint(kind = ACCESS_POINT_KIND.ADDR_OF)
             )
         )
         self.update_access_path_state_id(state_index)
@@ -2497,18 +2497,18 @@ class StmtStateAnalysis:
 
             if symbol_id_state.value in self.frame.symbol_to_define:
                 index = self.create_state_and_add_space(
-                    status, stmt_id, source_symbol_id=stmt_id, state_type = StateTypeKind.UNSOLVED
+                    status, stmt_id, source_symbol_id=stmt_id, state_type = STATE_TYPE_KIND.UNSOLVED
                 )
                 target_states.add(index)
                 continue
 
-            if symbol_id_state.state_type == StateTypeKind.ANYTHING:
+            if symbol_id_state.state_type == STATE_TYPE_KIND.ANYTHING:
                 index = self.create_state_and_add_space(
                     status, stmt_id, source_symbol_id=symbol_id_state.symbol_id,
                     access_path = self.copy_and_extend_access_path(
                         symbol_id_state.access_path,
                         AccessPoint(
-                            kind = AccessPointKind.MEM_READ
+                            kind = ACCESS_POINT_KIND.MEM_READ
                         )
                     )
                 )
@@ -2610,7 +2610,7 @@ class StmtStateAnalysis:
             if not isinstance(field_state, State):
                 continue
 
-            if field_state.data_type == LianInternal.INT or isinstance(field_state.value, int):
+            if field_state.data_type == LIAN_INTERNAL.INT or isinstance(field_state.value, int):
                 is_array_operation = True
                 break
 
@@ -2719,14 +2719,14 @@ class StmtStateAnalysis:
             new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
             new_path: list = array_state.access_path.copy()
             new_path.append(AccessPoint(
-                kind = AccessPointKind.ARRAY_ELEMENT,
+                kind = ACCESS_POINT_KIND.ARRAY_ELEMENT,
                 key = real_index_value
             ))
             source_index = self.create_state_and_add_space(
                 status, stmt_id,
                 source_symbol_id=array_state.source_symbol_id,
                 source_state_id=array_state.source_state_id,
-                state_type = StateTypeKind.ANYTHING,
+                state_type = STATE_TYPE_KIND.ANYTHING,
                 access_path = new_path
             )
             self.update_access_path_state_id(source_index)
@@ -3063,11 +3063,11 @@ class StmtStateAnalysis:
                 status, stmt_id = stmt_id,
                 source_symbol_id=receiver_state.source_symbol_id,
                 source_state_id=receiver_state.source_state_id,
-                state_type = StateTypeKind.ANYTHING,
+                state_type = STATE_TYPE_KIND.ANYTHING,
                 access_path = self.copy_and_extend_access_path(
                     original_access_path = receiver_state.access_path,
                     access_point = AccessPoint(
-                        kind = AccessPointKind.FIELD_ELEMENT,
+                        kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
                         key = field_name
                     )
                 )
@@ -3163,7 +3163,7 @@ class StmtStateAnalysis:
 
         event = EventData(
             self.lang,
-            EventKind.P2STATE_FIELD_READ_BEFORE,
+            EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
             {
                 "resolver": self.resolver,
                 "stmt_id": stmt_id,
@@ -3204,7 +3204,7 @@ class StmtStateAnalysis:
                     each_defined_states.update(each_receiver_state.tangping_elements)
                     continue
 
-                elif len(field_name) == 0 or each_field_state.state_type == StateTypeKind.ANYTHING:
+                elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     if isinstance(field_symbol, Symbol):
                         self.tag_key_state(stmt_id, field_symbol.symbol_id, each_field_state_index)
                         # 不准躺平
@@ -3229,12 +3229,12 @@ class StmtStateAnalysis:
                     if import_symbols:
                         for import_symbol in import_symbols:
                             if import_symbol.symbol_name == field_name:
-                                if import_symbol.symbol_type == SymbolKind.METHOD_KIND:
-                                    data_type = LianInternal.METHOD_DECL
-                                elif import_symbol.symbol_type == SymbolKind.CLASS_KIND:
-                                    data_type = LianInternal.CLASS_DECL
+                                if import_symbol.symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
+                                    data_type = LIAN_INTERNAL.METHOD_DECL
+                                elif import_symbol.symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
+                                    data_type = LIAN_INTERNAL.CLASS_DECL
                                 else:
-                                    data_type = LianInternal.UNIT
+                                    data_type = LIAN_INTERNAL.UNIT
 
                                 state_index = self.create_state_and_add_space(
                                     status, stmt_id = stmt_id,
@@ -3264,9 +3264,9 @@ class StmtStateAnalysis:
 
                                 if method_class_id != first_found_class_id:
                                     continue
-                                data_type = LianInternal.METHOD_DECL
+                                data_type = LIAN_INTERNAL.METHOD_DECL
                                 if self.loader.is_class_decl(method.stmt_id):
-                                    data_type = LianInternal.CLASS_DECL
+                                    data_type = LIAN_INTERNAL.CLASS_DECL
                                 state_index = self.create_state_and_add_space(
                                     status, stmt_id = stmt_id,
                                     source_symbol_id = method.stmt_id,
@@ -3320,7 +3320,7 @@ class StmtStateAnalysis:
         is_anonymous = False
         source_symbol = self.frame.symbol_state_space[source_index]
         if source_symbol and isinstance(source_symbol, Symbol):
-            if source_symbol.name.startswith(LianInternal.METHOD_DECL_PREF):
+            if source_symbol.name.startswith(LIAN_INTERNAL.METHOD_DECL_PREF):
                 is_anonymous = True
 
         receiver_states = self.read_used_states(receiver_index, in_states)
@@ -3357,7 +3357,7 @@ class StmtStateAnalysis:
                     tangping()
                     continue
 
-                if len(str(each_field_state.value)) == 0 or each_field_state.state_type == StateTypeKind.ANYTHING:
+                if len(str(each_field_state.value)) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     tangping()
                     continue
 
@@ -3371,13 +3371,13 @@ class StmtStateAnalysis:
                         if not (each_source_state and isinstance(each_source_state, State)):
                             continue
 
-                        if each_source_state.state_type == StateTypeKind.ANYTHING:
+                        if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
                             continue
 
                         access_path = self.copy_and_extend_access_path(
                             original_access_path = receiver_state.access_path,
                             access_point = AccessPoint(
-                                kind = AccessPointKind.FIELD_ELEMENT,
+                                kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
                                 key = each_field_state.value
                             )
                         )
@@ -3481,19 +3481,19 @@ class StmtStateAnalysis:
                 tmp_array = array_state.array.copy()
                 for start_state_id in start_state_indexes:
                     start_state = self.frame.symbol_state_space[start_state_id]
-                    if not isinstance(start_state, State) or start_state.state_type == StateTypeKind.ANYTHING:
+                    if not isinstance(start_state, State) or start_state.state_type == STATE_TYPE_KIND.ANYTHING:
                         tangping_flag = True
                         break
 
                     for end_state_id in end_state_indexes:
                         end_state = self.frame.symbol_state_space[end_state_id]
-                        if not isinstance(end_state, State) or end_state.state_type == StateTypeKind.ANYTHING:
+                        if not isinstance(end_state, State) or end_state.state_type == STATE_TYPE_KIND.ANYTHING:
                             tangping_flag = True
                             break
 
                         for step_state_id in step_state_indexes:
                             step_state = self.frame.symbol_state_space[step_state_id]
-                            if not isinstance(step_state, State) or step_state.state_type == StateTypeKind.ANYTHING:
+                            if not isinstance(step_state, State) or step_state.state_type == STATE_TYPE_KIND.ANYTHING:
                                 tangping_flag = True
                                 break
 
@@ -3594,17 +3594,17 @@ class StmtStateAnalysis:
             tangping_flag = True
             for start_state_id in start_state_indexes:
                 start_state = self.frame.symbol_state_space[start_state_id]
-                if not isinstance(start_state, State) or start_state.state_type == StateTypeKind.ANYTHING:
+                if not isinstance(start_state, State) or start_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     break
 
                 for end_state_id in end_state_indexes:
                     end_state = self.frame.symbol_state_space[end_state_id]
-                    if not isinstance(end_state, State) or end_state.state_type == StateTypeKind.ANYTHING:
+                    if not isinstance(end_state, State) or end_state.state_type == STATE_TYPE_KIND.ANYTHING:
                         break
 
                     for step_state_id in step_state_indexes:
                         step_state = self.frame.symbol_state_space[step_state_id]
-                        if not isinstance(step_state, State) or step_state.state_type == StateTypeKind.ANYTHING:
+                        if not isinstance(step_state, State) or step_state.state_type == STATE_TYPE_KIND.ANYTHING:
                             break
 
                         array_length = len(array_state.array)
@@ -3637,7 +3637,7 @@ class StmtStateAnalysis:
                                     status = status,
                                     stmt_id = stmt_id,
                                     source_symbol_id = target_symbol.symbol_id,
-                                    data_type = LianInternal.ARRAY,
+                                    data_type = LIAN_INTERNAL.ARRAY,
                                     access_path=[AccessPoint()]
                                 )
                                 self.update_access_path_state_id(defined_state_index)
@@ -3668,7 +3668,7 @@ class StmtStateAnalysis:
             new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
             new_path: list = array_state.access_path.copy()
             new_path.append(AccessPoint(
-                kind = AccessPointKind.FIELD_ELEMENT,
+                kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
                 key=util.read_stmt_field(target_symbol.name)
             ))
             source_index = self.create_state_and_add_space(
@@ -3676,7 +3676,7 @@ class StmtStateAnalysis:
                 stmt_id,
                 source_symbol_id = array_state.source_symbol_id,
                 source_state_id = array_state.source_state_id,
-                state_type = StateTypeKind.ANYTHING,
+                state_type = STATE_TYPE_KIND.ANYTHING,
                 access_path = new_path
             )
             self.update_access_path_state_id(source_index)

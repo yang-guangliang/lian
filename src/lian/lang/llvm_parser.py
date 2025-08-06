@@ -1,7 +1,7 @@
 from tree_sitter import Node
 
 from lian.config.constants import (
-    LianInternal
+    LIAN_INTERNAL
 )
 from lian.lang import common_parser
 from lian.util import util
@@ -13,12 +13,12 @@ class Parser(common_parser.Parser):
         self.value_cache = util.LRUCache(1000)
 
         self.CONSTANTS_MAP = {
-            "true"                              : LianInternal.TRUE,
-            "false"                             : LianInternal.FALSE,
-            "null"                              : LianInternal.NULL,
-            "none"                              : LianInternal.NULL,
-            "undef"                             : LianInternal.UNDEFINED,
-            "ptr"                               : LianInternal.POINTER,
+            "true"                              : LIAN_INTERNAL.TRUE,
+            "false"                             : LIAN_INTERNAL.FALSE,
+            "null"                              : LIAN_INTERNAL.NULL,
+            "none"                              : LIAN_INTERNAL.NULL,
+            "undef"                             : LIAN_INTERNAL.UNDEFINED,
+            "ptr"                               : LIAN_INTERNAL.POINTER,
 
             "mul"                               : "*",
             "fmul"                              : "*",
@@ -360,9 +360,9 @@ class Parser(common_parser.Parser):
 
         attrs = []
         if "[" in shadow_type:
-            attrs.append(LianInternal.ARRAY)
+            attrs.append(LIAN_INTERNAL.ARRAY)
         if "*" in shadow_type:
-            attrs.append(LianInternal.POINTER)
+            attrs.append(LIAN_INTERNAL.POINTER)
 
         self.append_stmts(statements, node, {
             "variable_decl": {
@@ -400,10 +400,10 @@ class Parser(common_parser.Parser):
             type_name = self.parse(each_child.children[0], statements)
             attrs = []
             if "[" in raw_type:
-                attrs.append(LianInternal.ARRAY)
+                attrs.append(LIAN_INTERNAL.ARRAY)
                 type_name += "[]"
             if "*" in raw_type:
-                attrs.append(LianInternal.POINTER)
+                attrs.append(LIAN_INTERNAL.POINTER)
                 type_name += "*"
             class_decl["fields"].append({
                 "variable_decl" : {
@@ -517,7 +517,7 @@ class Parser(common_parser.Parser):
             return
 
         struct_name = self.tmp_variable()
-        self.append_stmts(statements, node, {"new_object": {"target": struct_name, "data_type": LianInternal.UNDEFINED}})
+        self.append_stmts(statements, node, {"new_object": {"target": struct_name, "data_type": LIAN_INTERNAL.UNDEFINED}})
 
         counter = 0
         for each_operand in operands:
@@ -547,7 +547,7 @@ class Parser(common_parser.Parser):
             return
 
         array_name = self.tmp_variable()
-        self.append_stmts(statements, node, {"new_array": {"target": array_name, "data_type": LianInternal.UNDEFINED}})
+        self.append_stmts(statements, node, {"new_array": {"target": array_name, "data_type": LIAN_INTERNAL.UNDEFINED}})
 
         counter = 0
         for each_operand in operands:
@@ -571,9 +571,9 @@ class Parser(common_parser.Parser):
 
         attrs = []
         if "*" in shadow_type:
-            attrs.append(LianInternal.POINTER)
+            attrs.append(LIAN_INTERNAL.POINTER)
         elif "[" in shadow_type:
-            attrs.append(LianInternal.ARRAY)
+            attrs.append(LIAN_INTERNAL.ARRAY)
 
         value = self.find_child_by_type(argument, "value")
         shadow_value = self.parse(value, statements)
@@ -897,9 +897,9 @@ class Parser(common_parser.Parser):
             operator = self.CONSTANTS_MAP[operator]
         else:
             if operator == "false":
-                return LianInternal.FALSE
+                return LIAN_INTERNAL.FALSE
             if operator == "true":
-                return LianInternal.TRUE
+                return LIAN_INTERNAL.TRUE
             if operator == "nrd":
                 pass
             if operator == "uno":
@@ -982,7 +982,7 @@ class Parser(common_parser.Parser):
         if type_and_value:
             shadow_value = self.parse_only_value(type_and_value, statements)
             if shadow_value:
-                attrs.append(LianInternal.ARRAY)
+                attrs.append(LIAN_INTERNAL.ARRAY)
                 if shadow_value.isdigit():
                     shadow_value = int(shadow_value)
                     shadow_type = f"{shadow_type}[{shadow_value}]"

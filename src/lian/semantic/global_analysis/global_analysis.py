@@ -10,11 +10,11 @@ from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
 from lian.config.constants import (
-    LianInternal,
-    StateTypeKind,
-    SymbolDependencyGraphEdgeKind,
-    SymbolOrState,
-    AnalysisPhaseName,
+    LIAN_INTERNAL,
+    STATE_TYPE_KIND,
+    SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND,
+    SYMBOL_OR_STATE,
+    ANALYSIS_PHASE_NAME,
     CALL_OPERATION,
     SENSITIVE_OPERATIONS
 )
@@ -58,7 +58,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         self.path_manager = PathManager()
         super().__init__(lian)
         self.analyzed_method_list = analyzed_method_list
-        self.phase_name = AnalysisPhaseName.GlobalAnalysis
+        self.phase_name = ANALYSIS_PHASE_NAME.GlobalAnalysis
 
     def get_stmt_id_to_callee_info(self, callees):
         """
@@ -158,7 +158,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         if len(frame_stack) > 2:
             frame.path = frame_stack[-2].path + (frame.call_stmt_id, frame.method_id)
-            
+
             frame_path = APath(frame.path)
             self.path_manager.add_path(frame_path)
         # avoid changing the content of the loader
@@ -222,18 +222,18 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             if not(old_key_state and isinstance(old_key_state, State)):
                 continue
 
-            if old_key_state.data_type in (LianInternal.METHOD_DECL, LianInternal.CLASS_DECL):
+            if old_key_state.data_type in (LIAN_INTERNAL.METHOD_DECL, LIAN_INTERNAL.CLASS_DECL):
                 new_state_indexes.add(old_key_state_index)
                 continue
 
-            if old_key_state.symbol_or_state != SymbolOrState.EXTERNAL_KEY_STATE:
+            if old_key_state.symbol_or_state != SYMBOL_OR_STATE.EXTERNAL_KEY_STATE:
                 continue
 
             # TODO JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
-            if stmt.operation in CALL_OPERATION and old_key_state.data_type == LianInternal.THIS:
+            if stmt.operation in CALL_OPERATION and old_key_state.data_type == LIAN_INTERNAL.THIS:
                 continue
 
-            if old_key_state.state_type != StateTypeKind.ANYTHING:
+            if old_key_state.state_type != STATE_TYPE_KIND.ANYTHING:
                 continue
             resolved_state_indexes = self.resolver.resolve_symbol_states(old_key_state, frame.frame_stack, frame, stmt_id, stmt, status)
             util.add_to_dict_with_default_set(frame.method_summary_instance.resolver_result, old_key_state_index, resolved_state_indexes)
@@ -543,7 +543,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             #     param.
             #     caller_frame.symbol_state_space[param_id] = param_states
             # caller_frame.callee_param =
-            
+
             frame_stack.pop()
             if config.DEBUG_FLAG:
                 util.debug(f"\n\t<method {frame.method_id}> is Done\n")

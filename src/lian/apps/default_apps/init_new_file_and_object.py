@@ -6,11 +6,11 @@ from lian.semantic.semantic_structs import AccessPoint, State, ComputeFrame
 from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
 from lian.apps.app_template import EventData
 from lian.config.constants import (
-    EventKind,
-    LianInternal,
-    StateTypeKind,
-    SymbolKind,
-    AccessPointKind
+    EVENT_KIND,
+    LIAN_INTERNAL,
+    STATE_TYPE_KIND,
+    LIAN_SYMBOL_KIND,
+    ACCESS_POINT_KIND
 )
 import lian.apps.event_return as er
 from lian.util import util
@@ -68,8 +68,8 @@ def init_imported_unit(data: EventData):
 
         unit_scope = frame.loader.load_unit_scope_hierarchy(unit_id)
         scope_item = unit_scope.query(
-            (unit_scope.scope_kind == SymbolKind.METHOD_KIND) &
-            (unit_scope.name == LianInternal.UNIT_INIT)
+            (unit_scope.scope_kind == LIAN_SYMBOL_KIND.METHOD_KIND) &
+            (unit_scope.name == LIAN_INTERNAL.UNIT_INIT)
         )
         frame.analyze_method(scope_item.stmt_id)
 
@@ -98,17 +98,17 @@ def init_new_object(data: EventData):
             callee_method_list.append(each_type_state.value)
             type_name = loader.convert_method_id_to_method_name(each_type_state.value)
 
-        elif loader.is_class_decl(each_type_state.value) or each_type_state.data_type == LianInternal.THIS:
+        elif loader.is_class_decl(each_type_state.value) or each_type_state.data_type == LIAN_INTERNAL.THIS:
             methods_in_class = loader.load_methods_in_class(each_type_state.value)
             type_name = loader.convert_class_id_to_class_name(each_type_state.value)
-            if each_type_state.data_type == LianInternal.THIS:
+            if each_type_state.data_type == LIAN_INTERNAL.THIS:
                 method_id = loader.convert_stmt_id_to_method_id(stmt_id)
                 class_id = loader.convert_method_id_to_class_id(method_id)
                 methods_in_class = loader.load_methods_in_class(class_id)
                 type_name = loader.convert_class_id_to_class_name(class_id)
             if methods_in_class:
                 for each_method in methods_in_class:
-                    if each_method.name == LianInternal.CLASS_INIT:
+                    if each_method.name == LIAN_INTERNAL.CLASS_INIT:
                         callee_method_list.append(each_method.stmt_id)
 
                 constructor_names = get_lang_constructor_method_names(data.lang)
@@ -127,7 +127,7 @@ def init_new_object(data: EventData):
         new_object_state_index = state_analysis.create_state_and_add_space(
             stmt_id = stmt_id, status = status, source_symbol_id = defined_symbol.symbol_id,
             data_type = type_name, value = each_type_state.value, source_state_id=stmt_id,
-            access_path= [AccessPoint(key = type_name, kind = AccessPointKind.NEW_OBJECT)]
+            access_path= [AccessPoint(key = type_name, kind = ACCESS_POINT_KIND.NEW_OBJECT)]
         )
 
         # 把成员方法名放入new_object_state的fields {method_name: {method_decl_state_indexes}}
@@ -142,12 +142,12 @@ def init_new_object(data: EventData):
                     status = status,
                     source_symbol_id = each_method_id,
                     source_state_id = new_object_state.source_state_id,
-                    data_type = LianInternal.METHOD_DECL,
+                    data_type = LIAN_INTERNAL.METHOD_DECL,
                     value = each_method_id,
                     access_path = state_analysis.copy_and_extend_access_path(
                         new_object_state.access_path,
                         AccessPoint(
-                            kind = AccessPointKind.FIELD_NAME,
+                            kind = ACCESS_POINT_KIND.FIELD_NAME,
                             key = each_method_name
                         )
                     )

@@ -4,14 +4,14 @@ import re
 #from lian.src.lian.config.constants import LianInternalDataType
 import lian.lang.common_parser as common_parser
 from lian.util import util
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 
 class Parser(common_parser.Parser):
     def init(self):
         self.CONSTANTS_MAP = {
-            "null"                          : LianInternal.NULL,
-            "true"                          : LianInternal.TRUE,
-            "false"                         : LianInternal.FALSE,
+            "null"                          : LIAN_INTERNAL.NULL,
+            "true"                          : LIAN_INTERNAL.TRUE,
+            "false"                         : LIAN_INTERNAL.FALSE,
         }
 
         self.LITERAL_MAP = {
@@ -599,7 +599,7 @@ class Parser(common_parser.Parser):
             # 返回值是指针类型
             if child.type == "pointer_declarator":
                 shadow_type += "*"
-                modifiers.append(LianInternal.POINTER)
+                modifiers.append(LIAN_INTERNAL.POINTER)
             child = self.find_child_by_field(child, "declarator")
         if child.type != "function_declarator":
             util.debug("错误,找不到function_declarator")

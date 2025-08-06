@@ -13,12 +13,12 @@ from lian.config import config
 from lian.util.loader import Loader
 # from lian.apps.app_template import AppTemplate
 from lian.config.constants import (
-    SymbolKind,
-    LianInternal,
-    StateTypeKind,
-    LianInternal,
-    CalleeType,
-    EventKind
+    LIAN_SYMBOL_KIND,
+    LIAN_INTERNAL,
+    STATE_TYPE_KIND,
+    LIAN_INTERNAL,
+    CALLEE_TYPE,
+    EVENT_KIND
 )
 from lian.semantic.semantic_structs import (
     CallGraph,
@@ -76,7 +76,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         print(f"current path: {path_str}")
     def create_state_and_add_space(
             self, status: StmtStatus, stmt_id, source_symbol_id = -1, source_state_id = -1, value = "", data_type = "",
-            state_type = StateTypeKind.REGULAR, access_path = [], overwritten_flag = False
+            state_type = STATE_TYPE_KIND.REGULAR, access_path = [], overwritten_flag = False
     ):
         """
         创建新状态并加入符号空间：
@@ -119,7 +119,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             else:
                 self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
-    
+
     def compute_target_method_states(
         self, stmt_id, stmt, status, in_states,
         callee_method_ids, target_symbol, args,
@@ -268,7 +268,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
     #         if util.is_available(result):
     #             return result
     #         return P2ResultFlag()
-        
+
     #     return self.compute_target_method_states(
     #         stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set
     #     )
@@ -306,4 +306,3 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
                 else:
                     parameter_name_symbol.states.add(default_value_index)
         return P2ResultFlag()
-    

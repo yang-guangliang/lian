@@ -16,7 +16,7 @@ from lian.config.constants import (
     PARAMETER_DECL_OPERATION,
     EXPORT_STMT_OPERATION,
     FOR_STMT_OPERATION,
-    SymbolKind,
+    LIAN_SYMBOL_KIND,
 )
 
 from lian.semantic.semantic_structs import (
@@ -102,7 +102,7 @@ class UnitScopeHierarchyAnalysis:
             stmt_id = 0,
             scope_id = -1,
             parent_stmt_id = -1,
-            scope_kind = SymbolKind.UNIT_KIND
+            scope_kind = LIAN_SYMBOL_KIND.UNIT_KIND
         )
         root_scope_id = 0
         self.scope_space.add(root_scope)
@@ -117,7 +117,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.PACKAGE_STMT,
+                    scope_kind = LIAN_SYMBOL_KIND.PACKAGE_STMT,
                     name = util.read_stmt_field(row.name)
                 )
                 self.scope_space.add(package_scope)
@@ -135,7 +135,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.IMPORT_STMT,
+                    scope_kind = LIAN_SYMBOL_KIND.IMPORT_STMT,
                     source = util.read_stmt_field(row.source),
                     name = name,
                     alias = alias,
@@ -151,7 +151,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id = row.parent_stmt_id,
-                    scope_kind = SymbolKind.VARIABLE_DECL,
+                    scope_kind = LIAN_SYMBOL_KIND.VARIABLE_DECL,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.alias)
                 )
@@ -166,7 +166,7 @@ class UnitScopeHierarchyAnalysis:
                         stmt_id = stmt_id,
                         scope_id = scope_id,
                         parent_stmt_id = row.stmt_id,
-                        scope_kind = SymbolKind.VARIABLE_DECL,
+                        scope_kind = LIAN_SYMBOL_KIND.VARIABLE_DECL,
                         name = util.read_stmt_field(row.name)
                     )
                     self.scope_space.add(variable_decl_scope)
@@ -179,7 +179,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.PARAMETER_DECL,
+                    scope_kind = LIAN_SYMBOL_KIND.PARAMETER_DECL,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.attrs)
                 )
@@ -193,7 +193,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.EXPORT_STMT,
+                    scope_kind = LIAN_SYMBOL_KIND.EXPORT_STMT,
                     source = util.read_stmt_field(row.source),
                     name = util.read_stmt_field(row.name),
                     alias = util.read_stmt_field(row.alias)
@@ -208,7 +208,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.METHOD_KIND,
+                    scope_kind = LIAN_SYMBOL_KIND.METHOD_KIND,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.attrs)
                 )
@@ -224,7 +224,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.FOR_KIND
+                    scope_kind = LIAN_SYMBOL_KIND.FOR_KIND
                 )
                 self.scope_space.add(for_stmt_scope)
                 self.all_scope_ids.add(stmt_id)
@@ -238,7 +238,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.CLASS_KIND,
+                    scope_kind = LIAN_SYMBOL_KIND.CLASS_KIND,
                     name = util.read_stmt_field(row.name),
                     attrs = util.read_stmt_field(row.attrs),
                     supers = util.read_stmt_field(row.supers)
@@ -255,7 +255,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.NAMESPACE_KIND,
+                    scope_kind = LIAN_SYMBOL_KIND.NAMESPACE_KIND,
                     name = util.read_stmt_field(row.name),
                 )
                 self.scope_space.add(namespace_decl_scope)
@@ -268,7 +268,7 @@ class UnitScopeHierarchyAnalysis:
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
-                    scope_kind = SymbolKind.BLOCK_KIND,
+                    scope_kind = LIAN_SYMBOL_KIND.BLOCK_KIND,
                 )
                 self.scope_space.add(block_scope)
                 self.all_scope_ids.add(stmt_id)
@@ -344,40 +344,47 @@ class UnitScopeHierarchyAnalysis:
         scope_id_to_available_scope_ids = {}
         for row in self.scope_space:
             if row.scope_kind in [
-                    SymbolKind.IMPORT_STMT,
-                    SymbolKind.VARIABLE_DECL,
-                    SymbolKind.PARAMETER_DECL,
-                    SymbolKind.CLASS_KIND,
-                    SymbolKind.METHOD_KIND,
-                    SymbolKind.NAMESPACE_KIND,
+                    LIAN_SYMBOL_KIND.IMPORT_STMT,
+                    LIAN_SYMBOL_KIND.VARIABLE_DECL,
+                    LIAN_SYMBOL_KIND.PARAMETER_DECL,
+                    LIAN_SYMBOL_KIND.CLASS_KIND,
+                    LIAN_SYMBOL_KIND.METHOD_KIND,
+                    LIAN_SYMBOL_KIND.NAMESPACE_KIND,
             ]:
-                if row.name not in symbol_name_to_scope_ids:
-                    symbol_name_to_scope_ids[row.name] = set()
-                symbol_name_to_scope_ids[row.name].add(row.scope_id)
+                symbol_name = row.name
+                if row.scope_kind == LIAN_SYMBOL_KIND.IMPORT_STMT:
+                    if util.is_available(row.alias):
+                        symbol_name = row.alias
+                    else:
+                        symbol_name = row.name.split(".")[-1]
 
-                if util.is_available(row.name):
+                if symbol_name not in symbol_name_to_scope_ids:
+                    symbol_name_to_scope_ids[symbol_name] = set()
+                symbol_name_to_scope_ids[symbol_name].add(row.scope_id)
+
+                if util.is_available(symbol_name):
                     if self.options.strict_parse_mode:
                         if row.scope_id in scope_id_to_symbol_info:
-                            if row.name in scope_id_to_symbol_info[row.scope_id]:
-                                previous_decl_id = scope_id_to_symbol_info[row.scope_id][row.name]
+                            if symbol_name in scope_id_to_symbol_info[row.scope_id]:
+                                previous_decl_id = scope_id_to_symbol_info[row.scope_id][symbol_name]
                                 previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)
                                 current_stmt = self.stmt_id_to_gir.get(row.stmt_id)
                                 util.error_and_quit_with_stmt_info(
                                     self.unit_info.original_path,
                                     current_stmt,
-                                    f"Duplicate Definition Error: {row.name} already declared in {self.unit_info.original_path}:{int(previous_stmt.start_row+1)}"
+                                    f"Duplicate Definition Error: {symbol_name} already declared in {self.unit_info.original_path}:{int(previous_stmt.start_row+1)}"
                                 )
 
                     if row.scope_id not in scope_id_to_symbol_info:
                         scope_id_to_symbol_info[row.scope_id] = {}
-                    scope_id_to_symbol_info[row.scope_id][row.name] = row.stmt_id
+                    scope_id_to_symbol_info[row.scope_id][symbol_name] = row.stmt_id
 
             if row.scope_kind in [
-                    SymbolKind.CLASS_KIND,
-                    SymbolKind.METHOD_KIND,
-                    SymbolKind.BLOCK_KIND,
-                    SymbolKind.NAMESPACE_KIND,
-                    SymbolKind.FOR_KIND,
+                    LIAN_SYMBOL_KIND.CLASS_KIND,
+                    LIAN_SYMBOL_KIND.METHOD_KIND,
+                    LIAN_SYMBOL_KIND.BLOCK_KIND,
+                    LIAN_SYMBOL_KIND.NAMESPACE_KIND,
+                    LIAN_SYMBOL_KIND.FOR_KIND,
             ]:
                 if row.stmt_id not in scope_id_to_available_scope_ids:
                     scope_id_to_available_scope_ids[row.stmt_id] = set()

@@ -7,13 +7,13 @@ from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
 from lian.config.constants import (
-    ExportNodeType,
-    SymbolDependencyGraphEdgeKind,
-    SymbolKind,
-    SymbolKind,
-    EventKind,
-    CalleeType,
-    BasicCallGraphNodeKind
+    EXPORT_NODE_TYPE,
+    SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND,
+    LIAN_SYMBOL_KIND,
+    LIAN_SYMBOL_KIND,
+    EVENT_KIND,
+    CALLEE_TYPE,
+    BASIC_CALL_GRAPH_NODE_KIND
 )
 from lian.semantic.semantic_structs import (
     Symbol,
@@ -133,8 +133,8 @@ class BasicSemanticAnalysis:
     def group_methods_by_callee_types(self):
         graph = self.basic_call_graph.graph
 
-        containing_dynamic_callees = self.search_impacted_parent_nodes(graph, BasicCallGraphNodeKind.DYNAMIC_METHOD)
-        containing_error_callees = self.search_impacted_parent_nodes(graph, BasicCallGraphNodeKind.ERROR_METHOD)
+        containing_dynamic_callees = self.search_impacted_parent_nodes(graph, BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD)
+        containing_error_callees = self.search_impacted_parent_nodes(graph, BASIC_CALL_GRAPH_NODE_KIND.ERROR_METHOD)
 
         # print(containing_dynamic_callees)
         # print(containing_error_callees)
@@ -157,7 +157,7 @@ class BasicSemanticAnalysis:
         has_calls = only_direct_callees | mixed_direct_callees | only_dynamic_callees | containing_error_callees | containing_dynamic_callees
         no_callees = self.loader.load_all_method_ids() - has_calls
 
-        extra = {BasicCallGraphNodeKind.DYNAMIC_METHOD, BasicCallGraphNodeKind.ERROR_METHOD}
+        extra = {BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD, BASIC_CALL_GRAPH_NODE_KIND.ERROR_METHOD}
         types = SimplyGroupedMethodTypes(
             no_callees - extra,
             only_direct_callees - extra,

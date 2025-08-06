@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 from lian.lang import common_parser
 
 
@@ -701,7 +701,7 @@ class Parser(common_parser.Parser):
         else:
             tmp_var_list = []
             for i, right_expr in enumerate(shadow_right_list):
-                if right_expr.startswith(LianInternal.VARIABLE_DECL_PREF):
+                if right_expr.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF):
                     tmp_var_list.append(right_expr)
                 else:
                     tmp_var_list.append(self.tmp_variable())

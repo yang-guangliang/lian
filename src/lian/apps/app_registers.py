@@ -11,8 +11,8 @@ from lian.apps.app_template import (
     EventHandler
 )
 from lian.config.constants import (
-    EventKind,
-    LianInternal,
+    EVENT_KIND,
+    LIAN_INTERNAL,
 )
 from lian.config import config
 
@@ -20,47 +20,47 @@ class DefaultApp(AppSummary):
     def enable(self):
         self.app_manager.register_list([
             EventHandler(
-                event = EventKind.MOCK_SOURCE_CODE_READY,
+                event = EVENT_KIND.MOCK_SOURCE_CODE_READY,
                 handler = basic.replace_percent_symbol_in_mock,
                 langs = [config.ANY_LANG]
             ),
 
             EventHandler(
-                event = EventKind.ORIGINAL_SOURCE_CODE_READY,
+                event = EVENT_KIND.ORIGINAL_SOURCE_CODE_READY,
                 handler = basic.preprocess_llvm_float_value,
                 langs = ["llvm"]
             ),
 
             EventHandler(
-                event = EventKind.ORIGINAL_SOURCE_CODE_READY,
+                event = EVENT_KIND.ORIGINAL_SOURCE_CODE_READY,
                 handler = basic.preprocess_python_import_statements,
                 langs = ["python"]
             ),
 
             EventHandler(
-                event = EventKind.ORIGINAL_SOURCE_CODE_READY,
+                event = EVENT_KIND.ORIGINAL_SOURCE_CODE_READY,
                 handler = basic.remove_php_comments,
                 langs = ["php"]
             ),
 
             EventHandler(
-                event = EventKind.ORIGINAL_SOURCE_CODE_READY,
+                event = EVENT_KIND.ORIGINAL_SOURCE_CODE_READY,
                 handler = basic.preprocess_php_namespace,
                 langs = ["php"]
             ),
 
             EventHandler(
-                event = EventKind.ORIGINAL_SOURCE_CODE_READY,
+                event = EVENT_KIND.ORIGINAL_SOURCE_CODE_READY,
                 handler = basic.preprocess_php_namespace_2,
                 langs = ["php"]
             ),
             EventHandler(
-                event = EventKind.ORIGINAL_SOURCE_CODE_READY,
+                event = EVENT_KIND.ORIGINAL_SOURCE_CODE_READY,
                 handler = basic.preprocess_abc_loop,
                 langs = ["abc"]
             ),
             EventHandler(
-                event = EventKind.UNFLATTENED_GIR_LIST_GENERATED,
+                event = EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED,
                 handler = basic.unify_this,
                 langs = [
                     "javascript",
@@ -71,13 +71,13 @@ class DefaultApp(AppSummary):
             ),
 
             EventHandler(
-                event = EventKind.UNFLATTENED_GIR_LIST_GENERATED,
+                event = EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED,
                 handler = basic.unify_python_self,
                 langs = ["python"]
             ),
 
             EventHandler(
-                event = EventKind.UNFLATTENED_GIR_LIST_GENERATED,
+                event = EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED,
                 handler = basic.adjust_variable_decls,
                 langs = [
                     "python",
@@ -89,13 +89,13 @@ class DefaultApp(AppSummary):
             ),
 
             EventHandler(
-                event = EventKind.GIR_LIST_GENERATED,
+                event = EVENT_KIND.GIR_LIST_GENERATED,
                 handler = basic.remove_unnecessary_tmp_variables,
                 langs = [config.ANY_LANG]
             ),
 
             EventHandler(
-                event = EventKind.GIR_LIST_GENERATED,
+                event = EVENT_KIND.GIR_LIST_GENERATED,
                 handler = basic.add_main_func,
                 langs = [config.ANY_LANG]
             ),
@@ -107,13 +107,13 @@ class DefaultApp(AppSummary):
             # ),
 
             EventHandler(
-                event = EventKind.P2STATE_FIELD_READ_BEFORE,
+                event = EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
                 handler = js_handlers.field_read_prototype,
                 langs = ["javascript"]
             ),
 
             EventHandler(
-                event = EventKind.P2STATE_FIELD_READ_BEFORE,
+                event = EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
                 handler = this_field_read.resolve_this_field_method,
                 langs = [config.ANY_LANG]
             ),
@@ -125,25 +125,25 @@ class DefaultApp(AppSummary):
             # ),
 
             EventHandler(
-                event = EventKind.P2STATE_GENERATE_EXTERNAL_STATES,
+                event = EVENT_KIND.P2STATE_GENERATE_EXTERNAL_STATES,
                 handler = js_handlers.method_decl_prototype,
                 langs = ["javascript"]
             ),
 
             EventHandler(
-                event = EventKind.P2STATE_NEW_OBJECT_BEFORE,
+                event = EVENT_KIND.P2STATE_NEW_OBJECT_BEFORE,
                 handler = init_new_file_and_object.init_new_object,
                 langs = [config.ANY_LANG]
             ),
 
             EventHandler(
-                event = EventKind.P2STATE_NEW_OBJECT_BEFORE,
+                event = EVENT_KIND.P2STATE_NEW_OBJECT_BEFORE,
                 handler = js_handlers.new_object_proto,
                 langs = ["javascript"]
             ),
 
             EventHandler(
-                event = EventKind.P2STATE_NEW_OBJECT_AFTER,
+                event = EVENT_KIND.P2STATE_NEW_OBJECT_AFTER,
                 handler = init_new_file_and_object.apply_constructor_summary,
                 langs = [config.ANY_LANG]
             ),

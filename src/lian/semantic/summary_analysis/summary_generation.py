@@ -9,14 +9,14 @@ from lian.config import type_table
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
-    SymbolDependencyGraphEdgeKind,
-    LianInternal,
-    StateTypeKind,
-    SymbolOrState,
-    ControlFlowKind,
-    EventKind,
-    SymbolKind,
-    AnalysisPhaseName,
+    SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND,
+    LIAN_INTERNAL,
+    STATE_TYPE_KIND,
+    SYMBOL_OR_STATE,
+    CONTROL_FLOW_KIND,
+    EVENT_KIND,
+    LIAN_SYMBOL_KIND,
+    ANALYSIS_PHASE_NAME,
     RETURN_STMT_OPERATION,
     SUMMARY_GENERAL_SYMBOL_ID
 )
@@ -67,7 +67,7 @@ class SemanticSummaryGeneration:
         self.call_graph = CallGraph()
         self.analyzed_method_list = set()
         self.inited_unit_list = set()
-        self.phase_name = AnalysisPhaseName.SemanticSummaryGeneration
+        self.phase_name = ANALYSIS_PHASE_NAME.SemanticSummaryGeneration
         self.LOOP_OPERATIONS = set(["for_stmt", "forin_stmt", "for_value_stmt", "while_stmt", "dowhile_stmt"])
 
     def get_stmt_id_to_callee_info(self, callees):
@@ -258,7 +258,7 @@ class SemanticSummaryGeneration:
                 new_state = State(
                     stmt_id = stmt_id,
                     source_symbol_id = defined_symbol.symbol_id,
-                    state_type = StateTypeKind.UNSOLVED
+                    state_type = STATE_TYPE_KIND.UNSOLVED
                 )
                 defined_symbol.states.add(frame.symbol_state_space.add(new_state))
                 # print("本句语句的defined_symbol没有被解析出任何状态,生成一个UNSOLVED状态给它",defined_symbol.states)
@@ -297,9 +297,9 @@ class SemanticSummaryGeneration:
             new_parent_stmt_ids = []
             for each_parent_stmt_id in parent_stmt_ids:
                 edge_weight = util.get_graph_edge_weight(frame.cfg, each_parent_stmt_id, stmt_id)
-                if frame.stmt_counters[stmt_id] == config.FIRST_ROUND and edge_weight != ControlFlowKind.LOOP_BACK:
+                if frame.stmt_counters[stmt_id] == config.FIRST_ROUND and edge_weight != CONTROL_FLOW_KIND.LOOP_BACK:
                     new_parent_stmt_ids.append(each_parent_stmt_id)
-                elif frame.stmt_counters[stmt_id] > config.FIRST_ROUND and edge_weight == ControlFlowKind.LOOP_BACK:
+                elif frame.stmt_counters[stmt_id] > config.FIRST_ROUND and edge_weight == CONTROL_FLOW_KIND.LOOP_BACK:
                     new_parent_stmt_ids.append(each_parent_stmt_id)
             parent_stmt_ids = new_parent_stmt_ids
 
@@ -308,7 +308,7 @@ class SemanticSummaryGeneration:
             if each_parent_stmt_id in frame.stmt_id_to_status:
                 status.in_symbol_bits |= frame.stmt_id_to_status[each_parent_stmt_id].out_symbol_bits
 
-        if self.phase_name in [AnalysisPhaseName.SemanticSummaryGeneration, AnalysisPhaseName.GlobalAnalysis]:
+        if self.phase_name in [ANALYSIS_PHASE_NAME.SemanticSummaryGeneration, ANALYSIS_PHASE_NAME.GlobalAnalysis]:
             if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
@@ -323,22 +323,22 @@ class SemanticSummaryGeneration:
             key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id)
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
 
-            edge_type = SymbolDependencyGraphEdgeKind.EXPLICITLY_DEFINED
+            edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.EXPLICITLY_DEFINED
             if tmp_counter != 0:
-                edge_type = SymbolDependencyGraphEdgeKind.IMPLICITLY_DEFINED
+                edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
         status.out_symbol_bits = current_bits
 
         # check if the out bits are changed
-        if self.phase_name == AnalysisPhaseName.SemanticSummaryGeneration:
+        if self.phase_name == ANALYSIS_PHASE_NAME.SemanticSummaryGeneration:
             if frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
                 self.update_used_symbols_to_symbol_graph(stmt_id, frame)
                 frame.symbol_changed_stmts.add(util.graph_successors(frame.cfg, stmt_id))
             else:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
-        elif self.phase_name == AnalysisPhaseName.GlobalAnalysis:
+        elif self.phase_name == ANALYSIS_PHASE_NAME.GlobalAnalysis:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
     def rerun_analyze_reaching_symbols(self, stmt_id, frame: ComputeFrame, result_flag: P2ResultFlag):
@@ -357,7 +357,7 @@ class SemanticSummaryGeneration:
             symbol_id = defined_symbol.symbol_id
             key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id)
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
-            frame.symbol_graph.add_edge(stmt_id, key, SymbolDependencyGraphEdgeKind.IMPLICITLY_DEFINED)
+            frame.symbol_graph.add_edge(stmt_id, key, SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED)
         status.out_symbol_bits = current_bits
         # print("rerun_new_out_bits")
         # print(frame.symbol_bit_vector_manager.explain(current_bits))
@@ -415,10 +415,10 @@ class SemanticSummaryGeneration:
                 continue
 
             reachable_defs = self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs)
-            edge_type = SymbolDependencyGraphEdgeKind.IMPLICITLY_USED
+            edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_USED
             if not only_implicitly_used_symbols:
                 if used_symbol_index < len(status.used_symbols):
-                    edge_type = SymbolDependencyGraphEdgeKind.EXPLICITLY_USED
+                    edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.EXPLICITLY_USED
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
 
@@ -433,9 +433,9 @@ class SemanticSummaryGeneration:
             new_parent_stmt_ids = []
             for each_parent_stmt_id in parent_stmt_ids:
                 edge_weight = util.get_graph_edge_weight(frame.cfg, each_parent_stmt_id, stmt_id)
-                if frame.stmt_counters[stmt_id] == config.FIRST_ROUND and edge_weight != ControlFlowKind.LOOP_BACK:
+                if frame.stmt_counters[stmt_id] == config.FIRST_ROUND and edge_weight != CONTROL_FLOW_KIND.LOOP_BACK:
                     new_parent_stmt_ids.append(each_parent_stmt_id)
-                elif frame.stmt_counters[stmt_id] > config.FIRST_ROUND and edge_weight == ControlFlowKind.LOOP_BACK:
+                elif frame.stmt_counters[stmt_id] > config.FIRST_ROUND and edge_weight == CONTROL_FLOW_KIND.LOOP_BACK:
                     new_parent_stmt_ids.append(each_parent_stmt_id)
             parent_stmt_ids = new_parent_stmt_ids
 
@@ -518,8 +518,8 @@ class SemanticSummaryGeneration:
             new_state = State(
                 stmt_id = stmt_id,
                 source_symbol_id = symbol_id,
-                data_type = LianInternal.METHOD_DECL,
-                state_type = StateTypeKind.REGULAR,
+                data_type = LIAN_INTERNAL.METHOD_DECL,
+                state_type = STATE_TYPE_KIND.REGULAR,
                 value = symbol_id,
             )
             new_state.access_path = [AccessPoint(key=used_symbol.name, state_id=new_state.state_id)]
@@ -527,8 +527,8 @@ class SemanticSummaryGeneration:
             new_state = State(
                 stmt_id = stmt_id,
                 source_symbol_id = symbol_id,
-                data_type = LianInternal.CLASS_DECL,
-                state_type = StateTypeKind.REGULAR,
+                data_type = LIAN_INTERNAL.CLASS_DECL,
+                state_type = STATE_TYPE_KIND.REGULAR,
                 value = symbol_id
             )
             new_state.access_path = [AccessPoint(key=used_symbol.name, state_id=new_state.state_id)]
@@ -536,8 +536,8 @@ class SemanticSummaryGeneration:
             new_state = State(
                 stmt_id = stmt_id,
                 source_symbol_id = symbol_id,
-                data_type = LianInternal.UNIT,
-                state_type = StateTypeKind.REGULAR,
+                data_type = LIAN_INTERNAL.UNIT,
+                state_type = STATE_TYPE_KIND.REGULAR,
                 value = symbol_id
             )
             new_state.access_path = [AccessPoint(key=used_symbol.name, state_id=new_state.state_id)]
@@ -545,13 +545,13 @@ class SemanticSummaryGeneration:
             new_state = State(
                 stmt_id = stmt_id,
                 source_symbol_id = symbol_id,
-                state_type = StateTypeKind.ANYTHING
+                state_type = STATE_TYPE_KIND.ANYTHING
 
             )
             new_state.access_path = [AccessPoint(key=used_symbol.name, state_id=new_state.state_id)]
 
-        if used_symbol.name == LianInternal.THIS:
-            new_state.data_type = LianInternal.THIS
+        if used_symbol.name == LIAN_INTERNAL.THIS:
+            new_state.data_type = LIAN_INTERNAL.THIS
             # new_state.symbol_or_state = SymbolOrState.EXTERNAL_KEY_STATE
             # method_summary.dynamic_call_stmt.add(stmt_id)
 
@@ -561,7 +561,7 @@ class SemanticSummaryGeneration:
         frame.external_symbol_id_to_initial_state_index[symbol_id] = index
         event = EventData(
             frame.lang,
-            EventKind.P2STATE_GENERATE_EXTERNAL_STATES,
+            EVENT_KIND.P2STATE_GENERATE_EXTERNAL_STATES,
             {
                 "stmt_id": stmt_id,
                 "frame": frame,
@@ -618,7 +618,7 @@ class SemanticSummaryGeneration:
         dynamic_call_stmt: set = method_summary.dynamic_call_stmt
         change_flag = False
         if (
-            self.phase_name in [AnalysisPhaseName.SemanticSummaryGeneration, AnalysisPhaseName.GlobalAnalysis] and
+            self.phase_name in [ANALYSIS_PHASE_NAME.SemanticSummaryGeneration, ANALYSIS_PHASE_NAME.GlobalAnalysis] and
             frame.stmt_counters[stmt_id] == config.FIRST_ROUND
         ):
             change_flag = True

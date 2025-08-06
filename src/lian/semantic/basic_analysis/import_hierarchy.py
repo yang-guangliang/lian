@@ -7,9 +7,9 @@ import pdb
 from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
-    ImportGraphEdgeKind,
-    SymbolKind,
-    SymbolKind
+    IMPORT_GRAPH_EDGE_KIND,
+    LIAN_SYMBOL_KIND,
+    LIAN_SYMBOL_KIND
 )
 
 from lian.semantic.semantic_structs import (
@@ -49,13 +49,13 @@ class ImportHierarchy:
         self.add_import_graph_edge(parent_node_id, symbol_id)
         return import_node
 
-    def add_import_graph_edge(self, parent_node_id, node_id, edge_kind = ImportGraphEdgeKind.INTERNAL_SYMBOL):
+    def add_import_graph_edge(self, parent_node_id, node_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.INTERNAL_SYMBOL):
         if (
             parent_node_id in self.symbol_id_to_symbol_node
             and node_id in self.symbol_id_to_symbol_node
         ):
             self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
-        elif edge_kind == ImportGraphEdgeKind.UNSOLVED_SYMBOL:
+        elif edge_kind == IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL:
             self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
 
     def add_import_deps(self, unit_id, node_id):
@@ -98,10 +98,10 @@ class ImportHierarchy:
                         scope_hierarchy.scope_id == scope_id
                     ) & (
                         scope_hierarchy.scope_kind.isin((
-                            SymbolKind.VARIABLE_DECL,
-                            SymbolKind.CLASS_KIND,
-                            SymbolKind.METHOD_KIND,
-                            SymbolKind.NAMESPACE_KIND,
+                            LIAN_SYMBOL_KIND.VARIABLE_DECL,
+                            LIAN_SYMBOL_KIND.CLASS_KIND,
+                            LIAN_SYMBOL_KIND.METHOD_KIND,
+                            LIAN_SYMBOL_KIND.NAMESPACE_KIND,
                         ))
                     )
                 )
@@ -111,9 +111,9 @@ class ImportHierarchy:
                         scope_hierarchy.scope_id == scope_id
                     ) & (
                         scope_hierarchy.scope_kind.isin((
-                            SymbolKind.CLASS_KIND,
-                            SymbolKind.METHOD_KIND,
-                            SymbolKind.NAMESPACE_KIND,
+                            LIAN_SYMBOL_KIND.CLASS_KIND,
+                            LIAN_SYMBOL_KIND.METHOD_KIND,
+                            LIAN_SYMBOL_KIND.NAMESPACE_KIND,
                         ))
                     )
                 )
@@ -122,7 +122,7 @@ class ImportHierarchy:
                 if self.is_private_attr(row.attrs):
                     continue
 
-                if row.scope_kind == SymbolKind.METHOD_KIND:
+                if row.scope_kind == LIAN_SYMBOL_KIND.METHOD_KIND:
                     if scope_id in public_scopes:
                         internal_symbols.append(row)
                     elif "static" in row.attrs:
@@ -130,8 +130,8 @@ class ImportHierarchy:
                     continue
 
                 internal_symbols.append(row)
-                if row.scope_kind in (SymbolKind.CLASS_KIND, SymbolKind.NAMESPACE_KIND):
-                    if row.scope_kind == SymbolKind.NAMESPACE_KIND:
+                if row.scope_kind in (LIAN_SYMBOL_KIND.CLASS_KIND, LIAN_SYMBOL_KIND.NAMESPACE_KIND):
+                    if row.scope_kind == LIAN_SYMBOL_KIND.NAMESPACE_KIND:
                         public_scopes.add(row.stmt_id)
                     worklist.append(row.stmt_id)
 
@@ -228,14 +228,14 @@ class ImportHierarchy:
             if name_to_be_matched == "*":
                 import_path_list.pop(0)
                 for each_node in initial_worklist:
-                    if each_node.symbol_type == SymbolKind.UNIT_SYMBOL:
+                    if each_node.symbol_type == LIAN_SYMBOL_KIND.UNIT_SYMBOL:
                         self.analyze_unit_import_stmts(each_node.symbol_id)
                 return (initial_worklist, import_path_list)
 
             # 遍历初始工作列表，查找匹配的节点
             for candidate_node in initial_worklist:
                 if candidate_node.symbol_name == name_to_be_matched:
-                    if candidate_node.symbol_type == SymbolKind.UNIT_SYMBOL:
+                    if candidate_node.symbol_type == LIAN_SYMBOL_KIND.UNIT_SYMBOL:
                         self.analyze_unit_import_stmts(candidate_node.symbol_id)
                     matched_nodes.append(candidate_node)
 
@@ -247,7 +247,7 @@ class ImportHierarchy:
                 # 获取匹配节点的后继节点
                 children_list = []
                 if self.is_strict_parse_mode:
-                    children_list = util.graph_successors_with_weight(self.import_graph, candidate_node.symbol_id, ImportGraphEdgeKind.INTERNAL_SYMBOL)
+                    children_list = util.graph_successors_with_weight(self.import_graph, candidate_node.symbol_id, IMPORT_GRAPH_EDGE_KIND.INTERNAL_SYMBOL)
                 else:
                     children_list = util.graph_successors(self.import_graph, candidate_node.symbol_id)
                 if len(children_list) > 0:
@@ -348,7 +348,7 @@ class ImportHierarchy:
         )
         if import_nodes:
             for each_node in import_nodes:
-                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = ImportGraphEdgeKind.EXTERNAL_SYMBOL)
+                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL)
                 self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
@@ -366,7 +366,7 @@ class ImportHierarchy:
         import_nodes = self.check_import_stmt_analysis_results(unit_info, stmt, import_nodes, remaining)
         if import_nodes:
             for each_node in import_nodes:
-                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = ImportGraphEdgeKind.EXTERNAL_SYMBOL)
+                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL)
                 self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
@@ -381,14 +381,14 @@ class ImportHierarchy:
 
         fake_node_id = self.loader.assign_new_unique_positive_id()
         fake_node = self.add_import_graph_node(
-            symbol_type=SymbolKind.UNKNOWN_KIND,
+            symbol_type=LIAN_SYMBOL_KIND.UNKNOWN_KIND,
             symbol_id=fake_node_id,
             symbol_name=alias,
             parent_node_id=stmt.parent_stmt_id,
             import_stmt=stmt.stmt_id,
             unit_id=unit_id,
         )
-        self.add_import_graph_edge(unit_id, fake_node_id, edge_kind = ImportGraphEdgeKind.UNSOLVED_SYMBOL)
+        self.add_import_graph_edge(unit_id, fake_node_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL)
         external_symbols.append(fake_node)
 
         #print(external_symbols)
@@ -407,12 +407,13 @@ class ImportHierarchy:
 
         import_stmts = scope_hierarchy.query(
             (scope_hierarchy.scope_id == 0) &
-            (scope_hierarchy.scope_kind == SymbolKind.IMPORT_STMT)
+            (scope_hierarchy.scope_kind == LIAN_SYMBOL_KIND.IMPORT_STMT)
         )
         results = []
         for each_stmt in import_stmts:
             self.analyze_import_stmt(unit_id, unit_info, each_stmt, results)
 
+        #print("save_unit_export_symbols:", unit_id, results)
 
         self.loader.save_unit_export_symbols(unit_id, results)
 

@@ -4,7 +4,7 @@ import re
 from tree_sitter import Node
 from lian.lang import common_parser
 from lian.util import util
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 
 import os
 
@@ -623,7 +623,7 @@ class Parser(common_parser.Parser):
     def new_object(self, node: Node, statements: list):
         # 创建Object
         tmp_var = self.tmp_variable()
-        self.append_stmts(statements, node, {"new_object": {"data_type": LianInternal.OBJECT, "target": tmp_var}})
+        self.append_stmts(statements, node, {"new_object": {"data_type": LIAN_INTERNAL.OBJECT, "target": tmp_var}})
 
         # 写入Object
         for child in node.named_children:
@@ -1354,7 +1354,7 @@ class Parser(common_parser.Parser):
             gir_node["attrs"].append("async")
         # 处理generator_function
         if "*" in shadow_children:
-            gir_node["attrs"].append(LianInternal.GENERATOR_DECL)
+            gir_node["attrs"].append(LIAN_INTERNAL.GENERATOR_DECL)
 
         # 以下三个专门用于method_definition
         if "static" in shadow_children:
@@ -1428,7 +1428,7 @@ class Parser(common_parser.Parser):
             self.append_stmts(statements, node, {"parameter_decl": {"attrs": attrs, "name": shadow_name, "default_value": shadow_value}})
 
         elif node.type == "rest_pattern":   # 处理形参列表中的剩余参数(...arg)
-            attrs.append(LianInternal.PACKED_POSITIONAL_PARAMETER)
+            attrs.append(LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER)
             name = node.named_children[-1]
             shadow_name = self.parse(name, statements)
             self.append_stmts(statements, node, {"parameter_decl": {"attrs": attrs, "name": shadow_name}})
@@ -1560,7 +1560,7 @@ class Parser(common_parser.Parser):
             gir_node["methods"].insert(0,
                 {
                     "method_decl":{
-                        "name": LianInternal.CLASS_INIT,
+                        "name": LIAN_INTERNAL.CLASS_INIT,
                         "body": init_class_method_body
                     }
                 }
@@ -1570,7 +1570,7 @@ class Parser(common_parser.Parser):
             gir_node["methods"].insert(0,
                 {
                     "method_decl":{
-                        "name": LianInternal.CLASS_STATIC_INIT,
+                        "name": LIAN_INTERNAL.CLASS_STATIC_INIT,
                         "body": static_init_class_method_body
                     }
                 }

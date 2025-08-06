@@ -12,9 +12,9 @@ from lian.config import schema
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
-    ImportGraphEdgeKind,
-    SymbolOrState,
-    SymbolKind
+    IMPORT_GRAPH_EDGE_KIND,
+    SYMBOL_OR_STATE,
+    LIAN_SYMBOL_KIND
 )
 from lian.semantic.semantic_structs import (
     BasicGraph,
@@ -75,7 +75,7 @@ class ModuleSymbolsLoader:
         for row in self.module_symbol_table:
             module_id = row.module_id
 
-            if row.symbol_type == SymbolKind.UNIT_SYMBOL:
+            if row.symbol_type == LIAN_SYMBOL_KIND.UNIT_SYMBOL:
                 self.module_unit_ids.add(module_id)
 
             # cache all module ids
@@ -137,7 +137,7 @@ class ModuleSymbolsLoader:
         if len(self.module_symbol_table) == 0:
             return []
 
-        all_units = self.module_symbol_table.query(self.module_symbol_table.symbol_type == SymbolKind.UNIT_SYMBOL)
+        all_units = self.module_symbol_table.query(self.module_symbol_table.symbol_type == LIAN_SYMBOL_KIND.UNIT_SYMBOL)
         if len(all_units) == 0:
             return []
 
@@ -797,7 +797,7 @@ class SymbolStateSpaceLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, _id, flattened_item):
         symbol_state_space = SymbolStateSpace()
         for row in flattened_item:
-            if row.symbol_or_state == SymbolOrState.SYMBOL:
+            if row.symbol_or_state == SYMBOL_OR_STATE.SYMBOL:
                 item = Symbol(
                     stmt_id = row.stmt_id,
                     symbol_id = row.symbol_id,
@@ -1178,13 +1178,13 @@ class ImportGraphLoader:
 
     def get_internal_successor_nodes(self, node_id):
         successor_ids = util.graph_successors_with_weight(
-            self.import_graph, node_id, ImportGraphEdgeKind.INTERNAL_SYMBOL
+            self.import_graph, node_id, IMPORT_GRAPH_EDGE_KIND.INTERNAL_SYMBOL
         )
         return self.get_successor_nodes_from_ids(successor_ids)
 
     def get_external_successor_nodes(self, node_id):
         successor_ids = util.graph_successors_with_weight(
-            self.import_graph, node_id, ImportGraphEdgeKind.EXTERNAL_SYMBOL
+            self.import_graph, node_id, IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL
         )
         return self.get_successor_nodes_from_ids(successor_ids)
 
@@ -2392,7 +2392,7 @@ class Loader:
         if scope_hierarchy:
             import_stmts = scope_hierarchy.query(
                 (scope_hierarchy.scope_id == 0) &
-                (scope_hierarchy.scope_kind == SymbolKind.IMPORT_STMT)
+                (scope_hierarchy.scope_kind == LIAN_SYMBOL_KIND.IMPORT_STMT)
             )
             context["import_stmts"] = [
                 self.get_stmt_source_code(lines, stmt_map.get(each_stmt.stmt_id))

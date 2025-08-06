@@ -2,7 +2,7 @@
 
 from lian.config import config
 from lian.lang import common_parser
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 
 
 class Parser(common_parser.Parser):
@@ -279,7 +279,7 @@ class Parser(common_parser.Parser):
             gir_node["methods"].insert(0,
                 {
                     "method_decl":{
-                        "name": LianInternal.CLASS_INIT,
+                        "name": LIAN_INTERNAL.CLASS_INIT,
                         "body": init_class_method_body
                     }
                 }
@@ -1033,7 +1033,7 @@ class Parser(common_parser.Parser):
     def arg_list(self, node, statements):
         child = self.find_child_by_type(node, "modifiers")
         modifiers = self.read_node_text(child).split()
-        modifiers.append(LianInternal.PACKED_POSITIONAL_PARAMETER)
+        modifiers.append(LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER)
 
         type_index = 0
         if child:
@@ -1429,7 +1429,7 @@ class Parser(common_parser.Parser):
                 gir_node["methods"].insert(0,
                     {
                         "method_decl":{
-                            "name": LianInternal.CLASS_INIT,
+                            "name": LIAN_INTERNAL.CLASS_INIT,
                             "body": init_class_method_body
                         }
                     }
@@ -1498,7 +1498,7 @@ class Parser(common_parser.Parser):
             gir_node["methods"].insert(0,
                 {
                     "method_decl":{
-                        "name": LianInternal.CLASS_INIT,
+                        "name": LIAN_INTERNAL.CLASS_INIT,
                         "body": init_class_method_body
                     }
                 }

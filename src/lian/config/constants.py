@@ -69,7 +69,7 @@ SUMMARY_GENERAL_SYMBOL_ID = util.SimpleEnum({
     "RETURN_SYMBOL_ID" : -28,
 })
 
-EventKind = util.SimpleEnum({
+EVENT_KIND = util.SimpleEnum({
     "NONE"                                          : 0,
     "MOCK_SOURCE_CODE_READY"                        : 1,
     "ORIGINAL_SOURCE_CODE_READY"                    : 2,
@@ -94,13 +94,13 @@ EventKind = util.SimpleEnum({
     "P2STATE_EXTERN_CALLEE"                         : 46,
 })
 
-ConfigurationItemKind = util.SimpleEnum({
+CONFIG_ITEM_Kind = util.SimpleEnum({
     "ARG"               : 0,
     "RETURN"            : 1,
     "THIS"              : 2,
 })
 
-LangKind = util.SimpleEnum({
+LANG_KIND = util.SimpleEnum({
     "C"                 : 0,
     "CPP"               : 1,
     "CSHARP"            : 2,
@@ -122,7 +122,7 @@ LangKind = util.SimpleEnum({
     "ABC"               : 18,
 })
 
-SymbolKind = util.SimpleEnum({
+LIAN_SYMBOL_KIND = util.SimpleEnum({
     'MODULE_SYMBOL'                 : 0,
     'UNIT_SYMBOL'                   : 1,
     "PACKAGE_STMT"                  : 2,
@@ -143,14 +143,14 @@ SymbolKind = util.SimpleEnum({
     "UNKNOWN_KIND"                  : 16,
 })
 
-ImportGraphEdgeKind = util.SimpleEnum({
+IMPORT_GRAPH_EDGE_KIND = util.SimpleEnum({
     "INTERNAL_SYMBOL"              : 0,
     "EXTERNAL_SYMBOL"              : 1,
     "UNSOLVED_SYMBOL"              : 2,
 })
 
 
-MethodSummarySymbolKind = util.SimpleEnum({
+METHOD_SUMMARY_SYMBOL_KIND = util.SimpleEnum({
     'PARARMETER_SYMBOL'             : 1,
     'DEFINED_EXTERNAL_SYMBOL'       : 2,
     'USED_EXTERNAL_SYMBOL'          : 3,
@@ -160,7 +160,7 @@ MethodSummarySymbolKind = util.SimpleEnum({
 })
 
 
-ControlFlowKind = util.SimpleEnum({
+CONTROL_FLOW_KIND = util.SimpleEnum({
     "EMPTY"                 : 0,
     "IF_TRUE"               : 1,
     "IF_FALSE"              : 2,
@@ -181,7 +181,7 @@ ControlFlowKind = util.SimpleEnum({
     "YIELD"                 : 16,
 })
 
-SymbolDependencyGraphEdgeKind = util.SimpleEnum({
+SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND = util.SimpleEnum({
     "REGULAR"               : 0,
     "EXPLICITLY_DEFINED"    : 1,
     "EXPLICITLY_USED"       : 2,
@@ -191,7 +191,7 @@ SymbolDependencyGraphEdgeKind = util.SimpleEnum({
 
 # """A class that represents the possible value types for a state.
 # """
-StateTypeKind = util.SimpleEnum({
+STATE_TYPE_KIND = util.SimpleEnum({
     "EMPTY"                 : 0,
     "REGULAR"               : 1,
     "UNSOLVED"              : 2,
@@ -199,7 +199,7 @@ StateTypeKind = util.SimpleEnum({
     "ANYTHING"              : 4,
 })
 
-ExternalKeyStateType = util.SimpleEnum({
+EXTERNAL_KEY_STATE_TYPE = util.SimpleEnum({
     "CALL"                  : 0,
     "ADDR"                  : 1,
     "ARRAY"                 : 2,
@@ -207,12 +207,12 @@ ExternalKeyStateType = util.SimpleEnum({
     "EMPTY"                 : 4,
 })
 
-BuiltinOrCustomDataType = util.SimpleEnum({
+BUILTIN_OR_CUSTOM_DATA_TYPE = util.SimpleEnum({
     "BUILTIN"               : 0,
     "CUSTOM"                : 1,
 })
 
-AnalysisPhaseName = util.SimpleEnum({
+ANALYSIS_PHASE_NAME = util.SimpleEnum({
     "ScopeHierarchy"            : "scope_hierarchy",
     "TypeHierarchy"             : "type_hierarchy",
     "ControlFlowGraph"          : "control_flow",
@@ -225,26 +225,25 @@ AnalysisPhaseName = util.SimpleEnum({
     "GlobalAnalysis"            : "global_analysis",
 })
 
-BasicCallGraphNodeKind = util.SimpleEnum({
+BASIC_CALL_GRAPH_NODE_KIND = util.SimpleEnum({
     "DYNAMIC_METHOD"      : -1,
     "ERROR_METHOD"        : -2,
 })
 
 
-
-DataTypeCorrelationKind = util.SimpleEnum({
+DATA_TYPE_CORRELATION_KIND = util.SimpleEnum({
     "alias"               : 0,
     "inherit"             : 1,
 })
 
-SymbolOrState = util.SimpleEnum({
+SYMBOL_OR_STATE = util.SimpleEnum({
     "SYMBOL"                : 0,
     "STATE"                 : 1,
     "EXTERNAL_KEY_STATE"    : 2,
     "UNKNOWN"               : 3,
 })
 
-AccessPointKind = util.SimpleEnum({
+ACCESS_POINT_KIND = util.SimpleEnum({
     "TOP_LEVEL"                     : 0,
     "ADDR_OF"                       : 1,
     "MEM_READ"                      : 2,
@@ -263,20 +262,20 @@ AccessPointKind = util.SimpleEnum({
     "NAMESPACE"                     : 19,
 })
 
-RuleKind = util.SimpleEnum({
+RULE_KIND = util.SimpleEnum({
     "RULE"                       : 0,
     "CODE"                       : 1,
     "MODEL"                      : 2,
 })
 
-ConditionStmtPathFlag = util.SimpleEnum({
+CONDITION_STMT_PATH_FLAG = util.SimpleEnum({
     "NO_PATH"                       : 0,  # 00
     "TRUE_PATH"                     : 1,  # 01
     "FALSE_PATH"                    : 2,  # 10
     "ANY_PATH"                      : 3,  # 11
 })
 
-LoaderQueryEntry = util.SimpleEnum({
+LOADER_QUERY_ENTRY = util.SimpleEnum({
     'control_flow_graph'            : 1,
     'symbol_dependency_graph'       : 2,
     'stmt_status'                   : 3,
@@ -286,20 +285,20 @@ LoaderQueryEntry = util.SimpleEnum({
     'scope_space'                   : 7,
 })
 
-CalleeType = util.SimpleEnum({
+CALLEE_TYPE = util.SimpleEnum({
     "DIRECT_CALLEE"                 : 0,
     "DYNAMIC_CALLEE"                : 1,
     "ERROR_CALLEE"                  : 2,
 })
 
-ExportNodeType = util.SimpleEnum({
+EXPORT_NODE_TYPE = util.SimpleEnum({
     "MODULE_UNIT"                   : 0,
     "MODULE_DIR"                    : 1,
     "REGULAR_SYMBOL"                : 2,
     "UNKNOWN_IMPORT"                : 3,
 })
 
-LianInternal = util.SimpleEnum({
+LIAN_INTERNAL = util.SimpleEnum({
     # Constants
     "TRUE"                          : "true",
     "FALSE"                         : "false",
@@ -372,7 +371,7 @@ LianInternal = util.SimpleEnum({
     "CASE_AS"                       : "%case_as",
 })
 
-JsPrototype = util.SimpleEnum({
+JS_PROTOTYPE = util.SimpleEnum({
     "PROTOTYPE"                      : "prototype",
     "PROTO"                          : "__proto__",
     "CONSTRUCTOR"                     : "constructor",

@@ -8,7 +8,7 @@ from lian.semantic.semantic_structs import (
     State,
     Symbol
 )
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 
 def js_call(data: EventData):
     in_data = data.in_data
@@ -21,7 +21,7 @@ def js_call(data: EventData):
     frame = in_data.frame
     state_analysis = in_data.state_analysis
     args = in_data.args
-    
+
     this_symbol_index = status.used_symbols.pop(0)
     name_symbol: Symbol = frame.symbol_state_space[this_symbol_index]
     this_states = state_analysis.read_used_states(this_symbol_index, in_states)
@@ -62,7 +62,7 @@ def js_then(data: EventData):
     frame = in_data.frame
     state_analysis = in_data.state_analysis
     args = in_data.args
-    
+
     this_symbol_index = status.used_symbols.pop(0)
     name_symbol: Symbol = frame.symbol_state_space[this_symbol_index]
     this_states = state_analysis.read_used_states(this_symbol_index, in_states)
@@ -100,7 +100,7 @@ def js_then(data: EventData):
     for arg_set in positional_args:
         for arg in arg_set:
             arg_state = frame.symbol_state_space[arg.index_in_space]
-            if hasattr(arg_state, 'data_type') and arg_state.data_type == LianInternal.METHOD_DECL:
+            if hasattr(arg_state, 'data_type') and arg_state.data_type == LIAN_INTERNAL.METHOD_DECL:
                 real_method_ids.add(arg_state.value)
 
     data.out_data = state_analysis.compute_target_method_states(

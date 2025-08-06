@@ -10,7 +10,7 @@ from lian.util import util
 import lian.apps.event_return as er
 from lian.config import type_table
 from lian.config.constants import (
-    LianInternal
+    LIAN_INTERNAL
 )
 
 WORD_CHARACTERS_CONFIG = {
@@ -211,7 +211,7 @@ def replace_this(obj, this_name):
             if isinstance(item, (list, dict)):
                 replace_this(item, this_name)
             elif isinstance(item, str) and item == this_name:
-                obj[i] = LianInternal.THIS
+                obj[i] = LIAN_INTERNAL.THIS
 
     elif isinstance(obj, dict):
         for key, value in obj.items():
@@ -221,7 +221,7 @@ def replace_this(obj, this_name):
             if isinstance(value, (list, dict)):
                 replace_this(value, this_name)
             elif isinstance(value, str) and value == this_name:
-                obj[key] = LianInternal.THIS
+                obj[key] = LIAN_INTERNAL.THIS
 
 def unify_this(data: EventData):
     code = data.in_data
@@ -245,13 +245,13 @@ def find_python_method_first_parameter(method_decl):
                 counter += 1
     return ""
 
-def adjust_python_self(obj, first_parameter_name = "", new_name = LianInternal.THIS, under_class_decl = False):
+def adjust_python_self(obj, first_parameter_name = "", new_name = LIAN_INTERNAL.THIS, under_class_decl = False):
     if isinstance(obj, list):
         for i, item in enumerate(obj):
             if isinstance(item, (list, dict)):
                 adjust_python_self(item, first_parameter_name, new_name, under_class_decl)
             elif under_class_decl and isinstance(item, str) and item == first_parameter_name:
-                obj[i] = LianInternal.THIS
+                obj[i] = LIAN_INTERNAL.THIS
 
     elif isinstance(obj, dict):
         if "class_decl" in obj:
@@ -272,7 +272,7 @@ def adjust_python_self(obj, first_parameter_name = "", new_name = LianInternal.T
                 if isinstance(value, (list, dict)):
                     adjust_python_self(value, first_parameter_name, new_name, under_class_decl)
                 elif first_parameter_name and isinstance(value, str) and value == first_parameter_name:
-                    obj[key] = LianInternal.THIS
+                    obj[key] = LIAN_INTERNAL.THIS
 
 def unify_python_self(data: EventData):
     code  = data.in_data
@@ -321,7 +321,7 @@ def add_main_func(data: EventData):
         'operation': 'method_decl',
         'parent_stmt_id': 0,
         'stmt_id': main_method_stmt_id,
-        'name': LianInternal.UNIT_INIT,
+        'name': LIAN_INTERNAL.UNIT_INIT,
         'body': main_method_body_id
     })
 
@@ -371,7 +371,7 @@ def remove_unnecessary_tmp_variables(data: EventData):
             and pre_stmt.get("target")
             and not stmt.get("operator", None)
             and pre_stmt["operation"] in key_stmts
-            and pre_stmt["target"].startswith(LianInternal.VARIABLE_DECL_PREF)
+            and pre_stmt["target"].startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF)
             and (stmt["operand"] == pre_stmt["target"])
         ):
             pre_stmt["target"] = stmt["target"]
@@ -400,7 +400,7 @@ def unify_data_type(data: EventData):
                             attrs = []
                         else:
                             attrs = ast.literal_eval(row["attrs"])
-                        util.add_to_dict_with_default_list(row, "attrs", LianInternal.POINTER)
+                        util.add_to_dict_with_default_list(row, "attrs", LIAN_INTERNAL.POINTER)
                         break
                     elif dt[i] == '[':
                         row["data_type"] = dt[:i]
@@ -408,7 +408,7 @@ def unify_data_type(data: EventData):
                             attrs = []
                         else:
                             attrs = ast.literal_eval(row["attrs"])
-                        attrs.append(LianInternal.ARRAY)
+                        attrs.append(LIAN_INTERNAL.ARRAY)
                         row["attrs"] = str(attrs)
                         break
 

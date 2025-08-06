@@ -7,7 +7,7 @@ import sys
 from tree_sitter import Node
 from lian.util import util
 
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 
 class Parser:
     def __init__(self, options, unit_info):
@@ -68,19 +68,19 @@ class Parser:
 
     def tmp_variable(self):
         self.tmp_variable_id += 1
-        return LianInternal.VARIABLE_DECL_PREF + str(self.tmp_variable_id)
+        return LIAN_INTERNAL.VARIABLE_DECL_PREF + str(self.tmp_variable_id)
 
     def default_value_variable(self):
         self.tmp_variable_id += 1
-        return LianInternal.DEFAULT_VALUE_PREF + str(self.tmp_variable_id)
+        return LIAN_INTERNAL.DEFAULT_VALUE_PREF + str(self.tmp_variable_id)
 
     def tmp_method(self):
         self.method_id += 1
-        return LianInternal.METHOD_DECL_PREF + str(self.method_id)
+        return LIAN_INTERNAL.METHOD_DECL_PREF + str(self.method_id)
 
     def tmp_class(self):
         self.class_id += 1
-        return LianInternal.CLASS_DECL_PREF + str(self.class_id)
+        return LIAN_INTERNAL.CLASS_DECL_PREF + str(self.class_id)
 
     def append_stmts(self, stmts, node, content):
         if node:
@@ -162,19 +162,19 @@ class Parser:
         return input_string
 
     def global_this(self):
-        return LianInternal.THIS
+        return LIAN_INTERNAL.THIS
 
     def global_self(self):
-        return LianInternal.THIS
+        return LIAN_INTERNAL.THIS
 
     def current_class(self):
-        return LianInternal.CLASS
+        return LIAN_INTERNAL.CLASS
 
     def global_super(self):
-        return LianInternal.SUPER
+        return LIAN_INTERNAL.SUPER
 
     def global_parent(self):
-        return LianInternal.PARENT
+        return LIAN_INTERNAL.PARENT
 
     def is_literal(self, node):
         return node.endswith("literal")

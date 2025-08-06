@@ -14,16 +14,16 @@ from collections import defaultdict
 
 from lian.util import util
 from lian.config.constants import (
-    BuiltinOrCustomDataType,
-    ConditionStmtPathFlag,
-    SymbolKind,
-    StateTypeKind,
-    SymbolOrState,
-    CalleeType,
-    LianInternal,
-    ExternalKeyStateType,
-    ExportNodeType,
-    AccessPointKind
+    BUILTIN_OR_CUSTOM_DATA_TYPE,
+    CONDITION_STMT_PATH_FLAG,
+    LIAN_SYMBOL_KIND,
+    STATE_TYPE_KIND,
+    SYMBOL_OR_STATE,
+    CALLEE_TYPE,
+    LIAN_INTERNAL,
+    EXTERNAL_KEY_STATE_TYPE,
+    EXPORT_NODE_TYPE,
+    ACCESS_POINT_KIND
 )
 from lian.config import config
 
@@ -389,7 +389,7 @@ class Scope(BasicElement):
     stmt_id: int = -1
     scope_id: int = -1
     parent_stmt_id: int = -1
-    scope_kind: SymbolKind = SymbolKind.METHOD_KIND
+    scope_kind: LIAN_SYMBOL_KIND = LIAN_SYMBOL_KIND.METHOD_KIND
     source: str = ""            # for from_import_stmt source import name as alis
     name: str = ""
     # attrs: list = dataclasses.field(default_factory=list)
@@ -444,7 +444,7 @@ class ControlFlowGraph(BasicGraph):
 
 @dataclasses.dataclass
 class AccessPoint:
-    kind: int = AccessPointKind.TOP_LEVEL
+    kind: int = ACCESS_POINT_KIND.TOP_LEVEL
     key: str = ""
     state_id: int = -1
 
@@ -510,8 +510,8 @@ class State(BasicElement):
     """
     stmt_id: int = -1
     state_id: int = -1
-    symbol_or_state: SymbolOrState = SymbolOrState.STATE
-    state_type: StateTypeKind = StateTypeKind.REGULAR
+    symbol_or_state: SYMBOL_OR_STATE = SYMBOL_OR_STATE.STATE
+    state_type: STATE_TYPE_KIND = STATE_TYPE_KIND.REGULAR
 
     data_type: str = ""
     data_type_ids: set[int] = dataclasses.field(default_factory=set)
@@ -627,7 +627,7 @@ class Symbol(BasicElement):
     name: str = ""
     default_data_type: str = ""
     states: set[int] = dataclasses.field(default_factory=set)
-    symbol_or_state: SymbolOrState = SymbolOrState.SYMBOL
+    symbol_or_state: SYMBOL_OR_STATE = SYMBOL_OR_STATE.SYMBOL
     symbol_id: int = -1
     source_unit_id: int = -1
     call_site: tuple[int, int, int] = (0, 0, 0)
@@ -685,7 +685,7 @@ class ParameterMapping:
     arg_source_symbol_id: int = -1
     arg_access_path: list[AccessPoint] = dataclasses.field(default_factory=list)
     parameter_symbol_id: int = -1
-    parameter_type: int = LianInternal.PARAMETER_DECL
+    parameter_type: int = LIAN_INTERNAL.PARAMETER_DECL
     parameter_access_path: AccessPoint = None
     is_default_value: bool = False
 
@@ -1438,7 +1438,7 @@ class MethodSummaryInstance(MethodSummaryTemplate):
 @dataclasses.dataclass
 class MethodInternalCallee:
     method_id: int = -1
-    callee_type: int = CalleeType.DIRECT_CALLEE
+    callee_type: int = CALLEE_TYPE.DIRECT_CALLEE
     stmt_id: int = -1
     callee_symbol_id: int = -1
     callee_symbol_index: int = -1
@@ -1683,7 +1683,7 @@ class P2ResultFlag:
     use_changed: bool = False
     interruption_flag: bool = False
     interruption_data: InterruptionData = None
-    condition_path_flag: int = ConditionStmtPathFlag.NO_PATH
+    condition_path_flag: int = CONDITION_STMT_PATH_FLAG.NO_PATH
 
 @dataclasses.dataclass
 class MethodCallArguments:

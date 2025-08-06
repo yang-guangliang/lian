@@ -4,16 +4,16 @@ from tree_sitter import Node
 from lian.lang import common_parser
 from lian.util import util
 from lian.config.constants import (
-    LianInternal
+    LIAN_INTERNAL
 )
 
 class Parser(common_parser.Parser):
     def init(self):
         self.CONSTANTS_MAP = {
             "." : "+",
-            "true": LianInternal.TRUE,
-            "false": LianInternal.FALSE,
-            "null": LianInternal.NULL,
+            "true": LIAN_INTERNAL.TRUE,
+            "false": LIAN_INTERNAL.FALSE,
+            "null": LIAN_INTERNAL.NULL,
         }
 
         self.LITERAL_MAP = {
@@ -1309,7 +1309,7 @@ class Parser(common_parser.Parser):
             shadow_value = self.parse(value, statements)
 
             if parameter.type == "variadic_parameter":   # 处理形参列表中的剩余参数(...arg)
-                attrs.append(LianInternal.PACKED_POSITIONAL_PARAMETER)
+                attrs.append(LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER)
 
             self.append_stmts(statements, node, {
                 "parameter_decl": {
@@ -1617,9 +1617,9 @@ class Parser(common_parser.Parser):
                     class_init.append({"assign_stmt": {"target": create_var_name, "operand": create_call_ret}})
 
         if class_init:
-            methods_body.insert(0, {"method_decl":{"name": LianInternal.CLASS_INIT, "body": class_init}})
+            methods_body.insert(0, {"method_decl":{"name": LIAN_INTERNAL.CLASS_INIT, "body": class_init}})
         if class_static_init:
-            methods_body.insert(0, {"method_decl":{"name": LianInternal.CLASS_STATIC_INIT, "body": class_init}})
+            methods_body.insert(0, {"method_decl":{"name": LIAN_INTERNAL.CLASS_STATIC_INIT, "body": class_init}})
 
     CLASS_TYPE_MAP = {
         "class_declaration": "class",
@@ -1695,9 +1695,9 @@ class Parser(common_parser.Parser):
                     class_init.append({"assign_stmt": {"target": create_var_name, "operand": create_call_ret}})
 
         if class_init:
-            methods_body.insert(0, {"method_decl":{"name": LianInternal.CLASS_INIT, "body": class_init}})
+            methods_body.insert(0, {"method_decl":{"name": LIAN_INTERNAL.CLASS_INIT, "body": class_init}})
         if class_static_init:
-            methods_body.insert(0, {"method_decl":{"name": LianInternal.CLASS_STATIC_INIT, "body": class_init}})
+            methods_body.insert(0, {"method_decl":{"name": LIAN_INTERNAL.CLASS_STATIC_INIT, "body": class_init}})
 
     def member_property_decl(self, each_decl, gir_node, statements, class_init, class_static_init):
         attrs = []

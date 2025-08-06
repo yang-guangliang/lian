@@ -10,7 +10,7 @@ from lian.apps.app_manager import AppManager
 from lian.util import util
 from lian.config import lang_config
 from lian.config import config
-from lian.config.constants import EventKind
+from lian.config.constants import EVENT_KIND
 
 from lian.apps.app_template import EventData
 from lian.util.loader import Loader
@@ -258,11 +258,11 @@ class GIRParser:
 
         if not self.options.strict_parse_mode:
             if f"{config.DEFAULT_WORKSPACE}/{config.EXTERNS_DIR}" in file_path:
-                event = EventData(lang_option, EventKind.MOCK_SOURCE_CODE_READY, code)
+                event = EventData(lang_option, EVENT_KIND.MOCK_SOURCE_CODE_READY, code)
                 self.app_manager.notify(event)
                 code = event.out_data
 
-            event = EventData(lang_option, EventKind.ORIGINAL_SOURCE_CODE_READY, code)
+            event = EventData(lang_option, EVENT_KIND.ORIGINAL_SOURCE_CODE_READY, code)
             self.app_manager.notify(event)
             code = event.out_data
 
@@ -296,13 +296,13 @@ class GIRParser:
         if self.options.debug and self.options.print_stmts:
             pprint.pprint(gir_statements, compact=True, sort_dicts=False)
 
-        event = EventData(lang_option, EventKind.UNFLATTENED_GIR_LIST_GENERATED, gir_statements)
+        event = EventData(lang_option, EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED, gir_statements)
         self.app_manager.notify(event)
         current_node_id, flatten_nodes = GIRProcessing(current_node_id).flatten(event.out_data)
         if not flatten_nodes:
             return (current_node_id, flatten_nodes)
 
-        event = EventData(lang_option, EventKind.GIR_LIST_GENERATED, flatten_nodes)
+        event = EventData(lang_option, EVENT_KIND.GIR_LIST_GENERATED, flatten_nodes)
         self.app_manager.notify(event)
         if self.options.debug and self.options.print_stmts:
             pprint.pprint(event.out_data, compact=True, sort_dicts=False)

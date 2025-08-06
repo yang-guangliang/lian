@@ -9,7 +9,7 @@ from lian.util import util
 from lian.config import constants, config, lang_config
 import lian.util.data_model as dm
 
-SymbolKind = constants.SymbolKind
+SymbolKind = constants.LIAN_SYMBOL_KIND
 LANG_EXTENSIONS = lang_config.LANG_EXTENSIONS
 EXTENSIONS_LANG = lang_config.EXTENSIONS_LANG
 

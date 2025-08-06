@@ -6,10 +6,10 @@ from lian.semantic.semantic_structs import State
 from lian.apps.app_template import EventData
 import lian.apps.event_return as er
 from lian.config.constants import (
-    EventKind,
-    LianInternal,
-    StateTypeKind,
-    JsPrototype
+    EVENT_KIND,
+    LIAN_INTERNAL,
+    STATE_TYPE_KIND,
+    JS_PROTOTYPE
 )
 from lian.semantic.semantic_structs import (
     State
@@ -29,11 +29,11 @@ def field_read_prototype(data: EventData):
     resolver = in_data.resolver
     target_set = set()
 
-    if field_name == JsPrototype.PROTOTYPE:
+    if field_name == JS_PROTOTYPE.PROTOTYPE:
         for receiver_state_index in receiver_states:
             receiver_state = frame.symbol_state_space[receiver_state_index]
-            if JsPrototype.PROTOTYPE in receiver_state.fields:
-                target_set.update(receiver_state.fields[JsPrototype.PROTOTYPE])
+            if JS_PROTOTYPE.PROTOTYPE in receiver_state.fields:
+                target_set.update(receiver_state.fields[JS_PROTOTYPE.PROTOTYPE])
 
     else:
         for receiver_state_index in receiver_states:
@@ -45,9 +45,9 @@ def field_read_prototype(data: EventData):
                 index_set = receiver_state.fields.get(field_name, set())
                 target_set.update(index_set)
 
-            elif JsPrototype.PROTO in receiver_state.fields:
+            elif JS_PROTOTYPE.PROTO in receiver_state.fields:
                 available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
-                proto_index_set = receiver_state.fields[JsPrototype.PROTO]
+                proto_index_set = receiver_state.fields[JS_PROTOTYPE.PROTO]
                 newest_proto_index_set = resolver.collect_newest_states_by_state_indexes(frame, stmt_id, proto_index_set, available_state_defs)
                 for each_proto_index in newest_proto_index_set:
                     proto_state = frame.symbol_state_space[each_proto_index]
@@ -58,8 +58,8 @@ def field_read_prototype(data: EventData):
                         target_set.update(proto_state.fields[field_name])
                         break
                     else:
-                        if JsPrototype.PROTO in proto_state.fields:
-                            proto_index_set = proto_state.fields[JsPrototype.PROTO]
+                        if JS_PROTOTYPE.PROTO in proto_state.fields:
+                            proto_index_set = proto_state.fields[JS_PROTOTYPE.PROTO]
                         else:
                             break
 
@@ -82,13 +82,13 @@ def method_decl_prototype(data: EventData):
         prototype_state = State(
             stmt_id = stmt_id,
             source_symbol_id = symbol_id,
-            data_type = LianInternal.PROTOTYPE,
-            fields = {JsPrototype.CONSTRUCTOR: index_set}
+            data_type = LIAN_INTERNAL.PROTOTYPE,
+            fields = {JS_PROTOTYPE.CONSTRUCTOR: index_set}
         )
         prototype_index = frame.symbol_state_space.add(prototype_state)
         method_state = frame.symbol_state_space[index]
         if isinstance(method_state, State):
-            method_state.fields = {JsPrototype.PROTOTYPE: {prototype_index}}
+            method_state.fields = {JS_PROTOTYPE.PROTOTYPE: {prototype_index}}
 
         data.out_data = data.in_data
         app_return = er.config_continue_event_processing(app_return)
@@ -109,12 +109,12 @@ def new_object_proto(data: EventData):
             type_state = frame.symbol_state_space[type_state_index]
 
             if type_state.value == defined_state.value:
-                if JsPrototype.PROTOTYPE in type_state.fields:
-                    prototype = type_state.fields[JsPrototype.PROTOTYPE]
+                if JS_PROTOTYPE.PROTOTYPE in type_state.fields:
+                    prototype = type_state.fields[JS_PROTOTYPE.PROTOTYPE]
                     if not isinstance(prototype, State):
                         continue
 
-                    defined_state.fields = {JsPrototype.PROTO: prototype}
+                    defined_state.fields = {JS_PROTOTYPE.PROTO: prototype}
                     app_return = er.config_continue_event_processing(app_return)
     data.out_data = data.in_data
     return app_return

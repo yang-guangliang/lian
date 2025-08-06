@@ -5,16 +5,16 @@ from tree_sitter import Node
 
 from lian.config import config
 from lian.util import util
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 from lian.lang import common_parser
 
 
 class Parser(common_parser.Parser):
     def init(self):
         self.CONSTANTS_MAP = {
-            "None"                              : LianInternal.NULL,
-            "True"                              : LianInternal.TRUE,
-            "False"                             : LianInternal.FALSE,
+            "None"                              : LIAN_INTERNAL.NULL,
+            "True"                              : LIAN_INTERNAL.TRUE,
+            "False"                             : LIAN_INTERNAL.FALSE,
         }
 
         self.LITERAL_MAP = {
@@ -209,10 +209,10 @@ class Parser(common_parser.Parser):
             for parameter in parameters.named_children:
                 attrs = []
                 if only_positional:
-                    attrs.append(LianInternal.POSITIONAL_ONLY_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.POSITIONAL_ONLY_PARAMETER)
 
                 if only_keyword:
-                    attrs.append(LianInternal.KEYWORLD_ONLY_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.KEYWORLD_ONLY_PARAMETER)
 
                 if self.is_comment(parameter):
                     continue
@@ -326,14 +326,14 @@ class Parser(common_parser.Parser):
                 elif parameter_node_type == "list_splat_pattern":
                     parameter_name = parameter.named_children[0]
                     shadow_parameter_name = self.parse(parameter_name, statements)
-                    attrs.append(LianInternal.PACKED_POSITIONAL_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER)
                     parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
                     only_keyword = True
 
                 elif parameter_node_type == "dictionary_splat_pattern":
                     parameter_name = parameter.named_children[0]
                     shadow_parameter_name = self.parse(parameter_name, statements)
-                    attrs.append(LianInternal.PACKED_NAMED_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.PACKED_NAMED_PARAMETER)
                     parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
 
                 elif parameter_node_type == "positional_separator":
@@ -442,7 +442,7 @@ class Parser(common_parser.Parser):
             gir_node["methods"].insert(0,
             {
                 "method_decl":{
-                    "name": LianInternal.CLASS_STATIC_INIT,
+                    "name": LIAN_INTERNAL.CLASS_STATIC_INIT,
                     "body": static_init_class_method_body
                 }
             })
@@ -601,10 +601,10 @@ class Parser(common_parser.Parser):
             for parameter in parameters.named_children:
                 attrs = []
                 if only_positional:
-                    attrs.append(LianInternal.POSITIONAL_ONLY_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.POSITIONAL_ONLY_PARAMETER)
 
                 if only_keyword:
-                    attrs.append(LianInternal.KEYWORLD_ONLY_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.KEYWORLD_ONLY_PARAMETER)
 
                 if self.is_comment(parameter):
                     continue
@@ -692,14 +692,14 @@ class Parser(common_parser.Parser):
                 elif parameter_node_type == "list_splat_pattern":
                     parameter_name = parameter.named_children[0]
                     shadow_parameter_name = self.parse(parameter_name, statements)
-                    attrs.append(LianInternal.PACKED_POSITIONAL_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER)
                     parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
                     only_keyword = True
 
                 elif parameter_node_type == "dictionary_splat_pattern":
                     parameter_name = parameter.named_children[0]
                     shadow_parameter_name = self.parse(parameter_name, statements)
-                    attrs.append(LianInternal.PACKED_NAMED_PARAMETER)
+                    attrs.append(LIAN_INTERNAL.PACKED_NAMED_PARAMETER)
                     parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
 
                 elif parameter_node_type == "positional_separator":
