@@ -14,8 +14,7 @@ import lian.apps.event_return as er
 from lian.util import util
 from lian.util.loader import Loader
 from lian.config.constants import LianInternal
-import pprint
-from pympler import asizeof
+
 def resolve_this_field_method(data: EventData):
     """
     用于处理field_read: self.func的情况，找到类中定义的field_methods，并添加到self状态的field "func"中。

@@ -27,7 +27,7 @@ from lian.interfaces import (
     preparation,
     args_parser
 )
-from lian.externs.extern_system import ExternSystem
+
 from lian.config import constants, config
 from lian.apps.app_manager import AppManager
 from lian.config import config, constants, lang_config
@@ -105,6 +105,8 @@ class Lian:
         if hasattr(self.options, "extern_path") and self.options.extern_path:
             sys.path.append(self.options.extern_path)  # 添加绝对路径
             from externs.extern_system import ExternSystem
+        else:
+            from lian.externs.extern_system import ExternSystem
         self.app_manager = AppManager(self.options)
         self.loader = Loader(self.options, self.app_manager)
         self.resolver = Resolver(self.options, self.app_manager, self.loader)
