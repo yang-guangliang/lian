@@ -540,8 +540,8 @@ class Parser(common_parser.Parser):
                 for child in args.named_children:
                     if child.type not in ["list_splat", "dictionary_splat", "keyword_argument"]:
                         shadow_expr = self.parse(child, statements)
-                        #print("shadow_expr", shadow_expr)
-                        positional_args.append(shadow_expr)
+                        if shadow_expr:
+                            positional_args.append(shadow_expr)
 
             dictionary_splats = self.find_children_by_type(args, "dictionary_splat")
             if dictionary_splats:
