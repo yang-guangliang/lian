@@ -102,6 +102,9 @@ class Lian:
         self.update_lang_config()
 
         # Set up the analysis environment
+        if hasattr(self.options, "extern_path") and self.options.extern_path:
+            sys.path.append(self.options.extern_path)  # 添加绝对路径
+            from externs.extern_system import ExternSystem
         self.app_manager = AppManager(self.options)
         self.loader = Loader(self.options, self.app_manager)
         self.resolver = Resolver(self.options, self.app_manager, self.loader)
