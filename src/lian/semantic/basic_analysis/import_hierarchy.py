@@ -8,7 +8,6 @@ from lian.config import config
 from lian.semantic.resolver import Resolver
 from lian.config.constants import (
     IMPORT_GRAPH_EDGE_KIND,
-    LIAN_SYMBOL_KIND,
     LIAN_SYMBOL_KIND
 )
 

@@ -824,7 +824,6 @@ class SemanticSummaryGeneration:
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         # print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
-            print("  DON'T CONTINUE")
             if status.in_state_bits != old_in_state_bits:
                 status.out_state_bits = status.in_state_bits
             self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_defined_symbols, old_status_defined_states)
