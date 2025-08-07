@@ -136,7 +136,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
         for each_callee_id in callee_method_ids:
             callee_path = self.frame.path + (stmt_id, each_callee_id)
-            self.print_path(callee_path)
+            # self.print_path(callee_path)
             new_path = APath(callee_path)
             new_call_site = (caller_id, stmt_id, each_callee_id)
             # TODO: 检查是否已经分析过
