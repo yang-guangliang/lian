@@ -784,7 +784,7 @@ class StmtDefUseAnalysis:
                 found_flag = True
                 break
 
-        if not found_flag:
+        if not found_flag and util.is_available(defined_symbol):
             # index = self.create_symbol_and_add_space(stmt_id, name)
             # if index != -1:
             #     status.implicitly_defined_symbols.append(index)

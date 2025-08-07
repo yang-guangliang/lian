@@ -14,6 +14,9 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 
 # TARGET_PATH=$(realpath "$1")
 
+# rm unknown_callees.txt
+rm $ROOT_DIR/unknown_callees.txt
+
 #CMD="python -W ignore"s
 CMD="python $ROOT_DIR/src/lian/interfaces/main.py"
 OUTPUT_PATH="$ROOT_DIR/tests/lian_workspace"
