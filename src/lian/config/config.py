@@ -5,7 +5,7 @@ import platform
 EMPTY                                       = 0
 START_INDEX                                 = 100
 DEBUG_FLAG                                  = False
-STRING_MAX_LEN                              = 200
+STRING_MAX_LEN                              = 2000000
 MAX_PRIORITY                                = 100
 MIN_ID_INTERVAL                             = 10
 BUILTIN_SYMBOL_START_ID                     = -101
