@@ -146,6 +146,9 @@ class ControlFlowAnalysis:
                 self.link_parent_stmts_to_current_stmt([CFGNode(node, CONTROL_FLOW_KIND.CONTINUE)], current_stmt)
                 del special_stmts[counter]
         global_special_stmts.extend(special_stmts)
+        if util.is_available(current_stmt.condition):
+            if current_stmt.condition in ("true", "True"):
+                return result
         result.append(CFGNode(current_stmt, CONTROL_FLOW_KIND.LOOP_FALSE))
         return result
 
