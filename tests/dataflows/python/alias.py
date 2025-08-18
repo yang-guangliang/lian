@@ -100,20 +100,25 @@
 
 #     sms = SmsManager.getDefault()
 #     sms.sendTextMessage("+49 1234", None, a.attr.b, None, None)  # sink, leak
+# class A:
+#     class B:
+#         def __init__(self):
+#             self.b = 7
+#         def func3(self):
+#             return self.b
+#     def __init__(self):
+#         self.attr = 5
+#     def func1(cls):
+#         cls.attr = 6
+#         cls()
+#     def func2(self):
+#         self.func1()
 class A:
-    class B:
-        def __init__(self):
-            self.b = 7
-        def func3(self):
-            return self.b
-    def __init__(self):
-        self.attr = 5
-    def func1(cls):
-        cls.attr = 6
-        cls()
-    def func2(self):
-        self.func1()
-
+    def get_value(self):
+        return self.attr
+    
+a= A()
+c = a.get_value()
 # ff = A.B
 # c = ff.func3
 
@@ -129,22 +134,22 @@ class A:
 # funcarr(arr)
 # dd = arr[0]
 # hh = 5
-def func2(p):
-    a = b
-    return p + 1
-def func1(num):
+# def func2(p):
+#     a = b
+#     return p + 1
+# def func1(num):
 
-    num = num + 1
-    # p = hh
-    # print(66666666)
-    # func2()
-    c = func2(3)
-    nn = c
-    return num
+#     num = num + 1
+#     # p = hh
+#     # print(66666666)
+#     # func2()
+#     c = func2(3)
+#     nn = c
+#     return num
 
-a = 3
+# a = 3
 
-b = func1(a)
+# b = func1(a)
 
 # a = A()
 # b = a.g

@@ -488,7 +488,7 @@ class StmtDefUseAnalysis:
         # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
         # So check the source stmt id
         call_name_symbol_index = used_symbol_list[0]
-        if hasattr(stmt, "receiver"):
+        if hasattr(stmt, "receiver") and stmt.receiver:
             call_name_symbol_index = used_symbol_list[1]
         call_name_symbol = self.symbol_state_space[call_name_symbol_index]
         # fail to resolve call_name
