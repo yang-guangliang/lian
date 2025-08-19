@@ -384,6 +384,7 @@ class LangAnalysis:
         if len(all_units) == 0:
             util.error_and_quit("No files found for analysis.")
 
+        #print("all_units:", all_units)
         current_node_id = self.init_start_stmt_id()
         for unit_info in all_units:
             # if row.symbol_type == constants.SymbolKind.UNIT_SYMBOL and row.unit_ext in extensions:
@@ -392,9 +393,11 @@ class LangAnalysis:
                 unit_path = unit_info.original_path
             else:
                 unit_path = unit_info.unit_path
+            #print("unit_path:", unit_path)
             current_node_id, gir = gir_parser.deal_with_file_unit(
                 current_node_id, unit_info, unit_path, lang_table = self.lang_table
             )
+            #print("gir:", gir)
             gir_parser.add_unit_gir(unit_info, gir)
             current_node_id = self.adjust_node_id(current_node_id)
             # if self.options.debug:

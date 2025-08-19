@@ -456,6 +456,7 @@ class StmtDefUseAnalysis:
         self.loader.save_stmt_id_to_call_stmt_format(stmt_id, call_format)
 
     def call_stmt_def_use(self, stmt_id, stmt):
+        is_field_call = hasattr(stmt, "receiver") and util.is_available(stmt.receiver)
         # convert stmt.args(str) to list
         args_list = []
         if not util.isna(stmt.positional_args):
@@ -474,7 +475,7 @@ class StmtDefUseAnalysis:
 
         used_symbol_list = []
         stmt_symbol_list = [stmt.name, *args_list]
-        if hasattr(stmt, "receiver"):
+        if is_field_call:
             stmt_symbol_list.insert(0, stmt.receiver)
         for symbol in stmt_symbol_list:
             if not util.isna(symbol):
@@ -482,13 +483,13 @@ class StmtDefUseAnalysis:
         defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target)
         status = StmtStatus(stmt_id, defined_symbol = defined_symbol, used_symbols = used_symbol_list)
         self.add_status_with_symbol_id_sync(stmt, status)
-        if not hasattr(stmt, "receiver"):
-            self.analyze_and_save_call_stmt_args(stmt_id, stmt, positional_arg_index, args_list, status)
+        # if not is_field_call:
+        self.analyze_and_save_call_stmt_args(stmt_id, stmt, positional_arg_index, args_list, status)
 
         # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
         # So check the source stmt id
         call_name_symbol_index = used_symbol_list[0]
-        if hasattr(stmt, "receiver") and stmt.receiver:
+        if is_field_call:
             call_name_symbol_index = used_symbol_list[1]
         call_name_symbol = self.symbol_state_space[call_name_symbol_index]
         # fail to resolve call_name
