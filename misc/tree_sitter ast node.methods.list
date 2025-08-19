@@ -1,0 +1,30 @@
+Methods:
+	child_by_field_id()
+	child_by_field_name()
+	children_by_field_id()
+	children_by_field_name()
+	field_name_for_child()
+	sexp()
+	walk()
+
+Fields:
+	child_count
+	children
+	end_byte
+	end_point
+	has_changes
+	has_error
+	id
+	is_missing
+	is_named
+	named_child_count
+	named_children
+	next_named_sibling
+	next_sibling
+	parent
+	prev_named_sibling
+	prev_sibling
+	start_byte
+	start_point
+	text
+	type
