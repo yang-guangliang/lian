@@ -97,7 +97,6 @@ def preprocess_abc_loop(data: EventData):
     code = data.in_data
     label_pattern = re.compile(r"^jump_label_\d+:")
     jmp_pattern = re.compile(r"jmp\s+(jump_label_\d+)")
-    print(code)
     # 用于存储已定义的 jump_label
     defined_labels = set()
 
@@ -124,7 +123,6 @@ def preprocess_abc_loop(data: EventData):
 
     # 输出结果
     processed_code = "\n".join(processed_lines)
-    print(processed_code)
 
 def preprocess_python_import_statements(data: EventData):
     # """
