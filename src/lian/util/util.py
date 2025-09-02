@@ -15,6 +15,7 @@ from lian.config import config
 
 @profile
 def is_empty(element):
+    #print("is_empty:", element)
     if element is None:
         return True
     if isinstance(element, (int, float)):
@@ -60,6 +61,36 @@ def error_and_quit(*msg):
     sys.stderr.write(f"[ERROR]: {' '.join(str(item) for item in msg)}\n")
     sys.exit(-1)
 
+def convert_stmt_to_str(stmt):
+    if not hasattr(stmt, "_schema"):
+        return ""
+    stmt_item_list = [str(stmt.stmt_id)]
+    for key, pos in stmt._schema.items():
+        if key in [
+            "data_type",
+            "stmt_id",
+            "parent_stmt_id",
+            "start_row",
+            "start_col",
+            "end_row",
+            "end_col",
+            "unit_id",
+            "row_index",
+        ]:
+            continue
+        value = stmt._row[pos]
+        if is_available(value):
+            # 将非字符串类型的值转换为字符串
+            stmt_item_list.append(str(value))
+    stmt_str = " ".join(stmt_item_list)
+    return stmt_str.replace("\n", "").replace("\r", "")
+
+def error_and_quit_with_stmt_info(unit_path, stmt, *msg):
+    sys.stderr.write(f"{' '.join(str(item) for item in msg)}\n")
+    sys.stderr.write(f"--> {unit_path}:{int(stmt.start_row + 1)}\n")
+    sys.stderr.write(f"    {convert_stmt_to_str(stmt)}\n")
+    sys.exit(-1)
+
 def error(*msg):
     # logging.error('这是一条debug级别的日志')
     sys.stderr.write(f"[ERROR]: {' '.join(str(item) for item in msg)}\n")
@@ -69,7 +100,7 @@ def debug(*msg):
         sys.stdout.write(f"[DEBUG]: {' '.join(str(item) for item in msg)}\n")
 
 def warn(*msg):
-    sys.stderr.write(f"[WARNING]: {''.join(str(item) for item in msg)}\n")
+    sys.stdout.write(f"[WARNING]: {''.join(str(item) for item in msg)}\n")
 
 def log(*msg):
     print(*msg)
@@ -200,6 +231,12 @@ class SimpleEnum:
     def __getattr__(self, item):
         return self._members[item]
 
+    def __contains__(self, name):
+        return name in self._reverse_lookup
+
+    def __iter__(self):
+        return iter(self._reverse_lookup)
+
     def __repr__(self):
         return f"SimpleEnum({self._members})"
 
@@ -214,8 +251,29 @@ def graph_predecessors(graph, node):
 
 def graph_successors(graph, node):
     if node in graph:
-        return graph.successors(node)
+        return list(graph.successors(node))
     return []
+
+def graph_successors_with_weight(graph, node, weight):
+    """
+    返回图中指定节点具有指定权重的后继节点列表。
+
+    参数:
+    - graph: networkx.DiGraph 或其他类型的图
+    - node: 要查询的节点
+    - weight: 边的权重值
+
+    返回:
+    - list: 所有出边权重等于 weight 的后继节点列表
+    """
+    if node not in graph:
+        return []
+
+    external_successors = []
+    for neighbor, data in graph[node].items():
+        if data.get('weight') == weight:
+            external_successors.append(neighbor)
+    return external_successors
 
 def get_graph_edge_weight(graph: nx.DiGraph, src_stmt, dst_stmt):
     if type(src_stmt) in (int, np.int64):
@@ -349,9 +407,9 @@ class LRUCache:
         node.next = self.tail
 
 
-def read_stmt_field(stmt_field):
+def read_stmt_field(stmt_field, default=""):
     if isna(stmt_field):
-        return ""
+        return default
     return stmt_field
 
 def add_to_dict_with_default_set(d, key, value):
@@ -456,6 +514,6 @@ def determine_comment_line(lang_name, comment_start, lines):
                         break
                     else:
                         comment_start -= 1
-        
+
         return comment_start + 1
 

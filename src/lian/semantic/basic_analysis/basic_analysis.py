@@ -7,15 +7,15 @@ from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
 from lian.config.constants import (
-    ExportNodeType,
-    SymbolDependencyGraphEdgeKind,
-    ScopeKind,
-    SymbolKind,
-    EventKind,
-    CalleeType,
-    BasicCallGraphNodeKind
+    EXPORT_NODE_TYPE,
+    SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND,
+    LIAN_SYMBOL_KIND,
+    LIAN_SYMBOL_KIND,
+    EVENT_KIND,
+    CALLEE_TYPE,
+    BASIC_CALL_GRAPH_NODE_KIND
 )
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     Symbol,
     State,
     ComputeFrame,
@@ -28,21 +28,20 @@ from lian.semantic.semantic_structure import (
     MethodSummaryTemplate,
     MethodSummaryInstance,
     SimplyGroupedMethodTypes,
-    ExportNode,
 )
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
-from lian.semantic.scope_hierarchy import (
-    UnitScopeHierarchyAnalysis,
-    ImportHierarchy,
-    TypeHierarchy
-)
-from lian.semantic.entry_points import EntryPointGenerator
-from lian.semantic.control_flow import ControlFlowAnalysis
-from lian.semantic.stmt_def_use_analysis import StmtDefUseAnalysis
+from lian.semantic.basic_analysis.scope_hierarchy import UnitScopeHierarchyAnalysis
+from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
+from lian.semantic.basic_analysis.type_hierarchy import TypeHierarchy
+
+from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
+from lian.semantic.basic_analysis.control_flow import ControlFlowAnalysis
+from lian.semantic.basic_analysis.stmt_def_use_analysis import StmtDefUseAnalysis
 
 class BasicSemanticAnalysis:
     def __init__(self, lian):
+        self.lian = lian
         self.analysis_phases = []
         self.options = lian.options
         self.app_manager = lian.app_manager
@@ -53,15 +52,37 @@ class BasicSemanticAnalysis:
         self.basic_call_graph = BasicCallGraph()
         self.analyzed_method_ids = set()
 
+
     def config(self):
         pass
 
-    def analyze_stmt_def_use(self, method_id, import_result):
+    def analyze_and_save_method_decl_format(self, method_id, method_decl_stmt, parameter_decls):
+        unit_id = self.loader.convert_method_id_to_unit_id(method_id)
+        parameters_info = []
+        for each_parameter_stmt in parameter_decls:
+            if each_parameter_stmt.operation == "parameter_decl":
+                parameters_info.append({
+                    "stmt_id": each_parameter_stmt.stmt_id,
+                    "name": each_parameter_stmt.name,
+                    "data_type": each_parameter_stmt.data_type
+                })
+        method_format = {
+            "unit_id" : unit_id,
+            "method_id" : method_id,
+            "name": method_decl_stmt.name,
+            "data_type": method_decl_stmt.data_type,
+            "parameters": str(parameters_info)
+        }
+        self.loader.save_method_id_to_method_decl_format(method_id, method_format)
+
+    def analyze_stmt_def_use(self, method_id, import_analysis, external_symbol_id_collection):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
         cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
         all_cfg_nodes = set(cfg.nodes())
+
+        self.analyze_and_save_method_decl_format(method_id, method_decl_stmt, parameter_decls)
 
         if util.is_available(parameter_decls):
             for row in parameter_decls:
@@ -76,7 +97,8 @@ class BasicSemanticAnalysis:
             self.resolver,
             self.basic_call_graph,
             compute_frame = frame,
-            import_result=import_result,
+            import_analysis=import_analysis,
+            external_symbol_id_collection=external_symbol_id_collection,
         )
 
         for stmt_id in frame.stmt_id_to_stmt:
@@ -111,8 +133,8 @@ class BasicSemanticAnalysis:
     def group_methods_by_callee_types(self):
         graph = self.basic_call_graph.graph
 
-        containing_dynamic_callees = self.search_impacted_parent_nodes(graph, BasicCallGraphNodeKind.DYNAMIC_METHOD)
-        containing_error_callees = self.search_impacted_parent_nodes(graph, BasicCallGraphNodeKind.ERROR_METHOD)
+        containing_dynamic_callees = self.search_impacted_parent_nodes(graph, BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD)
+        containing_error_callees = self.search_impacted_parent_nodes(graph, BASIC_CALL_GRAPH_NODE_KIND.ERROR_METHOD)
 
         # print(containing_dynamic_callees)
         # print(containing_error_callees)
@@ -135,7 +157,7 @@ class BasicSemanticAnalysis:
         has_calls = only_direct_callees | mixed_direct_callees | only_dynamic_callees | containing_error_callees | containing_dynamic_callees
         no_callees = self.loader.load_all_method_ids() - has_calls
 
-        extra = {BasicCallGraphNodeKind.DYNAMIC_METHOD, BasicCallGraphNodeKind.ERROR_METHOD}
+        extra = {BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD, BASIC_CALL_GRAPH_NODE_KIND.ERROR_METHOD}
         types = SimplyGroupedMethodTypes(
             no_callees - extra,
             only_direct_callees - extra,
@@ -149,6 +171,14 @@ class BasicSemanticAnalysis:
         self.loader.save_grouped_methods(types)
         return types
 
+    def analyze_unit_method_parameters(self, unit_id, unit_gir):
+        unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
+        for method_id in unit_methods:
+            method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
+            if util.is_available(parameter_decls):
+                for row in parameter_decls:
+                    self.loader.save_method_parameter(method_id, row)
+
     @profile
     def run(self):
         unit_list = []
@@ -157,21 +187,19 @@ class BasicSemanticAnalysis:
             unit_id = unit_info.module_id
             unit_list.append(unit_id)
             unit_gir = self.loader.load_unit_gir(unit_id)
-            unit_scope = UnitScopeHierarchyAnalysis(self.loader, unit_id, unit_gir).analyze()
+            unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).analyze()
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
             if not self.options.noextern:
                 self.extern_system.install_mock_code_file(unit_info, unit_scope)
+
         self.loader.export_scope_hierarchy()
         self.loader.export_entry_points()
 
         if not self.options.noextern:
             self.extern_system.display_all_installed_rules()
 
-        # Given a import stmt, how to construct export nodes of each unit and unit hierarchy
-        importAnalysis = ImportHierarchy(self.loader, self.resolver)
-        importAnalysis.analyze(unit_list)
-        # Given a class decl stmt and its supers' names, how to resolve them with its id?
-        #print("=== Analyzing Type Hierarchy ===")
+        unit_list.reverse()
+        import_analysis = ImportHierarchy(self.lian, self.loader, self.resolver, unit_list).run()
         TypeHierarchy(self.loader, self.resolver).analyze(unit_list)
 
         # Conduct basic analysis, i.e., context-insensitive and flow-insensitive analysis
@@ -179,9 +207,15 @@ class BasicSemanticAnalysis:
         #print("=== Analyzing def_use ===")
         unit_list.reverse()
         for unit_id in unit_list:
+            external_symbol_id_collection = {}
             all_unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
             for method_id in all_unit_methods:
-                self.analyze_stmt_def_use(method_id, importAnalysis)
+                if self.options.strict_parse_mode:
+                    external_symbol_id_collection = {}
+                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection)
+                    self.loader.save_method_external_symbol_id_collection(method_id, external_symbol_id_collection)
+                else:
+                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection)
         self.loader.save_call_graph_p1(self.basic_call_graph)
 
         self.group_methods_by_callee_types()

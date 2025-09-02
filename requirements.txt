@@ -1,5 +1,5 @@
 setuptools
-tree-sitter
+tree-sitter==0.24.0
 pandas
 pyarrow
 networkx

@@ -10,7 +10,7 @@ from lian.util import util
 import lian.apps.event_return as er
 from lian.config import type_table
 from lian.config.constants import (
-    LianInternal
+    LIAN_INTERNAL
 )
 
 WORD_CHARACTERS_CONFIG = {
@@ -97,7 +97,6 @@ def preprocess_abc_loop(data: EventData):
     code = data.in_data
     label_pattern = re.compile(r"^jump_label_\d+:")
     jmp_pattern = re.compile(r"jmp\s+(jump_label_\d+)")
-    print(code)
     # 用于存储已定义的 jump_label
     defined_labels = set()
 
@@ -124,7 +123,6 @@ def preprocess_abc_loop(data: EventData):
 
     # 输出结果
     processed_code = "\n".join(processed_lines)
-    print(processed_code)
 
 def preprocess_python_import_statements(data: EventData):
     # """
@@ -211,7 +209,7 @@ def replace_this(obj, this_name):
             if isinstance(item, (list, dict)):
                 replace_this(item, this_name)
             elif isinstance(item, str) and item == this_name:
-                obj[i] = LianInternal.THIS
+                obj[i] = LIAN_INTERNAL.THIS
 
     elif isinstance(obj, dict):
         for key, value in obj.items():
@@ -221,7 +219,7 @@ def replace_this(obj, this_name):
             if isinstance(value, (list, dict)):
                 replace_this(value, this_name)
             elif isinstance(value, str) and value == this_name:
-                obj[key] = LianInternal.THIS
+                obj[key] = LIAN_INTERNAL.THIS
 
 def unify_this(data: EventData):
     code = data.in_data
@@ -245,13 +243,13 @@ def find_python_method_first_parameter(method_decl):
                 counter += 1
     return ""
 
-def adjust_python_self(obj, first_parameter_name = "", new_name = LianInternal.THIS, under_class_decl = False):
+def adjust_python_self(obj, first_parameter_name = "", new_name = LIAN_INTERNAL.THIS, under_class_decl = False):
     if isinstance(obj, list):
         for i, item in enumerate(obj):
             if isinstance(item, (list, dict)):
                 adjust_python_self(item, first_parameter_name, new_name, under_class_decl)
             elif under_class_decl and isinstance(item, str) and item == first_parameter_name:
-                obj[i] = LianInternal.THIS
+                obj[i] = LIAN_INTERNAL.THIS
 
     elif isinstance(obj, dict):
         if "class_decl" in obj:
@@ -272,7 +270,7 @@ def adjust_python_self(obj, first_parameter_name = "", new_name = LianInternal.T
                 if isinstance(value, (list, dict)):
                     adjust_python_self(value, first_parameter_name, new_name, under_class_decl)
                 elif first_parameter_name and isinstance(value, str) and value == first_parameter_name:
-                    obj[key] = LianInternal.THIS
+                    obj[key] = LIAN_INTERNAL.THIS
 
 def unify_python_self(data: EventData):
     code  = data.in_data
@@ -288,7 +286,7 @@ def add_main_func(data: EventData):
     last_stmt_id = -1
     length = len(in_data)
     index = 0
-    exclude_stmts = ("import_stmt", "from_import_stmt", "export_stmt")
+    exclude_stmts = ("import_stmt", "from_import_stmt", "export_stmt", "type_alias_decl")
 
     while index < length:
         stmt = in_data[index]
@@ -321,7 +319,7 @@ def add_main_func(data: EventData):
         'operation': 'method_decl',
         'parent_stmt_id': 0,
         'stmt_id': main_method_stmt_id,
-        'name': LianInternal.UNIT_INIT,
+        'name': LIAN_INTERNAL.UNIT_INIT,
         'body': main_method_body_id
     })
 
@@ -369,8 +367,9 @@ def remove_unnecessary_tmp_variables(data: EventData):
             stmt["operation"] == "assign_stmt"
             and not stmt.get("operand2", "")
             and pre_stmt.get("target")
+            and not stmt.get("operator", None)
             and pre_stmt["operation"] in key_stmts
-            and pre_stmt["target"].startswith(LianInternal.VARIABLE_DECL_PREF)
+            and pre_stmt["target"].startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF)
             and (stmt["operand"] == pre_stmt["target"])
         ):
             pre_stmt["target"] = stmt["target"]
@@ -399,7 +398,7 @@ def unify_data_type(data: EventData):
                             attrs = []
                         else:
                             attrs = ast.literal_eval(row["attrs"])
-                        util.add_to_dict_with_default_list(row, "attrs", LianInternal.POINTER)
+                        util.add_to_dict_with_default_list(row, "attrs", LIAN_INTERNAL.POINTER)
                         break
                     elif dt[i] == '[':
                         row["data_type"] = dt[:i]
@@ -407,7 +406,7 @@ def unify_data_type(data: EventData):
                             attrs = []
                         else:
                             attrs = ast.literal_eval(row["attrs"])
-                        attrs.append(LianInternal.ARRAY)
+                        attrs.append(LIAN_INTERNAL.ARRAY)
                         row["attrs"] = str(attrs)
                         break
 
@@ -460,23 +459,14 @@ def adjust_variable_decls(data: EventData):
 
             if key == "variable_decl":
                 variable_name = value["name"]
-                if data.lang in ["python", "abc", "safe"]:
+                if data.lang in ["python", "abc"]:
                 # if data.lang == "python" or data.lang == "abc":
                     if variable_name in available_variables:
                         to_be_deleted.append(ElementToBeDeleted(child_index, False, False))
                     else:
-                        # if data.lang == "safe" and child_index < len(stmts) - 1:
-                        #     next_stmt = stmts[child_index + 1]
-                        #     next_key = list(next_stmt.keys())[0]
-                        #     if next_key == "assign_stmt":
-                        #         assign_body = next_stmt[next_key]
-                        #         print(f"assign_body: {assign_body}")
-                        #         assign_stmt_id = assign_body["stmt_id"]
-                        #         value["from"] = assign_stmt_id
 
                         if in_block:
-                            if data.lang != "safe":
-                                to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
+                            to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
                         available_variables[variable_name] = True
 
                         # to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
@@ -574,10 +564,8 @@ def adjust_variable_decls(data: EventData):
                         if not has_save_breakpoints:
                             has_save_breakpoints = True
                             add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                        if data.lang == "safe":
-                            add_stack(stmt_value, 0, {}, [], True)
-                        else:
-                            add_stack(stmt_value, 0, available_variables, [], True)
+
+                        add_stack(stmt_value, 0, available_variables, [], True)
                         has_done = False
                 if has_save_breakpoints:
                     break

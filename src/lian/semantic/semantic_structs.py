@@ -14,16 +14,16 @@ from collections import defaultdict
 
 from lian.util import util
 from lian.config.constants import (
-    BuiltinOrCustomDataType,
-    ConditionStmtPathFlag,
-    ScopeKind,
-    StateTypeKind,
-    SymbolOrState,
-    CalleeType,
-    LianInternal,
-    ExternalKeyStateType,
-    ExportNodeType,
-    AccessPointKind
+    BUILTIN_OR_CUSTOM_DATA_TYPE,
+    CONDITION_STMT_PATH_FLAG,
+    LIAN_SYMBOL_KIND,
+    STATE_TYPE_KIND,
+    SYMBOL_OR_STATE,
+    CALLEE_TYPE,
+    LIAN_INTERNAL,
+    EXTERNAL_KEY_STATE_TYPE,
+    EXPORT_NODE_TYPE,
+    ACCESS_POINT_KIND
 )
 from lian.config import config
 
@@ -389,7 +389,7 @@ class Scope(BasicElement):
     stmt_id: int = -1
     scope_id: int = -1
     parent_stmt_id: int = -1
-    scope_kind: ScopeKind = ScopeKind.METHOD_SCOPE
+    scope_kind: LIAN_SYMBOL_KIND = LIAN_SYMBOL_KIND.METHOD_KIND
     source: str = ""            # for from_import_stmt source import name as alis
     name: str = ""
     # attrs: list = dataclasses.field(default_factory=list)
@@ -444,7 +444,7 @@ class ControlFlowGraph(BasicGraph):
 
 @dataclasses.dataclass
 class AccessPoint:
-    kind: int = AccessPointKind.TOP_LEVEL
+    kind: int = ACCESS_POINT_KIND.TOP_LEVEL
     key: str = ""
     state_id: int = -1
 
@@ -510,8 +510,8 @@ class State(BasicElement):
     """
     stmt_id: int = -1
     state_id: int = -1
-    symbol_or_state: SymbolOrState = SymbolOrState.STATE
-    state_type: StateTypeKind = StateTypeKind.REGULAR
+    symbol_or_state: SYMBOL_OR_STATE = SYMBOL_OR_STATE.STATE
+    state_type: STATE_TYPE_KIND = STATE_TYPE_KIND.REGULAR
 
     data_type: str = ""
     data_type_ids: set[int] = dataclasses.field(default_factory=set)
@@ -526,6 +526,7 @@ class State(BasicElement):
     source_symbol_id: int = -1
     source_state_id: int = -1
     access_path: list[AccessPoint] = dataclasses.field(default_factory=list)
+    call_site: tuple[int, int, int] = (0, 0, 0)
 
     def __post_init__(self):
         if self.state_id == -1:
@@ -549,6 +550,7 @@ class State(BasicElement):
             "stmt_id"               : self.stmt_id,
             "state_id"              : self.state_id,
             "name"                  : None,
+            "call_site"             : str(self.call_site),
             "default_data_type"     : None,
             "states"                : None,
             "state_type"            : self.state_type,
@@ -563,13 +565,13 @@ class State(BasicElement):
             "access_path"           : [p.to_dict_str() for p in self.access_path],
         }
 
-        if isinstance(_id, tuple):
-            result["caller_id"] = _id[0]
-            result["call_stmt_id"] = _id[1]
-            result["method_id"] = _id[2]
-            result["hash_id"] = hash(_id)
-        else:
-            result["method_id"] = _id
+        # if isinstance(_id, tuple):
+        #     result["caller_id"] = _id[0]
+        #     result["call_stmt_id"] = _id[1]
+        #     result["method_id"] = _id[2]
+        #     result["hash_id"] = hash(_id)
+        # else:
+        result["method_id"] = _id
 
         return result
 
@@ -591,6 +593,7 @@ class State(BasicElement):
         return State(
             stmt_id = stmt_id,
             state_id = self.state_id,
+            call_site = copy.deepcopy(self.call_site),
             symbol_or_state = self.symbol_or_state,
             state_type = self.state_type,
             data_type = self.data_type,
@@ -624,9 +627,10 @@ class Symbol(BasicElement):
     name: str = ""
     default_data_type: str = ""
     states: set[int] = dataclasses.field(default_factory=set)
-    symbol_or_state: SymbolOrState = SymbolOrState.SYMBOL
+    symbol_or_state: SYMBOL_OR_STATE = SYMBOL_OR_STATE.SYMBOL
     symbol_id: int = -1
     source_unit_id: int = -1
+    call_site: tuple[int, int, int] = (0, 0, 0)
 
     # def get_id(self):
     #     return self.symbol_id
@@ -643,6 +647,7 @@ class Symbol(BasicElement):
             symbol_or_state = self.symbol_or_state,
             symbol_id = self.symbol_id,
             source_unit_id = self.source_unit_id,
+            call_site = copy.deepcopy(self.call_site),
         )
 
     def to_dict(self, counter, _id):
@@ -653,6 +658,7 @@ class Symbol(BasicElement):
             "source_unit_id": self.source_unit_id,
             "symbol_id": self.symbol_id,
             "name": self.name,
+            "call_site": str(self.call_site),
             "default_data_type": self.default_data_type,
             "states": list(self.states),
             "state_id": -1,
@@ -662,13 +668,13 @@ class Symbol(BasicElement):
             "array": None,
         }
 
-        if isinstance(_id, tuple):
-            result["caller_id"] = _id[0]
-            result["call_stmt_id"] = _id[1]
-            result["method_id"] = _id[2]
-            result["hash_id"] = hash(_id)
-        else:
-            result["method_id"] = _id
+        # if isinstance(_id, tuple):
+        #     result["caller_id"] = _id[0]
+        #     result["call_stmt_id"] = _id[1]
+        #     result["method_id"] = _id[2]
+        #     result["hash_id"] = hash(_id)
+        # else:
+        result["method_id"] = _id
 
         return result
 
@@ -679,7 +685,7 @@ class ParameterMapping:
     arg_source_symbol_id: int = -1
     arg_access_path: list[AccessPoint] = dataclasses.field(default_factory=list)
     parameter_symbol_id: int = -1
-    parameter_type: int = LianInternal.PARAMETER_DECL
+    parameter_type: int = LIAN_INTERNAL.PARAMETER_DECL
     parameter_access_path: AccessPoint = None
     is_default_value: bool = False
 
@@ -1001,7 +1007,6 @@ class SymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     stmt_id: int = -1
-    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.stmt_id))
@@ -1015,19 +1020,17 @@ class SymbolDefNode:
             "bit_pos": bit_pos,
             "index": self.index,
             "symbol_id": self.symbol_id,
-            "stmt_id": self.stmt_id,
-            "stmt_counter": self.stmt_counter,
+            "stmt_id": self.stmt_id
         }
 
     def to_tuple(self):
-        return (self.index, self.symbol_id, self.stmt_id, self.stmt_counter)
+        return (self.index, self.symbol_id, self.stmt_id,)
 
 @dataclasses.dataclass
 class LastSymbolDefNode:
     index: int = -1
     symbol_id: int = -1
     last_stmt_id: int= -1
-    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.symbol_id, self.last_stmt_id))
@@ -1040,7 +1043,6 @@ class StateDefNode:
     index: int = -1
     state_id: int = -1
     stmt_id: int = -1
-    stmt_counter: int = -1
 
     def __hash__(self) -> int:
         return hash((self.index, self.state_id, self.stmt_id))
@@ -1436,7 +1438,7 @@ class MethodSummaryInstance(MethodSummaryTemplate):
 @dataclasses.dataclass
 class MethodInternalCallee:
     method_id: int = -1
-    callee_type: int = CalleeType.DIRECT_CALLEE
+    callee_type: int = CALLEE_TYPE.DIRECT_CALLEE
     stmt_id: int = -1
     callee_symbol_id: int = -1
     callee_symbol_index: int = -1
@@ -1555,7 +1557,7 @@ class MetaComputeFrame:
     content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)
 
 class ComputeFrame(MetaComputeFrame):
-    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None):
+    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = []):
         super().__init__(method_id)
         self.has_been_inited = False
         self.method_id = method_id
@@ -1582,7 +1584,9 @@ class ComputeFrame(MetaComputeFrame):
         self.symbol_changed_stmts = SimpleSet()
         self.stmt_id_to_stmt = {}
         self.stmt_id_to_status: dict[int, StmtStatus] = {}
-        self.symbol_state_space: SymbolStateSpace = SymbolStateSpace()
+        self.symbol_state_space: SymbolStateSpace = space
+        if space is None:
+            self.symbol_state_space = SymbolStateSpace()
         self.space_summary: SymbolStateSpace = SymbolStateSpace()
         self.all_symbol_defs = set()
         self.all_state_defs = set()
@@ -1612,6 +1616,12 @@ class ComputeFrame(MetaComputeFrame):
         self.initial_state_to_external_symbol = {}
         self.external_symbol_id_to_initial_state_index = {}
         self.path: tuple = ()
+
+        self.args_list = None
+        self.params_list = params_list
+        self.callee_param = None
+        self.classes_of_method = classes_of_method
+        self.callee_classes_of_method = []
 
 class ComputeFrameStack:
     def __init__(self):
@@ -1664,6 +1674,7 @@ class InterruptionData:
     call_stmt_id: int = -1
     callee_ids: list = dataclasses.field(default_factory=list)
     args_list: list = dataclasses.field(default_factory=list)
+    classes_of_method: list = dataclasses.field(default_factory=list)
 
 @dataclasses.dataclass
 class P2ResultFlag:
@@ -1673,7 +1684,7 @@ class P2ResultFlag:
     unwanted_def_states:set[int] = dataclasses.field(default_factory=set)
     interruption_flag: bool = False
     interruption_data: InterruptionData = None
-    condition_path_flag: int = ConditionStmtPathFlag.NO_PATH
+    condition_path_flag: int = CONDITION_STMT_PATH_FLAG.NO_PATH
 
 @dataclasses.dataclass
 class MethodCallArguments:
@@ -1822,7 +1833,7 @@ class PathManager:
             # print("添加路径:",new_path)
             self.paths.add(new_path)
 
-    def _remove_path(self,removed_path:tuple):
+    def _remove_path(self, removed_path:tuple):
         # print("要删除的path是",removed_path)
         removed_APath = APath(removed_path)
         self.paths.discard(removed_APath)
@@ -1856,27 +1867,67 @@ class PathManager:
 
         return cycle_count
 
-@dataclasses.dataclass
-class ExportNode:
-    unit_id: int = -1
-    stmt_id: int = -1
-    name: str = ""
-    export_type: int = ExportNodeType.MODULE_UNIT
-    source_module_id: int = -1
-    source_symbol_id: int = -1
+class SymbolNodeInImportGraph:
+    def __init__(self, scope_id, symbol_type, symbol_id, symbol_name, import_stmt=-1, unit_id=-1):
+        self.scope_id:int = scope_id
+        self.symbol_type:int = symbol_type
+        self.symbol_id:int = symbol_id
+        self.symbol_name:str = symbol_name
+        self.import_stmt:int = import_stmt
+        self.unit_id:int = unit_id
+
+    def clone(self):
+        node = SymbolNodeInImportGraph(
+            self.scope_id,
+            self.symbol_type,
+            self.symbol_id,
+            self.symbol_name,
+            self.import_stmt,
+            self.unit_id
+        )
+        return node
+
+    def __eq__(self, value):
+        if isinstance(value, SymbolNodeInImportGraph):
+            return (
+                self.scope_id == value.scope_id and
+                self.symbol_type == value.symbol_type and
+                self.symbol_id == value.symbol_id and
+                self.symbol_name == value.symbol_name and
+                self.import_stmt == value.import_stmt and
+                self.unit_id == value.unit_id
+            )
+        return False
+
+    def __hash__(self):
+        return hash((
+            self.scope_id, self.symbol_type, self.symbol_id,
+            self.symbol_name, self.import_stmt, self.unit_id
+        ))
+        #return hash((self.scope_id, self.symbol_type, self.symbol_id, self.symbol_name))
 
     def to_dict(self):
-        return {
-            "unit_id": self.unit_id,
-            "stmt_id": self.stmt_id,
-            "name": self.name,
-            "export_type": self.export_type,
-            "source_module_id": self.source_module_id,
-            "source_symbol_id": self.source_symbol_id
+        result = {
+            "scope_id": self.scope_id,
+            "symbol_type": self.symbol_type,
+            "symbol_id": self.symbol_id,
+            "symbol_name": self.symbol_name,
         }
+        if self.import_stmt > 0:
+            result["import_stmt"] = self.import_stmt
+        if self.unit_id > 0:
+            result["unit_id"] = self.unit_id
 
-    def __repr__(self) -> str:
-        return f"ExportNode(unit_id={self.unit_id}, stmt_id={self.stmt_id}, name={self.name}, export_type={self.export_type}, source_module_id={self.source_module_id}, source_symbol_id={self.source_symbol_id})"
+        return result
+
+    def to_tuple(self):
+        return (
+            self.scope_id, self.symbol_type, self.symbol_id,
+            self.symbol_name, self.import_stmt, self.unit_id
+        )
+
+    def __repr__(self):
+        return f"SymbolNode(scope_id={self.scope_id}, symbol_type={self.symbol_type}, symbol_id={self.symbol_id}, symbol_name={self.symbol_name}, import_stmt={self.import_stmt}, unit_id={self.unit_id})"
 
 @dataclasses.dataclass
 class MethodInClass:
@@ -1914,11 +1965,12 @@ class TypeNode:
             "unit_id": self.unit_id,
             "parent_name": self.parent_name,
             "parent_id": self.parent_id,
-            "parent_index": self.parent_index
+            "parent_index": self.parent_index,
+            "name": self.name
         }
 
     def __repr__(self) -> str:
-        return f"TypeSourceNode(class_stmt_id={self.class_stmt_id}, unit_id={self.unit_id}, parent_name={self.parent_name}, parent_id={self.parent_id}, parent_index={self.parent_index})"
+        return f"TypeNode(class_stmt_id={self.class_stmt_id}, unit_id={self.unit_id}, parent_name={self.parent_name}, parent_id={self.parent_id}, parent_index={self.parent_index}, name={self.name})"
 
 @dataclasses.dataclass
 class TypeGraphEdge:
@@ -1976,6 +2028,7 @@ class UnionFind:
 
 @dataclasses.dataclass
 class CountStmtDefStateNode:
+    """查看不同语句类型创建的新state数量(debug用)"""
     stmt_id : int
     stmt_operation : str = ""
     in_states : set[int] = dataclasses.field(default_factory=set)
@@ -2011,7 +2064,6 @@ class CountStmtDefStateNode:
         print(f"{'='*50}")
 
     def print_as_dict(self):
-        """按照指定顺序打印节点属性"""
         ordered_fields = [
             'new_out_states_len',
             'stmt_id',
@@ -2021,3 +2073,5 @@ class CountStmtDefStateNode:
         node_dict = dataclasses.asdict(self)
         ordered_dict = {field: node_dict[field] for field in ordered_fields}
         print(ordered_dict)
+
+Argument

@@ -1,2 +1,5 @@
 lang: javascript
 rules:
+ - name: source
+   src: []
+   dst: ["%return"]

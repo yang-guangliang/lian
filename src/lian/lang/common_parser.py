@@ -2,14 +2,15 @@
 
 import re
 import ast
+import sys
 
 from tree_sitter import Node
 from lian.util import util
 
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 
 class Parser:
-    def __init__(self, options):
+    def __init__(self, options, unit_info):
         """
         初始化解析器上下文：
         1. 初始化临时变量计数器（变量/方法/类）
@@ -22,6 +23,8 @@ class Parser:
         self.class_id = 0
         self.options = options
         self.printed_flag = False
+        self.unit_info = unit_info
+        self.unit_path = unit_info.original_path
 
         # self.CONSTANTS_MAP = {
         #     "None"                          : LianInternal.NULL,
@@ -49,6 +52,14 @@ class Parser:
     def init(self):
         pass
 
+    def syntax_error(self, node: Node, msg: str):
+        sys.stderr.write(
+            f"Syntax Error: {msg}\n\n"
+            f"--> {self.unit_path}:{node.start_point.row + 1}:{node.start_point.column}\n"
+            f"      {self.read_node_text(node)}\n"
+        )
+        sys.exit(-1)
+
     def create_empty_node_with_init_list(self, *names):
         node = {}
         for each_name in names:
@@ -57,19 +68,25 @@ class Parser:
 
     def tmp_variable(self):
         self.tmp_variable_id += 1
-        return LianInternal.VARIABLE_DECL_PREF + str(self.tmp_variable_id)
+        return LIAN_INTERNAL.VARIABLE_DECL_PREF + str(self.tmp_variable_id)
 
     def default_value_variable(self):
         self.tmp_variable_id += 1
-        return LianInternal.DEFAULT_VALUE_PREF + str(self.tmp_variable_id)
+        return LIAN_INTERNAL.DEFAULT_VALUE_PREF + str(self.tmp_variable_id)
 
     def tmp_method(self):
         self.method_id += 1
-        return LianInternal.METHOD_DECL_PREF + str(self.method_id)
+        return LIAN_INTERNAL.METHOD_DECL_PREF + str(self.method_id)
 
     def tmp_class(self):
         self.class_id += 1
-        return LianInternal.CLASS_DECL_PREF + str(self.class_id)
+        return LIAN_INTERNAL.CLASS_DECL_PREF + str(self.class_id)
+
+    def append_stmts(self, stmts, node, content):
+        if node:
+            stmts.append(self.add_col_row_info(node, content))
+        else:
+            stmts.append(content)
 
     def handle_hex_string(self, input_string):
         """
@@ -145,19 +162,19 @@ class Parser:
         return input_string
 
     def global_this(self):
-        return LianInternal.THIS
+        return LIAN_INTERNAL.THIS
 
     def global_self(self):
-        return LianInternal.THIS
+        return LIAN_INTERNAL.THIS
 
     def current_class(self):
-        return LianInternal.CLASS
+        return LIAN_INTERNAL.CLASS
 
     def global_super(self):
-        return LianInternal.SUPER
+        return LIAN_INTERNAL.SUPER
 
     def global_parent(self):
-        return LianInternal.PARENT
+        return LIAN_INTERNAL.PARENT
 
     def is_literal(self, node):
         return node.endswith("literal")
@@ -233,9 +250,9 @@ class Parser:
         if not node:
             return
         if field:
-            print("   "*level + field, ":", node.type)
+            print("   "*level + field, "-", node.type + f":{node.start_point.row+1}" + f"({node.text[:10]})")
         else:
-            print("   "*level + node.type + f"({node.text[:40]})")
+            print("   "*level + node.type + f":{node.start_point.row+1}" + f"({node.text[:10]})")
         children = node.children
         for index, child in enumerate(children):
             if child.is_named:
@@ -244,7 +261,7 @@ class Parser:
                     self.print_tree(child, level + 1, child_field)
                 else:
                     self.print_tree(child, level + 1)
-    
+
     def add_col_row_info(self, node, gir_dict):
         """
         添加行列信息
@@ -258,7 +275,7 @@ class Parser:
             gir_dict[first_key]["end_row"] = end_line
             gir_dict[first_key]["end_col"] = end_col
         return gir_dict
-    
+
     def parse(self, node, statements=[], replacement=[]):
         """
         主解析入口：
@@ -289,7 +306,10 @@ class Parser:
             return self.read_node_text(node)
 
         if self.is_literal(node):
-            return self.literal(node, statements, replacement)
+            result = self.literal(node, statements, replacement)
+            if result is None:
+                return self.read_node_text(node)
+            return result
 
         if self.is_declaration(node):
             return self.declaration(node, statements)
@@ -305,3 +325,27 @@ class Parser:
             ret = self.parse(node.named_children[i], statements, replacement)
             if i + 1 == size:
                 return ret
+
+    def start_parse(self, node, statements):
+        pass
+
+    def end_parse(self, node, statements):
+        pass
+
+    def validate_ast_tree(self, node):
+        if node.type == 'ERROR':
+            self.syntax_error(node, f"Found an error AST node in code ({self.read_node_text(node)[:40]})")
+
+        for child in node.named_children:
+            self.validate_ast_tree(child)
+
+    def parse_gir(self, node, statements):
+        #self.print_tree(node)
+
+        if self.options.strict_parse_mode:
+            self.validate_ast_tree(node)
+
+        replacement = []
+        self.start_parse(node, statements)
+        self.parse(node, statements, replacement)
+        self.end_parse(node, statements)

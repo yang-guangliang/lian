@@ -28,14 +28,17 @@ class ArgsParser:
             parser.add_argument('-w', "--workspace", default=config.DEFAULT_WORKSPACE, type=str, help='the workspace directory (default:lian_workspace)')
             parser.add_argument("-f", "--force", action="store_true", help="Enable the FORCE mode for rewritting the workspace directory")
             parser.add_argument("-d", "--debug", action="store_true", help="Enable the DEBUG mode")
-            parser.add_argument("-i", "--include_headers", type=str, help="Specifying C-like Headers")
+            parser.add_argument("-i", "--included_headers", type=str, help="Specifying C-like Headers")
+            parser.add_argument("-I", "--enable_header_preprocess", action="store_true", help="Deal with C-like Headers")
             parser.add_argument("-p", "--print_stmts", action="store_true", help="Print statements")
             parser.add_argument("-c", "--cores", default=1, help="Configure the available CPU cores")
             parser.add_argument("--android", action="store_true", help="Enable the Android analysis mode")
             parser.add_argument("-a", "--apps", default=[], action='append', help="Config the <plugin> dir")
             parser.add_argument('-l', "--lang", default="", type=str, help='programming lang', required=True)
+            parser.add_argument("--strict-parse-mode", action="store_true", help="Enable the strict way to parse code")
 
-            parser.add_argument("-noextern", action="store_true", help="Disable the external processing module")
+
+            parser.add_argument("--noextern", action="store_true", help="Disable the external processing module")
 
         return self
 
@@ -51,11 +54,13 @@ class ArgsParser:
             android = False,
             cores = 1,
             print_stmts = False,
-            include_headers = "",
+            included_headers = "",
+            enable_header_preprocess = False,
             debug = False,
             force = False,
             recursive = True,
             workspace = config.DEFAULT_WORKSPACE,
+            default_workspace_dir = config.DEFAULT_WORKSPACE,
             sub_command = "",
             in_path = "",
         )

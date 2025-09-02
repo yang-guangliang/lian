@@ -9,7 +9,7 @@ from lian.util import util
 from lian.config import constants, config, lang_config
 import lian.util.data_model as dm
 
-SymbolKind = constants.SymbolKind
+SymbolKind = constants.LIAN_SYMBOL_KIND
 LANG_EXTENSIONS = lang_config.LANG_EXTENSIONS
 EXTENSIONS_LANG = lang_config.EXTENSIONS_LANG
 
@@ -17,11 +17,10 @@ class WorkspaceBuilder:
     def __init__(self, options):
         self.dst_file_to_src_file = {}
         self.options = options
-        #self.clang_installed = shutil.which('clang') is not None and shutil.which('clang++') is not None
         self.clang_installed = False
         self.c_like_extensions = LANG_EXTENSIONS.get('c', []) + LANG_EXTENSIONS.get('cpp', [])
         self.required_subdirs = [
-            config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.GIR_DIR,
+            config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.BASIC_DIR,
             config.SEMANTIC_DIR_P1, config.SEMANTIC_DIR_P2, config.SEMANTIC_DIR_P3
         ]
         self.header_keywords = [
@@ -100,9 +99,9 @@ class WorkspaceBuilder:
 
         # Prepare the include headers if provided
         include_flags = []
-        if self.options.include_headers:
+        if self.options.included_headers:
             include_flags.append('-I')
-            include_flags.append(self.options.include_headers)
+            include_flags.append(self.options.included_headers)
 
         # Depending on the language type, choose the right Clang command
         try:
@@ -130,11 +129,14 @@ class WorkspaceBuilder:
 
     def change_c_like_files(self, src_dir_path):
         if "c" in self.options.lang or "cpp" in self.options.lang:
-            if self.clang_installed:
-                self.rescan_c_like_files(src_dir_path)
+            if self.options.enable_header_preprocess:
+                if not self.clang_installed:
+                    self.clang_installed = shutil.which('clang') is not None and shutil.which('clang++') is not None
+                if self.clang_installed:
+                    self.rescan_c_like_files(src_dir_path)
 
-                LANG_EXTENSIONS["c"] = [".i"]
-                LANG_EXTENSIONS["cpp"] = [".ii"]
+                    LANG_EXTENSIONS["c"] = [".i"]
+                    LANG_EXTENSIONS["cpp"] = [".ii"]
 
     def copytree_with_extension(self, src, dst_path):
         if os.path.islink(src):
@@ -162,7 +164,8 @@ class WorkspaceBuilder:
             if ext in self.options.lang_extensions:
                 dst_file = os.path.realpath(os.path.join(dst_path, os.path.basename(src)))
                 src_file = os.path.realpath(src)
-                shutil.copy2(src_file, dst_file)
+                if not self.options.strict_parse_mode:
+                    shutil.copy2(src_file, dst_file)
                 self.dst_file_to_src_file[dst_file] = src_file
 
     def run(self):
@@ -202,12 +205,14 @@ class ModuleSymbolsBuilder:
         self.file_counter = 0
         self.dst_file_to_src_file = dst_file_to_src_file
 
+        self.target_src_path = os.path.join(self.options.workspace, config.SOURCE_CODE_DIR)
+
     def generate_module_id(self):
         result = self.global_module_id
         self.global_module_id += 1
         return result
 
-    def scan_modules(self, module_path, parent_module_id = 0, is_extern = False):
+    def scan_modules_by_scanning_workspace_dir(self, module_path, prefix_path,  parent_module_id = 0, is_extern = False):
         if util.is_empty(module_path):
             return
 
@@ -224,15 +229,21 @@ class ModuleSymbolsBuilder:
                     "symbol_type": SymbolKind.MODULE_SYMBOL,
                     "is_extern": is_extern
                 })
-                self.scan_modules(entry.path, module_id, is_extern)
+                self.scan_modules_by_scanning_workspace_dir(entry.path, prefix_path, module_id, is_extern)
 
             # scan each .gl file, and extract the unit-level symbols
             elif entry.is_file():
                 self.file_counter += 1
                 unit_id = self.generate_module_id()
                 unit_name, unit_ext = os.path.splitext(entry.name)
+
+                exported_name = entry.path.replace(prefix_path, "")
+                exported_name = os.path.splitext(exported_name)[0]
+                exported_name = exported_name.replace(os.path.sep, ".")
+
                 self.module_symbol_results.append({
                     "module_id": unit_id,
+                    "unit_id": unit_id,
                     "symbol_name": unit_name,
                     "unit_ext": unit_ext,
                     "lang": EXTENSIONS_LANG.get(unit_ext, "unknown"),
@@ -240,14 +251,78 @@ class ModuleSymbolsBuilder:
                     "symbol_type": SymbolKind.UNIT_SYMBOL,
                     "unit_path": entry.path,
                     "original_path": self.dst_file_to_src_file.get(entry.path, ""),
-                    "is_extern": is_extern
+                    "is_extern": is_extern,
+                    "exported_name": exported_name,
                 })
 
+    def scan_modules_by_scanning_module_symbol_table(self):
+        self.file_path_to_id = {}
+        for dst_file in self.dst_file_to_src_file:
+            remaining_path = dst_file.replace(self.target_src_path + "/", "")
+            path_list = remaining_path.split(os.sep)
+            counter = 0
+            while counter < len(path_list):
+                parent_path = os.path.join(self.target_src_path, os.sep.join(path_list[:counter]))
+                #print("parent_path: ", parent_path, path_list, remaining_path)
+                parent_module_id = self.file_path_to_id.get(parent_path, 0)
+                real_path = os.path.join(parent_path, path_list[counter])
+                if real_path in self.file_path_to_id:
+                    counter += 1
+                    continue
+
+                module_id = self.generate_module_id()
+                self.file_path_to_id[real_path] = module_id
+
+                if counter != len(path_list) - 1:
+                    # this is directory
+                    self.module_symbol_results.append({
+                        "module_id": module_id,
+                        "symbol_name": path_list[counter],
+                        "unit_path": real_path,
+                        "parent_module_id": parent_module_id,
+                        "symbol_type": SymbolKind.MODULE_SYMBOL,
+                        "is_extern": False
+                    })
+                else:
+                    # this is unit file
+                    self.file_counter += 1
+                    unit_id = module_id
+                    unit_name, unit_ext = os.path.splitext(path_list[counter])
+
+                    exported_name = path_list[:-1]
+                    exported_name.append(unit_name)
+                    exported_name = ".".join(exported_name)
+
+                    self.module_symbol_results.append({
+                        "module_id": unit_id,
+                        "unit_id": unit_id,
+                        "symbol_name": unit_name,
+                        "unit_ext": unit_ext,
+                        "lang": EXTENSIONS_LANG.get(unit_ext, "unknown"),
+                        "parent_module_id": parent_module_id,
+                        "symbol_type": SymbolKind.UNIT_SYMBOL,
+                        "unit_path": dst_file,
+                        "original_path": self.dst_file_to_src_file.get(dst_file, ""),
+                        "is_extern": False,
+                        "exported_name": exported_name,
+                    })
+
+                counter += 1
+
     def run(self):
-        self.scan_modules(module_path = os.path.join(self.options.workspace, config.SOURCE_CODE_DIR))
+        if self.options.strict_parse_mode:
+            self.scan_modules_by_scanning_module_symbol_table()
+            if len(self.module_symbol_results) == 0:
+                util.error_and_quit("No target file found.")
+            self.loader.save_module_symbols(self.module_symbol_results)
+            return
+
+        target_path = os.path.join(self.options.workspace, config.SOURCE_CODE_DIR + "/")
+        self.scan_modules_by_scanning_workspace_dir(module_path = target_path, prefix_path = target_path)
         if len(self.module_symbol_results) == 0:
             util.error_and_quit("No target file found.")
-        self.scan_modules(module_path = os.path.join(self.options.workspace, config.EXTERNS_DIR), is_extern = True)
+        target_path = os.path.join(self.options.workspace, config.EXTERNS_DIR + "/")
+        self.scan_modules_by_scanning_workspace_dir(module_path = target_path, prefix_path = target_path, is_extern = True)
         self.loader.save_module_symbols(self.module_symbol_results)
 
 def run(options, loader):

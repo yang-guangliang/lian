@@ -3,26 +3,27 @@
 import os
 import pprint
 import re
+import sys
 import yaml
 import dataclasses
 import lian.apps.event_return as er
 from lian.apps.app_template import EventData
 from lian.config import config
 from lian.config.constants import (
-    ScopeKind,
-    RuleKind,
-    ConfigurationItemKind,
-    AccessPointKind
+    LIAN_SYMBOL_KIND,
+    RULE_KIND,
+    CONFIG_ITEM_Kind,
+    ACCESS_POINT_KIND
 )
 from lian.externs.extern_rule import Rule
 from lian.externs.modeling import js_api
-from lian.semantic.semantic_structure import AccessPoint, InterruptionData, State, Symbol
+from lian.semantic.semantic_structs import AccessPoint, InterruptionData, State, Symbol
 from lian.util import util
 
 
 @dataclasses.dataclass
 class ConfigurationItem:
-    kind: int = ConfigurationItemKind.ARG
+    kind: int = CONFIG_ITEM_Kind.ARG
     arg_pos: int = -1
 
 class ExternSystem:
@@ -43,13 +44,13 @@ class ExternSystem:
         if len(rule.method_name) == 0:
             return False
 
-        if rule.kind == RuleKind.RULE:
+        if rule.kind == RULE_KIND.RULE:
             if len(rule.src) == 0 and len(rule.dst) == 0 and rule.unset is False:
                 return False
-        elif rule.kind == RuleKind.CODE:
+        elif rule.kind == RULE_KIND.CODE:
             if rule.mock_id in (0, -1):
                 return False
-        elif rule.kind == RuleKind.MODEL:
+        elif rule.kind == RULE_KIND.MODEL:
             if util.is_empty(rule.model_method):
                 return False
 
@@ -76,7 +77,7 @@ class ExternSystem:
             return
 
         method_decls = unit_scope.query(
-            (unit_scope.scope_kind == ScopeKind.METHOD_SCOPE)
+            (unit_scope.scope_kind == LIAN_SYMBOL_KIND.METHOD_KIND)
         )
 
         for each_method in method_decls:
@@ -86,7 +87,7 @@ class ExternSystem:
                 class_name, method_name = self.split_name_to_class_and_method_name(each_method.name, config.MOCK_METHOD_NAME_SEPARATOR)
 
             a_rule = Rule(
-                kind = RuleKind.CODE,
+                kind = RULE_KIND.CODE,
                 lang = unit_info.lang,
                 class_name = class_name,
                 method_name = method_name,
@@ -156,13 +157,13 @@ class ExternSystem:
             splitted_names = each_item.split(".")
             for each_split in splitted_names:
                 if each_split.startswith("%return"):
-                    results.append(ConfigurationItem(kind=ConfigurationItemKind.RETURN))
+                    results.append(ConfigurationItem(kind=CONFIG_ITEM_Kind.RETURN))
                 elif each_split.startswith("%arg"):
                     pos = self.extract_argument_number(each_split)
                     if util.is_available(pos):
-                        results.append(ConfigurationItem(kind=ConfigurationItemKind.ARG, arg_pos=index))
+                        results.append(ConfigurationItem(kind=CONFIG_ITEM_Kind.ARG, arg_pos=index))
                 elif each_split.startswith("%this"):
-                    results.append(ConfigurationItem(kind=ConfigurationItemKind.THIS))
+                    results.append(ConfigurationItem(kind=CONFIG_ITEM_Kind.THIS))
         return results
 
     def parse_configuration_rule(self, configuration_file):
@@ -191,7 +192,7 @@ class ExternSystem:
             dst_results = self.parse_configuration_src_and_dst_item(dst)
 
             a_rule = Rule(
-                kind = RuleKind.RULE,
+                kind = RULE_KIND.RULE,
                 lang = lang,
                 class_name= class_name,
                 method_name = method_name,
@@ -230,7 +231,7 @@ class ExternSystem:
             )
             new_state = frame.symbol_state_space[new_state_index]
             new_state.access_path.append(AccessPoint(
-                kind = AccessPointKind.BUILTIN_METHOD,
+                kind = ACCESS_POINT_KIND.BUILTIN_METHOD,
                 state_id=new_state.state_id,
             ))
             new_src_states.add(new_state_index)
@@ -255,31 +256,31 @@ class ExternSystem:
 
         src_state_indexes = set()
         for each_src_item in rule.src_state_indexes:
-            if each_src_item.kind == ConfigurationItemKind.ARG:
+            if each_src_item.kind == CONFIG_ITEM_Kind.ARG:
                 if each_src_item.arg_pos < len(all_arg_state_indexes):
                     current_states = all_arg_state_indexes[each_src_item.arg_pos]
                     src_state_indexes.update(current_states)
-            elif each_src_item.kind == ConfigurationItemKind.RETURN:
+            elif each_src_item.kind == CONFIG_ITEM_Kind.RETURN:
                 src_state_indexes.update(defined_symbol.states)
-            elif each_src_item.kind == ConfigurationItemKind.THIS:
+            elif each_src_item.kind == CONFIG_ITEM_Kind.THIS:
                 pass
 
         for each_dst_item in rule.dst_results:
-            if each_dst_item.kind == ConfigurationItemKind.ARG:
+            if each_dst_item.kind == CONFIG_ITEM_Kind.ARG:
                 if each_dst_item.arg_pos + 1 < len(status.used_symbols):
                     arg_symbol = status.used_symbols[each_dst_item.arg_pos + 1]
                     if isinstance(arg_symbol, Symbol):
                         pass
                     arg_symbol.states = self.copy_src_state_indexes(frame, state_analysis, status, stmt_id, src_state_indexes)
-            elif each_dst_item.kind == ConfigurationItemKind.RETURN:
+            elif each_dst_item.kind == CONFIG_ITEM_Kind.RETURN:
                 defined_symbol.states = src_state_indexes
-            elif each_dst_item.kind == ConfigurationItemKind.THIS:
+            elif each_dst_item.kind == CONFIG_ITEM_Kind.THIS:
                 pass
 
     def exec_mock_code(self, rule, data):
         in_data = data.in_data
         args = in_data.args
-        in_data.state_analysis.compute_target_method_states(
+        data.out_data = in_data.state_analysis.compute_target_method_states(
             in_data.stmt_id, in_data.stmt, in_data.status, in_data.in_states, {rule.mock_id}, in_data.defined_symbol, args
         )
 
@@ -291,7 +292,7 @@ class ExternSystem:
 
     def are_methods_in_rules_prepared(self, rules, data, unanalyzed_method_ids):
         for each_rule in rules:
-            if each_rule.kind == RuleKind.CODE:
+            if each_rule.kind == RULE_KIND.CODE:
                 if not self.is_method_analyzed(data, each_rule.mock_id):
                     unanalyzed_method_ids.add(each_rule.mock_id)
                     return False
@@ -299,11 +300,11 @@ class ExternSystem:
 
     def find_and_apply_rules(self, rules, data):
         for each_rule in rules:
-            if each_rule.kind == RuleKind.CODE:
+            if each_rule.kind == RULE_KIND.CODE:
                 self.exec_mock_code(each_rule, data)
-            elif each_rule.kind == RuleKind.RULE:
+            elif each_rule.kind == RULE_KIND.RULE:
                 self.exec_configuration_rule(each_rule, data)
-            elif each_rule.kind == RuleKind.MODEL:
+            elif each_rule.kind == RULE_KIND.MODEL:
                 self.exec_model_method(each_rule, data)
 
     def init(self):
@@ -365,34 +366,44 @@ class ExternSystem:
         return er.EventHandlerReturnKind.SUCCESS
 
     def register_model_methods(self):
+        # 不要写死，用options配置
         all_modelings = dict()
+        if hasattr(self.options, "extern_path") and self.options.extern_path:
+            all_modelings["abc"] = []
+            sys.path.append(self.options.extern_path)  # 添加绝对路径
+            from externs.modeling import abc_modeling
+            method_name_to_model = abc_modeling.METHOD_NAME_TO_MODEL
+            for key, value in method_name_to_model.items():
+                all_modelings["abc"].append(Rule(method_name=key, model_method=value))
 
-        all_modelings[config.ANY_LANG] = []
+        else:
+            all_modelings[config.ANY_LANG] = []
 
-        all_modelings["python"] = []
+            all_modelings["python"] = []
 
-        all_modelings["java"] = []
+            all_modelings["java"] = []
 
-        all_modelings["csharp"] = []
+            all_modelings["csharp"] = []
 
-        all_modelings["llvm"] = []
+            all_modelings["llvm"] = []
 
-        all_modelings["abc"] = []
+            all_modelings["abc"] = []
 
-        all_modelings["php"] = []
+            all_modelings["php"] = []
 
-        all_modelings["typescript"] = []
+            all_modelings["typescript"] = []
 
-        all_modelings["arkts"] = []
+            all_modelings["arkts"] = []
 
-        all_modelings["javascript"] = [
-            Rule(method_name="call", model_method=js_api.js_call),
-        ]
+            all_modelings["javascript"] = [
+                Rule(method_name="call", model_method=js_api.js_call),
+                Rule(method_name="then", model_method=js_api.js_then),
+            ]
 
         results = []
         for lang in all_modelings:
             for each_rule in all_modelings[lang]:
-                each_rule.kind = RuleKind.MODEL
+                each_rule.kind = RULE_KIND.MODEL
                 each_rule.lang = lang
                 results.append(each_rule)
 

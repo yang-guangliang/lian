@@ -9,12 +9,12 @@ from lian.util import util
 from lian.config import config
 from lian.util.loader import Loader
 from lian.config.constants import (
-    EventKind,
-    ScopeKind,
-    LianInternal
+    EVENT_KIND,
+    LIAN_SYMBOL_KIND,
+    LIAN_INTERNAL
 )
 from lian.apps.app_template import EventData
-from lian.semantic.semantic_structure import SimpleWorkList
+from lian.semantic.semantic_structs import SimpleWorkList
 
 @dataclasses.dataclass
 class EntryPointRule:
@@ -23,7 +23,7 @@ class EntryPointRule:
     unit_path: str = ""
     unit_name: str = ""
     method_id: int = -1
-    method_name: str = ""
+    method_name: list[str] = dataclasses.field(default_factory=list)
     attrs: list[str] = dataclasses.field(default_factory=list)
     args: str = ""
     return_type: str = ""
@@ -35,9 +35,9 @@ class EntryPointGenerator:
         self.loader:Loader = loader
         self.entry_points = set()
         self.entry_point_rules = [
-            EntryPointRule(method_name = LianInternal.UNIT_INIT),
-            EntryPointRule(lang = "java", method_name = "main", attrs = ["static"]),
-            EntryPointRule(lang = "abc", method_name = "func_main_0", attrs = ["static"]),
+            EntryPointRule(method_name = [LIAN_INTERNAL.UNIT_INIT]),
+            EntryPointRule(lang = "java", method_name = ["main"], attrs = ["static"]),
+            EntryPointRule(lang = "abc", method_name = ["func_main_0", "onWindowStageCreate"]),
         ]
 
     def scan_js_ts_exported_method(self):
@@ -66,8 +66,8 @@ class EntryPointGenerator:
                     return True
                 continue
 
-            if rule.method_name:
-                if rule.method_name != method_name:
+            if len(rule.method_name) > 0:
+                if method_name not in rule.method_name:
                     continue
 
             if rule.attrs:
@@ -93,14 +93,14 @@ class EntryPointGenerator:
         return False
 
     def collect_entry_points_from_unit_scope(self, unit_info, unit_scope):
-        all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(ScopeKind.METHOD_SCOPE))
+        all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(LIAN_SYMBOL_KIND.METHOD_KIND))
         for scope in all_method_scopes:
             name = ""
             attrs = []
             if util.is_available(scope.name):
                 name = scope.name
             if util.is_available(scope.attrs):
-                attrs = ast.literal_eval(scope.attrs)
+                attrs = scope.attrs
             if self.check_entry_point_rules(
                     unit_info.lang, unit_info.module_id, unit_info.unit_path, scope.stmt_id, name, attrs
             ):

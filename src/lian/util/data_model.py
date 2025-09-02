@@ -307,11 +307,22 @@ class Row:
         return Row(new_row, new_schema, new_index)
 
     def __getattr__(self, item):
+        if item == "copy":
+            return self.__copy__
+        if item == "clone":
+            return self.__copy__
         pos = self._schema.get(item, -1)
         if pos != -1:
             return self._row[pos]
-        # util.error(f"Failed to obtain key <{item}> from the dataframe row{self._row}")
+        #util.error(f"Failed to obtain key <{item}> from the dataframe row{self._row}")
         return None
+
+    def to_dict(self):
+        result = {}
+        #print(self._schema)
+        for key, pos in self._schema.items():
+            result[key] = self._row[pos]
+        return result
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
@@ -321,7 +332,9 @@ class Row:
                 pos = self._schema[name]
                 self._row[pos] = value
             else:
-                raise AttributeError(f"Unable to set properties '{name}'")
+                self._row.append(value)
+                self._schema[name] = len(self._row) - 1
+                #raise AttributeError(f"Unable to set properties '{name}'")
 
     def add_new_column(self, column_name, column_data):
         if column_name in self._schema:
@@ -342,6 +355,12 @@ class Row:
 
     def raw_data(self):
         return self._row
+
+    def __contains__(self, item):
+        return item in self._schema
+
+    def __iter__(self):
+        return iter(self._row)
 
 
 class Column(pd.Series):

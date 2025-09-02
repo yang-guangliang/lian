@@ -5,12 +5,12 @@ import networkx as nx
 from lian.config import config,schema
 from lian.util import util
 import lian.util.data_model as dm
-from lian.config.constants import ControlFlowKind
-from lian.semantic.semantic_structure import (
+from lian.config.constants import CONTROL_FLOW_KIND
+from lian.semantic.semantic_structs import (
     ControlFlowGraph,
     CFGNode
 )
-from lian.semantic.semantic_structure import ComputeFrame
+from lian.semantic.semantic_structs import ComputeFrame
 from lian.util.loader import Loader
 
 class ControlFlowAnalysis:
@@ -34,8 +34,6 @@ class ControlFlowAnalysis:
             "try_stmt"      : self.analyze_try_stmt,
             "switch_stmt"   : self.analyze_switch_stmt,
             "return_stmt"   : self.analyze_return_stmt,
-            """ "goto_stmt"     : self.analyze_goto_stmt, """
-            """ "label_stmt"    : self.analyze_label_stmt, """
             "yield"         : self.analyze_yield_stmt,
             "method_decl"   : self.analyze_method_decl_stmt,
             "class_decl"    : self.analyze_decl_stmt,
@@ -59,8 +57,8 @@ class ControlFlowAnalysis:
         last_stmts_of_init_block = self.analyze_block(self.parameter_decls)
         last_stmts_of_body_block = self.analyze_block(self.method_body, last_stmts_of_init_block)
         if last_stmts_of_body_block:
-            self.cfg.add_edge(last_stmts_of_body_block, -1, control_flow_type = ControlFlowKind.EMPTY)
-        # util.debug("cfg "*20)
+            self.cfg.add_edge(last_stmts_of_body_block, -1, control_flow_type = CONTROL_FLOW_KIND.EMPTY)
+        #util.debug("cfg "*20)
         # util.debug(list(self.cfg.graph.edges(data=True)))
         self.merge_multiple_edges_between_two_nodes()
 
@@ -69,9 +67,10 @@ class ControlFlowAnalysis:
         # - search label;
         # - connect new edge
         for goto in self.goto:
-            self.cfg.graph.remove_edges_from(list(self.cfg.graph.out_edges(goto.stmt_id)))
+            if goto.stmt_id in self.cfg.graph:  # 检查节点是否存在
+                self.cfg.graph.remove_edges_from(list(self.cfg.graph.out_edges(goto.stmt_id)))
             for label in self.label:
-                if goto.target == label.name:
+                if goto.name == label.name:
                     self.cfg.graph.add_edge(goto.stmt_id, label.stmt_id)
 
 
@@ -93,7 +92,7 @@ class ControlFlowAnalysis:
         for u, v in old_graph.edges():
             if old_graph.number_of_edges(u, v) > 1:
                 # total_weight = sum(old_graph[u][v][key]['weight'] for key in old_graph[u][v])
-                new_graph.add_edge(u, v, weight = ControlFlowKind.EMPTY)
+                new_graph.add_edge(u, v, weight = CONTROL_FLOW_KIND.EMPTY)
             else:
                 if not new_graph.has_edge(u, v):
                     new_graph.add_edge(u, v, weight = old_graph[u][v][0]['weight'])
@@ -108,14 +107,14 @@ class ControlFlowAnalysis:
 
     def analyze_if_stmt(self, current_block, current_stmt, parent_stmts, global_special_stmts):
         self.link_parent_stmts_to_current_stmt(parent_stmts, current_stmt)
-        last_stmts_of_then_body = [CFGNode(current_stmt, ControlFlowKind.IF_TRUE)]
+        last_stmts_of_then_body = [CFGNode(current_stmt, CONTROL_FLOW_KIND.IF_TRUE)]
         then_body_id = current_stmt.then_body
         if not util.isna(then_body_id):
             then_body = self.read_block(current_block, then_body_id)
             if len(then_body) != 0:
                 last_stmts_of_then_body = self.analyze_block(then_body, last_stmts_of_then_body, global_special_stmts)
 
-        last_stmts_of_else_body = [CFGNode(current_stmt, ControlFlowKind.IF_FALSE)]
+        last_stmts_of_else_body = [CFGNode(current_stmt, CONTROL_FLOW_KIND.IF_FALSE)]
         else_body_id = current_stmt.else_body
         if not util.isna(else_body_id):
             else_body = self.read_block(current_block, else_body_id)
@@ -131,7 +130,7 @@ class ControlFlowAnalysis:
         last_stmt_nodes = []
         for each_last_stmt in last_stmts:
             if not isinstance(each_last_stmt, CFGNode):
-                last_stmt_nodes.append(CFGNode(each_last_stmt, ControlFlowKind.LOOP_BACK))
+                last_stmt_nodes.append(CFGNode(each_last_stmt, CONTROL_FLOW_KIND.LOOP_BACK))
             else:
                 last_stmt_nodes.append(each_last_stmt)
 
@@ -144,10 +143,13 @@ class ControlFlowAnalysis:
                 result.append(node)
                 del special_stmts[counter]
             elif node.operation == "continue_stmt":
-                self.link_parent_stmts_to_current_stmt([CFGNode(node, ControlFlowKind.CONTINUE)], current_stmt)
+                self.link_parent_stmts_to_current_stmt([CFGNode(node, CONTROL_FLOW_KIND.CONTINUE)], current_stmt)
                 del special_stmts[counter]
         global_special_stmts.extend(special_stmts)
-        result.append(CFGNode(current_stmt, ControlFlowKind.LOOP_FALSE))
+        if util.is_available(current_stmt.condition):
+            if current_stmt.condition in ("true", "True"):
+                return result
+        result.append(CFGNode(current_stmt, CONTROL_FLOW_KIND.LOOP_FALSE))
         return result
 
     def analyze_while_stmt(self, current_block, current_stmt, parent_stmts, global_special_stmts):
@@ -157,7 +159,7 @@ class ControlFlowAnalysis:
         body = self.read_block(current_block, body_id)
         last_stmts_of_body = self.analyze_block(
             body,
-            [CFGNode(current_stmt, ControlFlowKind.LOOP_TRUE)],
+            [CFGNode(current_stmt, CONTROL_FLOW_KIND.LOOP_TRUE)],
             new_special_stmts
         )
         last_stmts = self.deal_with_last_stmts_of_loop_body(
@@ -174,7 +176,7 @@ class ControlFlowAnalysis:
         last_stmts_of_else_body = self.analyze_block(
             else_body,
             # TODO: should this be loop_false?
-            [CFGNode(current_stmt, ControlFlowKind.LOOP_TRUE)],
+            [CFGNode(current_stmt, CONTROL_FLOW_KIND.LOOP_TRUE)],
             new_special_stmts
         )
         last_stmts.pop()
@@ -188,7 +190,7 @@ class ControlFlowAnalysis:
 
         previous = parent_stmts[:]
         previous.append(
-            CFGNode(current_stmt, ControlFlowKind.LOOP_TRUE)
+            CFGNode(current_stmt, CONTROL_FLOW_KIND.LOOP_TRUE)
         )
 
         new_special_stmts = []
@@ -229,7 +231,7 @@ class ControlFlowAnalysis:
         new_special_stmts = []
         last_stmts = self.analyze_block(
             body,
-            [CFGNode(current_stmt, ControlFlowKind.LOOP_TRUE)],
+            [CFGNode(current_stmt, CONTROL_FLOW_KIND.LOOP_TRUE)],
             new_special_stmts
         )
 
@@ -296,7 +298,7 @@ class ControlFlowAnalysis:
         boundary = self.boundary_of_multi_blocks(current_block, [body_id, catch_body_id, else_body_id, final_body_id])
 
         body = self.read_block(current_block, body_id)
-        last_stmts_of_body = self.analyze_block(body, [CFGNode(current_stmt, ControlFlowKind.EMPTY)], global_special_stmts)
+        last_stmts_of_body = self.analyze_block(body, [CFGNode(current_stmt, CONTROL_FLOW_KIND.EMPTY)], global_special_stmts)
 
         if util.isna(catch_body_id):
             return (last_stmts_of_body, boundary)
@@ -309,19 +311,19 @@ class ControlFlowAnalysis:
             self.link_parent_stmts_to_current_stmt(pre_init_stmt, stmt)
             if stmt.operation == "catch_clause":
                 last_stmts_of_catch_clause = self.analyze_block(
-                    self.read_block(current_block, stmt.body), [CFGNode(stmt, ControlFlowKind.CATCH_TRUE)], global_special_stmts
+                    self.read_block(current_block, stmt.body), [CFGNode(stmt, CONTROL_FLOW_KIND.CATCH_TRUE)], global_special_stmts
                 )
                 last_stmts_of_catch_body.extend(last_stmts_of_catch_clause)
             pre_init_stmt = [stmt]
 
         if not util.isna(else_body_id):
             else_body = self.read_block(current_block, else_body_id)
-            last_stmts_of_else_body = self.analyze_block(else_body, [CFGNode(last_stmts_of_body, ControlFlowKind.CATCH_FALSE)], global_special_stmts)
+            last_stmts_of_else_body = self.analyze_block(else_body, [CFGNode(last_stmts_of_body, CONTROL_FLOW_KIND.CATCH_FALSE)], global_special_stmts)
 
             if not util.isna(final_body_id):
                 final_body = self.read_block(current_block, final_body_id)
                 last_stmts_of_final_body = self.analyze_block(
-                    final_body, [CFGNode(last_stmts_of_catch_body, ControlFlowKind.CATCH_FINALLY)] + [CFGNode(last_stmts_of_else_body, ControlFlowKind.CATCH_FINALLY)], global_special_stmts
+                    final_body, [CFGNode(last_stmts_of_catch_body, CONTROL_FLOW_KIND.CATCH_FINALLY)] + [CFGNode(last_stmts_of_else_body, CONTROL_FLOW_KIND.CATCH_FINALLY)], global_special_stmts
                 )
             else:
                 return (last_stmts_of_catch_body + last_stmts_of_else_body, boundary)
@@ -330,7 +332,7 @@ class ControlFlowAnalysis:
             if not util.isna(final_body_id):
                 final_body = self.read_block(current_block, final_body_id)
                 last_stmts_of_final_body = self.analyze_block(
-                    final_body, [CFGNode(last_stmts_of_catch_body, ControlFlowKind.CATCH_FINALLY)], global_special_stmts
+                    final_body, [CFGNode(last_stmts_of_catch_body, CONTROL_FLOW_KIND.CATCH_FINALLY)], global_special_stmts
                 )
             else:
                 return (last_stmts_of_catch_body, boundary)
@@ -400,7 +402,7 @@ class ControlFlowAnalysis:
 
     def analyze_return_stmt(self, current_block, current_stmt, parent_stmts, global_special_stmts):
         self.link_parent_stmts_to_current_stmt(parent_stmts, current_stmt)
-        self.cfg.add_edge(current_stmt, -1, ControlFlowKind.RETURN)
+        self.cfg.add_edge(current_stmt, -1, CONTROL_FLOW_KIND.RETURN)
 
         return ([], -1)
 
@@ -430,7 +432,7 @@ class ControlFlowAnalysis:
                 self.cfg.add_edge(node.stmt, current_stmt, node.edge)
             else:
                 # Links non-CFGNode items
-                self.cfg.add_edge(node, current_stmt, ControlFlowKind.EMPTY)
+                self.cfg.add_edge(node, current_stmt, CONTROL_FLOW_KIND.EMPTY)
 
     @profile
     def analyze_init_block(self, current_block, parent_stmts = [], special_stmts = []):
@@ -448,14 +450,14 @@ class ControlFlowAnalysis:
             if current.operation == "parameter_decl":
                 self.link_parent_stmts_to_current_stmt(parent_stmts, current)
                 last_parameter_init_stmts.extend(previous)
-                last_parameter_decl_stmts.append(CFGNode(current, ControlFlowKind.PARAMETER_UNINIT))
+                last_parameter_decl_stmts.append(CFGNode(current, CONTROL_FLOW_KIND.PARAMETER_UNINIT))
                 previous = [current]
                 counter += 1
                 first_init_stmt = True
             else:
                 handler = self.stmt_handlers.get(current.operation, None)
                 if first_init_stmt:
-                    previous = [CFGNode(previous, ControlFlowKind.PARAMETER_INIT)]
+                    previous = [CFGNode(previous, CONTROL_FLOW_KIND.PARAMETER_INIT)]
                     first_init_stmt = False
                 if handler is None:
                     self.link_parent_stmts_to_current_stmt(previous, current)

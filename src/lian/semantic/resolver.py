@@ -2,9 +2,8 @@
 
 import pprint
 from lian.config import config
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     AccessPoint,
-    ExportNode,
     SimpleWorkList,
     SourceSymbolScopeInfo,
     Symbol,
@@ -20,13 +19,13 @@ from lian.semantic.semantic_structure import (
     DefferedIndexUpdate
 )
 from lian.config.constants import (
-    ExportNodeType,
-    ScopeKind,
-    SymbolKind,
-    LianInternal,
-    AccessPointKind,
+    EXPORT_NODE_TYPE,
+    LIAN_SYMBOL_KIND,
+    LIAN_SYMBOL_KIND,
+    LIAN_INTERNAL,
+    ACCESS_POINT_KIND,
     CLASS_DECL_OPERATION,
-    StateTypeKind
+    STATE_TYPE_KIND
 )
 from lian.util.loader import Loader
 from lian.util import util
@@ -59,7 +58,7 @@ class Resolver:
         self.file_path_to_unit_ids[path] = unit_ids
         return unit_ids
 
-    def resolve_class_name_to_ids(self, unit_id, stmt_id, class_name):
+    def resolve_class_name_to_ids(self, unit_id, scope_id, class_name):
         """
         Given a class name, find its source stmt id
 
@@ -79,8 +78,10 @@ class Resolver:
             return result
 
         scope_ids = summary.symbol_name_to_scope_ids[class_name]
-        available_scope_ids = summary.scope_id_to_available_scope_ids.get(stmt_id, set())
+        available_scope_ids = summary.scope_id_to_available_scope_ids.get(scope_id, set([0]))
         target_scope_ids = available_scope_ids & scope_ids
+        # print("=" * 60)
+        # print(scope_ids, available_scope_ids, summary, stmt_id)
         if len(target_scope_ids) == 0:
             return result
 
@@ -95,12 +96,31 @@ class Resolver:
             # if it is an import stmt, check the target unit's import information
             export_symbols = self.loader.load_unit_export_symbols(unit_id)
             if export_symbols:
-                import_info = export_symbols.query(export_symbols.source_symbol_id == symbol_id)
+                import_info = export_symbols.query(export_symbols.import_stmt == symbol_id)
                 for each_import in import_info:
                     if self.loader.is_class_decl(each_import.symbol_id):
                         result.append(each_import.symbol_id)
 
         return result
+
+    def organize_return_value(self, unit_id, scope_id, symbol, summary, default_return):
+        symbol_id = summary.scope_id_to_symbol_info[scope_id][symbol.name]
+        if not self.loader.is_import_stmt(symbol_id):
+            return SourceSymbolScopeInfo(unit_id, symbol_id)
+
+        # since this is an import stmt, we need to read import information to find the real symbol_id
+        export_symbols = self.loader.load_unit_export_symbols(unit_id)
+        #print("export symbols:", unit_id, export_symbols)
+        if util.is_empty(export_symbols):
+            return default_return
+        import_info = export_symbols.query_first(export_symbols.symbol_name == symbol.name)
+        if import_info:
+            if import_info.symbol_id != -1:
+                return SourceSymbolScopeInfo(
+                    self.loader.convert_stmt_id_to_unit_id(import_info.symbol_id),
+                    import_info.symbol_id
+                )
+        return SourceSymbolScopeInfo(unit_id, symbol_id)
 
     # locate symbol to (unit_id, decl_stmt_id]
     def resolve_symbol_source(self, unit_id, method_id, stmt_id, stmt, symbol, source_symbol_must_be_global = False):
@@ -115,31 +135,13 @@ class Resolver:
         Return:
             SourceSymbolScopeInfo: source unit & source stmt
         """
-
-        if symbol.name == LianInternal.THIS:
+        if symbol.name == LIAN_INTERNAL.THIS:
             return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID)
-
-        def organize_return_value(scope_id):
-            symbol_id = summary.scope_id_to_symbol_info[scope_id][symbol.name]
-            if not self.loader.is_import_stmt(symbol_id):
-                return SourceSymbolScopeInfo(unit_id, symbol_id)
-
-            # since this is an import stmt, we need to read import information to find the real symbol_id
-            export_symbols = self.loader.load_unit_export_symbols(unit_id)
-            if util.is_empty(export_symbols):
-                return default_return
-            import_info = export_symbols.query_first(export_symbols.name == symbol.name)
-            if import_info:
-                if import_info.source_symbol_id == -1:
-                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_module_id)
-                else:
-                    return SourceSymbolScopeInfo(import_info.unit_id, import_info.source_symbol_id)
-            else:
-                return SourceSymbolScopeInfo(unit_id, symbol_id)
 
         # default return value
         default_return = SourceSymbolScopeInfo(unit_id, stmt_id)
         if util.is_empty(symbol):
+            #print("@@@@@@1111")
             return default_return
 
         summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
@@ -149,14 +151,16 @@ class Resolver:
             if symbol.name in summary.symbol_name_to_scope_ids:
                 scope_ids = summary.symbol_name_to_scope_ids[symbol.name]
                 if global_scope_id in scope_ids:
-                    return organize_return_value(global_scope_id)
+                    return self.organize_return_value(unit_id, global_scope_id, symbol, summary, default_return)
         else:
             scope_id = -1
             if stmt.parent_stmt_id in summary.scope_id_to_available_scope_ids:
                 scope_id = stmt.parent_stmt_id
             if scope_id == -1:
+                #print("@@@@@@112222")
                 return default_return
 
+            #print("if symbol.name in summary.symbol_name_to_scope_ids", symbol.name, summary.symbol_name_to_scope_ids)
             if symbol.name in summary.symbol_name_to_scope_ids:
                 scope_ids = summary.symbol_name_to_scope_ids[symbol.name]
                 available_scope_ids = summary.scope_id_to_available_scope_ids.get(scope_id, set())
@@ -164,8 +168,11 @@ class Resolver:
                 if len(target_scope_ids) != 0:
                     # find this name in this unit
                     scope_id = max(target_scope_ids)
-                    return organize_return_value(scope_id)
+                    return self.organize_return_value(unit_id, scope_id, symbol, summary, default_return)
 
+                #print("@@@@@@444")
+            #print("@@@@@@4555")
+        #print("@@@@@@333")
         return default_return
 
     def collect_newest_states_by_state_indexes(
@@ -212,7 +219,7 @@ class Resolver:
                             result.add(each_def.index)
                 else:
                     result.add(state_index)
-            
+
             # 如果不在frame.state_to_define中，就返回自身
             else:
                 result.add(state_index)
@@ -276,7 +283,7 @@ class Resolver:
         newest_states = self.collect_newest_states_by_state_ids(frame, available_state_defs, {parent_state_id})
         # print("obtain_parent_states@ 找到的newest_states是",newest_states, ", method_id是",frame.method_id)
         return newest_states
-    
+
     def obtain_parent_state_id(self, frame, status, base_state_index):
         """
             获取parent_state_id
@@ -341,7 +348,7 @@ class Resolver:
         current_space = caller_frame.symbol_state_space
         source_states.clear()
         # print(f"{callee_id, caller_id, call_stmt_id} load_parameter_mapping")
-        parameter_mapping_list: list[ParameterMapping] = self.loader.load_parameter_mapping(callee_frame.call_site)
+        parameter_mapping_list: list[ParameterMapping] = self.loader.load_parameter_mapping_p2(callee_frame.call_site)
         # print("parameter_mapping_list")
         # pprint.pprint(parameter_mapping_list)
         if not parameter_mapping_list:
@@ -362,12 +369,12 @@ class Resolver:
             # 实参不是symbol
             if arg_source_symbol_id == -1 and each_mapping.arg_index_in_space != -1:
                 parameter_type = each_mapping.parameter_type
-                if parameter_type == LianInternal.PACKED_POSITIONAL_PARAMETER:
+                if parameter_type == LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER:
                     parameter_access_path = each_mapping.parameter_access_path
                     index = parameter_access_path.key
                     util.add_to_list_with_default_set(arg_array, index, each_mapping.arg_index_in_space)
 
-                elif parameter_type == LianInternal.PACKED_NAMED_PARAMETER:
+                elif parameter_type == LIAN_INTERNAL.PACKED_NAMED_PARAMETER:
                     parameter_access_path = each_mapping.parameter_access_path
                     key = parameter_access_path.key
                     util.add_to_dict_with_default_set(arg_fields, key, each_mapping.arg_index_in_space)
@@ -381,13 +388,13 @@ class Resolver:
                 return (arg_source_symbol_id, None)
 
             if each_mapping.parameter_type in (
-                LianInternal.PACKED_POSITIONAL_PARAMETER, LianInternal.PACKED_NAMED_PARAMETER
+                LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER, LIAN_INTERNAL.PACKED_NAMED_PARAMETER
             ):
                 parameter_access_path = each_mapping.parameter_access_path
                 # print(f"parameter_access_path: {parameter_access_path}")
                 for access_point in arg_access_path:
                     if (
-                        access_point.kind in (AccessPointKind.FIELD_ELEMENT, AccessPointKind.ARRAY_ELEMENT) and
+                        access_point.kind in (ACCESS_POINT_KIND.FIELD_ELEMENT, ACCESS_POINT_KIND.ARRAY_ELEMENT) and
                         access_point.key == parameter_access_path.key and
                         access_point.kind == parameter_access_path.kind
                     ):
@@ -578,7 +585,7 @@ class Resolver:
 
                 point_kind = one_point.kind
                 #if point_kind in (AccessPointKind.FIELD_NAME, AccessPointKind.FIELD_ELEMENT):
-                if point_kind == AccessPointKind.FIELD_ELEMENT:
+                if point_kind == ACCESS_POINT_KIND.FIELD_ELEMENT:
                     key = one_point.key
                     for tmp_state in tmp_states:
                         fields = tmp_state.fields
@@ -586,7 +593,7 @@ class Resolver:
                             tmp_indexes.update(fields[key])
 
                 #elif point_kind in (AccessPointKind.ARRAY_INDEX, AccessPointKind.ARRAY_ELEMENT):
-                elif point_kind == AccessPointKind.ARRAY_ELEMENT:
+                elif point_kind == ACCESS_POINT_KIND.ARRAY_ELEMENT:
                     index = one_point.key
                     for tmp_state in tmp_states:
                         array = tmp_state.array
@@ -638,7 +645,7 @@ class Resolver:
             if len(current_frame.stmt_worklist) == 0:
                 continue
 
-            if data_type == LianInternal.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
+            if data_type == LIAN_INTERNAL.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
                 # if config.DEBUG_FLAG:
                 #     print("resolve_symbol_states 在找this")
                 caller_frame = frame_stack[current_frame_index - 1]
@@ -655,8 +662,8 @@ class Resolver:
                     new_state = State(
                         stmt_id = stmt_id,
                         source_symbol_id = state_symbol_id,
-                        data_type = LianInternal.METHOD_DECL,
-                        state_type = StateTypeKind.REGULAR,
+                        data_type = LIAN_INTERNAL.METHOD_DECL,
+                        state_type = STATE_TYPE_KIND.REGULAR,
                         value = state_symbol_id,
                     )
                     return {frame_stack[-1].symbol_state_space.add(new_state)}
@@ -667,8 +674,8 @@ class Resolver:
                     new_state = State(
                         stmt_id = stmt_id,
                         source_symbol_id = state_symbol_id,
-                        data_type = LianInternal.CLASS_DECL,
-                        state_type = StateTypeKind.REGULAR,
+                        data_type = LIAN_INTERNAL.CLASS_DECL,
+                        state_type = STATE_TYPE_KIND.REGULAR,
                         value = state_symbol_id
                     )
                     return {frame_stack[-1].symbol_state_space.add(new_state)}
@@ -759,7 +766,7 @@ class Resolver:
         if self.loader.is_class_decl(state_symbol_id) or self.loader.is_method_decl(state_symbol_id):
             return
 
-        if data_type == LianInternal.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
+        if data_type == LIAN_INTERNAL.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
             # print("resolve_anything_in_summary_generation@ 要找this")
             pass
             # if isinstance(caller_frame, ComputeFrame):
@@ -772,7 +779,7 @@ class Resolver:
             # 收集初始的arg_indexes
             arg_state_indexes = set()
             call_site = (caller_frame.method_id, stmt_id, callee_id)
-            parameter_mapping_list = self.loader.load_parameter_mapping(call_site)
+            parameter_mapping_list = self.loader.load_parameter_mapping_p2(call_site)
             if util.is_empty(parameter_mapping_list):
                 return
             for each_mapping in parameter_mapping_list:
@@ -854,7 +861,7 @@ class Resolver:
         for field_name, field_indexes in state.fields.items():
             for field_index in field_indexes:
                 field_state = caller_frame.symbol_state_space[field_index]
-                if field_state.state_type != StateTypeKind.ANYTHING: # field_state.g=1
+                if field_state.state_type != STATE_TYPE_KIND.ANYTHING: # field_state.g=1
                     # print(f"遍历该state的fields：field_name为<{field_name}>,state不是anything")
                     continue
                 elif field_state.source_symbol_id != parameter_symbol_id: # field_state.g=external
@@ -877,7 +884,7 @@ class Resolver:
                         created_state.fields[field_name].add(new_state_index)
 
         if change_flag:
-            created_state.state_type =  StateTypeKind.REGULAR
+            created_state.state_type =  STATE_TYPE_KIND.REGULAR
             return_index = caller_frame.symbol_state_space.add(created_state)
             util.add_to_dict_with_default_set(
                 self.resolve_anything_with_same_src_symbol_in_summary_generation.result_cache,

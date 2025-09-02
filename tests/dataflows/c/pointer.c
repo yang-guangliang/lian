@@ -1,7 +1,7 @@
 #include <stdio.h>
 int main() {
     // int a, c;
-    int aaa = 10;        
+    char aaa = 'x';        
     int *p;     
     int **q;        
     int d;      

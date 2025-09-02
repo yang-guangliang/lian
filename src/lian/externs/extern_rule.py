@@ -3,7 +3,7 @@
 import dataclasses
 from lian.config import config
 from lian.config.constants import (
-    RuleKind
+    RULE_KIND
 )
 
 @dataclasses.dataclass
@@ -32,7 +32,7 @@ class Rule:
     """
     rule_id:int             = -1
 
-    kind: int               = RuleKind.RULE
+    kind: int               = RULE_KIND.RULE
 
     lang: str               = config.ANY_LANG
     class_name: str         = ""

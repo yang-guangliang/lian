@@ -9,21 +9,21 @@ function forEach(callback) {
     }
 }
 
-function push(e) {
-    this[e] = e;
-}
+// function push(e) {
+//     this[e] = e;
+// }
 
-function Promise(callback) {
-    callback()
-}
+// function Promise(callback) {
+//     callback()
+// }
 
-function then(callback){
-    callback()
-}
+// function then(callback){
+//     callback()
+// }
 
-function setTimeout(callback) {
-    callback()
-}
+// function setTimeout(callback) {
+//     callback()
+// }
 
 // function map(callback, thisArg) {
 //     obj = this;

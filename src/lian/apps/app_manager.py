@@ -8,7 +8,7 @@ import pprint
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
-    EventKind,
+    EVENT_KIND,
 )
 import lian.apps.event_return as er
 from lian.apps.app_template import EventData
@@ -46,19 +46,19 @@ class AppManager:
         self.p2state_extern_callee_handlers = []
 
         self.event_handlers = {
-            EventKind.MOCK_SOURCE_CODE_READY                        : self.mock_source_code_handlers,
-            EventKind.ORIGINAL_SOURCE_CODE_READY                    : self.source_code_handlers,
-            EventKind.UNFLATTENED_GIR_LIST_GENERATED                : self.gir_list_handlers,
-            EventKind.GIR_LIST_GENERATED                            : self.flattened_gir_list_handlers,
-            EventKind.GIR_DATA_MODEL_GENERATED                      : self.gir_data_model_handlers,
+            EVENT_KIND.MOCK_SOURCE_CODE_READY                        : self.mock_source_code_handlers,
+            EVENT_KIND.ORIGINAL_SOURCE_CODE_READY                    : self.source_code_handlers,
+            EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED                : self.gir_list_handlers,
+            EVENT_KIND.GIR_LIST_GENERATED                            : self.flattened_gir_list_handlers,
+            EVENT_KIND.GIR_DATA_MODEL_GENERATED                      : self.gir_data_model_handlers,
 
-            EventKind.P2STATE_FIELD_READ_BEFORE                     : self.p2state_field_read_before_handlers,
-            EventKind.P2STATE_FIELD_READ_AFTER                      : self.p2state_field_read_after_handlers,
-            EventKind.P2STATE_GENERATE_EXTERNAL_STATES              : self.p2state_generate_external_states_handlers,
-            EventKind.P2STATE_NEW_OBJECT_BEFORE                     : self.p2state_new_object_before_handlers,
-            EventKind.P2STATE_NEW_OBJECT_AFTER                      : self.p2state_new_object_after_handlers,
-            EventKind.P2STATE_BUILTIN_FUNCTION_BEFORE               : self.p2state_builtin_function_before_handlers,
-            EventKind.P2STATE_EXTERN_CALLEE                         : self.p2state_extern_callee_handlers,
+            EVENT_KIND.P2STATE_FIELD_READ_BEFORE                     : self.p2state_field_read_before_handlers,
+            EVENT_KIND.P2STATE_FIELD_READ_AFTER                      : self.p2state_field_read_after_handlers,
+            EVENT_KIND.P2STATE_GENERATE_EXTERNAL_STATES              : self.p2state_generate_external_states_handlers,
+            EVENT_KIND.P2STATE_NEW_OBJECT_BEFORE                     : self.p2state_new_object_before_handlers,
+            EVENT_KIND.P2STATE_NEW_OBJECT_AFTER                      : self.p2state_new_object_after_handlers,
+            EVENT_KIND.P2STATE_BUILTIN_FUNCTION_BEFORE               : self.p2state_builtin_function_before_handlers,
+            EVENT_KIND.P2STATE_EXTERN_CALLEE                         : self.p2state_extern_callee_handlers,
         }
 
         self.register_default_apps()
@@ -96,7 +96,7 @@ class AppManager:
         for langs, handler in all_handlers:
             if data.lang in langs or config.ANY_LANG in langs:
                 if self.options.debug:
-                    util.debug("Handling the event: ", EventKind[data.event], " with the handler: ", handler)
+                    util.debug("Handling the event: ", EVENT_KIND[data.event], " with the handler: ", handler)
                 current_return = handler(data)
                 event_return = er.sync_event_return(current_return, event_return)
                 if er.should_block_other_event_apps(event_return):
@@ -136,7 +136,7 @@ class AppManager:
     def register_extern_system(self, extern_system):
         if extern_system:
             self.register(
-                event = EventKind.P2STATE_EXTERN_CALLEE,
+                event = EVENT_KIND.P2STATE_EXTERN_CALLEE,
                 handler = extern_system.handle,
                 langs = [config.ANY_LANG]
             )
@@ -186,4 +186,4 @@ class AppManager:
 
     def list_installed_handlers(self):
         for event in self.event_handlers:
-            util.debug(f"Event: {EventKind[event]}, handlers: {str(self.event_handlers[event])}")
+            util.debug(f"Event: {EVENT_KIND[event]}, handlers: {str(self.event_handlers[event])}")

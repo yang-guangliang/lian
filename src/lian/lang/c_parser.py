@@ -4,14 +4,14 @@ import re
 #from lian.src.lian.config.constants import LianInternalDataType
 import lian.lang.common_parser as common_parser
 from lian.util import util
-from lian.config.constants import LianInternal
+from lian.config.constants import LIAN_INTERNAL
 
 class Parser(common_parser.Parser):
     def init(self):
         self.CONSTANTS_MAP = {
-            "null"                          : LianInternal.NULL,
-            "true"                          : LianInternal.TRUE,
-            "false"                         : LianInternal.FALSE,
+            "null"                          : LIAN_INTERNAL.NULL,
+            "true"                          : LIAN_INTERNAL.TRUE,
+            "false"                         : LIAN_INTERNAL.FALSE,
         }
 
         self.LITERAL_MAP = {
@@ -117,18 +117,19 @@ class Parser(common_parser.Parser):
             shadow_array, shadow_index = self.parse_array(left, statements)
             # 只有=时
             if not shadow_operator:
-                statements.append({"array_write":
-                                       {"array": shadow_array, "index": shadow_index, "source": shadow_right}})
+                self.append_stmts(statements,  node, {"array_write":
+                    {"array": shadow_array, "index": shadow_index, "source": shadow_right}}
+                )
                 return shadow_right
 
             # 如+=这种，左侧变量也参与计算
             tmp_var = self.tmp_variable()
-            statements.append({"array_read": {"target": tmp_var, "array": shadow_array, "index": shadow_index}})
+            self.append_stmts(statements,  node, {"array_read": {"target": tmp_var, "array": shadow_array, "index": shadow_index}})
             tmp_var2 = self.tmp_variable()
-            statements.append({"assign_stmt":
+            self.append_stmts(statements,  node, {"assign_stmt":
                                    {"target": tmp_var2, "operator": shadow_operator, "operand": tmp_var,
                                     "operand2": shadow_right}})
-            statements.append({"array_write": {"array": shadow_array, "index": shadow_index, "source": tmp_var2}})
+            self.append_stmts(statements,  node, {"array_write": {"array": shadow_array, "index": shadow_index, "source": tmp_var2}})
             return tmp_var2
 
         # 字段情况 x.f = ...
@@ -136,17 +137,17 @@ class Parser(common_parser.Parser):
             shadow_argument, shadow_field = self.parse_field(left, statements)
             # 只有=时
             if not shadow_operator:
-                statements.append({"field_write": {"object": shadow_argument, "field": shadow_field, "source": shadow_right}})
+                self.append_stmts(statements,  node, {"field_write": {"receiver_object": shadow_argument, "field": shadow_field, "source": shadow_right}})
                 return shadow_right
 
             # 如+=这种，左侧变量也参与计算
             tmp_var = self.tmp_variable()
-            statements.append({"field_read": {"target": tmp_var, "object": shadow_argument, "field": shadow_field}})
+            self.append_stmts(statements,  node, {"field_read": {"target": tmp_var, "receiver_object": shadow_argument, "field": shadow_field}})
             tmp_var2 = self.tmp_variable()
-            statements.append({"assign_stmt":
-                                   {"target": tmp_var2, "operator": shadow_operator, "operand": tmp_var,
-                                    "operand2": shadow_right}})
-            statements.append({"field_write": {"object": shadow_argument, "field": shadow_field, "source": tmp_var2}})
+            self.append_stmts(statements,  node, {"assign_stmt":
+                {"target": tmp_var2, "operator": shadow_operator, "operand": tmp_var,
+                "operand2": shadow_right}})
+            self.append_stmts(statements,  node, {"field_write": {"receiver_object": shadow_argument, "field": shadow_field, "source": tmp_var2}})
             return tmp_var2
 
         # 左侧是指针情况
@@ -154,26 +155,26 @@ class Parser(common_parser.Parser):
             shadow_argument = self.parse_pointer(left, statements)
             # 只有=时
             if not shadow_operator:
-                statements.append({"mem_write": {"address": shadow_argument, "source": shadow_right}})
+                self.append_stmts(statements,  node, {"mem_write": {"address": shadow_argument, "source": shadow_right}})
                 return shadow_right
 
             # 如+=这种，左侧变量也参与计算
             tmp_var = self.tmp_variable()
-            statements.append({"mem_read": {"target": tmp_var, "address": shadow_argument}})
+            self.append_stmts(statements,  node, {"mem_read": {"target": tmp_var, "address": shadow_argument}})
             tmp_var2 = self.tmp_variable()
-            statements.append({"assign_stmt": {
+            self.append_stmts(statements,  node, {"assign_stmt": {
                 "target": tmp_var2, "operator": shadow_operator, "operand": tmp_var, "operand2": shadow_right}})
-            statements.append({"mem_write": {"address": shadow_argument, "source": tmp_var2}})
+            self.append_stmts(statements,  node, {"mem_write": {"address": shadow_argument, "source": tmp_var2}})
             return tmp_var2
 
         # 其他情况直接解析左侧
         shadow_left = self.parse(left)
         # 只有"="时
         if not shadow_operator:
-            statements.append({"assign_stmt": {"target": shadow_left, "operand": shadow_right}})
+            self.append_stmts(statements,  node, {"assign_stmt": {"target": shadow_left, "operand": shadow_right}})
         # "+="这种，左侧变量也参与计算
         else:
-            statements.append({"assign_stmt": {
+            self.append_stmts(statements,  node, {"assign_stmt": {
                 "target": shadow_left, "operator": shadow_operator,
                 "operand": shadow_left, "operand2": shadow_right}})
 
@@ -191,7 +192,7 @@ class Parser(common_parser.Parser):
 
         # 返回一个临时变量存储中间结果，如 %1=b+c
         tmp_var = self.tmp_variable()
-        statements.append({"assign_stmt": {"target": tmp_var, "operator": shadow_operator,
+        self.append_stmts(statements,  node, {"assign_stmt": {"target": tmp_var, "operator": shadow_operator,
                                            "operand": shadow_left, "operand2": shadow_right}})
         return tmp_var
 
@@ -203,10 +204,10 @@ class Parser(common_parser.Parser):
         shadow_argument = self.parse_pointer(node, statements)
         # *
         if (operator == "*"):
-            statements.append({"mem_read": {"target": tmp_var, "address": shadow_argument}})
+            self.append_stmts(statements,  node, {"mem_read": {"target": tmp_var, "address": shadow_argument}})
         # &
         elif (operator == "&"):
-            statements.append({"addr_of": {"target": tmp_var, "source": shadow_argument}})
+            self.append_stmts(statements,  node, {"addr_of": {"target": tmp_var, "source": shadow_argument}})
 
         return tmp_var
 
@@ -229,7 +230,7 @@ class Parser(common_parser.Parser):
     def array(self, node, statements):
         tmp_var = self.tmp_variable()
         shadow_array, shadow_index = self.parse_array(node, statements)
-        statements.append({"array_read": {"target": tmp_var, "array": shadow_array, "index": shadow_index}})
+        self.append_stmts(statements,  node, {"array_read": {"target": tmp_var, "array": shadow_array, "index": shadow_index}})
         return tmp_var
 
     # 从字段变量中提取出对象名和字段名
@@ -245,7 +246,7 @@ class Parser(common_parser.Parser):
     def field(self, node, statements):
         tmp_var = self.tmp_variable()
         shadow_argument, shadow_field = self.parse_field(node, statements)
-        statements.append({"field_read": {"target": tmp_var, "object": shadow_argument, "field": shadow_field}})
+        self.append_stmts(statements,  node, {"field_read": {"target": tmp_var, "receiver_object": shadow_argument, "field": shadow_field}})
         return tmp_var
 
     # 处理函数调用
@@ -260,13 +261,10 @@ class Parser(common_parser.Parser):
             for child in arguments.named_children:
                 if self.is_comment(child):
                     continue
-
-                shadow_variable = self.parse(child, statements)
-                if shadow_variable:
-                    arg_list.append(shadow_variable)
+                arg_list.append(self.parse(child, statements))
 
         tmp_return = self.tmp_variable()
-        statements.append({"call_stmt": {"target": tmp_return, "name": shadow_name, "args": arg_list}})
+        self.append_stmts(statements,  node, {"call_stmt": {"target": tmp_return, "name": shadow_name, "positional_args": arg_list}})
 
         # 返回到全局变量
         return tmp_return
@@ -278,6 +276,7 @@ class Parser(common_parser.Parser):
         update_operator = self.find_child_by_field(node, "operator")
         operator_text = self.read_node_text(update_operator)
 
+        operator = ""
         if "++" == operator_text:
             operator = "+"
         elif "--" == operator_text:
@@ -300,10 +299,10 @@ class Parser(common_parser.Parser):
         if expression.type == "field_expression":
             shadow_object, field = self.parse_field(expression, statements)
 
-            statements.append({"field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": field}})
+            self.append_stmts(statements,  node, {"field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": field}})
             tmp_var2 = self.tmp_variable()
-            statements.append({"assign_stmt": {"target": tmp_var2, "operator": operator, "operand": tmp_var, "operand2": "1"}})
-            statements.append({"field_write": {"receiver_object": shadow_object, "field": field, "source": tmp_var2}})
+            self.append_stmts(statements,  node, {"assign_stmt": {"target": tmp_var2, "operator": operator, "operand": tmp_var, "operand2": "1"}})
+            self.append_stmts(statements,  node, {"field_write": {"receiver_object": shadow_object, "field": field, "source": tmp_var2}})
 
             # 对于后置形式，返回表达式原本的值
             if is_after:
@@ -314,19 +313,19 @@ class Parser(common_parser.Parser):
         if expression.type == "subscript_expression":
             shadow_array, shadow_index = self.parse_array(expression, statements)
 
-            statements.append({"array_read": {"target": tmp_var, "array": shadow_array, "index": shadow_index}})
+            self.append_stmts(statements,  node, {"array_read": {"target": tmp_var, "array": shadow_array, "index": shadow_index}})
             tmp_var2 = self.tmp_variable()
-            statements.append(
+            self.append_stmts(statements,  node,
                 {"assign_stmt": {"target": tmp_var2, "operator": operator, "operand": tmp_var, "operand2": "1"}})
-            statements.append({"array_write": {"array": shadow_array, "index": shadow_index, "source": tmp_var2}})
+            self.append_stmts(statements,  node, {"array_write": {"array": shadow_array, "index": shadow_index, "source": tmp_var2}})
 
             if is_after:
                 return tmp_var
             return tmp_var2
 
         shadow_expression = self.parse(expression, statements)
-        statements.append({"assign_stmt": {"target": tmp_var, "operand": shadow_expression}})
-        statements.append({"assign_stmt": {"target": shadow_expression, "operator": operator,
+        self.append_stmts(statements,  node, {"assign_stmt": {"target": tmp_var, "operand": shadow_expression}})
+        self.append_stmts(statements,  node, {"assign_stmt": {"target": shadow_expression, "operator": operator,
                                            "operand": shadow_expression, "operand2": "1"}})
 
         # 对于后置形式，返回表达式原本的值
@@ -353,18 +352,19 @@ class Parser(common_parser.Parser):
 
         # 首先将要转换的表达式赋给一个临时变量，随后对临时变量进行类型转换，从而保留原本表达式(可能是变量)的类型不变。
         tmp = self.tmp_variable()
-        statements.append({"type_cast_stmt" : {"target" : tmp, "data_type" : shadow_type, "source" : shadow_value}})
+        self.append_stmts(statements,  node, {"type_cast_stmt" : {"target" : tmp, "data_type" : shadow_type, "source" : shadow_value}})
         return tmp
 
     def sizeof_expression(self,node,statements):
         value = self.find_child_by_field(node,"value")
         type_descriptor = self.find_child_by_field(node,"type")
+        shadow_value = 0
         if value:
             shadow_value = self.parse(value,statements)
         elif type_descriptor:
             shadow_value = self.parse(type_descriptor,statements)
         tmp = self.tmp_variable()
-        statements.append({"assign_stmt":{"target":tmp,"operator":"sizeof","operand":shadow_value}})
+        self.append_stmts(statements,  node, {"assign_stmt":{"target":tmp, "operator":"sizeof", "operand":shadow_value}})
         return tmp
 
     # ~a 翻译成 assign_stmt %v0, ~, a
@@ -376,7 +376,7 @@ class Parser(common_parser.Parser):
 
         tmp_var = self.tmp_variable()
 
-        statements.append({"assign_stmt": {"target": tmp_var, "operator": shadow_operator, "operand": shadow_operand}})
+        self.append_stmts(statements,  node, {"assign_stmt": {"target": tmp_var, "operator": shadow_operator, "operand": shadow_operand}})
         return tmp_var
 
     # offset_height = offsetof(struct Person, height);
@@ -389,7 +389,7 @@ class Parser(common_parser.Parser):
 
         tmp_return = self.tmp_variable()
 
-        statements.append({"field_addr": {"target": tmp_return, "data_type": type_discriptor_name, "name": field_discriptor_name}})
+        self.append_stmts(statements,  node, {"field_addr": {"target": tmp_return, "data_type": type_discriptor_name, "name": field_discriptor_name}})
         return tmp_return
 
     def generic_expression(self, node, statements):
@@ -401,7 +401,7 @@ class Parser(common_parser.Parser):
         expr_list = [self.parse(children[i], statements) for i in range(len(children)) if i % 2 == 0 and i != 0]
 
         tmp_return = self.tmp_variable()
-        statements.append({"switch_type_stmt": {"target": tmp_return, "condition": variable_descriptor, "type_list": type_list, "expr_list": expr_list}})
+        self.append_stmts(statements,  node, {"switch_type_stmt": {"target": tmp_return, "condition": variable_descriptor, "type_list": type_list, "expr_list": expr_list}})
 
         return tmp_return
 
@@ -422,7 +422,7 @@ class Parser(common_parser.Parser):
         expr2 = self.parse(alternative, else_body)
         else_body.append({"assign_stmt": {"target": tmp_var, "operand": expr2}})
 
-        statements.append({"if_stmt": {"condition": condition, "then_body": then_body, "else_body": else_body}})
+        self.append_stmts(statements,  node, {"if_stmt": {"condition": condition, "then_body": then_body, "else_body": else_body}})
         return tmp_var
 
     def compound_literal_expression(self, node, statements):
@@ -451,7 +451,7 @@ class Parser(common_parser.Parser):
 
         tmp_return = self.tmp_variable()
 
-        statements.append({"call_stmt": {"target": tmp_return, "name": "alignof", "type_name": type_descriptor_name}})
+        self.append_stmts(statements,  node, {"call_stmt": {"target": tmp_return, "name": "alignof", "type_name": type_descriptor_name}})
         return tmp_return
 
     def gnu_asm_expression(self, node, statements):
@@ -480,7 +480,7 @@ class Parser(common_parser.Parser):
         goto_labels = self.find_child_by_field(node, "goto_labels")
         labels_list = get_list(goto_labels)
 
-        statements.append({
+        self.append_stmts(statements,  node, {
             "asm_stmt": {
                 "assembly_code": shadow_assembly_code,
                 "output_operands": output_operands_list,
@@ -599,7 +599,7 @@ class Parser(common_parser.Parser):
             # 返回值是指针类型
             if child.type == "pointer_declarator":
                 shadow_type += "*"
-                modifiers.append(LianInternal.POINTER)
+                modifiers.append(LIAN_INTERNAL.POINTER)
             child = self.find_child_by_field(child, "declarator")
         if child.type != "function_declarator":
             util.debug("错误,找不到function_declarator")
@@ -624,7 +624,7 @@ class Parser(common_parser.Parser):
         body = self.find_child_by_field(node, "body")
         self.parse(body, new_body)
 
-        statements.append({"method_decl": {"attrs": modifiers, "data_type": shadow_type, "name": shadow_name,
+        self.append_stmts(statements,  node, {"method_decl": {"attrs": modifiers, "data_type": shadow_type, "name": shadow_name,
                                            "parameters": all_parameters, "body": new_body}})
 
     # 处理参数声明。对应java的formal_parameter
@@ -690,7 +690,7 @@ class Parser(common_parser.Parser):
         # 将类型attr并入modifiers
         modifiers.extend(type_modifiers)
 
-        statements.append({"parameter_decl": {"attrs": modifiers, "type": shadow_type, "name": shadow_name}})
+        self.append_stmts(statements,  node, {"parameter_decl": {"attrs": modifiers, "data_type": shadow_type, "name": shadow_name}})
 
 
     STRUCT_TYPE_MAP = {
@@ -720,7 +720,7 @@ class Parser(common_parser.Parser):
         if body:
             self.struct_body(body, gir_node)
             #print({f"{self.STRUCT_TYPE_MAP[node.type]}_decl": gir_node})
-            statements.append({f"{self.STRUCT_TYPE_MAP[node.type]}_decl": gir_node})
+            self.append_stmts(statements,  node, {f"{self.STRUCT_TYPE_MAP[node.type]}_decl": gir_node})
 
         return gir_node["name"]
 
@@ -776,16 +776,17 @@ class Parser(common_parser.Parser):
 
                     attr_copy.extend(type_attr)
                     # 注意，当向字典中传入一个可变对象(比如这边的attr字段传的是一个列表)，它实际上传入的是当前这个变量attr_copy指向的对象引用，类似于C中指针的概念
-                    field_statements.append({"variable_decl" :
+                    self.append_stmts(field_statements,  node, {"variable_decl" :
                                              {"attrs": attr_copy,
                                               "data_type": shadow_decl_type_copy,
                                               "name": shadow_declarator}})
 
-                gir_node["fields"].append(field_statements)
+
+                gir_node["fields"].extend(field_statements)
 
     def struct_array(self, node, struct_name, statements):
         tmp_var = self.tmp_variable()
-        statements.append({"new_array" : {"data_type": struct_name,
+        self.append_stmts(statements,  node, {"new_array" : {"data_type": struct_name,
                                           "target": tmp_var}})
         #print(node)
         index = 0
@@ -794,14 +795,14 @@ class Parser(common_parser.Parser):
             if child_list.type == "initializer_list":
                 tmp_struct = self.tmp_variable()
                 child_count = child_list.named_child_count
-                statements.append({"new_struct":{"data_type" :struct_name, "target":tmp_struct}})
+                self.append_stmts(statements,  node, {"new_struct":{"data_type" :struct_name, "target":tmp_struct}})
                 for index in range(child_count):
                     value = self.parse(child_list.named_child(index), statements)
-                    statements.append({"field_write" :
-                                       {"object" : tmp_struct,
+                    self.append_stmts(statements,  node, {"field_write" :
+                                       {"receiver_object" : tmp_struct,
                                         "field" : "not found yet",
                                         "source" : value}})
-                statements.append({"array_write":
+                self.append_stmts(statements,  node, {"array_write":
                                    {"array" : tmp_var,
                                     "source" : tmp_struct,
                                     "index" : str(index)}})
@@ -815,10 +816,10 @@ class Parser(common_parser.Parser):
             data_type = array_list[-1]
             array_list.pop()
         if len(array_list) != 0 and array_list[0] == "array":
-            statements.append({"new_array" : { "data_type" : data_type, "target": tmp_var}})
+            self.append_stmts(statements,  node, {"new_array" : { "data_type" : data_type, "target": tmp_var}})
             array_list.pop()
         else:
-            statements.append({"new_struct": { "data_type" : data_type, "target":tmp_var}})
+            self.append_stmts(statements,  node, {"new_struct": { "data_type" : data_type, "target":tmp_var}})
             is_array = False
         index = 0
         for child_list in node.children:
@@ -826,13 +827,13 @@ class Parser(common_parser.Parser):
                 result = self.initializer_list(child_list, statements, array_list)
 
                 if is_array:
-                    statements.append({"array_write":
+                    self.append_stmts(statements,  node, {"array_write":
                                        {"array" : tmp_var,
                                         "source" : result,
                                         "index" : str(index)}})
                 else:
-                    statements.append({"field_write" :
-                                       {"object" : tmp_var,
+                    self.append_stmts(statements,  node, {"field_write" :
+                                       {"receiver_object" : tmp_var,
                                         "field" : str(index),
                                         "source" : result}})
                 index = index + 1
@@ -842,8 +843,8 @@ class Parser(common_parser.Parser):
                 value = self.find_child_by_field(child_list, "value")
                 value = self.parse(value, statements)
                 shadow_designator= self.parse(designator,[])
-                statements.append({"field_write" :
-                                   {"object" : tmp_var,
+                self.append_stmts(statements,  node, {"field_write" :
+                                   {"receiver_object" : tmp_var,
                                     "field" : shadow_designator,
                                     "source" : value}})
 
@@ -851,13 +852,13 @@ class Parser(common_parser.Parser):
                 value = self.parse(child_list, statements)
                 if value:
                     if is_array:
-                        statements.append({"array_write":
+                        self.append_stmts(statements,  node, {"array_write":
                                            {"array" : tmp_var,
                                             "source" : value,
                                             "index" : str(index)}})
                     else:
-                        statements.append({"field_write" :
-                                           {"object" : tmp_var,
+                        self.append_stmts(statements,  node, {"field_write" :
+                                           {"receiver_object" : tmp_var,
                                             "field" : str(index),
                                             "source" : value}})
                     index = index + 1
@@ -870,19 +871,18 @@ class Parser(common_parser.Parser):
         declarators = self.find_child_by_field(node, "declarator")
         target = self.read_node_text(declarators)
         while child_declarator := self.find_child_by_field(declarators, "declarator"):
-
             declarators = child_declarator
             target = self.read_node_text(child_declarator)
-        #print(f"typedef{source_type}")
-        #print({"type_alias_stmt" : {"target" : target, "source" : source_type}})
-        statements.append({"type_alias_stmt" : {"target" : target, "source" : source_type}})
+            #print(f"typedef{source_type}")
+            #print({"type_alias_decl" : {"target" : target, "source" : source_type}})
+            self.append_stmts(statements,  node, {"type_alias_decl" : {"name" : target, "data_type" : source_type}})
 
     def internal_struct_init(self, node, statements, value, mytype, struct_name):
         struct_or_union = "struct" if mytype.type == "struct_specifier" else "union"
         # 此时，相应的结构体类型声明的处理应该已经结束了。因此去已经处理的statements列表中找到对应的结构体类型，取出里面的字段名，并赋值
         tmp_var_id = self.tmp_variable()
 
-        statements.append({"new_strcut" :{"data_type" :struct_name, "target" : tmp_var_id}})
+        self.append_stmts(statements,  node, {"new_struct" :{"data_type" :struct_name, "target" : tmp_var_id}})
         # 处理stru = {.field1 = value1,.field2 = value2}的初始化情况
         initializer_pairs = self.find_children_by_type(value,"initializer_pair")
         if initializer_pairs:
@@ -891,8 +891,8 @@ class Parser(common_parser.Parser):
                 init_value = self.find_child_by_field(initializer_pair,"value")
                 shadow_designator= self.parse(designator,[])
                 shadow_init_value = self.parse(init_value,statements)
-                statements.append({"field_write":
-                            {"object": tmp_var_id, "field": shadow_designator, "source": shadow_init_value}})
+                self.append_stmts(statements,  node, {"field_write":
+                            {"receiver_object": tmp_var_id, "field": shadow_designator, "source": shadow_init_value}})
 
         else:
             for stmt in statements:
@@ -914,8 +914,8 @@ class Parser(common_parser.Parser):
                         if any("variable_decl" in member for member in field_member):
                             field_name = field_member["variable_decl"]["name"]
                             field_value = self.parse(value.named_child(field_index), statements)
-                            statements.append({"field_write":
-                                                    {"object": tmp_var_id, "field": field_name,
+                            self.append_stmts(statements,  node, {"field_write":
+                                                    {"receiver_object": tmp_var_id, "field": field_name,
                                                     "source": field_value}})
                             value_number = value_number - 1
                     break  # 找到第一个struct即可
@@ -982,14 +982,14 @@ class Parser(common_parser.Parser):
             # 创建当前层级数组
             for array_create_id in range(inner_array_create_count):
                 inner_array_tmp_var = self.tmp_variable()
-                statements.append({"new_array": {"attrs": modifiers, "data_type": shadow_type,
+                self.append_stmts(statements,  node, {"new_array": {"attrs": modifiers, "data_type": shadow_type,
                                                     "target": inner_array_tmp_var}})
                 # 若有赋值操作
                 if value:
                     index = 0
                     current_arr_size = array_dimensions[-(current_dim_index + 1)]  # 当前维度的数组的大小。注意负索引从-1开始计数
                     for i in range(current_arr_size):
-                        statements.append({"array_write": {"array": inner_array_tmp_var,
+                        self.append_stmts(statements,  node, {"array_write": {"array": inner_array_tmp_var,
                                                             "index": str(index), "source": middle_result[
                                 current_arr_size * array_create_id + i]}})
                         index += 1
@@ -1015,13 +1015,10 @@ class Parser(common_parser.Parser):
             shadow_mytype = enum_name
         # 结构体类型变量声明
         elif mytype.type in ["struct_specifier","union_specifier"]:
-
             struct_name = self.struct_specifier(mytype,statements)
-
             shadow_mytype = struct_name
 
         declarators = self.find_children_by_field(node, "declarator")
-
         for declarator in declarators:
             shadow_type = shadow_mytype
             shadow_value = None
@@ -1049,22 +1046,22 @@ class Parser(common_parser.Parser):
                 shadow_value = self.initializer_list(value, statements, array_list)
             else:
                 has_init = True
-                self.parse(value, statements)
+                shadow_value = self.parse(value, statements)
             name = self.read_node_text(declarator)
 
-            statements.append({"variable_decl":
+            self.append_stmts(statements,  node, {"variable_decl":
                                {"attrs": modifiers,
                                 "data_type": shadow_type,
                                 "name": name}})
             if has_init:
-                if value and value.type == "number_literal":
+                if value and (value.type == "number_literal" or value.type == "char_literal"):
                     value = self.parse(value, statements)
-                    statements.append({"assign_stmt":
+                    self.append_stmts(statements,  node, {"assign_stmt":
                                    {"target": name,
                                     "operand": value,
                                     "data_type": shadow_type}})
                 else:
-                    statements.append({"assign_stmt":
+                    self.append_stmts(statements,  node, {"assign_stmt":
                                     {"target": name,
                                         "operand": shadow_value,
                                         "data_type": shadow_type}})
@@ -1094,8 +1091,8 @@ class Parser(common_parser.Parser):
         # 如果没有body，则不算枚举类型声明，而只是枚举类型变量声明
         if body:
             self.enum_body(body, enum_constants)
-            statements.append({"enum_decl": {"name": name, "attrs": attrs, "enum_constants": enum_constants}})
-        return f"enum {name}"
+            self.append_stmts(statements,  node, {"enum_decl": {"name": name, "attrs": attrs, "enum_constants": enum_constants}})
+        return f"name"
 
     def enum_body(self, node, enum_constants_list):
         enumerator_children = self.find_children_by_type(node, "enumerator")
@@ -1125,7 +1122,7 @@ class Parser(common_parser.Parser):
             name = node.named_children[0]
             shadow_name = self.parse(name, statements)
 
-        statements.append({"return": {"target": shadow_name}})
+        self.append_stmts(statements,  node, {"return_stmt": {"name": shadow_name}})
         return shadow_name
 
     def if_statement(self, node, statements):
@@ -1144,7 +1141,7 @@ class Parser(common_parser.Parser):
         self.parse(true_part, true_body)
         self.parse(false_part, false_body)
 
-        statements.append({"if_stmt": {"condition": shadow_condition, "then_body": true_body, "else_body": false_body}})
+        self.append_stmts(statements,  node, {"if_stmt": {"condition": shadow_condition, "then_body": true_body, "else_body": false_body}})
 
     def while_statement(self, node, statements):
         condition = self.find_child_by_field(node, "condition")
@@ -1159,10 +1156,12 @@ class Parser(common_parser.Parser):
         #self.sync_tmp_variable(new_while_body, statements)
         self.parse(body, new_while_body)
 
-        statements.extend(new_condition_init)
-        new_while_body.extend(new_condition_init)
+        #statements.extend(new_condition_init)
+        #new_while_body.extend(new_condition_init)
 
-        statements.append({"while_stmt": {"condition": shadow_condition, "body": new_while_body}})
+        self.append_stmts(statements,  node, {"while_stmt": {
+            "condition": shadow_condition, "condition_prebody": new_condition_init, "body": new_while_body
+        }})
 
     def for_statement(self, node, statements):
         init_children = self.find_children_by_field(node, "initializer")
@@ -1192,7 +1191,7 @@ class Parser(common_parser.Parser):
         body_compound = self.find_child_by_field(node, "body")
         self.parse(body_compound, for_body)
 
-        statements.append({"for_stmt":
+        self.append_stmts(statements,  node, {"for_stmt":
                                {"init_body": init_body,
                                 "condition": shadow_condition,
                                 "condition_prebody": condition_init,
@@ -1209,7 +1208,7 @@ class Parser(common_parser.Parser):
 
         case_stmt_list = []
         #self.sync_tmp_variable(statements, case_stmt_list)
-        statements.append({"switch_stmt": {"condition": shadow_condition, "body": case_stmt_list}})
+        self.append_stmts(statements,  node, {"switch_stmt": {"condition": shadow_condition, "body": case_stmt_list}})
 
         # 对每个case_statement都遍历一遍c中，每个case标签只能有一个
         for case in switch_body.named_children:
@@ -1261,37 +1260,34 @@ class Parser(common_parser.Parser):
         return switch_ret  # ?
 
     def dowhile_statement(self, node, statements):
-        condition = self.find_child_by_field(node, "condition")
         body = self.find_child_by_field(node, "body")
+        condition = self.find_child_by_field(node, "condition")
 
-        new_condition_init = []
-        #self.sync_tmp_variable(new_condition_init, statements)
-        shadow_condition = self.parse(condition, new_condition_init)
+        do_body = []
+        #self.sync_tmp_variable(do_body, statements)
+        self.parse(body, do_body)
+        condition_body = []
+        shadow_condition = self.parse(condition, condition_body)
 
-        new_dowhile_body = []
-        #self.sync_tmp_variable(new_dowhile_body, statements)
-        self.parse(body, new_dowhile_body)
-
-        statements.extend(new_condition_init)
-        new_dowhile_body.extend(new_condition_init)
-
-        statements.append({"while_stmt": {"condition": shadow_condition, "body": new_dowhile_body}})
+        self.append_stmts(statements, node, {"dowhile_stmt": {
+            "body": do_body, "condition_prebody": condition_body, "condition": shadow_condition
+        }})
 
     def break_statement(self, node, statements):
-        statements.append({"break_stmt": {}})
+        self.append_stmts(statements,  node, {"break_stmt": {}})
 
     def continue_statement(self, node, statements):
-        statements.append({"continue_stmt": {}})
+        self.append_stmts(statements,  node, {"continue_stmt": {}})
 
     def goto_statement(self, node, statements):
         label = self.find_child_by_field(node, "label")
         label_text = self.read_node_text(label)
-        statements.append({"goto_stmt": {"name": label_text}})
+        self.append_stmts(statements,  node, {"goto_stmt": {"name": label_text}})
 
     def label_statement(self, node, statements):
         label = self.find_child_by_field(node, "label")
         shadow_label = self.read_node_text(label)
-        statements.append({"label_stmt": {"name": shadow_label}})
+        self.append_stmts(statements,  node, {"label_stmt": {"name": shadow_label}})
 
         if node.named_child_count > 1:
             stmt = node.named_children[1]
@@ -1304,7 +1300,7 @@ class Parser(common_parser.Parser):
         #     if child.type == "attribute_declaration":
         #         self.parse(child, attr_decls)
         #     else: # attr_decl到头之后是statememt，先把attr_decl放进去
-        #         statements.append({"attributed_stmt": attr_decls})
+        #         self.append_stmts(statements,  node, {"attributed_stmt": attr_decls})
         #         self.parse(child, statements)
         return ""
 
@@ -1315,13 +1311,13 @@ class Parser(common_parser.Parser):
         if self.read_node_text(node.children[0]) == "default":
             for child in node.named_children:
                 self.parse(child, body)
-            statements.append({"default_stmt": {"body": body}})
+            self.append_stmts(statements,  node, {"default_stmt": {"body": body}})
         else:
             value = self.find_child_by_field(node, "value")
             shadow_value = self.parse(value, statements)
             for child in node.named_children[1:]:
                 self.parse(child, body)
-            statements.append({"case_stmt": {"condition": shadow_value, "body": body}})
+            self.append_stmts(statements,  node, {"case_stmt": {"condition": shadow_value, "body": body}})
 
         return 0
 
@@ -1348,12 +1344,12 @@ class Parser(common_parser.Parser):
             self.parse(body, shadow_body)
             try_op["finally_clause"] = [{"body": shadow_body}]
 
-        statements.append({"try_stmt": try_op})
+        self.append_stmts(statements,  node, {"try_stmt": try_op})
 
         return 0
 
     def seh_leave_statement(self, node, statements):
-        # statements.append({"leave_stmt": {}})
+        # self.append_stmts(statements,  node, {"leave_stmt": {}})
         return 0
     # ----------------------------------------------------------------------------
 

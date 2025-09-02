@@ -25,7 +25,7 @@ const comparativeOperators = ['==', '!=', '<', '<=', '>', '>='];
 const assignmentOperators = multiplicativeOperators.concat(additiveOperators).map(operator => operator + '=').concat('=');
 
 
-const newline = '\n';
+const newline = /\n/;
 const terminator = choice(newline, ';', '\0');
 
 const hexDigit = /[0-9a-fA-F]/;
@@ -246,10 +246,10 @@ module.exports = grammar({
       ')',
     ),
 
-    parameter_declaration: $ => prec.left(seq(
+    parameter_declaration: $ => seq(
       commaSep(field('name', $.identifier)),
       field('type', $._type),
-    )),
+    ),
 
     variadic_parameter_declaration: $ => seq(
       field('name', optional($.identifier)),
@@ -302,7 +302,7 @@ module.exports = grammar({
       $.interface_type,
       $.array_type,
       $.slice_type,
-      $.map_type,
+      prec.dynamic(3, $.map_type),
       $.channel_type,
       $.function_type,
       $.negated_type,
@@ -801,7 +801,11 @@ module.exports = grammar({
     // - a field identifier (when T is a struct), or
     // - a literal_element (when T is an array).
     // The first two cases cannot be distinguished without type information.
-    keyed_element: $ => seq($.literal_element, ':', $.literal_element),
+    keyed_element: $ => seq(
+      field('key', $.literal_element),
+      ':',
+      field('value', $.literal_element),
+    ),
 
     func_literal: $ => seq(
       'func',
@@ -852,21 +856,20 @@ module.exports = grammar({
       $.interpreted_string_literal,
     ),
 
-    raw_string_literal: _ => token(seq(
+    raw_string_literal: $ => seq(
       '`',
-      repeat(/[^`]/),
+      alias(token(prec(1, /[^`]*/)), $.raw_string_literal_content),
       '`',
-    )),
+    ),
 
     interpreted_string_literal: $ => seq(
       '"',
       repeat(choice(
-        $._interpreted_string_literal_basic_content,
+        alias(token.immediate(prec(1, /[^"\n\\]+/)), $.interpreted_string_literal_content),
         $.escape_sequence,
       )),
       token.immediate('"'),
     ),
-    _interpreted_string_literal_basic_content: _ => token.immediate(prec(1, /[^"\n\\]+/)),
 
     escape_sequence: _ => token.immediate(seq(
       '\\',
@@ -927,8 +930,7 @@ module.exports = grammar({
  *
  * @param {RuleOrLiteral} separator
  *
- * @return {SeqRule}
- *
+ * @returns {SeqRule}
  */
 function sep1(rule, separator) {
   return seq(rule, repeat(seq(separator, rule)));
@@ -939,8 +941,7 @@ function sep1(rule, separator) {
  *
  * @param {Rule} rule
  *
- * @return {SeqRule}
- *
+ * @returns {SeqRule}
  */
 function commaSep1(rule) {
   return seq(rule, repeat(seq(',', rule)));
@@ -951,8 +952,7 @@ function commaSep1(rule) {
  *
  * @param {Rule} rule
  *
- * @return {ChoiceRule}
- *
+ * @returns {ChoiceRule}
  */
 function commaSep(rule) {
   return optional(commaSep1(rule));

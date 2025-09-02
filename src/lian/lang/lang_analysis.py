@@ -10,7 +10,7 @@ from lian.apps.app_manager import AppManager
 from lian.util import util
 from lian.config import lang_config
 from lian.config import config
-from lian.config.constants import EventKind
+from lian.config.constants import EVENT_KIND
 
 from lian.apps.app_template import EventData
 from lian.util.loader import Loader
@@ -121,16 +121,21 @@ class GIRProcessing:
             util.error("[Input format error] The input node should not be a dictionary: " + str(stmt))
             return
 
+        # pprint.pprint(stmt)
+        # print(last_node)
+
         flattened_node = {}
         dataframe.append(flattened_node)
+
+        # return flattened_node
 
         flattened_node["operation"] = list(stmt.keys())[0]
         stmt_content = stmt[flattened_node["operation"]]
 
         self.init_stmt_id(flattened_node, parent_stmt_id)
 
-        if flattened_node["operation"] == "assign_stmt" and "operation" in last_node and last_node["operation"] == "variable_decl":
-            last_node["from"] = flattened_node["stmt_id"]
+        if flattened_node["operation"] in ["assign_stmt", "call_stmt"] and "operation" in last_node and last_node["operation"] == "variable_decl":
+            last_node["original_stmt"] = flattened_node["stmt_id"]
 
         if not isinstance(stmt_content, dict):
             return
@@ -138,6 +143,10 @@ class GIRProcessing:
         for mykey, myvalue in stmt_content.items():
             if isinstance(myvalue, list):
                 if not self.is_gir_format(myvalue):
+                    if flattened_node["operation"] == "method_decl" and mykey == "body":
+                        block_id = self.flatten_block(myvalue, flattened_node["stmt_id"], dataframe)
+                        flattened_node[mykey] = block_id
+                        continue
                     if myvalue == []:
                         flattened_node[mykey] = None
                     else:
@@ -208,7 +217,8 @@ class GIRParser:
         self.output_path = output_path
         self.max_rows = config.MAX_ROWS
         self.count = 0
-    def parse(self, file_path, lang_option, lang_table):
+
+    def parse(self, unit_info, file_path, lang_option, lang_table):
         """
         解析源代码生成GIR：
         1. 动态加载语言解析库
@@ -246,25 +256,28 @@ class GIRParser:
         if util.is_empty(code):
             return
 
-        if f"{config.DEFAULT_WORKSPACE}/{config.EXTERNS_DIR}" in file_path:
-            event = EventData(lang_option, EventKind.MOCK_SOURCE_CODE_READY, code)
+        if not self.options.strict_parse_mode:
+            if f"{config.DEFAULT_WORKSPACE}/{config.EXTERNS_DIR}" in file_path:
+                event = EventData(lang_option, EVENT_KIND.MOCK_SOURCE_CODE_READY, code)
+                self.app_manager.notify(event)
+                code = event.out_data
+
+            event = EventData(lang_option, EVENT_KIND.ORIGINAL_SOURCE_CODE_READY, code)
             self.app_manager.notify(event)
             code = event.out_data
 
-        event = EventData(lang_option, EventKind.ORIGINAL_SOURCE_CODE_READY, code)
-        self.app_manager.notify(event)
         try:
-            tree = tree_sitter_parser.parse(bytes(event.out_data, 'utf8'))
+            tree = tree_sitter_parser.parse(bytes(code, 'utf8'))
         except:
             util.error("Failed to parse AST:", file_path)
             return
 
         gir_statements = []
-        parser = lang.parser(self.options)
-        parser.parse(tree.root_node, gir_statements)
+        parser = lang.parser(self.options, unit_info)
+        parser.parse_gir(tree.root_node, gir_statements)
         return gir_statements
 
-    def deal_with_file_unit(self, current_node_id, file_unit, lang_table):
+    def deal_with_file_unit(self, current_node_id, unit_info, file_unit, lang_table):
         """
         处理单个文件单元：
         1. 确定文件语言类型
@@ -277,19 +290,19 @@ class GIRParser:
         if self.options.debug:
             util.debug("GIR-Parsing:", file_unit)
 
-        gir_statements = self.parse(file_unit, lang_option, lang_table = lang_table)
+        gir_statements = self.parse(unit_info, file_unit, lang_option, lang_table = lang_table)
         if not gir_statements:
             return (current_node_id, None)
         if self.options.debug and self.options.print_stmts:
             pprint.pprint(gir_statements, compact=True, sort_dicts=False)
 
-        event = EventData(lang_option, EventKind.UNFLATTENED_GIR_LIST_GENERATED, gir_statements)
+        event = EventData(lang_option, EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED, gir_statements)
         self.app_manager.notify(event)
         current_node_id, flatten_nodes = GIRProcessing(current_node_id).flatten(event.out_data)
         if not flatten_nodes:
             return (current_node_id, flatten_nodes)
 
-        event = EventData(lang_option, EventKind.GIR_LIST_GENERATED, flatten_nodes)
+        event = EventData(lang_option, EVENT_KIND.GIR_LIST_GENERATED, flatten_nodes)
         self.app_manager.notify(event)
         if self.options.debug and self.options.print_stmts:
             pprint.pprint(event.out_data, compact=True, sort_dicts=False)
@@ -361,7 +374,7 @@ class LangAnalysis:
             self.options,
             self.app_manager,
             self.loader,
-            os.path.join(self.options.workspace, config.GIR_DIR)
+            os.path.join(self.options.workspace, config.BASIC_DIR)
         )
         all_units = self.loader.load_all_unit_info()
         #all_units = [unit for unit in all_units if unit.lang !='c' or (unit.lang == 'c' and unit.unit_ext == '.i')]
@@ -371,16 +384,26 @@ class LangAnalysis:
         if len(all_units) == 0:
             util.error_and_quit("No files found for analysis.")
 
+        #print("all_units:", all_units)
         current_node_id = self.init_start_stmt_id()
         for unit_info in all_units:
             # if row.symbol_type == constants.SymbolKind.UNIT_SYMBOL and row.unit_ext in extensions:
+            unit_path = ""
+            if self.options.strict_parse_mode:
+                unit_path = unit_info.original_path
+            else:
+                unit_path = unit_info.unit_path
+            #print("unit_path:", unit_path)
             current_node_id, gir = gir_parser.deal_with_file_unit(
-                current_node_id, unit_info.unit_path, lang_table = self.lang_table
+                current_node_id, unit_info, unit_path, lang_table = self.lang_table
             )
+            #print("gir:", gir)
             gir_parser.add_unit_gir(unit_info, gir)
             current_node_id = self.adjust_node_id(current_node_id)
             # if self.options.debug:
             #     gir_parser.export()
+
+        self.loader.save_max_gir_id(current_node_id)
         gir_parser.export()
 
         self.loader.export()

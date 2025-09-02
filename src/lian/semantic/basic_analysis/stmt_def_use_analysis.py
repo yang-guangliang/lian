@@ -8,13 +8,13 @@ from lian.util import util
 from lian.config import config
 from lian.config import type_table
 from lian.config.constants import (
-    LianInternal,
-    StateTypeKind,
-    ScopeKind,
-    CalleeType,
-    BasicCallGraphNodeKind
+    LIAN_INTERNAL,
+    STATE_TYPE_KIND,
+    LIAN_SYMBOL_KIND,
+    CALLEE_TYPE,
+    BASIC_CALL_GRAPH_NODE_KIND
 )
-from lian.semantic.semantic_structure import (
+from lian.semantic.semantic_structs import (
     StmtStatus,
     Symbol,
     State,
@@ -26,10 +26,10 @@ from lian.semantic.semantic_structure import (
 )
 from lian.util.loader import Loader
 from lian.semantic.resolver import Resolver
-from lian.semantic.scope_hierarchy import ImportHierarchy
+from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
 
 class StmtDefUseAnalysis:
-    def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_result:ImportHierarchy):
+    def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_analysis:ImportHierarchy, external_symbol_id_collection):
         """
         初始化语句定义使用分析器：
         1. 注册各类语句的处理回调函数
@@ -43,12 +43,15 @@ class StmtDefUseAnalysis:
         self.stmt_id_to_status = compute_frame.stmt_id_to_status
         self.method_id = compute_frame.method_id
         self.unit_id = loader.convert_method_id_to_unit_id(self.method_id)
+        self.unit_info = loader.convert_module_id_to_module_info(self.unit_id)
         self.frame = compute_frame
         self.callees = compute_frame.basic_callees
         self.tmp_variable_to_define = {}
         self.each_stmt_defined_states = set()
+        self.unit_lang = self.loader.convert_unit_id_to_lang_name(self.unit_id)
+        self.external_symbol_id_collection = external_symbol_id_collection
 
-        self.import_hierarchy_analysis = import_result
+        self.import_hierarchy_analysis = import_analysis
 
         self.def_use_analysis_handlers = {
             "comment_stmt"                          : self.comment_stmt_def_use,
@@ -72,7 +75,7 @@ class StmtDefUseAnalysis:
             "global_stmt"                           : self.global_stmt_def_use,
             "nonlocal_stmt"                         : self.nonlocal_stmt_def_use,
             "type_cast_stmt"                        : self.type_cast_stmt_def_use,
-            "type_alias_stmt"                       : self.type_alias_stmt_def_use,
+            "type_alias_decl"                       : self.type_alias_decl_def_use,
             "phi_stmt"                              : self.phi_stmt_def_use,
             "unsafe_block"                          : self.unsafe_block_stmt_def_use,
             "block"                                 : self.block_stmt_def_use,
@@ -110,6 +113,7 @@ class StmtDefUseAnalysis:
             "parameter_decl"                        : self.parameter_decl_def_use,
             "variable_decl"                         : self.variable_decl_def_use,
             "method_decl"                           : self.method_decl_def_use,
+            "method_header"                         : self.method_decl_def_use,
 
             "new_array"                             : self.new_array_def_use,
             "new_object"                            : self.new_object_def_use,
@@ -167,7 +171,7 @@ class StmtDefUseAnalysis:
         status.defined_states = self.each_stmt_defined_states
         if isinstance(defined_symbol, Symbol):
             defined_symbol_name = defined_symbol.name
-            if defined_symbol_name.startswith(LianInternal.VARIABLE_DECL_PREF):
+            if defined_symbol_name.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF):
                 if defined_symbol_name not in self.tmp_variable_to_define:
                     self.tmp_variable_to_define[defined_symbol_name] = stmt_id
 
@@ -188,12 +192,12 @@ class StmtDefUseAnalysis:
                 defined_symbol.symbol_id = stmt_id
                 return
 
-            elif defined_symbol_name == LianInternal.THIS:
+            elif defined_symbol_name == LIAN_INTERNAL.THIS:
                 defined_symbol.source_unit_id = self.unit_id
                 defined_symbol.symbol_id = config.BUILTIN_THIS_SYMBOL_ID
                 self.frame.method_def_use_summary.defined_this_symbol_id.add(defined_symbol.symbol_id)
 
-            elif defined_symbol_name == LianInternal.OBJECT:
+            elif defined_symbol_name == LIAN_INTERNAL.OBJECT:
                 defined_symbol.source_unit_id = self.unit_id
                 defined_symbol.symbol_id = config.BUILTIN_OBJECT_SYMBOL_ID
 
@@ -219,9 +223,17 @@ class StmtDefUseAnalysis:
                 source_info = self.resolver.resolve_symbol_source(
                     self.unit_id, self.method_id, stmt.stmt_id, stmt, defined_symbol
                 )
+
+                #print(f"@@@@ {stmt} {source_info}")
                 if util.is_available(source_info):
                     defined_symbol.source_unit_id = source_info.source_unit_id
                     symbol_id = source_info.symbol_id
+                    if symbol_id == stmt.stmt_id:
+                        if defined_symbol.name in self.external_symbol_id_collection:
+                            symbol_id = self.external_symbol_id_collection[defined_symbol.name]
+                        else:
+                            symbol_id = self.loader.assign_new_unique_positive_id()
+                        self.external_symbol_id_collection[defined_symbol.name] = symbol_id
                     defined_symbol.symbol_id = symbol_id
                     if symbol_id not in frame.symbol_to_define:
                         frame.symbol_to_define[symbol_id] = set()
@@ -234,16 +246,16 @@ class StmtDefUseAnalysis:
             used_symbol = self.symbol_state_space[used_symbol_index]
             if not isinstance(used_symbol, Symbol):
                 continue
-            if used_symbol.name == LianInternal.THIS:
+            if used_symbol.name == LIAN_INTERNAL.THIS:
                 used_symbol.source_unit_id = self.unit_id
                 used_symbol.symbol_id = config.BUILTIN_THIS_SYMBOL_ID
                 self.frame.method_def_use_summary.used_this_symbol_id.add(used_symbol.symbol_id)
                 continue
-            if used_symbol.name == LianInternal.OBJECT:
+            if used_symbol.name == LIAN_INTERNAL.OBJECT:
                 used_symbol.source_unit_id = self.unit_id
                 used_symbol.symbol_id = config.BUILTIN_OBJECT_SYMBOL_ID
                 continue
-            if used_symbol.name.startswith(LianInternal.VARIABLE_DECL_PREF):
+            if used_symbol.name.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF):
                 used_symbol.source_unit_id = self.unit_id
                 used_symbol.symbol_id = self.tmp_variable_to_define.get(used_symbol.name, (-1))
                 continue
@@ -251,9 +263,14 @@ class StmtDefUseAnalysis:
             source_info = self.resolver.resolve_symbol_source(
                 self.unit_id, self.method_id, stmt_id, stmt, used_symbol
             )
+            #print("source_info:", source_info, self.unit_id, self.method_id, stmt_id, used_symbol, stmt)
             if util.is_available(source_info):
                 if source_info.symbol_id == stmt_id or source_info.symbol_id < 0:
-                    source_info.symbol_id = self.loader.assign_new_unsolved_symbol_id()
+                    if used_symbol.name in self.external_symbol_id_collection:
+                        source_info.symbol_id = self.external_symbol_id_collection[used_symbol.name]
+                    else:
+                        source_info.symbol_id = self.loader.assign_new_unique_positive_id()
+                        self.external_symbol_id_collection[used_symbol.name] = source_info.symbol_id
 
                 used_symbol.source_unit_id = source_info.source_unit_id
                 symbol_id = source_info.symbol_id
@@ -287,7 +304,7 @@ class StmtDefUseAnalysis:
         return value
 
     def create_state_and_add_space(
-        self, stmt_id, value, data_type = "", state_type = StateTypeKind.REGULAR
+        self, stmt_id, value, data_type = "", state_type = STATE_TYPE_KIND.REGULAR
     ):
         if util.is_empty(value):
             return -1
@@ -295,7 +312,7 @@ class StmtDefUseAnalysis:
         if not data_type:
             #print("value: ", value)
             data_type = type_table.determine_constant_type(value)
-        if data_type == LianInternal.STRING:
+        if data_type == LIAN_INTERNAL.STRING:
             value = self.adjust_constant_string(value)
 
         item = State(stmt_id = stmt_id, value = value, data_type = data_type, state_type = state_type)
@@ -308,7 +325,7 @@ class StmtDefUseAnalysis:
         return index
 
     def create_symbol_or_state_and_add_space(
-            self, stmt_id, name, default_data_type = "", state_type = StateTypeKind.REGULAR
+            self, stmt_id, name, default_data_type = "", state_type = STATE_TYPE_KIND.REGULAR
     ):
         if util.is_empty(name):
             return -1
@@ -359,13 +376,95 @@ class StmtDefUseAnalysis:
             )
         )
 
+    def analyze_and_save_call_stmt_args(self, stmt_id, stmt, positional_arg_index, args_list, status):
+        positional_args = []
+        packed_positional_args = []
+        named_args = []
+        packed_named_args = []
+
+        # args_list = []
+        if not util.isna(stmt.positional_args):
+            positional_args = args_list[:positional_arg_index]
+            # print(args_list[0])
+        elif not util.isna(stmt.packed_positional_args):
+            packed_named_args = args_list[0]
+        # print(positional_args)
+        if not util.isna(stmt.packed_named_args):
+            packed_named_args = args_list[positional_arg_index:]
+        elif not util.isna(stmt.named_args):
+            named_args = args_list[positional_arg_index:]
+
+        used_symbols = status.used_symbols
+        arg_symbol_list = used_symbols[1:]
+        callee_name_symbol_index = used_symbols[0]
+        callee_name_symbol = self.symbol_state_space[callee_name_symbol_index]
+
+        positional_args_info = []
+        packed_positional_args_info = []
+        named_args_info = []
+        packed_named_args_info = []
+        #print("stmt", stmt)
+        #print("positional_args", positional_args)
+        #print("args_list", args_list)
+        #print(stmt_id)
+        if positional_args:
+            for index, arg in enumerate(positional_args):
+                index =  arg_symbol_list[index]
+                arg_symbol = self.symbol_state_space[index]
+                if isinstance(arg_symbol, State):
+                    positional_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value})
+                else:
+                    positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
+
+        elif packed_positional_args:
+            index =  arg_symbol_list[0]
+            arg_symbol = self.symbol_state_space[index]
+            packed_positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
+
+        if named_args:
+            args_keys = sorted(ast.literal_eval(stmt.named_args).keys())
+
+            named_symbol_list = arg_symbol_list[positional_arg_index:]
+            if named_symbol_list:
+                for index, arg in enumerate(named_args):
+                    space_index =  named_symbol_list[index]
+                    arg_symbol = self.symbol_state_space[space_index]
+                    if isinstance(arg_symbol, State):
+                        named_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value, "key": args_keys[index]})
+                    else:
+                        named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name, "key": args_keys[index]})
+        elif packed_named_args:
+            index = used_symbols[-1]
+            arg_symbol = self.symbol_state_space[index]
+            packed_named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
+
+        defined_symbol = self.symbol_state_space[status.defined_symbol]
+
+        call_format = {
+            "unit_id": self.unit_id,
+            "method_id": self.method_id,
+            "stmt_id": stmt_id,
+            "target_name": stmt.target,
+            "target_symbol_id": defined_symbol.symbol_id,
+            "callee_name": stmt.name,
+            "callee_symbol_id": callee_name_symbol.symbol_id,
+            "positional_args": str(positional_args_info),
+            "packed_positional_args": str(packed_positional_args_info),
+            "packed_named_args": str(packed_named_args_info),
+            "named_args": str(named_args_info)
+            }
+        self.loader.save_stmt_id_to_call_stmt_format(stmt_id, call_format)
+
     def call_stmt_def_use(self, stmt_id, stmt):
+        is_field_call = hasattr(stmt, "receiver") and util.is_available(stmt.receiver)
         # convert stmt.args(str) to list
         args_list = []
         if not util.isna(stmt.positional_args):
             args_list = ast.literal_eval(stmt.positional_args)
         elif not util.isna(stmt.packed_positional_args):
             args_list = [stmt.packed_positional_args]
+
+        positional_arg_index = len(args_list)
 
         if not util.isna(stmt.packed_named_args):
             args_list.append(stmt.packed_named_args)
@@ -375,30 +474,31 @@ class StmtDefUseAnalysis:
                 args_list.append(args_dict[key])
 
         used_symbol_list = []
-        for symbol in [stmt.name, *args_list]:
+        stmt_symbol_list = [stmt.name, *args_list]
+        if is_field_call:
+            stmt_symbol_list.insert(0, stmt.receiver)
+        for symbol in stmt_symbol_list:
             if not util.isna(symbol):
                 used_symbol_list.append(self.create_symbol_or_state_and_add_space(stmt_id, symbol))
         defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target)
-        self.add_status_with_symbol_id_sync(
-            stmt,
-            StmtStatus(
-                stmt_id,
-                defined_symbol = defined_symbol,
-                used_symbols = used_symbol_list
-             )
-        )
+        status = StmtStatus(stmt_id, defined_symbol = defined_symbol, used_symbols = used_symbol_list)
+        self.add_status_with_symbol_id_sync(stmt, status)
+        # if not is_field_call:
+        self.analyze_and_save_call_stmt_args(stmt_id, stmt, positional_arg_index, args_list, status)
 
         # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
         # So check the source stmt id
         call_name_symbol_index = used_symbol_list[0]
+        if is_field_call:
+            call_name_symbol_index = used_symbol_list[1]
         call_name_symbol = self.symbol_state_space[call_name_symbol_index]
         # fail to resolve call_name
         if isinstance(call_name_symbol, Symbol):
             if call_name_symbol is None or call_name_symbol.symbol_id == -1:
-                self.basic_call_graph.add_edge(self.method_id, BasicCallGraphNodeKind.ERROR_METHOD)
+                self.basic_call_graph.add_edge(self.method_id, BASIC_CALL_GRAPH_NODE_KIND.ERROR_METHOD)
                 internal_callee = MethodInternalCallee(
                     self.method_id,
-                    CalleeType.ERROR_CALLEE,
+                    CALLEE_TYPE.ERROR_CALLEE,
                     stmt_id,
                 )
                 self.callees.add(internal_callee)
@@ -410,7 +510,7 @@ class StmtDefUseAnalysis:
                     self.basic_call_graph.add_edge(self.method_id, call_name_symbol.symbol_id, stmt_id)
                     internal_callee = MethodInternalCallee(
                         self.method_id,
-                        CalleeType.DIRECT_CALLEE,
+                        CALLEE_TYPE.DIRECT_CALLEE,
                         stmt_id,
                         call_name_symbol.symbol_id,
                         call_name_symbol_index
@@ -419,10 +519,10 @@ class StmtDefUseAnalysis:
                     # if config.DEBUG_FLAG:
                     #     util.debug("Found callee", internal_callee.to_dict())
                 else:
-                    self.basic_call_graph.add_edge(self.method_id, BasicCallGraphNodeKind.DYNAMIC_METHOD, stmt_id)
+                    self.basic_call_graph.add_edge(self.method_id, BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD, stmt_id)
                     internal_callee = MethodInternalCallee(
                         self.method_id,
-                        CalleeType.DYNAMIC_CALLEE,
+                        CALLEE_TYPE.DYNAMIC_CALLEE,
                         stmt_id,
                         call_name_symbol.symbol_id,
                         call_name_symbol_index
@@ -582,9 +682,9 @@ class StmtDefUseAnalysis:
             )
         )
 
-    def type_alias_stmt_def_use(self, stmt_id, stmt):
+    def type_alias_decl_def_use(self, stmt_id, stmt):
         used_symbol_list = []
-        for symbol in [stmt.source]:
+        for symbol in [stmt.data_type]:
             if not util.isna(symbol):
                 used_symbol_list.append(
                     self.create_symbol_or_state_and_add_space(stmt_id, symbol)
@@ -592,15 +692,15 @@ class StmtDefUseAnalysis:
             else:
                 used_symbol_list.append(-1)
 
-        defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target, stmt.data_type)
-        self.add_status_with_symbol_id_sync(
-            stmt,
-            StmtStatus(
-                stmt_id,
-                defined_symbol = defined_symbol,
-                used_symbols = used_symbol_list
-            )
+        defined_symbol = self.create_symbol_or_state_and_add_space(
+            stmt_id, stmt.name, stmt.data_type,
         )
+        status = StmtStatus(
+            stmt_id,
+            defined_symbol = defined_symbol,
+            used_symbols = used_symbol_list
+        )
+        self.add_status_with_symbol_id_sync(stmt, status, is_decl_stmt = True)
 
     def phi_stmt_def_use(self, stmt_id, stmt):
         used_symbol_list = []
@@ -666,11 +766,13 @@ class StmtDefUseAnalysis:
         self.common_import_def_use(stmt_id, stmt, used_symbol_list)
 
     def common_import_def_use(self, stmt_id, stmt, used_symbol_list):
-        target = stmt.alias
-        if util.is_empty(target):
-            target = stmt.name
+        alias = stmt.alias
+        if util.is_empty(alias):
+            alias = stmt.name
 
-        defined_symbol_index = self.create_symbol_and_add_space(stmt_id, target)
+        name = stmt.name.split(".")[-1]
+
+        defined_symbol_index = self.create_symbol_and_add_space(stmt_id, alias)
         status = StmtStatus(
             stmt_id,
             defined_symbol = defined_symbol_index,
@@ -679,26 +781,24 @@ class StmtDefUseAnalysis:
         self.stmt_id_to_status[stmt_id] = status
 
         defined_symbol = self.symbol_state_space[defined_symbol_index]
-        result = self.import_hierarchy_analysis.analyze_import_stmt(self.unit_id, stmt_id, stmt)
+        result = self.import_hierarchy_analysis.analyze_import_stmt(self.unit_id, self.unit_info, stmt)
+        found_flag = False
         for each_node in result:
-            if not isinstance(defined_symbol, Symbol):
-                continue
+            if each_node.symbol_name == name:
+                defined_symbol.source_unit_id = self.loader.convert_stmt_id_to_unit_id(each_node.symbol_id)
+                defined_symbol.symbol_id = each_node.symbol_id
+                found_flag = True
+                break
 
-            if each_node.source_symbol_id == -1:
-                each_node.source_symbol_id = self.loader.assign_new_unsolved_symbol_id()
-
-            if defined_symbol.source_unit_id == -1:
-                if each_node.name == stmt.name:
-                    defined_symbol.source_unit_id = each_node.source_module_id
-                    defined_symbol.symbol_id = each_node.source_symbol_id
-                    continue
-
-            index = self.create_symbol_and_add_space(stmt_id, each_node.name)
-            if index != -1:
-                status.implicitly_defined_symbols.append(index)
-                symbol = self.symbol_state_space[index]
-                symbol.source_unit_id = each_node.source_module_id
-                symbol.symbol_id = each_node.source_symbol_id
+        if not found_flag and util.is_available(defined_symbol):
+            # index = self.create_symbol_and_add_space(stmt_id, name)
+            # if index != -1:
+            #     status.implicitly_defined_symbols.append(index)
+            #     symbol = self.symbol_state_space[index]
+            #     symbol.source_unit_id = self.unit_id
+            #     symbol.symbol_id = self.loader.assign_new_unique_positive_id()
+            defined_symbol.source_unit_id = self.unit_id
+            defined_symbol.symbol_id = self.loader.assign_new_unique_positive_id()
 
     def export_stmt_def_use(self, stmt_id, stmt):
         target = stmt.alias
@@ -736,7 +836,7 @@ class StmtDefUseAnalysis:
                 used_symbol_list.append(-1)
 
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.target, LianInternal.REQUIRED_MODULE
+            stmt_id, stmt.target, LIAN_INTERNAL.REQUIRED_MODULE
         )
 
         self.add_status_with_symbol_id_sync(
@@ -830,12 +930,12 @@ class StmtDefUseAnalysis:
             else:
                 used_symbol_list.append(-1)
 
-        defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.name)
+        #defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.name)
         self.add_status_with_symbol_id_sync(
             stmt,
             StmtStatus(
                 stmt_id,
-                defined_symbol = defined_symbol,
+                #efined_symbol = defined_symbol,
                 used_symbols = used_symbol_list
             )
         )
@@ -888,12 +988,22 @@ class StmtDefUseAnalysis:
             else:
                 used_symbol_list.append(-1)
 
+        defined_symbol = -1
+        is_decl = False
+        if util.is_available(stmt.name):
+            defined_symbol = self.create_symbol_or_state_and_add_space(
+                stmt_id, stmt.name, LIAN_INTERNAL.CASE_AS
+            )
+            is_decl = True
+
         self.add_status_with_symbol_id_sync(
             stmt,
             StmtStatus(
                 stmt_id,
-                used_symbols = used_symbol_list,
-            )
+                defined_symbol = defined_symbol,
+                used_symbols = used_symbol_list
+            ),
+            is_decl_stmt = is_decl
         )
 
     def default_stmt_def_use(self, stmt_id, stmt):
@@ -913,7 +1023,7 @@ class StmtDefUseAnalysis:
 
     def namespace_decl_def_use(self, stmt_id, stmt):
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.name, LianInternal.NAMESPACE_DECL
+            stmt_id, stmt.name, LIAN_INTERNAL.NAMESPACE_DECL
         )
 
         self.add_status_with_symbol_id_sync(
@@ -932,7 +1042,7 @@ class StmtDefUseAnalysis:
 
     def class_decl_def_use(self, stmt_id, stmt):
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.name, LianInternal.CLASS_DECL
+            stmt_id, stmt.name, LIAN_INTERNAL.CLASS_DECL
         )
         self.add_status_with_symbol_id_sync(
             stmt,
@@ -971,7 +1081,7 @@ class StmtDefUseAnalysis:
             )
 
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.name, stmt.data_type, state_type = StateTypeKind.ANYTHING
+            stmt_id, stmt.name, stmt.data_type, state_type = STATE_TYPE_KIND.ANYTHING
         )
         status = StmtStatus(
             stmt_id,
@@ -992,7 +1102,7 @@ class StmtDefUseAnalysis:
 
     def variable_decl_def_use(self, stmt_id, stmt):
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.name, stmt.data_type, state_type = StateTypeKind.UNSOLVED
+            stmt_id, stmt.name, stmt.data_type, state_type = STATE_TYPE_KIND.UNSOLVED
         )
         status = StmtStatus(
             stmt_id,
@@ -1007,7 +1117,7 @@ class StmtDefUseAnalysis:
     def method_decl_def_use(self, stmt_id, stmt):
         # self.empty_def_use(stmt_id, stmt)
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.name, LianInternal.METHOD_DECL
+            stmt_id, stmt.name, LIAN_INTERNAL.METHOD_DECL
         )
         self.add_status_with_symbol_id_sync(
             stmt,
@@ -1022,12 +1132,21 @@ class StmtDefUseAnalysis:
             self.frame.method_def_use_summary.local_symbol_ids.add(symbol.symbol_id)
 
     def new_array_def_use(self, stmt_id, stmt):
+        used_symbol_list = []
+        for symbol in [stmt.data_type, stmt.length]:
+            if not util.isna(symbol):
+                used_symbol_list.append(
+                    self.create_symbol_or_state_and_add_space(stmt_id, symbol)
+                )
+            else:
+                used_symbol_list.append(-1)
         defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.target, stmt.data_type)
         self.add_status_with_symbol_id_sync(
             stmt,
             StmtStatus(
                 stmt_id,
                 defined_symbol = defined_symbol,
+                used_symbols=used_symbol_list,
                 # default_data_type = stmt.data_type
             )
         )
@@ -1039,13 +1158,23 @@ class StmtDefUseAnalysis:
             args_list = ast.literal_eval(stmt.positional_args)
 
         used_symbol_list = []
-        for symbol in [stmt.data_type, *args_list]:
-            if not util.isna(symbol):
-                used_symbol_list.append(
-                    self.create_symbol_or_state_and_add_space(stmt_id, symbol)
-                )
-            else:
-                used_symbol_list.append(-1)
+
+        if util.is_available(stmt.init_value):
+            for symbol in [stmt.data_type, stmt.init_value]:
+                if not util.isna(symbol):
+                    used_symbol_list.append(
+                        self.create_symbol_or_state_and_add_space(stmt_id, symbol)
+                    )
+                else:
+                    used_symbol_list.append(-1)
+        else:
+            for symbol in [stmt.data_type, *args_list]:
+                if not util.isna(symbol):
+                    used_symbol_list.append(
+                        self.create_symbol_or_state_and_add_space(stmt_id, symbol)
+                    )
+                else:
+                    used_symbol_list.append(-1)
 
         defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.target, stmt.data_type)
         self.add_status_with_symbol_id_sync(
@@ -1055,7 +1184,8 @@ class StmtDefUseAnalysis:
                 defined_symbol = defined_symbol,
                 # default_data_type = stmt.data_type
                 used_symbols = used_symbol_list
-            )
+            ),
+            #is_decl_stmt = True
         )
 
         status = self.stmt_id_to_status[stmt_id]
@@ -1105,7 +1235,7 @@ class StmtDefUseAnalysis:
 
     def addr_of_def_use(self, stmt_id, stmt):
         used_symbol_list = []
-        for symbol in [stmt.source]:
+        for symbol in [stmt.source, stmt.array, stmt.index, stmt.receiver, stmt.field]:
             if not util.isna(symbol):
                 used_symbol_list.append(
                     self.create_symbol_or_state_and_add_space(stmt_id, symbol)
@@ -1219,7 +1349,7 @@ class StmtDefUseAnalysis:
                 used_symbol_list.append(-1)
 
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.array, default_data_type = LianInternal.ARRAY
+            stmt_id, stmt.array, default_data_type = LIAN_INTERNAL.ARRAY
         )
 
         self.add_status_with_symbol_id_sync(
@@ -1243,7 +1373,7 @@ class StmtDefUseAnalysis:
                 used_symbol_list.append(-1)
 
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.array, default_data_type = LianInternal.ARRAY
+            stmt_id, stmt.array, default_data_type = LIAN_INTERNAL.ARRAY
         )
 
         self.add_status_with_symbol_id_sync(
@@ -1267,7 +1397,7 @@ class StmtDefUseAnalysis:
                 used_symbol_list.append(-1)
 
         defined_symbol = self.create_symbol_or_state_and_add_space(
-            stmt_id, stmt.array, default_data_type = LianInternal.ARRAY
+            stmt_id, stmt.array, default_data_type = LIAN_INTERNAL.ARRAY
         )
 
         self.add_status_with_symbol_id_sync(
@@ -1333,7 +1463,7 @@ class StmtDefUseAnalysis:
             self.create_state_and_add_space(
                 stmt_id,
                 value = field_name,
-                data_type = LianInternal.STRING,
+                data_type = LIAN_INTERNAL.STRING,
                 # state_type=
         ))
 
@@ -1371,7 +1501,7 @@ class StmtDefUseAnalysis:
             self.create_state_and_add_space(
                 stmt_id,
                 value=field_name,
-                data_type=LianInternal.STRING,
+                data_type=LIAN_INTERNAL.STRING,
                 # state_type=
         ))
         defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.target)
@@ -1433,7 +1563,7 @@ class StmtDefUseAnalysis:
                 )
             else:
                 used_symbol_list.append(-1)
-        defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.target, LianInternal.ARRAY)
+        defined_symbol = self.create_symbol_or_state_and_add_space(stmt_id, stmt.target, LIAN_INTERNAL.ARRAY)
         self.add_status_with_symbol_id_sync(
             stmt,
             StmtStatus(

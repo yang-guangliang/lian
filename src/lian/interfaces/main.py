@@ -27,24 +27,21 @@ from lian.interfaces import (
     preparation,
     args_parser
 )
-from lian.externs.extern_system import ExternSystem
+
 from lian.config import constants, config
 from lian.apps.app_manager import AppManager
 from lian.config import config, constants, lang_config
 from lian.util import util
 from lian.util.loader import Loader
 from lian.lang.lang_analysis import LangAnalysis
-from lian.semantic.basic_analysis import BasicSemanticAnalysis
-from lian.semantic.summary_generation import SemanticSummaryGeneration
-from lian.semantic.global_analysis import GlobalAnalysis
+from lian.semantic.basic_analysis.basic_analysis import BasicSemanticAnalysis
+from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
+from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
-from lian.semantic.entry_points import EntryPointGenerator
-from lian.semantic import semantic_structure
 
 class Lian:
     def __init__(self):
         self.options = None
-        self.custom_options = {}
         self.app_manager = None
         self.loader = None
         self.extern_system = None
@@ -57,26 +54,31 @@ class Lian:
             "run":          self.run_all,
         }
 
+        self.set_workspace_dir_flag = False
+
         self.args_parser = args_parser.ArgsParser()
         self.options = self.args_parser.obtain_default_options()
 
-    def set_options(self, **custom_options):
-        self.custom_options = custom_options
-        return self
-
-    def parse_cmds(self):
+    def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
 
-        if util.is_available(self.custom_options):
+        if util.is_available(custom_options):
             if isinstance(self.options, dict):
-                for key, value in self.custom_options.items():
+                for key, value in custom_options.items():
                     if key in self.options:
                         self.options[key] = value
             else:
-                for key, value in self.custom_options.items():
+                for key, value in custom_options.items():
                     if hasattr(self.options, key):
                         setattr(self.options, key, value)
 
+        return self
+
+    def set_workspace_dir(self, default_workspace_dir = config.DEFAULT_WORKSPACE):
+        self.set_workspace_dir_flag = True
+        if default_workspace_dir not in self.options.workspace:
+            self.options.workspace = os.path.join(self.options.workspace, default_workspace_dir)
+        self.options.default_workspace_dir = default_workspace_dir
         return self
 
     def update_lang_config(self):
@@ -93,10 +95,18 @@ class Lian:
         if self.options.debug:
             util.debug(self.options)
 
+        if not self.set_workspace_dir_flag:
+            self.set_workspace_dir()
+
         # update lang config & options.lang_extensions
         self.update_lang_config()
 
         # Set up the analysis environment
+        if hasattr(self.options, "extern_path") and self.options.extern_path:
+            sys.path.append(self.options.extern_path)  # 添加绝对路径
+            from externs.extern_system import ExternSystem
+        else:
+            from lian.externs.extern_system import ExternSystem
         self.app_manager = AppManager(self.options)
         self.loader = Loader(self.options, self.app_manager)
         self.resolver = Resolver(self.options, self.app_manager, self.loader)
@@ -124,20 +134,24 @@ class Lian:
         handler = self.command_handler.get(self.options.sub_command)
         if not handler:
             util.error_and_quit(f"Failed to find command \"{self.options.sub_command}\"")
-        handler()
+        return handler()
 
     def lang_analysis(self):
         LangAnalysis(self).run()
         self.loader.export()
+        return self
 
     def semantic_analysis(self):
         if self.options.debug:
             util.debug("\n\t###########  # Semantic Analysis #  ###########")
 
         BasicSemanticAnalysis(self).run()
-        SemanticSummaryGeneration(self).run()
-        GlobalAnalysis(self).run()
+        summary_generation = SemanticSummaryGeneration(self)
+        summary_generation.run()
+        print(summary_generation.analyzed_method_list)
+        GlobalAnalysis(self, summary_generation.analyzed_method_list).run()
         self.loader.export()
+        return self
 
     def security_analysis(self):
         pass
@@ -145,6 +159,7 @@ class Lian:
     def run_all(self):
         self.lang_analysis()
         self.semantic_analysis()
+        return self
 
     def run(self):
         self.parse_cmds().init_submodules().dispatch_command()

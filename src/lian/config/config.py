@@ -1,11 +1,11 @@
 
 import os
-from sys import platform
+import platform
 
 EMPTY                                       = 0
-START_INDEX                                 = 10
+START_INDEX                                 = 100
 DEBUG_FLAG                                  = False
-STRING_MAX_LEN                              = 200
+STRING_MAX_LEN                              = 2000000
 MAX_PRIORITY                                = 100
 MIN_ID_INTERVAL                             = 10
 BUILTIN_SYMBOL_START_ID                     = -101
@@ -23,17 +23,24 @@ FIRST_GLOBAL_ROUND                          = 1
 
 ANY_LANG                                    = "%"
 
-
 DEFAULT_WORKSPACE                           = "lian_workspace"
 MODULE_SYMBOLS_FILE                         = "module_symbols"
 SOURCE_CODE_DIR                             = "src"
 EXTERNS_DIR                                 = "externs"
-GIR_DIR                                     = "gir"
+BASIC_DIR                                   = "basic"
 SEMANTIC_DIR_P1                             = "semantic_p1"
 SEMANTIC_DIR_P2                             = "semantic_p2"
 SEMANTIC_DIR_P3                             = "semantic_p3"
 
-SRC_LIAN_DIR                                = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+ROOT_DIR                                    = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+
+DEFAULT_SO_PATH         = "lib/langs_linux.so"
+# if platform.system() == 'Darwin':
+#     if platform.machine() == 'arm64':
+#         DEFAULT_SO_PATH = ""
+LANG_SO_PATH            = os.path.join(ROOT_DIR, DEFAULT_SO_PATH)
+
+SRC_LIAN_DIR                                = os.path.join(ROOT_DIR, "src/lian")
 EXTERNS_MOCK_CODE_DIR                       = os.path.join(SRC_LIAN_DIR, "externs/mock")
 EXTERN_RULES_DIR                            = os.path.join(SRC_LIAN_DIR, "externs/rules")
 EXTERN_MODEL_CODE_DIR                       = os.path.join(SRC_LIAN_DIR, "externs/modeling")
@@ -56,6 +63,13 @@ METHOD_INTERNAL_CALLEES_PATH                = "method_internal_callees"
 SYMBOL_NAME_TO_SCOPE_IDS_PATH               = "symbol_name_to_scope_ids"
 SCOPE_ID_TO_SYMBOL_INFO_PATH                = "scope_to_symbol_info"
 SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH        = "scope_to_available_scope_ids"
+
+EXTERNAL_SYMBOL_ID_COLLECTION_PATH          = "external_symbol_id_collection"
+UNIQUE_SYMBOL_IDS_PATH                      = "unique_symbol_ids"
+
+CALL_STMT_ID_TO_INFO_PATH                   = "call_stmt_id_to_info"
+CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH       = "call_stmt_format"
+METHOD_ID_TO_METHOD_DECL_FORMAT_PATH        = "method_decl_format"
 
 UNIT_ID_TO_STMT_ID_PATH                     = "unit_to_stmt_id"
 UNIT_ID_TO_METHOD_ID_PATH                   = "unit_to_method_id"
@@ -94,7 +108,7 @@ SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P2   = "space_summary_p2"
 SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P3   = "space_summary_p3"
 SYMBOL_TO_DEFINE_PATH                       = "symbol_to_define"
 SYMBOL_TO_DEFINE_PATH_P2                    = "symbol_to_define_p2"
-SYMBOL_TO_DEFINE_PATH_P3                    = "symbol_to_define_P3"
+SYMBOL_TO_DEFINE_PATH_P3                    = "symbol_to_define_p3"
 STATE_TO_DEFINE_PATH_P1                     = "state_to_define_p1"
 STATE_TO_DEFINE_PATH_P2                     = "state_to_define_p2"
 SYMBOL_TO_USE_PATH                          = "symbol_to_use"
@@ -107,11 +121,14 @@ TYPE_GRAPH_PATH                             = "type_graph"
 
 SYMBOL_GRAPH_BUNDLE_PATH                    = "symbol_graph"
 SYMBOL_GRAPH_BUNDLE_PATH_P3                 = "symbol_graph_p3"
-CALLEE_PARAMETER_MAPPING_BUNDLE_PATH        = "callee_parameter_mapping"
+CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2     = "callee_parameter_mapping_p2"
+CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3     = "callee_parameter_mapping_p3"
 
 METHOD_DEF_USE_SUMMARY_PATH                 = "method_def_use_summary"
 METHOD_SUMMARY_TEMPLATE_PATH                = "method_summary_template"
 METHOD_SUMMARY_INSTANCE_PATH                = "method_summary_instance"
 
-UNSOLVED_SYMBOL_ID_ASSIGNER_LOADER          = "unsolved_symbol_ids"
 UNSOLVED_SYMBOL_NAME                        = "%%%%unsolved_symbols"
+POSITIVE_GIR_INTERVAL                       = 10000
+DEFAULT_MAX_GIR_ID                          = 100000000
+

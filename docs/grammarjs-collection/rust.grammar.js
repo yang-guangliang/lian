@@ -107,7 +107,6 @@ module.exports = grammar({
     [$.scoped_identifier, $.scoped_type_identifier],
     [$.parameters, $._pattern],
     [$.parameters, $.tuple_struct_pattern],
-    [$.type_parameters, $.for_lifetimes],
     [$.array_expression],
     [$.visibility_modifier],
     [$.visibility_modifier, $.scoped_identifier, $.scoped_type_identifier],
@@ -210,8 +209,8 @@ module.exports = grammar({
     ),
 
     fragment_specifier: _ => choice(
-      'block', 'expr', 'ident', 'item', 'lifetime', 'literal', 'meta', 'pat',
-      'path', 'stmt', 'tt', 'ty', 'vis',
+      'block', 'expr', 'expr_2021', 'ident', 'item', 'lifetime', 'literal', 'meta', 'pat',
+      'pat_param', 'path', 'stmt', 'tt', 'ty', 'vis',
     ),
 
     _tokens: $ => choice(
@@ -239,9 +238,9 @@ module.exports = grammar({
       alias(choice(...primitiveTypes), $.primitive_type),
       prec.right(repeat1(choice(...TOKEN_TREE_NON_SPECIAL_PUNCTUATION))),
       '\'',
-      'as', 'async', 'await', 'break', 'const', 'continue', 'default', 'enum', 'fn', 'for', 'if', 'impl',
-      'let', 'loop', 'match', 'mod', 'pub', 'return', 'static', 'struct', 'trait', 'type',
-      'union', 'unsafe', 'use', 'where', 'while',
+      'as', 'async', 'await', 'break', 'const', 'continue', 'default', 'enum', 'fn', 'for', 'gen',
+      'if', 'impl', 'let', 'loop', 'match', 'mod', 'pub', 'return', 'static', 'struct', 'trait',
+      'type', 'union', 'unsafe', 'use', 'where', 'while',
     ),
 
     // Section - Declarations
@@ -426,6 +425,7 @@ module.exports = grammar({
       'type',
       field('name', $._type_identifier),
       field('type_parameters', optional($.type_parameters)),
+      optional($.where_clause),
       '=',
       field('type', $._type),
       optional($.where_clause),
@@ -466,8 +466,10 @@ module.exports = grammar({
 
     where_clause: $ => prec.right(seq(
       'where',
-      sepBy1(',', $.where_predicate),
-      optional(','),
+      optional(seq(
+        sepBy1(',', $.where_predicate),
+        optional(','),
+      )),
     )),
 
     where_predicate: $ => seq(
@@ -549,11 +551,9 @@ module.exports = grammar({
       sepBy1(',', seq(
         repeat($.attribute_item),
         choice(
-          $.lifetime,
           $.metavariable,
-          $._type_identifier,
-          $.constrained_type_parameter,
-          $.optional_type_parameter,
+          $.type_parameter,
+          $.lifetime_parameter,
           $.const_parameter,
         ),
       )),
@@ -566,21 +566,36 @@ module.exports = grammar({
       field('name', $.identifier),
       ':',
       field('type', $._type),
+      optional(
+        seq(
+          '=',
+          field('value',
+            choice(
+              $.block,
+              $.identifier,
+              $._literal,
+              $.negative_literal,
+            ),
+          ),
+        ),
+      ),
     ),
 
-    constrained_type_parameter: $ => seq(
-      field('left', choice($.lifetime, $._type_identifier)),
-      field('bounds', $.trait_bounds),
-    ),
+    type_parameter: $ => prec(1, seq(
+      field('name', $._type_identifier),
+      optional(field('bounds', $.trait_bounds)),
+      optional(
+        seq(
+          '=',
+          field('default_type', $._type),
+        ),
+      ),
+    )),
 
-    optional_type_parameter: $ => seq(
-      field('name', choice(
-        $._type_identifier,
-        $.constrained_type_parameter,
-      )),
-      '=',
-      field('default_type', $._type),
-    ),
+    lifetime_parameter: $ => prec(1, seq(
+      field('name', $.lifetime),
+      optional(field('bounds', $.trait_bounds)),
+    )),
 
     let_declaration: $ => seq(
       'let',
@@ -638,7 +653,7 @@ module.exports = grammar({
     ),
 
     use_wildcard: $ => seq(
-      optional(seq($._path, '::')),
+      optional(seq(optional($._path), '::')),
       '*',
     ),
 
@@ -817,11 +832,25 @@ module.exports = grammar({
       field('type_arguments', $.type_arguments),
     ),
 
-    bounded_type: $ => prec.left(-1, choice(
-      seq($.lifetime, '+', $._type),
-      seq($._type, '+', $._type),
-      seq($._type, '+', $.lifetime),
+    bounded_type: $ => prec.left(-1, seq(
+      choice($.lifetime, $._type, $.use_bounds),
+      '+',
+      choice($.lifetime, $._type, $.use_bounds),
     )),
+
+    use_bounds: $ => seq(
+      'use',
+      token(prec(1, '<')),
+      sepBy(
+        ',',
+        choice(
+          $.lifetime,
+          $._type_identifier,
+        ),
+      ),
+      optional(','),
+      '>',
+    ),
 
     type_arguments: $ => seq(
       token(prec(1, '<')),
@@ -864,14 +893,15 @@ module.exports = grammar({
     abstract_type: $ => seq(
       'impl',
       optional(seq('for', $.type_parameters)),
-      field('trait', choice(
+      field('trait', prec(1, choice(
         $._type_identifier,
         $.scoped_type_identifier,
         $.removed_trait_bound,
         $.generic_type,
         $.function_type,
         $.tuple_type,
-      )),
+        $.bounded_type,
+      ))),
     ),
 
     dynamic_type: $ => seq(
@@ -882,6 +912,7 @@ module.exports = grammar({
         $.scoped_type_identifier,
         $.generic_type,
         $.function_type,
+        $.tuple_type,
       )),
     ),
 
@@ -931,6 +962,7 @@ module.exports = grammar({
     _expression_ending_with_block: $ => choice(
       $.unsafe_block,
       $.async_block,
+      $.gen_block,
       $.try_block,
       $.block,
       $.if_expression,
@@ -1017,7 +1049,10 @@ module.exports = grammar({
 
     reference_expression: $ => prec(PREC.unary, seq(
       '&',
-      optional($.mutable_specifier),
+      choice(
+        seq('raw', choice('const', $.mutable_specifier)),
+        optional($.mutable_specifier),
+      ),
       field('value', $._expression),
     )),
 
@@ -1257,6 +1292,7 @@ module.exports = grammar({
 
     closure_expression: $ => prec(PREC.closure, seq(
       optional('static'),
+      optional('async'),
       optional('move'),
       field('parameters', $.closure_parameters),
       choice(
@@ -1311,6 +1347,12 @@ module.exports = grammar({
       $.block,
     ),
 
+    gen_block: $ => seq(
+      'gen',
+      optional('move'),
+      $.block,
+    ),
+
     try_block: $ => seq(
       'try',
       $.block,
@@ -1331,6 +1373,7 @@ module.exports = grammar({
       alias(choice(...primitiveTypes), $.identifier),
       $.identifier,
       $.scoped_identifier,
+      $.generic_pattern,
       $.tuple_pattern,
       $.tuple_struct_pattern,
       $.struct_pattern,
@@ -1346,6 +1389,15 @@ module.exports = grammar({
       $.const_block,
       $.macro_invocation,
       '_',
+    ),
+
+    generic_pattern: $ => seq(
+      choice(
+        $.identifier,
+        $.scoped_identifier,
+      ),
+      '::',
+      field('type_arguments', $.type_arguments),
     ),
 
     tuple_pattern: $ => seq(
@@ -1405,20 +1457,29 @@ module.exports = grammar({
       $._pattern,
     )),
 
-    range_pattern: $ => seq(
-      choice(
-        $._literal_pattern,
-        $._path,
-      ),
-      choice(
-        seq(
-          choice('...', '..=', '..'),
-          choice(
-            $._literal_pattern,
-            $._path,
+    range_pattern: $ => choice(
+      seq(
+        field('left', choice(
+          $._literal_pattern,
+          $._path,
+        )),
+        choice(
+          seq(
+            choice('...', '..=', '..'),
+            field('right', choice(
+              $._literal_pattern,
+              $._path,
+            )),
           ),
+          '..',
         ),
-        '..',
+      ),
+      seq(
+        choice('..=', '..'),
+        field('right', choice(
+          $._literal_pattern,
+          $._path,
+        )),
       ),
     ),
 
@@ -1584,11 +1645,12 @@ module.exports = grammar({
 
     identifier: _ => /(r#)?[_\p{XID_Start}][_\p{XID_Continue}]*/,
 
-    shebang: _ => /#![\s]*[^\[].+/,
+    shebang: _ => /#![\r\f\t\v ]*([^\[\n].*)?\n/,
 
     _reserved_identifier: $ => alias(choice(
       'default',
       'union',
+      'gen',
     ), $.identifier),
 
     _type_identifier: $ => alias($.identifier, $.type_identifier),
@@ -1608,8 +1670,7 @@ module.exports = grammar({
  * @param {RuleOrLiteral} sep - The separator to use.
  * @param {RuleOrLiteral} rule
  *
- * @return {SeqRule}
- *
+ * @returns {SeqRule}
  */
 function sepBy1(sep, rule) {
   return seq(rule, repeat(seq(sep, rule)));
@@ -1622,8 +1683,7 @@ function sepBy1(sep, rule) {
  * @param {RuleOrLiteral} sep - The separator to use.
  * @param {RuleOrLiteral} rule
  *
- * @return {ChoiceRule}
- *
+ * @returns {ChoiceRule}
  */
 function sepBy(sep, rule) {
   return optional(sepBy1(sep, rule));
