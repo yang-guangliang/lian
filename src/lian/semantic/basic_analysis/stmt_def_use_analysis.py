@@ -409,12 +409,13 @@ class StmtDefUseAnalysis:
         #print(stmt_id)
         if positional_args:
             for index, arg in enumerate(positional_args):
-                index =  arg_symbol_list[index]
-                arg_symbol = self.symbol_state_space[index]
-                if isinstance(arg_symbol, State):
-                    positional_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value})
-                else:
-                    positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
+                if index < len(arg_symbol_list):
+                    index =  arg_symbol_list[index]
+                    arg_symbol = self.symbol_state_space[index]
+                    if isinstance(arg_symbol, State):
+                        positional_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value})
+                    else:
+                        positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
 
         elif packed_positional_args:
             index =  arg_symbol_list[0]
@@ -427,18 +428,22 @@ class StmtDefUseAnalysis:
             named_symbol_list = arg_symbol_list[positional_arg_index:]
             if named_symbol_list:
                 for index, arg in enumerate(named_args):
-                    space_index =  named_symbol_list[index]
-                    arg_symbol = self.symbol_state_space[space_index]
-                    if isinstance(arg_symbol, State):
-                        named_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value, "key": args_keys[index]})
-                    else:
-                        named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name, "key": args_keys[index]})
+                    if index < len(named_symbol_list):
+                        space_index =  named_symbol_list[index]
+                        arg_symbol = self.symbol_state_space[space_index]
+                        if isinstance(arg_symbol, State):
+                            named_args_info.append({"state_id": arg_symbol.state_id, "value": arg_symbol.value, "key": args_keys[index]})
+                        else:
+                            named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name, "key": args_keys[index]})
         elif packed_named_args:
             index = used_symbols[-1]
             arg_symbol = self.symbol_state_space[index]
             packed_named_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
 
         defined_symbol = self.symbol_state_space[status.defined_symbol]
+
+        if isinstance(callee_name_symbol, State):
+            return
 
         call_format = {
             "unit_id": self.unit_id,

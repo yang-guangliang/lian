@@ -284,6 +284,8 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         symbol_id = parameter_name_symbol.symbol_id
         if isinstance(parameter_name_symbol, Symbol):
             parameter_name_symbol.states = set()
+            if util.is_empty(self.frame.params_list):
+                return P2ResultFlag()
             for each_pair in self.frame.params_list:
                 if each_pair.parameter_symbol_id == symbol_id:
                     parameter_state_index = each_pair.arg_index_in_space

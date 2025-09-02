@@ -738,11 +738,11 @@ class StmtStateAnalysis:
 
         is_string = False
         if data_type1 == LIAN_INTERNAL.STRING:
-            if not value1.isdigit():
+            if isinstance(value1, str) and not value1.isdigit():
                 is_string = True
         if not is_string:
             if data_type2 == LIAN_INTERNAL.STRING:
-                if not value2.isdigit():
+                if isinstance(value2, str) and  not value2.isdigit():
                     is_string = True
 
         if is_string:
