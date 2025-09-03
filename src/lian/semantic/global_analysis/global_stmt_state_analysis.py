@@ -282,7 +282,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         """
         parameter_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
         symbol_id = parameter_name_symbol.symbol_id
-        if isinstance(parameter_name_symbol, Symbol):
+        if isinstance(parameter_name_symbol, Symbol) and self.frame.params_list:
             parameter_name_symbol.states = set()
             if util.is_empty(self.frame.params_list):
                 return P2ResultFlag()
