@@ -270,7 +270,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         in_states = {}
         symbol_graph = frame.symbol_graph.graph
 
-        if not symbol_graph.has_node(stmt_id) or stmt.operation != "goto_stmt":
+        if not symbol_graph.has_node(stmt_id) or stmt.operation == "goto_stmt":
             return P2ResultFlag()
 
         # collect in state bits
