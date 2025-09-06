@@ -63,7 +63,7 @@ def resolve_this_field_method(data: EventData):
     # print([frame.symbol_state_space[i].data_type for i in receiver_states])
     for each_receiver_state_index in receiver_states:
         each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
-        if isinstance(each_receiver_state, State):
+        if not isinstance(each_receiver_state, State):
             continue
 
         for each_field_state_index in field_states:
