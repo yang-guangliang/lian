@@ -37,7 +37,7 @@ class EntryPointGenerator:
         self.entry_point_rules = [
             EntryPointRule(method_name = [LIAN_INTERNAL.UNIT_INIT]),
             EntryPointRule(lang = "java", method_name = ["main"], attrs = ["static"]),
-            EntryPointRule(lang = "abc", method_name = ["requestOAIDTrackingConsentPermissions", "onPageShow", "aboutToAppear", "func_main_0", "onWindowStageCreate"]),
+            EntryPointRule(lang = "abc", method_name = ["init", "paramsLambda", "requestOAIDTrackingConsentPermissions", "onPageShow", "aboutToAppear", "func_main_0", "onWindowStageCreate"]),
         ]
 
     def scan_js_ts_exported_method(self):
