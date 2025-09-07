@@ -72,7 +72,23 @@ class ControlFlowAnalysis:
             for label in self.label:
                 if goto.name == label.name:
                     self.cfg.graph.add_edge(goto.stmt_id, label.stmt_id)
+                    # 接上label之后的语句，防止return 后接label时，cfg断裂
+    #                 after_label_block = self.split_method_body_from_label(self.method_body, label)
+    #                 self.analyze_block(after_label_block, [CFGNode(label, 0)])
+    #                 if self.method_id == 14276:
+    #                     print(after_label_block)
 
+    #     self.loader.save_method_cfg(self.method_id, self.cfg.graph)
+    #     return self.cfg.graph
+    # def split_method_body_from_label(self, method_body, label):
+    #     after_label_block = []
+    #     start_split = False
+    #     for stmt in method_body:
+    #         if stmt == label:
+    #             start_split = True
+    #         if start_split:
+    #             after_label_block.append(stmt)
+    #     return after_label_block
 
         self.loader.save_method_cfg(self.method_id, self.cfg.graph)
         return self.cfg.graph

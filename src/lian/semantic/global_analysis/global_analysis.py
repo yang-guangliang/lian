@@ -453,9 +453,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             if not isinstance(caller_frame, ComputeFrame):
                 frame_path = APath(frame.call_site)
 
-
+            method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
             if config.DEBUG_FLAG:
-                util.debug(f"\n\tPhase III Analysis is in progress <method {frame.method_id}> \n")
+                util.debug(f"\n\tPhase III Analysis is in progress <method {frame.method_id} name: {method_name}> \n")
 
             if frame.content_to_be_analyzed:
 
