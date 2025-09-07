@@ -114,15 +114,15 @@ class DefaultApp(AppSummary):
             ),
 
             EventHandler(
-                event = EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
-                handler = this_field_read.resolve_this_field_method,
-                langs = [config.ANY_LANG]
+                event=EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
+                handler=this_field_read.read_from_this_class,
+                langs=["abc"]
             ),
 
             EventHandler(
                 event = EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
-                handler = this_field_read.read_from_this_class,
-                langs = ["abc"]
+                handler = this_field_read.resolve_this_field_method,
+                langs = [config.ANY_LANG]
             ),
 
             EventHandler(
