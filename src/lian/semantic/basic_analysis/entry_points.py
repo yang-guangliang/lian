@@ -35,7 +35,7 @@ class EntryPointGenerator:
         self.loader:Loader = loader
         self.entry_points = set()
         self.entry_point_rules = [
-            EntryPointRule(method_name = [LIAN_INTERNAL.UNIT_INIT]),
+            EntryPointRule(method_name = [LIAN_INTERNAL.UNIT_INIT, "start"]),
             EntryPointRule(lang = "java", method_name = ["main"], attrs = ["static"]),
             EntryPointRule(lang = "abc", method_name = ["init", "paramsLambda", "requestOAIDTrackingConsentPermissions", "onPageShow", "aboutToAppear", "func_main_0", "onWindowStageCreate"]),
         ]
