@@ -3390,6 +3390,26 @@ class StmtStateAnalysis:
 
         defined_symbol.states = defined_symbol_states
         # print(f"defined_symbol_states: {defined_symbol_states}")
+        event = EventData(
+            self.lang,
+            EVENT_KIND.P2STATE_FIELD_WRITE_AFTER,
+            {
+                "resolver": self.resolver,
+                "stmt_id": stmt_id,
+                "stmt": stmt,
+                "status": status,
+                "receiver_states": receiver_states,
+                "receiver_symbol": receiver_symbol,
+                "frame": self.frame,
+                "field_states": field_states,
+                "source_states":source_states,
+                "in_states": in_states,
+                "defined_symbol": defined_symbol,
+                "state_analysis": self,
+                "defined_states": defined_symbol_states
+            }
+        )
+        self.app_manager.notify(event)
 
         return P2ResultFlag()
 

@@ -4,7 +4,8 @@ from lian.apps.default_apps import (
     basic,
     js_handlers,
     init_new_file_and_object,
-    this_field_read
+    this_field_read,
+    this_field_write
 )
 from lian.apps.app_template import (
     AppSummary,
@@ -116,6 +117,18 @@ class DefaultApp(AppSummary):
                 event = EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
                 handler = this_field_read.resolve_this_field_method,
                 langs = [config.ANY_LANG]
+            ),
+
+            EventHandler(
+                event = EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
+                handler = this_field_read.read_from_this_class,
+                langs = ["abc"]
+            ),
+
+            EventHandler(
+                event = EVENT_KIND.P2STATE_FIELD_WRITE_AFTER,
+                handler = this_field_write.write_to_this_class,
+                langs = ["abc"]
             ),
 
             # EventHandler(

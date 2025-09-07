@@ -55,6 +55,7 @@ class UnitScopeHierarchyAnalysis:
         self.scope_id_to_available_scope_ids = {}
         self.class_id_to_class_field_ids = {}
         self.class_id_to_class_method_ids = {}
+        self.class_id_to_members = {}
 
     def read_block(self, block_id):
         return self.unit_gir.read_block(block_id)
@@ -246,6 +247,7 @@ class UnitScopeHierarchyAnalysis:
                 self.scope_space.add(class_decl_scope)
                 self.all_scope_ids.add(stmt_id)
                 self.class_id_to_class_name[stmt_id] = util.read_stmt_field(row.name)
+                self.class_id_to_members[stmt_id] = {}
 
             elif row.operation in NAMESPACE_DECL_OPERATION:
                 self.namespace_stmt_ids.add(stmt_id)
@@ -423,6 +425,7 @@ class UnitScopeHierarchyAnalysis:
         self.loader.save_unit_id_to_namespace_ids(self.unit_id, self.namespace_stmt_ids)
         self.loader.save_unit_id_to_variable_ids(self.unit_id, self.variable_ids)
         self.loader.save_unit_id_to_import_stmt_ids(self.unit_id, self.import_stmt_ids)
+        self.loader.class_id_to_members = self.class_id_to_members
 
         for stmt_id in self.method_id_to_method_name:
             self.loader.save_method_id_to_method_name(stmt_id, self.method_id_to_method_name[stmt_id])

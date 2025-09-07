@@ -15,6 +15,22 @@ from lian.util import util
 from lian.util.loader import Loader
 from lian.config.constants import LIAN_INTERNAL
 
+def check_this_read(receiver_symbol, receiver_states, frame):
+    """
+    判断此次field_read是否是对this的read: this.field
+    """
+    this_flag = False
+    if len(receiver_states) != 0:
+        for each_receiver_state_index in receiver_states:
+            each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
+            if hasattr(each_receiver_state, "data_type") and each_receiver_state.data_type == LIAN_INTERNAL.THIS:
+                this_flag = True
+                break
+    if receiver_symbol.name != LIAN_INTERNAL.THIS and this_flag == False:
+        return False
+    return True
+
+
 def resolve_this_field_method(data: EventData):
     """
     用于处理field_read: self.func的情况，找到类中定义的field_methods，并添加到self状态的field "func"中。
@@ -32,16 +48,8 @@ def resolve_this_field_method(data: EventData):
     defined_states = in_data.defined_states
     app_return = er.config_event_unprocessed()
 
-    this_flag = False
-    if len(receiver_states) != 0:
-        for each_receiver_state_index in receiver_states:
-            each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
-            if hasattr(each_receiver_state, "data_type") and each_receiver_state.data_type == LIAN_INTERNAL.THIS:
-                this_flag = True
-                break
-
     # 只处理对self的field_read
-    if receiver_symbol.name != LIAN_INTERNAL.THIS and this_flag == False:
+    if not check_this_read(receiver_symbol,receiver_states,frame):
         data.out_data.receiver_states = receiver_states
         app_return = er.config_continue_event_processing(app_return)
         return app_return
@@ -111,6 +119,51 @@ def resolve_this_field_method(data: EventData):
             state_analysis.cancel_key_state(receiver_symbol.symbol_id, each_receiver_state_index)
             # print("copy_on_change 产生的新state是",new_receiver_state_index,"原来是",each_receiver_state_index)
             # pprint.pprint(new_receiver_state)
+
+    data.out_data.receiver_states = receiver_states
+    app_return = er.config_continue_event_processing(app_return)
+    return app_return
+
+
+def read_from_this_class(data: EventData):
+    in_data = data.in_data
+    frame: ComputeFrame = in_data.frame
+    status = in_data.status
+    receiver_states = in_data.receiver_states
+    receiver_symbol: Symbol = in_data.receiver_symbol
+    field_states = in_data.field_states
+    defined_symbol = in_data.defined_symbol
+    stmt_id = in_data.stmt_id
+    state_analysis:StmtStateAnalysis = in_data.state_analysis
+    loader:Loader = frame.loader
+    defined_states = in_data.defined_states
+    app_return = er.config_event_unprocessed()
+    resolver = state_analysis.resolver
+
+    # 只在global_analysis的this_field_read开启
+    if not check_this_read(receiver_symbol,receiver_states,frame) or state_analysis.phase != 3:
+        data.out_data.receiver_states = receiver_states
+        app_return = er.config_continue_event_processing(app_return)
+        return app_return
+
+    result = set()
+    class_id = loader.convert_method_id_to_class_id(frame.method_id)
+    class_members = loader.class_id_to_members.get(class_id)
+    for each_field_state_index in field_states:
+        each_field_state = frame.symbol_state_space[each_field_state_index]
+        if not isinstance(each_field_state, State):
+            continue
+        field_name = str(each_field_state.value)
+        if len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
+            continue
+        if field_name in class_members:
+            index_set = class_members.get(field_name, set())
+            result.update(index_set)
+
+    if not util.is_empty(result):
+        data.out_data.defined_states = result
+        app_return = er.config_block_event_requester(app_return)
+        return app_return
 
     data.out_data.receiver_states = receiver_states
     app_return = er.config_continue_event_processing(app_return)
