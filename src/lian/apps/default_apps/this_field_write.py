@@ -15,6 +15,21 @@ from lian.util import util
 from lian.util.loader import Loader
 from lian.config.constants import LIAN_INTERNAL
 
+def check_this_write(receiver_symbol, receiver_states, frame):
+    """
+    判断此次field_read是否是对this的read: this.field
+    """
+    this_flag = False
+    if len(receiver_states) != 0:
+        for each_receiver_state_index in receiver_states:
+            each_receiver_state : State = frame.symbol_state_space[each_receiver_state_index]
+            if hasattr(each_receiver_state, "data_type") and each_receiver_state.data_type == LIAN_INTERNAL.THIS:
+                this_flag = True
+                break
+    if receiver_symbol.name != LIAN_INTERNAL.THIS and this_flag == False:
+        return False
+    return True
+
 def write_to_this_class(data: EventData):
     in_data = data.in_data
     frame: ComputeFrame = in_data.frame
@@ -31,7 +46,7 @@ def write_to_this_class(data: EventData):
     defined_states = in_data.defined_states
     app_return = er.config_event_unprocessed()
     resolver = state_analysis.resolver
-    if receiver_symbol.name != LIAN_INTERNAL.THIS:
+    if not check_this_write(receiver_symbol, receiver_states, frame):
         return app_return
     class_id = loader.convert_method_id_to_class_id(frame.method_id)
     class_members = loader.class_id_to_members[class_id]
