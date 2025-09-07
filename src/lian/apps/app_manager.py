@@ -39,6 +39,7 @@ class AppManager:
         self.taint_analysis_handlers = []
         self.p2state_field_read_before_handlers = []
         self.p2state_field_read_after_handlers = []
+        self.p2state_field_write_after_handlers = []
         self.p2state_generate_external_states_handlers = []
         self.p2state_new_object_before_handlers = []
         self.p2state_new_object_after_handlers = []
@@ -59,6 +60,7 @@ class AppManager:
             EVENT_KIND.P2STATE_NEW_OBJECT_AFTER                      : self.p2state_new_object_after_handlers,
             EVENT_KIND.P2STATE_BUILTIN_FUNCTION_BEFORE               : self.p2state_builtin_function_before_handlers,
             EVENT_KIND.P2STATE_EXTERN_CALLEE                         : self.p2state_extern_callee_handlers,
+            EVENT_KIND.P2STATE_FIELD_WRITE_AFTER                     : self.p2state_field_write_after_handlers,
         }
 
         self.register_default_apps()
