@@ -113,12 +113,12 @@
 #         cls()
 #     def func2(self):
 #         self.func1()
-class A:
-    def get_value(self):
-        return self.attr
+# class A:
+#     def get_value(self):
+#         return self.attr
     
-a= A()
-c = a.get_value()
+# a= A()
+# c = a.get_value()
 # ff = A.B
 # c = ff.func3
 
@@ -207,3 +207,27 @@ c = a.get_value()
 #     c = infunc
     
 #     pass
+
+
+def func1():
+    if hh:
+        a = b.c
+        return a
+    else:
+        t = n.d
+        return t
+
+class B:
+    def func3():
+        pass
+
+class A:
+    def __init__(self):
+        self.a = func1()
+        self.vm = B
+
+    def func2(self):
+        self.a()
+        self.vm.func3()
+
+A.func2()

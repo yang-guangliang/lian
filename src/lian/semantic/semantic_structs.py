@@ -158,7 +158,8 @@ class BasicGraph:
             return
         # if config.DEBUG_FLAG:
         #     util.debug(f"_add_one_edge:{src_stmt_id}->{dst_stmt_id}, weight={weight}")
-        self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
+        if not self.graph.has_edge(src_stmt_id, dst_stmt_id):
+            self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
 
     def add_node(self, node):
         if node:

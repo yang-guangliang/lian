@@ -164,7 +164,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         for index in this_state_set:
             print(index)
             instance_state = self.frame.symbol_state_space[index]
-            if self.is_state_a_class_decl(instance_state):
+            if isinstance(instance_state, State) and self.is_state_a_class_decl(instance_state):
                 classes_of_method.append(instance_state.value)
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
