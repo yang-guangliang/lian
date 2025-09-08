@@ -114,7 +114,7 @@ class DefaultApp(AppSummary):
             ),
 
             EventHandler(
-                event=EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
+                event=EVENT_KIND.P2STATE_FIELD_READ_AFTER,
                 handler=this_field_read.read_from_this_class,
                 langs=["abc"]
             ),
@@ -127,6 +127,12 @@ class DefaultApp(AppSummary):
 
             EventHandler(
                 event = EVENT_KIND.P2STATE_FIELD_WRITE_AFTER,
+                handler = this_field_write.write_to_this_class,
+                langs = ["abc"]
+            ),
+
+            EventHandler(
+                event = EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
                 handler = this_field_write.write_to_this_class,
                 langs = ["abc"]
             ),
