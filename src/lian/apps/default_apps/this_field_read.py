@@ -148,7 +148,7 @@ def read_from_this_class(data: EventData):
 
     result = set()
     class_id = loader.convert_method_id_to_class_id(frame.method_id)
-    class_members = loader.class_id_to_members.get(class_id)
+    class_members = loader.load_class_id_to_members(class_id)
     for each_field_state_index in field_states:
         each_field_state = frame.symbol_state_space[each_field_state_index]
         if not isinstance(each_field_state, State):
