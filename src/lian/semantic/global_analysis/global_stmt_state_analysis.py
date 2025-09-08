@@ -183,7 +183,8 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
         for each_callee_id in callee_method_ids:
             new_path = APath(self.frame.path + (stmt_id, each_callee_id))
-            self.path_manager.add_path(new_path)
+            if caller_id != each_callee_id:
+                self.path_manager.add_path(new_path)
             new_call_site = (caller_id, stmt_id, each_callee_id)
             # prepare callee summary instance and compact space
             if new_call_site in self.frame.summary_collection:

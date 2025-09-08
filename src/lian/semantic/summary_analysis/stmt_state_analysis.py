@@ -1876,6 +1876,26 @@ class StmtStateAnalysis:
 
         args = self.prepare_args(stmt_id, stmt, status, in_states)
         callee_info = self.frame.stmt_id_to_callee_info.get(stmt_id)
+
+        event = EventData(
+            self.lang,
+            EVENT_KIND.P2STATE_FIELD_READ_AFTER,
+            {
+                "resolver": self.resolver,
+                "stmt_id": stmt_id,
+                "stmt": stmt,
+                "status": status,
+                "frame": self.frame,
+                "in_states": in_states,
+                "defined_symbol": defined_symbol,
+                "state_analysis": self,
+                "args": args,
+                "name_states": name_states,
+                "space": self.frame.symbol_state_space,
+            }
+        )
+        app_return = self.app_manager.notify(event)
+
         if util.is_empty(callee_info):
             result = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
@@ -3294,6 +3314,26 @@ class StmtStateAnalysis:
             defined_states |= each_defined_states
 
         defined_symbol.states = defined_states
+
+        event = EventData(
+            self.lang,
+            EVENT_KIND.P2STATE_FIELD_READ_AFTER,
+            {
+                "resolver": self.resolver,
+                "stmt_id": stmt_id,
+                "stmt": stmt,
+                "status": status,
+                "receiver_states": receiver_states,
+                "receiver_symbol": receiver_symbol,
+                "frame": self.frame,
+                "field_states": field_states,
+                "in_states": in_states,
+                "defined_symbol": defined_symbol,
+                "state_analysis": self,
+                "defined_states": defined_states
+            }
+        )
+        app_return = self.app_manager.notify(event)
         return P2ResultFlag()
 
     @profile

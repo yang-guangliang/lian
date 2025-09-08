@@ -19,6 +19,7 @@ def check_this_read(receiver_symbol, receiver_states, frame):
     """
     判断此次field_read是否是对this的read: this.field
     """
+    print(666666666666666666666666666666666666666666666666666666666)
     this_flag = False
     if len(receiver_states) != 0:
         for each_receiver_state_index in receiver_states:
@@ -161,6 +162,7 @@ def read_from_this_class(data: EventData):
             result.update(index_set)
 
     if not util.is_empty(result):
+        defined_symbol.states.update(result)
         data.out_data.defined_states = result
         app_return = er.config_block_event_requester(app_return)
         return app_return
