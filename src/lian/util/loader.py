@@ -7,6 +7,8 @@ import pprint
 import numpy
 from bisect import insort
 
+import pandas as pd
+
 from lian.util.data_model import DataModel
 from lian.config import schema
 from lian.util import util
@@ -347,6 +349,26 @@ class UnitIDToExportSymbolsLoader(UnitLevelLoader):
 
 class ClassIDToMethodInfoLoader(UnitLevelLoader):
     pass
+
+class ClassIDToMembersLoader(UnitLevelLoader):
+    def save_all(self, class_id_to_members:dict):
+        for class_id in class_id_to_members:
+            self.save(class_id,class_id_to_members[class_id])
+
+    def save(self, class_id, class_members_dict:dict):
+        class_members_series = pd.Series(class_members_dict, dtype = object)
+        class_members_df = DataModel(class_members_series, columns=["members"])
+        self.item_cache.put(class_id, class_members_df)
+
+        self.active_bundle[class_id] = (class_members_df, class_members_dict)
+        self.item_id_to_bundle_id[class_id] = -1
+        self.active_bundle_length += len(class_members_dict)
+
+        if self.active_bundle_length > config.MAX_ROWS:
+            self.export()
+
+        return class_members_df
+
 
 class SymbolNameToScopeIDsLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
@@ -1650,6 +1672,14 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
+        self._class_id_to_members_loader = ClassIDToMembersLoader(
+            options,
+            [],
+            os.path.join(self.semantic_path_p2, config.CLASS_ID_TO_MEMBERS_PATH),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
         self._symbol_bit_vector_manager_p3_loader = BitVectorManagerLoader(
             options,
             # schema.bit_vector_manager_schema,
@@ -2100,6 +2130,16 @@ class Loader:
         return self._class_id_to_method_id_loader.load_value_to_key(*args)
     def is_method_decl_of_class(self, *args):
         return self._class_id_to_method_id_loader.is_parameter_decl_of_method(*args)
+
+    def save_class_id_to_members(self, class_id, class_members):
+        return self._class_id_to_members_loader.save(class_id, class_members)
+    def save_all_class_id_to_members(self, class_id_to_members):
+        return self._class_id_to_members_loader.save_all(class_id_to_members)
+    def load_class_id_to_members(self, *args):
+        class_members_df = self._class_id_to_members_loader.load(*args)._data
+        return class_members_df["members"].to_dict()
+    def load_all_class_id_to_members(self):
+        return self._class_id_to_members_loader.load_all()
 
     def convert_class_id_to_field_ids(self, *args):
         return self._class_id_to_field_id_loader.load_key_to_values(*args)

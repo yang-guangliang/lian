@@ -49,7 +49,7 @@ def write_to_this_class(data: EventData):
     if not check_this_write(receiver_symbol, receiver_states, frame):
         return app_return
     class_id = loader.convert_method_id_to_class_id(frame.method_id)
-    class_members = loader.class_id_to_members[class_id]
+    class_members = loader.load_class_id_to_members(class_id)
     for each_field_state_index in field_states:
         each_field_state = frame.symbol_state_space[each_field_state_index]
         if not isinstance(each_field_state, State):
@@ -59,6 +59,7 @@ def write_to_this_class(data: EventData):
             continue
         # FIXME 分支living graph，会覆盖
         class_members[field_name] = source_states
+    loader.save_class_id_to_members(class_id, class_members)
     return app_return
 
 

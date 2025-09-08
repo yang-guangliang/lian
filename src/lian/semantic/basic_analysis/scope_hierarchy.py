@@ -425,7 +425,7 @@ class UnitScopeHierarchyAnalysis:
         self.loader.save_unit_id_to_namespace_ids(self.unit_id, self.namespace_stmt_ids)
         self.loader.save_unit_id_to_variable_ids(self.unit_id, self.variable_ids)
         self.loader.save_unit_id_to_import_stmt_ids(self.unit_id, self.import_stmt_ids)
-        self.loader.class_id_to_members = self.class_id_to_members
+        self.loader.save_all_class_id_to_members(self.class_id_to_members)
 
         for stmt_id in self.method_id_to_method_name:
             self.loader.save_method_id_to_method_name(stmt_id, self.method_id_to_method_name[stmt_id])
