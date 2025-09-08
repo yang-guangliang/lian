@@ -93,6 +93,8 @@ EVENT_KIND = util.SimpleEnum({
     "P2STATE_NEW_OBJECT_AFTER"                      : 45,
     "P2STATE_EXTERN_CALLEE"                         : 46,
     "P2STATE_FIELD_WRITE_AFTER"                     : 47,
+    "P2STATE_CALL_STMT_BEFORE"                     : 48,
+    "P2STATE_CALL_STMT_AFTER"                      : 49,
 })
 
 CONFIG_ITEM_Kind = util.SimpleEnum({
