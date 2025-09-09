@@ -802,8 +802,8 @@ class StmtStatusLoader(MethodLevelAnalysisResultLoader):
                     in_symbol_bits = int(row.in_symbol_bits),
                     out_symbol_bits = int(row.out_symbol_bits),
                     defined_states = set(row.defined_states),
-                    in_state_bits = int(row.in_state_bits),
-                    out_state_bits = int(row.out_state_bits),
+                    in_state_bits = util.bytes_to_int(row.in_state_bits),
+                    out_state_bits = util.bytes_to_int(row.out_state_bits),
                     field_name = row.field,
                 )
         return stmt_to_status

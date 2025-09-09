@@ -517,3 +517,15 @@ def determine_comment_line(lang_name, comment_start, lines):
 
         return comment_start + 1
 
+def int_to_bytes(v: int) -> bytes:
+    """for serializing big int"""
+    if v == 0 or v is None:
+        return b'\x00'
+    length = (v.bit_length() + 7) // 8
+    return v.to_bytes(length, byteorder='big', signed=False)
+
+def bytes_to_int(b: bytes) -> int:
+    """for deserializing big int"""
+    if b is None:
+        return 0
+    return int.from_bytes(b, byteorder='big', signed=False)
