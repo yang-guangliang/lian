@@ -961,8 +961,8 @@ class StmtStatus:
             "in_symbol_bits"            : repr(self.in_symbol_bits),
             "out_symbol_bits"           : repr(self.out_symbol_bits),
             "defined_states"            : str(self.defined_states),
-            "in_state_bits"             : repr(self.in_state_bits),
-            "out_state_bits"            : repr(self.out_state_bits),
+            "in_state_bits"             : util.int_to_bytes(self.in_state_bits),
+            "out_state_bits"            : util.int_to_bytes(self.out_state_bits),
             "field"                     : self.field_name,
         }
 
@@ -2074,5 +2074,3 @@ class CountStmtDefStateNode:
         node_dict = dataclasses.asdict(self)
         ordered_dict = {field: node_dict[field] for field in ordered_fields}
         print(ordered_dict)
-
-Argument
