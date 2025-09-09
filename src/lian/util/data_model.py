@@ -294,6 +294,9 @@ class DataModel:
     def get_schema(self):
         return self._data.columns
 
+    def get_data(self):
+        return self._data
+
 class Row:
     def __init__(self, row, schema, index):
         object.__setattr__(self, "_row", row)
