@@ -353,7 +353,7 @@ class ClassIDToMethodInfoLoader(UnitLevelLoader):
 class ClassIDToMembersLoader(UnitLevelLoader):
     def save_all(self, class_id_to_members:dict):
         for class_id in class_id_to_members:
-            self.save(class_id,class_id_to_members[class_id])
+            self.save(class_id, class_id_to_members[class_id])
 
     def save(self, class_id, class_members_dict:dict):
         class_members_series = pd.Series(class_members_dict, dtype = object)
@@ -2095,9 +2095,17 @@ class Loader:
         return self._class_id_to_members_loader.save(class_id, class_members)
     def save_all_class_id_to_members(self, class_id_to_members):
         return self._class_id_to_members_loader.save_all(class_id_to_members)
-    def load_class_id_to_members(self, *args):
-        class_members_df = self._class_id_to_members_loader.load(*args)._data
-        return class_members_df["members"].to_dict()
+    def load_class_id_to_members(self, class_id, create_if_not_exists = False):
+        class_members_dm: DataModel = self._class_id_to_members_loader.load(class_id)
+        if class_members_dm is None and create_if_not_exists:
+            nil_members = {}
+            self.save_class_id_to_members(class_id, nil_members)
+            return nil_members
+        if not util.is_empty(class_members_dm):
+            class_members_df = class_members_dm.get_data()
+            if not class_members_df.empty and hasattr(class_members_df, "members"):
+                return class_members_df["members"].to_dict()        
+        return {}
     def load_all_class_id_to_members(self):
         return self._class_id_to_members_loader.load_all()
 
