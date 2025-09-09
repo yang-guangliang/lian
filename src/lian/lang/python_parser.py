@@ -1230,6 +1230,13 @@ class Parser(common_parser.Parser):
             elif child.type == "wildcard_import":
                 name = '*'
                 self.append_stmts(statements, node, {"from_import_stmt": {"source": module_name, "name": name}})
+            elif child.type == "comment":
+                  # bad_case:
+                  #     from langchain_community.utilities import (
+                  #         SearchApiAPIWrapper,  # noqa: F401 会将注释错误当成一个child
+                  #         SerpAPIWrapper,  # noqa: F401
+                  #     )
+                continue
             else:
                 name = self.read_node_text(self.find_child_by_field(child, "name"))
                 alias = self.read_node_text(self.find_child_by_field(child, "alias"))
