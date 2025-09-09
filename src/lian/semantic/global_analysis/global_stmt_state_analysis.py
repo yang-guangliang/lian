@@ -162,7 +162,6 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
 
         classes_of_method = []
         for index in this_state_set:
-            print(index)
             instance_state = self.frame.symbol_state_space[index]
             if isinstance(instance_state, State) and self.is_state_a_class_decl(instance_state):
                 classes_of_method.append(instance_state.value)
