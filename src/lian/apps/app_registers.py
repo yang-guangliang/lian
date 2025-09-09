@@ -133,7 +133,7 @@ class DefaultApp(AppSummary):
 
             EventHandler(
                 event = EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
-                handler = this_field_write.write_to_this_class,
+                handler = this_field_write.appstorage_read_and_write,
                 langs = ["abc"]
             ),
 

@@ -38,8 +38,8 @@ class EntryPointGenerator:
             EntryPointRule(method_name = [LIAN_INTERNAL.UNIT_INIT, "start"]),
             EntryPointRule(lang = "java", method_name = ["main"], attrs = ["static"]),
             # EntryPointRule(lang = "abc", method_name = ["Index", "init", "initialRender", "send", "paramsLambda", "requestOAIDTrackingConsentPermissions", "onChangeCallback", "onPageShow", "aboutToAppear", "func_main_0", "onWindowStageCreate", ]),
-            EntryPointRule(lang = "abc", method_name = ["aboutToAppear",]),
-            # EntryPointRule(lang = "abc", method_name = ["Index", "RegisterPage", "LoadAd", "init", "send", "paramsLambda", "requestOAIDTrackingConsentPermissions", "onChangeCallback", "onPageShow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]),
+            # EntryPointRule(lang = "abc", method_name = ["aboutToAppear",]),
+            EntryPointRule(lang = "abc", method_name = ["Index", "SunsPage", "RegisterPage", "LoadAd", "init", "send", "paramsLambda", "requestOAIDTrackingConsentPermissions", "onChangeCallback", "onPageShow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]),
 
         ]
 

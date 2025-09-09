@@ -62,22 +62,49 @@ def write_to_this_class(data: EventData):
     loader.save_class_id_to_members(class_id, class_members)
     return app_return
 
-def appstorage_write(data: EventData):
+def appstorage_read_and_write(data: EventData):
+    frame: ComputeFrame = data.in_data.frame
     name_states = data.in_data.name_states
     args = data.in_data.args
     space = data.in_data.space
+    positional_args = args.positional_args
+    loader:Loader = frame.loader
+    defined_symbol = data.in_data.defined_symbol
+
+    if len(positional_args) != 2:
+        return er.is_event_unprocessed()
+    arg0 = list(positional_args[0])
+    # arg1 = list(positional_arg[1])
+    arg0_state = space[arg0[0].index_in_space]
+    arg0_access_path = access_path_formatter(arg0_state.access_path)
+    class_members = loader.load_class_id_to_members(1000086)
+    app_return = er.config_event_unprocessed()
+    arg_index_set = set()
+    for arg in positional_args[1]:
+        arg_index_set.add(arg.index_in_space)
+
     for state_index in name_states:
         state = space[state_index]
         access_path = access_path_formatter(state.access_path)
-        if access_path == "AppStorage.SetOrCreate":
-
-
+        # TODO: NO hard code
+        if access_path == "AppStorage.SetOrCreate(key, value)":
+            class_members[arg0_access_path] = positional_args[1]
+            loader.save_class_id_to_members(1000086, class_members)
+            app_return = er.config_block_event_requester
             break
-    pass
+        elif access_path == "AppStorage.Get":
+            read_members = loader.load_class_id_to_members(1000086)
+            if read_members and read_members != set():
+                defined_symbol.states = read_members
+                app_return = er.config_block_event_requester()
+            break
+    return app_return
 
 
 def access_path_formatter(state_access_path):
     key_list = []
+    if not state_access_path:
+        return ""
     for item in state_access_path:
         key = item.key
         key = key if isinstance(key, str) else str(key)
