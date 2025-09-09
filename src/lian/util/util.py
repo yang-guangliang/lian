@@ -31,6 +31,8 @@ def isna(element):
         return True
     if isinstance(element, (int, float)):
         return math.isnan(element)
+    if not element:
+        return True
     return False
 
 def is_none(element):

@@ -181,6 +181,8 @@ class BasicSemanticAnalysis:
 
     @profile
     def run(self):
+        if self.options.debug:
+            util.debug("\n\t###########  # Basic Analysis #  ###########")
         unit_list = []
         # Analyze each unit's scope hierarchy and entry points
         for unit_info in self.loader.load_all_unit_info():

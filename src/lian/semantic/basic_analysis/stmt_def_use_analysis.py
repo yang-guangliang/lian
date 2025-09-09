@@ -732,9 +732,6 @@ class StmtDefUseAnalysis:
         self.empty_def_use(stmt_id, stmt)
 
     def from_import_stmt_def_use(self, stmt_id, stmt):
-        # if stmt_id == 1773584:
-        #     print(self.import_hierarchy_analysis.analyzed_imported_unit_ids)
-
         current_time = datetime.now()
         used_symbol_list = []
         for symbol in [stmt.name]:
@@ -750,8 +747,6 @@ class StmtDefUseAnalysis:
         # print("from_import_stmt_def_use", after_time - current_time)
         # print(stmt_id)
         # print(stmt)
-        # if stmt_id == 1773584:
-        #     print(self.import_hierarchy_analysis.analyzed_imported_unit_ids)
 
     def import_stmt_def_use(self, stmt_id, stmt):
         # print("analyzing import_stmt_def_use")
@@ -781,6 +776,8 @@ class StmtDefUseAnalysis:
         self.stmt_id_to_status[stmt_id] = status
 
         defined_symbol = self.symbol_state_space[defined_symbol_index]
+        if defined_symbol is None:
+            return
         result = self.import_hierarchy_analysis.analyze_import_stmt(self.unit_id, self.unit_info, stmt)
         found_flag = False
         for each_node in result:
