@@ -1824,7 +1824,8 @@ class StmtStateAnalysis:
                 "unsolved_callee_states": unsolved_callee_states,
                 "defined_symbol": defined_symbol,
                 "args": args,
-                "p2result_flag": p2result_flag
+                "p2result_flag": p2result_flag,
+                "loader": self.loader,
             }
         )
         app_return = self.app_manager.notify(event)
@@ -1894,9 +1895,9 @@ class StmtStateAnalysis:
                 "space": self.frame.symbol_state_space,
             }
         )
-        # app_return = self.app_manager.notify(event)
-        # if er.should_block_event_requester(app_return):
-        #     return P2ResultFlag()
+        app_return = self.app_manager.notify(event)
+        if er.should_block_event_requester(app_return):
+            return P2ResultFlag()
         if util.is_empty(callee_info):
             result = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
