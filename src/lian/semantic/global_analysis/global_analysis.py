@@ -297,7 +297,8 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        if not continue_flag:
+        # if not continue_flag:
+        if not continue_flag and stmt.operation != "call_stmt":
             if config.DEBUG_FLAG:
                 print(f"  CONTINUE")
             if status.in_state_bits != old_in_state_bits:
