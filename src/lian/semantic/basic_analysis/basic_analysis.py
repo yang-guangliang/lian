@@ -179,7 +179,6 @@ class BasicSemanticAnalysis:
                 for row in parameter_decls:
                     self.loader.save_method_parameter(method_id, row)
 
-    @profile
     def run(self):
         if self.options.debug:
             util.debug("\n\t###########  # Basic Analysis #  ###########")

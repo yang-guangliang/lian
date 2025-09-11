@@ -264,7 +264,7 @@ class StmtStateAnalysis:
                 self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
-    @profile
+    
     def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index, overwritten_flag = False):
         """复制已有状态并添加到状态空间，更新相关定义信息"""
         state = self.frame.symbol_state_space[state_index]
@@ -1722,7 +1722,7 @@ class StmtStateAnalysis:
 
             status.implicitly_defined_symbols.append(index_to_add)
 
-    @profile
+    
     def apply_callee_semantic_summary(
         self, stmt_id, callee_id, args: MethodCallArguments,
         callee_summary, callee_compact_space: SymbolStateSpace,
@@ -1848,7 +1848,7 @@ class StmtStateAnalysis:
 
         return None
 
-    @profile
+    
     def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         call_stmt   target  name    return_type prototype   args
@@ -1950,7 +1950,7 @@ class StmtStateAnalysis:
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )
 
-    @profile
+    
     def compute_target_method_states(
         self, stmt_id, stmt, status, in_states,
         callee_method_ids, defined_symbol, args,
@@ -3055,7 +3055,7 @@ class StmtStateAnalysis:
             new_receiver_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, receiver_symbol)
         return new_receiver_symbol_index
 
-    @profile
+    
     def change_field_read_receiver_state(
         self, stmt_id, status, new_receiver_symbol_index, receiver_state_index, receiver_state,
         field_name, defined_states, is_tangping = False
@@ -3159,7 +3159,7 @@ class StmtStateAnalysis:
         # print("source_index",source_index)
         # print("new_receiver_symbol.states",new_receiver_symbol.states)
 
-    @profile
+    
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         <field_read: target, receiver_object, field>
@@ -3338,7 +3338,7 @@ class StmtStateAnalysis:
         app_return = self.app_manager.notify(event)
         return P2ResultFlag()
 
-    @profile
+    
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         field_write: receiver_object, field, source

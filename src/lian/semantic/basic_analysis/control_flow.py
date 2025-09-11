@@ -46,8 +46,7 @@ class ControlFlowAnalysis:
                 self.label.append(stmt)
             elif stmt.operation == "goto_stmt":
                 self.goto.append(stmt)
-
-    @profile
+    
     def analyze(self):
         cfg = self.loader.load_method_cfg(self.method_id)
         if util.is_available(cfg):
@@ -440,7 +439,7 @@ class ControlFlowAnalysis:
         boundary = current_stmt._index
         return ([current_stmt], boundary)
 
-    @profile
+    
     def link_parent_stmts_to_current_stmt(self, parent_stmts: list, current_stmt):
         for node in parent_stmts:
             if isinstance(node, CFGNode):
@@ -450,7 +449,7 @@ class ControlFlowAnalysis:
                 # Links non-CFGNode items
                 self.cfg.add_edge(node, current_stmt, CONTROL_FLOW_KIND.EMPTY)
 
-    @profile
+    
     def analyze_init_block(self, current_block, parent_stmts = [], special_stmts = []):
         counter = 0
         previous = parent_stmts
@@ -488,7 +487,7 @@ class ControlFlowAnalysis:
                     last_parameter_init_stmts.extend(previous)
         return last_parameter_decl_stmts + last_parameter_init_stmts
 
-    @profile
+    
     def analyze_block(self, current_block, parent_stmts = [], special_stmts = []):
         """
         This function is going to deal with current block and extract its control flow graph.
