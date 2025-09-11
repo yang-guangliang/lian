@@ -308,7 +308,7 @@ class UnitScopeHierarchyAnalysis:
                     item.scope_id = stmt_id
 
                     util.add_to_dict_with_default_set(
-                        self.class_id_to_class_method_ids, stmt_id, method_decl.stmt_id
+                        self.class_id_to_class_method_ids, stmt_id, class_decl.stmt_id
                     )
 
 
