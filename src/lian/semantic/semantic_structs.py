@@ -617,7 +617,7 @@ class State(BasicElement):
         for access_point in self.access_path:
             access_path_str += access_point.key + "."
 
-        return access_path_str[:1] if access_path_str else ""
+        return access_path_str[:-1] if access_path_str else ""
 
 @dataclasses.dataclass
 class Symbol(BasicElement):
