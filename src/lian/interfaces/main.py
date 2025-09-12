@@ -110,7 +110,7 @@ class Lian:
         self.app_manager = AppManager(self.options)
         self.loader = Loader(self.options, self.app_manager)
         self.resolver = Resolver(self.options, self.app_manager, self.loader)
-        self.extern_system = ExternSystem(self.options, self.loader)
+        self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
         self.app_manager.register_extern_system(self.extern_system)
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)
