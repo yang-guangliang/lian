@@ -611,6 +611,14 @@ class State(BasicElement):
     def __hash__(self):
         return hash((self.stmt_id, self.state_id))
 
+    def recover_access_path_str(self) -> str:
+        """将state的access_path转换回a.b.c"""
+        access_path_str = ""
+        for access_point in self.access_path:
+            access_path_str += access_point.key + "."
+
+        return access_path_str[:1] if access_path_str else ""
+
 @dataclasses.dataclass
 class Symbol(BasicElement):
     """
