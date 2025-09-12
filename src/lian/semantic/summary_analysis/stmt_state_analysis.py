@@ -1939,13 +1939,14 @@ class StmtStateAnalysis:
         # call plugin to deal with undefined_callee_error
         # if len(unsolved_callee_states) != 0:
         if len(callee_method_ids) == 0 and len(unsolved_callee_states) != 0:
-            result = self.trigger_extern_callee(
+            out_data = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
             )
-            if util.is_available(result):
-                return result
-            return P2ResultFlag()
-
+            if util.is_available(out_data):
+                if hasattr(out_data, "callee_method_ids"):
+                    callee_method_ids.update(out_data.callee_method_ids)
+                else:
+                    return out_data
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )

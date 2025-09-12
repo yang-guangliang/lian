@@ -103,8 +103,8 @@ class Resolver:
 
         return result
 
-    def organize_return_value(self, unit_id, scope_id, symbol, summary, default_return):
-        symbol_id = summary.scope_id_to_symbol_info[scope_id][symbol.name]
+    def organize_return_value(self, unit_id, scope_id, symbol_name, summary, default_return):
+        symbol_id = summary.scope_id_to_symbol_info[scope_id][symbol_name]
         if not self.loader.is_import_stmt(symbol_id):
             return SourceSymbolScopeInfo(unit_id, symbol_id)
 
@@ -113,7 +113,7 @@ class Resolver:
         #print("export symbols:", unit_id, export_symbols)
         if util.is_empty(export_symbols):
             return default_return
-        import_info = export_symbols.query_first(export_symbols.symbol_name == symbol.name)
+        import_info = export_symbols.query_first(export_symbols.symbol_name == symbol_name)
         if import_info:
             if import_info.symbol_id != -1:
                 return SourceSymbolScopeInfo(
@@ -123,7 +123,7 @@ class Resolver:
         return SourceSymbolScopeInfo(unit_id, symbol_id)
 
     # locate symbol to (unit_id, decl_stmt_id]
-    def resolve_symbol_source(self, unit_id, method_id, stmt_id, stmt, symbol, source_symbol_must_be_global = False):
+    def resolve_symbol_source(self, unit_id, method_id, stmt_id, stmt, symbol_name, source_symbol_must_be_global = False):
         """
         This function is to address the key question:
             Given a symbol, how to find its symbol_id, i.e., where it is define?
@@ -135,12 +135,12 @@ class Resolver:
         Return:
             SourceSymbolScopeInfo: source unit & source stmt
         """
-        if symbol.name == LIAN_INTERNAL.THIS:
+        if symbol_name == LIAN_INTERNAL.THIS:
             return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID)
 
         # default return value
         default_return = SourceSymbolScopeInfo(unit_id, stmt_id)
-        if util.is_empty(symbol):
+        if util.is_empty(symbol_name):
             #print("@@@@@@1111")
             return default_return
 
@@ -148,10 +148,10 @@ class Resolver:
 
         if source_symbol_must_be_global:
             global_scope_id = 0
-            if symbol.name in summary.symbol_name_to_scope_ids:
-                scope_ids = summary.symbol_name_to_scope_ids[symbol.name]
+            if symbol_name in summary.symbol_name_to_scope_ids:
+                scope_ids = summary.symbol_name_to_scope_ids[symbol_name]
                 if global_scope_id in scope_ids:
-                    return self.organize_return_value(unit_id, global_scope_id, symbol, summary, default_return)
+                    return self.organize_return_value(unit_id, global_scope_id, symbol_name, summary, default_return)
         else:
             scope_id = -1
             if stmt.parent_stmt_id in summary.scope_id_to_available_scope_ids:
@@ -161,14 +161,14 @@ class Resolver:
                 return default_return
 
             #print("if symbol.name in summary.symbol_name_to_scope_ids", symbol.name, summary.symbol_name_to_scope_ids)
-            if symbol.name in summary.symbol_name_to_scope_ids:
-                scope_ids = summary.symbol_name_to_scope_ids[symbol.name]
+            if symbol_name in summary.symbol_name_to_scope_ids:
+                scope_ids = summary.symbol_name_to_scope_ids[symbol_name]
                 available_scope_ids = summary.scope_id_to_available_scope_ids.get(scope_id, set())
                 target_scope_ids = available_scope_ids & scope_ids
                 if len(target_scope_ids) != 0:
                     # find this name in this unit
                     scope_id = max(target_scope_ids)
-                    return self.organize_return_value(unit_id, scope_id, symbol, summary, default_return)
+                    return self.organize_return_value(unit_id, scope_id, symbol_name, summary, default_return)
 
                 #print("@@@@@@444")
             #print("@@@@@@4555")
