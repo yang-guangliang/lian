@@ -4,7 +4,7 @@ import sys
 ############################################################
 # Initliaze the configuration
 ############################################################
-# Support empty @profile
+# Support empty  
 import builtins
 
 try:

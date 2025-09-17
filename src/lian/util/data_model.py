@@ -7,7 +7,7 @@ from lian.config import config
 from lian.util import util
 
 class DataModel:
-    
+     
     def __init__(self, data = None, columns = None, reset_index = False):
         self._data = None
         self._reset_index = reset_index
@@ -47,8 +47,7 @@ class DataModel:
         self._need_refresh_rows = True
         if self._data is not None:
             self.refresh_schema()
-
-    
+   
     def __getitem__(self, item):
         # treat item as a column name if item is string
         if isinstance(item, str):
@@ -58,8 +57,7 @@ class DataModel:
 
     def __getattr__(self, column_name):
         return self.access_column(column_name)
-
-    
+     
     def __iter__(self):
         self.refresh_rows()
         index = self._data.index
@@ -91,7 +89,6 @@ class DataModel:
 
     def refresh_schema(self):
         self._schema = util.list_to_dict_with_index(self._data.columns)
-
     
     def refresh_rows(self):
         if not self._need_refresh_rows:
@@ -103,16 +100,13 @@ class DataModel:
         # reset indexer
         self._column_indexer = {}
 
-    
     def get_rows(self):
         self.refresh_rows()
         return self._rows
 
-    
     def set_columns(self, columns):
         self._data.columns = columns
 
-    
     def unique_values_of_column(self, column):
         s = set(self._data[column])
         s.discard(None)
@@ -126,10 +120,12 @@ class DataModel:
         return self
 
     def save(self, path):
-        self.reset_index()._data.to_feather(path)
-        return self
+        try:
+            self.reset_index()._data.to_feather(path)
+            return self
+        except Exception as e:
+            print(e)
 
-    
     def access(self, row_index, column_name = ""):
         if len(column_name) != 0:
             return self._data.loc[row_index, column_name]
@@ -165,15 +161,12 @@ class DataModel:
         column._column_name = column_name
         column._column_data = data
         return column
-
     
     def slice(self, start_index, end_index):
         #print("self._data.iloc[start_index: end_index]", start_index, end_index, self._data.iloc[start_index: end_index], self._data)
         result = DataModel(self._data.iloc[start_index: end_index], columns = self._schema.keys())
         return result
-
-
-    
+     
     def append_data_model(self, extra_data):
         target_to_be_merged = extra_data
         if isinstance(extra_data, DataModel):
@@ -181,7 +174,6 @@ class DataModel:
         self._data = pd.concat([self._data, target_to_be_merged], ignore_index=True, copy = False)
         self.set_refresh_flag()
 
-    
     def modify_row(self, row_index, new_row):
         self._data.iloc[row_index] = new_row
         self.set_refresh_flag()
@@ -194,12 +186,10 @@ class DataModel:
         self._data.rename(columns=columns, inplace=True, copy = False)
         self.set_refresh_flag()
 
-    
     def modify_element(self, row_index, column_name, value):
         self._data.loc[row_index, column_name] = value
         self.set_refresh_flag()
-
-    
+     
     def query(self, condition_or_index, column_name = "", reset_index:bool = True):
         if isinstance(condition_or_index, set):
             condition_or_index = list(condition_or_index)
@@ -213,7 +203,6 @@ class DataModel:
     def _convert_bool_list_to_index_list(self, bool_list):
         return np.where(bool_list)[0]
 
-    
     def query_first(self, mask):
         self.refresh_rows()
         index = None
@@ -230,7 +219,6 @@ class DataModel:
 
     def fillna(self, value):
         self._data.fillna(value, inplace = True)
-
     
     def reset_index(self, move_index_to_column = False, directly_modify_current_dataframe = True):
         new_data = self._data.reset_index(
@@ -255,13 +243,11 @@ class DataModel:
             if (value not in target):
                 target[value] = []
             target[value].append(index)
-
-    
+ 
     def search_block_id(self, block_id):
         if util.isna(block_id):
             return None
         return sorted(self._data.index[self._data["stmt_id"].values == block_id])
-
     
     def read_block(self, block_id, reset_index = True):
         block_start_end = self.search_block_id(block_id)
@@ -274,7 +260,6 @@ class DataModel:
         if reset_index:
             block.reset_index()
         return block
-
     
     def boundary_of_multi_blocks(self, multi_block_ids):
         ids = [-1]

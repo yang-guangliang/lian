@@ -836,7 +836,8 @@ class SemanticSummaryGeneration:
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
+        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling, unwanted_def_states = change_flag.unwanted_def_states)
+        # print("new_out_states",new_out_states)
 
         self.collect_def_states_amount_each_stmt(stmt_id, len(new_out_states),in_states)
 
@@ -1205,7 +1206,6 @@ class SemanticSummaryGeneration:
         """
         打印summary_generation阶段，每条语句产生的new_out_states数量，倒序排列
         """
-        print("统计产生的new_out_states的数量——————￥￥￥￥￥￥￥￥￥￥￥￥")
         filtered_stmts_nodes = [node for node in self.count_stmt_def_states.values() if node.new_out_states_len >= 5]
         sorted_stmts_nodes = sorted(filtered_stmts_nodes, key=lambda x: x.new_out_states_len, reverse=True)
         counter = 0
@@ -1216,15 +1216,13 @@ class SemanticSummaryGeneration:
             counter+=1
             node.print_as_dict()
 
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-
         sorted_ops = sorted(self.count_stmt_op_def_states.items(), key=lambda x: x[1], reverse=True)
         counter = 0
         for each_op in sorted_ops:
             if counter >= 20:
                 break
             counter+=1
-            print(each_op)
+            # print(each_op)
 
     def run(self):
         """

@@ -1874,7 +1874,6 @@ class Loader:
                     results.append(getattr(self, loader))
         return results
 
-    
     def load_method_header(self, method_id):
         if method_id <= 0:
             return (None, None)
@@ -1913,8 +1912,7 @@ class Loader:
         method_decl_stmt, method_parameters = self.load_method_header(method_id)
         method_body = self._load_method_body_by_header(method_id, method_decl_stmt)
         return (method_decl_stmt, method_parameters, method_body)
-
-    
+ 
     def load_stmt_gir(self, stmt_id):
         if stmt_id <= 0:
             return None
@@ -1922,7 +1920,6 @@ class Loader:
         unit_gir = self._gir_loader.load(unit_id)
         stmt_gir = unit_gir.query_first(unit_gir.stmt_id.eq(stmt_id))
         return stmt_gir
-
     
     def load_stmt_scope(self, stmt_id):
         if stmt_id <= 0:

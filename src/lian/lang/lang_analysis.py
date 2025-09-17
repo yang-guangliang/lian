@@ -21,6 +21,7 @@ def determine_lang_by_path(file_path):
     ext = os.path.splitext(file_path)[1]
     return EXTENSIONS_LANG.get(ext, None)
 
+ 
 def is_empty_strict_version(node):
     """
     严格模式检查数据结构是否为空：
