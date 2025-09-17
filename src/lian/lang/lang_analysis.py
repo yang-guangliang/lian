@@ -21,7 +21,7 @@ def determine_lang_by_path(file_path):
     ext = os.path.splitext(file_path)[1]
     return EXTENSIONS_LANG.get(ext, None)
 
-@profile
+ 
 def is_empty_strict_version(node):
     """
     严格模式检查数据结构是否为空：
@@ -309,7 +309,7 @@ class GIRParser:
 
         return (current_node_id, event.out_data)
 
-    @profile
+     
     def add_unit_gir(self, unit_info, flatten_nodes):
         """
         存储处理后的GIR数据：
