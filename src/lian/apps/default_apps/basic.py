@@ -447,6 +447,7 @@ def adjust_variable_decls(data: EventData):
     while stack:
         frame: StackFrame = stack.pop()
         stmts = frame.stmts
+        stmts = [d for stmt in stmts for d in (stmt if isinstance(stmt, list) else [stmt])]
         index = frame.index
         available_variables = frame.variables
         to_be_deleted = frame.to_be_deleted

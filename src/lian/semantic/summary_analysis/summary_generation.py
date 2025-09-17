@@ -1244,6 +1244,8 @@ class SemanticSummaryGeneration:
             callee_method_name = self.loader.convert_method_id_to_method_name(callee_method_id)
             if util.is_empty(callee_class_name):
                 callee_class_name = "None"
+            if callee_method_id == -1 or not isinstance(callee_method_name,str):
+                callee_method_name = "None"
             one_call = [caller_method_id,caller_class_name,caller_method_name,callee_method_id,callee_class_name,callee_method_name,stmt_id]
             self.call_beauty.append(one_call)
         self.loader.save_call_beauty(self.call_beauty)
