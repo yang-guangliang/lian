@@ -277,6 +277,32 @@ def graph_successors_with_weight(graph, node, weight):
             external_successors.append(neighbor)
     return external_successors
 
+def graph_successors_with_edge_attrs(graph, node, attr_dict: dict):
+    """
+    返回图中指定节点具有指定属性边的后继节点列表。
+
+    参数:
+    - graph: networkx.DiGraph 或其他类型的图
+    - node: 要查询的节点
+    - attr_dict: {边的属性字段: 属性值}
+
+    返回:
+    - list: 满足attr_dict的二元组(出边, 后继节点)的列表
+    """
+    if node not in graph:
+        return []
+    successors = []
+    for neighbor, data in graph[node].items():
+        matched = True
+        for key, value in attr_dict.items():
+            # 只要有一个属性不满足，就匹配失败
+            if data.get(key) != value:
+                matched = False
+                break
+        if matched:
+            successors.append((data, neighbor))
+    return successors
+
 def get_graph_edge_weight(graph: nx.DiGraph, src_stmt, dst_stmt):
     if type(src_stmt) in (int, np.int64):
         src_stmt_id = src_stmt
