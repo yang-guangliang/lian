@@ -151,7 +151,7 @@ class ModuleSymbolsLoader:
 
         return all_units
 
-    def search_unit_path_to_unit_id(self, unit_path):
+    def convert_unit_path_to_unit_id(self, unit_path):
         for path in  self.unit_path_to_id:
             if path.endswith(unit_path):
                 return self.unit_path_to_id[path]
@@ -1985,8 +1985,8 @@ class Loader:
         return self._module_symbols_loader.convert_module_id_to_module_info(*args)
     def convert_unit_id_to_unit_path(self, *args):
         return self._module_symbols_loader.convert_unit_id_to_unit_path(*args)
-    def search_unit_path_to_unit_id(self, *args):
-        return self._module_symbols_loader.search_unit_path_to_unit_id(*args)
+    def convert_unit_path_to_unit_id(self, *args):
+        return self._module_symbols_loader.convert_unit_path_to_unit_id(*args)
 
     def is_module_id(self, *args):
         return self._module_symbols_loader.is_module_id(*args)
@@ -1996,8 +1996,6 @@ class Loader:
         return self._module_symbols_loader.is_module_dir_id(*args)
     def convert_unit_id_to_lang_name(self, *args):
         return self._module_symbols_loader.load_unit_lang_name(*args)
-    def parse_require_unit_path_to_unit_id(self, *args):
-        return self._module_symbols_loader.search_unit_path_to_unit_id(*args)
     def convert_module_id_to_child_ids(self, *args):
         return self._module_symbols_loader.convert_module_id_to_child_ids(*args)
 
