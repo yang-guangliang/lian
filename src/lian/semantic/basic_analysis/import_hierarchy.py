@@ -35,27 +35,34 @@ class ImportHierarchy:
         self.symbol_id_to_symbol_node = {}
         self.module_name_to_symbol_nodes = {}
 
-    def add_import_graph_node(self, symbol_type, symbol_id, symbol_name, parent_node_id = -1, import_stmt = -1, unit_id = -1):
+    def add_import_graph_node(self, symbol_type, symbol_id, symbol_name, parent_node_id = -1, unit_id = -1):
         import_node = SymbolNodeInImportGraph(
             scope_id = parent_node_id,
             symbol_type = symbol_type,
             symbol_id = symbol_id,
             symbol_name = symbol_name,
-            import_stmt = import_stmt,
             unit_id = unit_id
         )
         self.symbol_id_to_symbol_node[symbol_id] = import_node
-        self.add_import_graph_edge(parent_node_id, symbol_id)
+        self.add_import_graph_edge(parent_node_id, symbol_id, symbol_name)
         return import_node
 
-    def add_import_graph_edge(self, parent_node_id, node_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.INTERNAL_SYMBOL):
+    def add_import_graph_edge(
+        self, parent_node_id, node_id, node_name,
+        edge_kind = IMPORT_GRAPH_EDGE_KIND.INTERNAL_SYMBOL,
+        import_stmt_id = -1, alias = ""
+    ):
+        if alias == "":
+            real_name = node_name
+        else:
+            real_name = alias
         if (
             parent_node_id in self.symbol_id_to_symbol_node
             and node_id in self.symbol_id_to_symbol_node
         ):
-            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name)
         elif edge_kind == IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL:
-            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind)
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name)
 
     def add_import_deps(self, unit_id, node_id):
         if self.loader.is_unit_id(node_id):
@@ -307,7 +314,6 @@ class ImportHierarchy:
 
     def adjust_result_symbol_node(self, node, unit_id, stmt, alias):
         new_node = node.clone()
-        new_node.import_stmt = stmt.stmt_id
         new_node.unit_id = unit_id
         if len(alias) > 0:
             #print("alias", alias, stmt)
@@ -347,7 +353,11 @@ class ImportHierarchy:
         )
         if import_nodes:
             for each_node in import_nodes:
-                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL)
+                self.add_import_graph_edge(
+                    unit_id, each_node.symbol_id, each_node.symbol_name,
+                    edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL,
+                    import_stmt_id = stmt.stmt_id, alias = alias
+                )
                 self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
@@ -365,7 +375,11 @@ class ImportHierarchy:
         import_nodes = self.check_import_stmt_analysis_results(unit_info, stmt, import_nodes, remaining)
         if import_nodes:
             for each_node in import_nodes:
-                self.add_import_graph_edge(unit_id, each_node.symbol_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL)
+                self.add_import_graph_edge(
+                    unit_id, each_node.symbol_id, each_node.symbol_name,
+                    edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL,
+                    import_stmt_id = stmt.stmt_id, alias = alias
+                )
                 self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
                     self.adjust_result_symbol_node(each_node, unit_id, stmt, alias)
@@ -384,10 +398,13 @@ class ImportHierarchy:
             symbol_id=fake_node_id,
             symbol_name=alias,
             parent_node_id=stmt.parent_stmt_id,
-            import_stmt=stmt.stmt_id,
             unit_id=unit_id,
         )
-        self.add_import_graph_edge(unit_id, fake_node_id, edge_kind = IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL)
+        self.add_import_graph_edge(
+            unit_id, fake_node_id, alias,
+            edge_kind = IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL,
+            import_stmt_id = stmt.stmt_id
+        )
         external_symbols.append(fake_node)
 
         #print(external_symbols)
