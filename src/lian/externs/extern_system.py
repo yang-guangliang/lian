@@ -27,8 +27,9 @@ class ConfigurationItem:
     arg_pos: int = -1
 
 class ExternSystem:
-    def __init__(self, options, loader):
+    def __init__(self, options, loader, resolver):
         self.options = options
+        self.resolver = resolver
         self.loader = loader
         self.rule_id = config.RULE_START_ID
         self.lang_to_externs = {}
