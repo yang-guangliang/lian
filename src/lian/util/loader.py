@@ -2,6 +2,8 @@
 
 import os
 import ast
+from collections import namedtuple
+
 import networkx as nx
 import pprint
 import numpy
@@ -1205,6 +1207,8 @@ class ImportGraphLoader:
 
     def get_successor_nodes_from_ids(self, successor_ids):
         result = []
+        if isinstance(successor_ids, int):
+            successor_ids = [successor_ids]
         for each_succ in successor_ids:
             import_node = self.symbol_id_to_import_node.get(each_succ)
             if import_node:
@@ -1222,6 +1226,11 @@ class ImportGraphLoader:
             self.import_graph, node_id, IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL
         )
         return self.get_successor_nodes_from_ids(successor_ids)
+
+    def get_edges_and_nodes_with_edge_attrs(self, node_id, attr_dict: dict):
+        EdgeNodePair = namedtuple("EdgeNodePair", ["edge", "node"])
+        edge_node_list = util.graph_successors_with_edge_attrs(self.import_graph, node_id, attr_dict)
+        return [EdgeNodePair(edge, self.get_successor_nodes_from_ids(node_index)) for edge, node_index in edge_node_list]
 
     def restore(self):
         df = DataModel().load(self.path)
@@ -2310,6 +2319,8 @@ class Loader:
         return self._import_graph_loader.get_internal_successor_nodes(node_id)
     def get_external_successor_nodes_in_import_graph(self, node_id):
         return self._import_graph_loader.get_external_successor_nodes(node_id)
+    def get_edges_and_nodes_with_edge_attrs_in_import_graph(self, node_id, attr_dict):
+        return self._import_graph_loader.get_edges_and_nodes_with_edge_attrs(node_id, attr_dict)
 
     def save_type_graph(self, *args):
         return self._type_graph_loader.save(*args)
