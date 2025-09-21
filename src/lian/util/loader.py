@@ -2185,20 +2185,20 @@ class Loader:
     def assign_new_unique_negative_id(self):
         return self._unique_symbol_id_assigner_loader.assign_new_unique_negative_id()
 
-    def save_symbol_name_to_scope_ids(self, *args):
-        return self._symbol_name_to_scope_ids_loader.save(*args)
-    def load_symbol_name_to_scope_ids(self, *args):
-        return self._symbol_name_to_scope_ids_loader.load(*args)
-
-    def save_scope_id_to_symbol_info(self, *args):
-        return self._scope_id_to_symbol_info_loader.save(*args)
-    def load_scope_id_to_symbol_info(self, *args):
-        return self._scope_id_to_symbol_info_loader.load(*args)
-
-    def save_scope_id_to_available_scope_ids(self, *args):
-        return self._scope_id_to_available_scope_ids_loader.save(*args)
-    def load_scope_id_to_available_scope_ids(self, *args):
-        return self._scope_id_to_available_scope_ids_loader.load(*args)
+    # def save_symbol_name_to_scope_ids(self, *args):
+    #     return self._symbol_name_to_scope_ids_loader.save(*args)
+    # def load_symbol_name_to_scope_ids(self, *args):
+    #     return self._symbol_name_to_scope_ids_loader.load(*args)
+    #
+    # def save_scope_id_to_symbol_info(self, *args):
+    #     return self._scope_id_to_symbol_info_loader.save(*args)
+    # def load_scope_id_to_symbol_info(self, *args):
+    #     return self._scope_id_to_symbol_info_loader.load(*args)
+    #
+    # def save_scope_id_to_available_scope_ids(self, *args):
+    #     return self._scope_id_to_available_scope_ids_loader.save(*args)
+    # def load_scope_id_to_available_scope_ids(self, *args):
+    #     return self._scope_id_to_available_scope_ids_loader.load(*args)
 
     def save_entry_points(self, *args):
         return self._entry_points_loader.save(*args)
