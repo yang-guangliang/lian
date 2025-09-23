@@ -43,7 +43,7 @@ from lian.semantic.semantic_structs import (
     MethodSummaryInstance,
     MethodInClass,
     APath,
-    SymbolNodeInImportGraph
+    SymbolNodeInImportGraph,
 )
 
 class ModuleSymbolsLoader:
@@ -2020,7 +2020,7 @@ class Loader:
     def export_gir(self):
         return self._gir_loader.export()
 
-    def load_unit_scope_hierarchy(self, *args):
+    def load_unit_scope_hierarchy(self, *args) -> DataModel:
         return self._scope_hierarchy_loader.load(*args)
     def save_unit_scope_hierarchy(self, *args):
         return self._scope_hierarchy_loader.save(*args)
@@ -2185,7 +2185,7 @@ class Loader:
 
     def save_unit_symbol_decl_summary(self, unit_id, summary):
         return self._unit_symbol_decl_summary_loader.save(unit_id, summary)
-    def load_unit_symbol_decl_summary(self, unit_id):
+    def load_unit_symbol_decl_summary(self, unit_id) -> UnitSymbolDeclSummary:
         return self._unit_symbol_decl_summary_loader.load(unit_id)
 
     def save_max_gir_id(self, max_gir_id):
@@ -2525,6 +2525,13 @@ class Loader:
         }
         pprint.pprint(context, indent=2, width=80)
 
+    def load_method_in_class_with_method_name(self, class_id, method_name) -> int:
+        method_ids_of_class = self.convert_class_id_to_method_ids(class_id)
+        for method_id in method_ids_of_class:
+            curr_method_name = self.convert_method_id_to_method_name(method_id)
+            if curr_method_name == method_name:
+                return method_id
+        return -1
 
 
 
