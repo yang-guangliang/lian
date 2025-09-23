@@ -25,7 +25,8 @@ from lian.config.constants import (
     LIAN_INTERNAL,
     ACCESS_POINT_KIND,
     CLASS_DECL_OPERATION,
-    STATE_TYPE_KIND
+    STATE_TYPE_KIND,
+    IMPORT_GRAPH_EDGE_KIND
 )
 from lian.util.loader import Loader
 from lian.util import util
@@ -94,12 +95,20 @@ class Resolver:
                 continue
 
             # if it is an import stmt, check the target unit's import information
-            export_symbols = self.loader.load_unit_export_symbols(unit_id)
-            if export_symbols:
-                import_info = export_symbols.query(export_symbols.import_stmt == symbol_id)
-                for each_import in import_info:
-                    if self.loader.is_class_decl(each_import.symbol_id):
-                        result.append(each_import.symbol_id)
+            export_edge_node_list = self.loader.get_edges_and_nodes_with_edge_attrs_in_import_graph(
+                unit_id, {"weight": IMPORT_GRAPH_EDGE_KIND.INTERNAL_SYMBOL, "site" : symbol_id}
+            )
+            for edge_node_pair in export_edge_node_list:
+                import_symbol_id = edge_node_pair.node.symbol_id
+                if self.loader.is_class_decl(import_symbol_id):
+                    result.append(import_symbol_id)
+
+            # export_symbols = self.loader.load_unit_export_symbols(unit_id)
+            # if export_symbols:
+            #     import_info = export_symbols.query(export_symbols.import_stmt == symbol_id)
+            #     for each_import in import_info:
+            #         if self.loader.is_class_decl(each_import.symbol_id):
+            #             result.append(each_import.symbol_id)
 
         return result
 
