@@ -2413,10 +2413,8 @@ class Loader:
 
     def get_stmt_source_code(self, lines, stmt):
         """极速版获取stmt的source_code"""
-        stmt_start_line = 0
-        stmt_end_line = -1
-        stmt_start_line = int(stmt.start_row)
-        stmt_end_line = int(stmt.end_row) + 1
+        stmt_start_line = int(stmt.start_row) if not util.isna(stmt.start_row) else 0
+        stmt_end_line = int(stmt.end_row) + 1 if not util.isna(stmt.stmt_end_line) else -1
 
         stmt_source_code = []
         if stmt_end_line > 0 and stmt_end_line < len(lines):
