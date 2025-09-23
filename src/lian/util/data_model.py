@@ -350,6 +350,29 @@ class Row:
     def __iter__(self):
         return iter(self._row)
 
+    def __eq__(self, other: object) -> bool:
+        """定义两个Row实例的相等性：所有核心属性完全一致才视为相等"""
+        if not isinstance(other, Row):
+            return False  # 非Row实例直接不相等
+        if self._index != other._index:
+            return False
+        if self._schema != other._schema:
+            return False
+        if isinstance(self._row, np.ndarray) and isinstance(other._row, np.ndarray):
+            if not np.array_equal(self._row, other._row):
+                return False
+        else:
+            if self._row != other._row:
+                return False
+        return True
+
+    def __hash__(self) -> int:
+        schema_tuple = tuple(sorted(self._schema.items()))
+        if isinstance(self._row, np.ndarray):
+            row_tuple = tuple(self._row.tolist())
+        else:
+            row_tuple = tuple(self._row)
+        return hash((self._index, schema_tuple, row_tuple))
 
 class Column(pd.Series):
     def __repr__(self):
