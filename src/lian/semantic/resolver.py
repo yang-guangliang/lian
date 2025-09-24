@@ -23,6 +23,7 @@ from lian.config.constants import (
     LIAN_SYMBOL_KIND,
     LIAN_SYMBOL_KIND,
     LIAN_INTERNAL,
+    IMPORT_OPERATION,
     ACCESS_POINT_KIND,
     CLASS_DECL_OPERATION,
     STATE_TYPE_KIND,
@@ -135,7 +136,7 @@ class Resolver:
     def resolve_symbol_source(self, unit_id, method_id, stmt_id, stmt, symbol_name, source_symbol_must_be_global = False):
         """
         This function is to address the key question:
-            Given a symbol, how to find its symbol_id, i.e., where it is define?
+            Given a symbol, how to find its symbol_id, i.e., where it is declared?
 
         Our idea:
             1. Inside a unit, we can utilize scope hierarchy.
@@ -976,3 +977,40 @@ class Resolver:
             else:
                 return state1.value == state2.value
         return are_child_identical(state_index1, state_index2)
+
+    def resolve_symbol_name_to_def_stmt_in_method(self, frame:ComputeFrame, unit_id, stmt_id, symbol_name):
+        """
+            给定symbol_name和当前语句，返回在<当前方法中>：
+            1、def_stmt_ids[NEAREST]：nearest、reachable def_stmt_ids
+            2、def_stmt_ids[ALL]：all def_stmt_ids
+        """
+        NEAREST = "nearest_def_stmt_ids"
+        ALL = "all_def_stmt_ids"
+
+        # 收集symbol_name对应的symbol_ids
+        symbol_ids = set()
+        # insight: symbol_id就是该symbol的decl_stmt_id
+        symbol_decl_stmt_ids = self.loader.load_symbol_name_to_decl_ids(unit_id).get(symbol_name, set())
+        symbol_ids.update(symbol_decl_stmt_ids)
+        # import等语句(见def-use阶段)会修改defined_symbol的symbol_id，需要采集到修改后的symbol_id
+        for decl_stmt_id in symbol_decl_stmt_ids:
+            decl_stmt = self.loader.convert_stmt_id_to_stmt(decl_stmt_id)
+            if decl_stmt.operation in IMPORT_OPERATION:
+                decl_stmt_status = frame.stmt_id_to_status[decl_stmt_id]
+                new_symbol_id = frame.symbol_state_space[decl_stmt_status.defined_symbol].symbol_id
+                symbol_ids.add(new_symbol_id)
+
+        status = frame.stmt_id_to_status[stmt_id]
+        available_defs:list[SymbolDefNode] = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        def_stmt_ids = {NEAREST:set(), ALL:set()}
+
+        # 当前方法中最近的对该symbol_name的def
+        for symbol_def_node in available_defs:
+            if symbol_def_node.symbol_id in symbol_ids:
+                def_stmt_ids[NEAREST].add(symbol_def_node.stmt_id)
+        # 当前方法中所有该symbol_name的def
+        for symbol_id in symbol_ids:
+            frame_symbol_to_def:set[SymbolDefNode] = frame.symbol_to_define[symbol_id]
+            all_def_stmt_ids_of_symbol_id = {def_node.stmt_id for def_node in frame_symbol_to_def}
+            def_stmt_ids[ALL].update(all_def_stmt_ids_of_symbol_id)
+        return def_stmt_ids
