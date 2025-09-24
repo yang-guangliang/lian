@@ -2005,6 +2005,8 @@ class StmtStateAnalysis:
         # Summary  :      state-level semantic summary
 
         if len(callee_method_ids) == 0:
+            name_index = status.used_symbols[0]
+            name_symbol = self.frame.symbol_state_space[name_index]
             unsolved_state_index = self.create_state_and_add_space(
                 status, stmt_id,
                 source_symbol_id=defined_symbol.symbol_id,
@@ -2012,7 +2014,7 @@ class StmtStateAnalysis:
                 data_type = util.read_stmt_field(stmt.data_type), # LianInternal.RETURN_VALUE,
                 access_path=[AccessPoint(
                     kind=ACCESS_POINT_KIND.CALL_RETURN,
-                    key=util.read_stmt_field(defined_symbol.name)
+                    key=util.read_stmt_field(name_symbol.name)
                 )]
             )
             self.update_access_path_state_id(unsolved_state_index)
