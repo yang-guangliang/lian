@@ -62,6 +62,7 @@ CFG_BUNDLE_PATH                             = "cfg"
 SCOPE_HIERARCHY_BUNDLE_PATH                 = "scope_hierarchy"
 METHOD_INTERNAL_CALLEES_PATH                = "method_internal_callees"
 SYMBOL_NAME_TO_SCOPE_IDS_PATH               = "symbol_name_to_scope_ids"
+SYMBOL_NAME_TO_DECL_IDS_PATH                = "symbol_name_to_decl_ids"
 SCOPE_ID_TO_SYMBOL_INFO_PATH                = "scope_to_symbol_info"
 SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH        = "scope_to_available_scope_ids"
 
