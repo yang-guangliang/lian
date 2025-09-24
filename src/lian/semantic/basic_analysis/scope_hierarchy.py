@@ -46,6 +46,7 @@ class UnitScopeHierarchyAnalysis:
         self.class_id_to_class_name = {}
         self.method_id_to_method_name = {}
         self.variable_ids = set()
+        self.symbol_name_to_decl_stmts = {}
         self.import_stmt_ids = set()
         self.all_scope_ids = set()
         self.scope_space = ScopeSpace()
@@ -145,6 +146,11 @@ class UnitScopeHierarchyAnalysis:
                 )
                 self.scope_space.add(import_scope)
                 self.import_stmt_ids.add(stmt_id)
+                util.add_to_dict_with_default_set(
+                    self.symbol_name_to_decl_stmts,
+                    row.name,
+                    stmt_id
+                )
 
             elif row.operation in VARIABLE_DECL_OPERATION:
                 scope_id = self.determine_scope(row.parent_stmt_id)
@@ -158,6 +164,11 @@ class UnitScopeHierarchyAnalysis:
                     attrs = util.read_stmt_field(row.alias)
                 )
                 self.scope_space.add(variable_decl_scope)
+                util.add_to_dict_with_default_set(
+                    self.symbol_name_to_decl_stmts,
+                    row.name,
+                    stmt_id
+                )
                 self.variable_ids.add(stmt_id)
 
             elif row.operation in CASE_AS_OPERATION:
@@ -172,6 +183,11 @@ class UnitScopeHierarchyAnalysis:
                         name = util.read_stmt_field(row.name)
                     )
                     self.scope_space.add(variable_decl_scope)
+                    util.add_to_dict_with_default_set(
+                        self.symbol_name_to_decl_stmts,
+                        row.name,
+                        stmt_id
+                    )
                     self.variable_ids.add(stmt_id)
 
             elif row.operation in PARAMETER_DECL_OPERATION:
@@ -216,6 +232,11 @@ class UnitScopeHierarchyAnalysis:
                 )
                 self.scope_space.add(method_decl_scope)
                 self.all_scope_ids.add(stmt_id)
+                util.add_to_dict_with_default_set(
+                    self.symbol_name_to_decl_stmts,
+                    row.name,
+                    stmt_id
+                )
                 self.method_id_to_method_name[stmt_id] = util.read_stmt_field(row.name)
 
             elif row.operation in FOR_STMT_OPERATION:
@@ -248,6 +269,11 @@ class UnitScopeHierarchyAnalysis:
                 self.scope_space.add(class_decl_scope)
                 self.all_scope_ids.add(stmt_id)
                 self.class_id_to_class_name[stmt_id] = util.read_stmt_field(row.name)
+                util.add_to_dict_with_default_set(
+                    self.symbol_name_to_decl_stmts,
+                    row.name,
+                    stmt_id
+                )
                 self.class_id_to_members[stmt_id] = {}
 
             elif row.operation in NAMESPACE_DECL_OPERATION:
@@ -262,6 +288,11 @@ class UnitScopeHierarchyAnalysis:
                     name = util.read_stmt_field(row.name),
                 )
                 self.scope_space.add(namespace_decl_scope)
+                util.add_to_dict_with_default_set(
+                    self.symbol_name_to_decl_stmts,
+                    row.name,
+                    stmt_id
+                )
                 self.all_scope_ids.add(stmt_id)
 
             elif row.operation == "block_start":
@@ -438,6 +469,7 @@ class UnitScopeHierarchyAnalysis:
         self.loader.save_unit_id_to_import_stmt_ids(self.unit_id, self.import_stmt_ids)
         self.loader.save_all_class_id_to_members(self.class_id_to_members)
         self.loader.save_stmt_id_to_scope_id(self.stmt_id_to_scope_id_cache)
+        self.loader.save_symbol_name_to_decl_ids(self.unit_id, self.symbol_name_to_decl_stmts)
 
         for stmt_id in self.method_id_to_method_name:
             self.loader.save_method_id_to_method_name(stmt_id, self.method_id_to_method_name[stmt_id])

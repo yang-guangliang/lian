@@ -499,6 +499,27 @@ class StmtIDToScopeIDLoader:
             scope_id = row.scope_id
             self.stmt_id_to_scope_id[stmt_id] = scope_id
 
+class SymbolNameToDeclIDsLoader(GeneralLoader):
+    def query_flattened_item_when_loading(self, unit_id, bundle_data):
+        flattened_item = bundle_data.query(bundle_data.unit_id.bundle_search(unit_id))
+        return flattened_item
+
+    def flatten_item_when_saving(self, unit_id, symbol_name_to_decl_ids):
+        results = []
+        for symbol_name in symbol_name_to_decl_ids:
+            results.append({
+                "unit_id": unit_id,
+                "symbol_name": symbol_name,
+                "decl_ids": list(symbol_name_to_decl_ids[symbol_name])
+            })
+        return results
+
+    def unflatten_item_dataframe_when_loading(self, _id, item_df):
+        symbol_name_to_scope_ids = {}
+        for row in item_df:
+            symbol_name_to_scope_ids[row.symbol_name] = set(row.decl_ids)
+        return symbol_name_to_scope_ids
+
 class CallStmtIDToCallFormatInfoLoader:
     def __init__(self, path):
         self.call_stmt_id_to_call_format_info = {}
@@ -1616,6 +1637,14 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
+        self._symbol_name_to_decl_ids_loader: SymbolNameToDeclIDsLoader = SymbolNameToDeclIDsLoader(
+            options,
+            [],
+            os.path.join(self.basic_path, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
         self._scope_id_to_symbol_info_loader: ScopeIDToSymbolInfoLoader = ScopeIDToSymbolInfoLoader(
             options,
             [],
@@ -2223,6 +2252,11 @@ class Loader:
     def convert_stmt_id_to_scope_id(self, stmt_id):
         return self._stmt_id_to_scope_id_loader.load(stmt_id)
 
+    def save_symbol_name_to_decl_ids(self, unit_id, symbol_name_to_decl_ids):
+        return self._symbol_name_to_decl_ids_loader.save(unit_id, symbol_name_to_decl_ids)
+    def load_symbol_name_to_decl_ids(self, unit_id):
+        return self._symbol_name_to_decl_ids_loader.load(unit_id)
+
     # def save_symbol_name_to_scope_ids(self, *args):
     #     return self._symbol_name_to_scope_ids_loader.save(*args)
     # def load_symbol_name_to_scope_ids(self, *args):
@@ -2556,7 +2590,6 @@ class Loader:
             if curr_method_name == method_name:
                 return method_id
         return -1
-
 
 
 
