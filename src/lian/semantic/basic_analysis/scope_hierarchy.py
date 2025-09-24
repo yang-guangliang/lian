@@ -110,6 +110,7 @@ class UnitScopeHierarchyAnalysis:
         self.all_scope_ids.add(root_scope_id)
 
         for stmt_id in sorted(self.stmt_id_to_gir.keys()):
+            scope_id = -1
             row = self.stmt_id_to_gir[stmt_id]
             if row.operation == "package_stmt":
                 scope_id = self.determine_scope(row.parent_stmt_id)
@@ -275,6 +276,11 @@ class UnitScopeHierarchyAnalysis:
                 self.scope_space.add(block_scope)
                 self.all_scope_ids.add(stmt_id)
 
+            else:
+                # 保证记录所有stmt_id -> scope_id
+                scope_id = self.determine_scope(row.parent_stmt_id)
+                self.stmt_id_to_scope_id_cache[stmt_id] = scope_id
+
     def correct_scopes(self):
         for stmt_id in self.class_stmt_ids:
             stmt = self.access_by_stmt_id(stmt_id)
@@ -284,6 +290,7 @@ class UnitScopeHierarchyAnalysis:
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
                     item.scope_id = stmt_id
+                    self.stmt_id_to_scope_id_cache[variable_decl.stmt_id] = stmt_id
 
                     util.add_to_dict_with_default_set(
                         self.class_id_to_class_field_ids, stmt_id, variable_decl.stmt_id
@@ -295,6 +302,7 @@ class UnitScopeHierarchyAnalysis:
                 for method_decl in method_decl_stmts:
                     item = self.scope_space.find_first_by_id(method_decl.stmt_id)
                     item.scope_id = stmt_id
+                    self.stmt_id_to_scope_id_cache[method_decl.stmt_id] = stmt_id
 
                     util.add_to_dict_with_default_set(
                         self.class_id_to_class_method_ids, stmt_id, method_decl.stmt_id
@@ -306,6 +314,7 @@ class UnitScopeHierarchyAnalysis:
                 for class_decl in class_decl_stmts:
                     item = self.scope_space.find_first_by_id(class_decl.stmt_id)
                     item.scope_id = stmt_id
+                    self.stmt_id_to_scope_id_cache[class_decl.stmt_id] = stmt_id
 
                     util.add_to_dict_with_default_set(
                         self.class_id_to_class_method_ids, stmt_id, class_decl.stmt_id
@@ -325,6 +334,7 @@ class UnitScopeHierarchyAnalysis:
                     parameter_ids.add(parameter_decl.stmt_id)
                     item = self.scope_space.find_first_by_id(parameter_decl.stmt_id)
                     item.scope_id = stmt_id
+                    self.stmt_id_to_scope_id_cache[parameter_decl.stmt_id] = stmt_id
 
             self.method_id_to_parameter_ids[stmt_id] = parameter_ids
 
@@ -339,6 +349,7 @@ class UnitScopeHierarchyAnalysis:
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
                     item.scope_id = stmt_id
+                    self.stmt_id_to_scope_id_cache[variable_decl.stmt_id] = stmt_id
 
     def summarize_symbol_decls(self):
         symbol_name_to_scope_ids = {}
@@ -426,6 +437,7 @@ class UnitScopeHierarchyAnalysis:
         self.loader.save_unit_id_to_variable_ids(self.unit_id, self.variable_ids)
         self.loader.save_unit_id_to_import_stmt_ids(self.unit_id, self.import_stmt_ids)
         self.loader.save_all_class_id_to_members(self.class_id_to_members)
+        self.loader.save_stmt_id_to_scope_id(self.stmt_id_to_scope_id_cache)
 
         for stmt_id in self.method_id_to_method_name:
             self.loader.save_method_id_to_method_name(stmt_id, self.method_id_to_method_name[stmt_id])
