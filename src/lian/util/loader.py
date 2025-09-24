@@ -472,6 +472,34 @@ class UnitSymbolDeclSummaryLoader:
         self.scope_id_to_symbol_info_loader.export()
         self.scope_id_to_available_scope_ids_loader.export()
 
+class StmtIDToScopeIDLoader:
+    def __init__(self, path):
+        self.stmt_id_to_scope_id = {}
+        self.path = path
+
+    def save(self, stmt_id_to_scope_id):
+        if len(stmt_id_to_scope_id) == 0:
+            return
+        self.stmt_id_to_scope_id.update(stmt_id_to_scope_id)
+
+    def load(self, stmt_id):
+        return self.stmt_id_to_scope_id.get(stmt_id, -1)
+
+    def export(self):
+        if len(self.stmt_id_to_scope_id) == 0:
+            return
+        results = []
+        for (stmt_id, scope_id) in self.stmt_id_to_scope_id.items():
+            results.append([stmt_id, scope_id])
+        DataModel(results, columns = schema.stmt_id_to_scope_id_schema).save(self.path)
+
+    def restore(self):
+        df = DataModel().load(self.path)
+        for row in df:
+            stmt_id = row.stmt_id
+            scope_id = row.scope_id
+            self.stmt_id_to_scope_id[stmt_id] = scope_id
+
 class CallStmtIDToCallFormatInfoLoader:
     def __init__(self, path):
         self.call_stmt_id_to_call_format_info = {}
@@ -1669,6 +1697,10 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
+        self._stmt_id_to_scope_id_loader = StmtIDToScopeIDLoader(
+            os.path.join(self.basic_path, config.STMT_ID_TO_SCOPE_ID_PATH)
+        )
+
         self._symbol_bit_vector_manager_p3_loader = BitVectorManagerLoader(
             options,
             # schema.bit_vector_manager_schema,
@@ -1943,15 +1975,16 @@ class Loader:
         stmt_gir = unit_gir.query_first(unit_gir.stmt_id.eq(stmt_id))
         return stmt_gir
     
-    def load_stmt_scope(self, stmt_id):
-        if stmt_id <= 0:
+    def load_scope_by_id(self, scope_id):
+        """返回指定id对应的scope"""
+        if scope_id <= 0:
             return None
-        if self.stmt_scope_cache.contain(stmt_id):
-            return self.stmt_scope_cache.get(stmt_id)
-        unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+        if self.stmt_scope_cache.contain(scope_id):
+            return self.stmt_scope_cache.get(scope_id)
+        unit_id = self.convert_stmt_id_to_unit_id(scope_id)
         scope_data = self.load_unit_scope_hierarchy(unit_id)
-        stmt_scope = scope_data.query_first(scope_data.stmt_id == stmt_id)
-        self.stmt_scope_cache.put(stmt_id, stmt_scope)
+        stmt_scope = scope_data.query_first(scope_data.stmt_id == scope_id)
+        self.stmt_scope_cache.put(scope_id, stmt_scope)
         return stmt_scope
 
     def export(self):
@@ -2198,6 +2231,11 @@ class Loader:
         return self._unique_symbol_id_assigner_loader.assign_new_unique_positive_id()
     def assign_new_unique_negative_id(self):
         return self._unique_symbol_id_assigner_loader.assign_new_unique_negative_id()
+
+    def save_stmt_id_to_scope_id(self, stmt_id_to_scope_id_cache):
+        return self._stmt_id_to_scope_id_loader.save(stmt_id_to_scope_id_cache)
+    def convert_stmt_id_to_scope_id(self, stmt_id):
+        return self._stmt_id_to_scope_id_loader.load(stmt_id)
 
     # def save_symbol_name_to_scope_ids(self, *args):
     #     return self._symbol_name_to_scope_ids_loader.save(*args)

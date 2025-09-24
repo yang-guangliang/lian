@@ -16,6 +16,11 @@ scope_space_schema = [
     "calls"
 ]
 
+stmt_id_to_scope_id_schema = [
+    "stmt_id",
+    "scope_id"
+]
+
 class_id_to_name_schema = [
     "class_id",
     "name"

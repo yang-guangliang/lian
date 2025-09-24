@@ -85,6 +85,7 @@ CLASS_ID_TO_MEMBERS_PATH                    = "class_to_method_id"
 CLASS_METHODS_PATH                          = "class_methods"
 CLASS_ID_TO_CLASS_NAME_PATH                 = "class_id_to_name"
 METHOD_ID_TO_METHOD_NAME_PATH               = "method_id_to_name"
+STMT_ID_TO_SCOPE_ID_PATH                    = "stmt_id_to_scope_id"
 
 CALL_GRAPH_BUNDLE_PATH_P1                   = "call_graph_p1"
 CALL_GRAPH_BUNDLE_PATH_P2                   = "call_graph_p2"
