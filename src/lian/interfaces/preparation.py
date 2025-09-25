@@ -195,7 +195,6 @@ class WorkspaceBuilder:
         for subdir in self.required_subdirs:
             subdir_path = os.path.join(workspace_path, subdir)
             if not os.path.exists(subdir_path):
-                print(subdir_path)
                 continue
             subdir_bak_path = os.path.join(bak_subdir, subdir)
             shutil.copytree(subdir_path, subdir_bak_path)

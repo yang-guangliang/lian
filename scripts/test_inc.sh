@@ -30,5 +30,5 @@ $CMD $OPTIONS $@
 
 echo "============= Output dataframe files =============="
 
-python3 $ROOT_DIR/scripts/dfview.py $OUTPUT_PATH
+#python3 $ROOT_DIR/scripts/dfview.py $OUTPUT_PATH
 

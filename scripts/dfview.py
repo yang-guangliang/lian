@@ -164,6 +164,8 @@ def collect_all_file_paths(directory):
             filepath = os.path.join(root, filename)
             if os.path.islink(filepath):
                 continue
+            if "bak" in filepath:
+                continue
             if os.path.isfile(filepath):
                 file_paths.append(filepath)
     return file_paths

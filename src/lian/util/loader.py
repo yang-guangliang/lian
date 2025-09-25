@@ -39,6 +39,7 @@ from lian.semantic.semantic_structs import (
     AccessPoint,
     IndexMapInSummary,
     MethodSummaryInstance,
+    MethodInClass,
     APath,
     SymbolNodeInImportGraph
 )
@@ -669,6 +670,18 @@ class MethodsInClassLoader(UnitIDToMethodIDLoader):
                 results.append([method.unit_id, method.class_id, method.name, method.stmt_id])
         DataModel(results, columns = schema.class_id_to_method_id_schema).save(self.path)
 
+    def restore(self):
+        df = DataModel().load(self.path)
+        for row in df:
+            unit_id, class_id, method_name, method_stmt_id = row.raw_data()
+            method = MethodInClass(
+                unit_id, class_id, method_name, method_stmt_id
+            )
+            self.stmt_id_to_unit_id[method] = class_id
+            if class_id not in self.unit_id_to_stmt_ids:
+                self.unit_id_to_stmt_ids[class_id] = []
+            self.unit_id_to_stmt_ids[class_id].append(method)
+    
 class ExternalSymbolIDCollectionLoader:
     def __init__(self, path):
         self.path = path
@@ -1941,6 +1954,7 @@ class Loader:
 
     def restore(self):
         for loader in self._all_loaders:
+            print(type(loader))
             if hasattr(loader, 'restore_indexing'):
                 #util.debug(loader.__class__.__name__ + " is restoring index")
                 try:
