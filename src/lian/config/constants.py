@@ -10,7 +10,8 @@ CLASS_DECL_OPERATION = {
     "struct_decl",
     "trait_decl",
     "union_decl",
-    "implement_decl"
+    "implement_decl",
+    "type_alias_decl"
 }
 
 NAMESPACE_DECL_OPERATION = {
@@ -36,7 +37,7 @@ FOR_STMT_OPERATION = {
 
 VARIABLE_DECL_OPERATION = {
     "variable_decl",
-    "type_alias_decl"
+    #"type_alias_decl"
 }
 
 CASE_AS_OPERATION = {
