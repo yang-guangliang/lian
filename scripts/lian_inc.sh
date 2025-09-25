@@ -8,7 +8,7 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 
 #CMD="python -W ignore"s
 CMD="python3 $ROOT_DIR/src/lian/interfaces/main.py"
-OPTIONS="run"
+OPTIONS="run --lang python --incremental"
 
 if [ $# -eq 0 ]; then
     $CMD $OPTIONS --help

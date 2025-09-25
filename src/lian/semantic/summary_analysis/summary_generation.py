@@ -836,7 +836,7 @@ class SemanticSummaryGeneration:
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling, unwanted_def_states = change_flag.unwanted_def_states)
+        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)#, unwanted_def_states = change_flag.unwanted_def_states)
         # print("new_out_states",new_out_states)
 
         self.collect_def_states_amount_each_stmt(stmt_id, len(new_out_states),in_states)

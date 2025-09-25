@@ -5,6 +5,7 @@ import re
 import shutil
 import tempfile
 import subprocess
+import hashlib
 from lian.util import util
 from lian.config import constants, config, lang_config
 import lian.util.data_model as dm
@@ -45,19 +46,9 @@ class WorkspaceBuilder:
             "syncstream", "any", "optional", "variant"
         ]
 
-    def manage_directory(self):
-        path = self.options.workspace
+    def cleanup_directory(self, path):
         if not os.path.exists(path):
-            os.makedirs(path)
-            if config.DEBUG_FLAG:
-                util.debug(f"Directory created at: {path}")
             return
-
-        if not self.options.force:
-            util.error_and_quit(f"The target directory already exists: {path}. Use --force/-f to overwrite.")
-        if config.DEBUG_FLAG:
-            util.warn(f"With the force mode flag, the workspace is being rewritten: {path}")
-
         for filename in os.listdir(path):
             file_path = os.path.join(path, filename)
             try:
@@ -67,6 +58,31 @@ class WorkspaceBuilder:
                     shutil.rmtree(file_path)
             except Exception as e:
                 util.error_and_quit(f"Failed to delete {file_path}. Reason: {e}")
+
+    def manage_directory(self):
+        path = self.options.workspace
+        if not os.path.exists(path):
+            os.makedirs(path)
+            if config.DEBUG_FLAG:
+                util.debug(f"Directory created at: {path}")
+            return
+
+        if not self.options.force:
+            if not self.options.incremental:
+                util.error_and_quit(f"The target directory already exists: {path}. Use --force/-f to overwrite.")
+        else:
+            if config.DEBUG_FLAG:
+                util.warn(f"With the force mode flag, the workspace is being rewritten: {path}")
+
+            for filename in os.listdir(path):
+                file_path = os.path.join(path, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    util.error_and_quit(f"Failed to delete {file_path}. Reason: {e}")
 
     def obtain_file_extension(self, file_path):
         return os.path.splitext(file_path)[1].lower()
@@ -168,9 +184,33 @@ class WorkspaceBuilder:
                     shutil.copy2(src_file, dst_file)
                 self.dst_file_to_src_file[dst_file] = src_file
 
+    def backup_workspace(self):
+        workspace_path = self.options.workspace
+        if not os.path.exists(workspace_path):
+            return
+        bak_subdir = os.path.join(workspace_path, config.BACKUP_DIR)
+        
+        self.cleanup_directory(bak_subdir)
+        os.makedirs(bak_subdir, exist_ok = True)
+        for subdir in self.required_subdirs:
+            subdir_path = os.path.join(workspace_path, subdir)
+            if not os.path.exists(subdir_path):
+                print(subdir_path)
+                continue
+            subdir_bak_path = os.path.join(bak_subdir, subdir)
+            shutil.copytree(subdir_path, subdir_bak_path)
+        module_symbol_path = os.path.join(workspace_path, config.MODULE_SYMBOLS_PATH)
+        module_symbol_bak_path = os.path.join(bak_subdir, config.MODULE_SYMBOLS_PATH)
+        if os.path.exists(module_symbol_path):
+            shutil.copy2(module_symbol_path, module_symbol_bak_path)    
+
     def run(self):
         workspace_path = self.options.workspace
         self.manage_directory()
+
+        # backup the previous workspace. the backup should be empty if forced mode is used.
+        self.backup_workspace()
+        # util.error_and_quit("Q")
         #build the sub-directories
         for subdir in self.required_subdirs:
             subdir_path = os.path.join(workspace_path, subdir)
@@ -212,6 +252,13 @@ class ModuleSymbolsBuilder:
         self.global_module_id += 1
         return result
 
+    def get_sha256(self, file_path):
+        sha256 = hashlib.sha256()
+        f = open(file_path, "rb")
+        for chunk in iter(lambda: f.read(4096), b""):
+            sha256.update(chunk)
+        return sha256.hexdigest()
+
     def scan_modules_by_scanning_workspace_dir(self, module_path, prefix_path,  parent_module_id = 0, is_extern = False):
         if util.is_empty(module_path):
             return
@@ -240,6 +287,8 @@ class ModuleSymbolsBuilder:
                 exported_name = entry.path.replace(prefix_path, "")
                 exported_name = os.path.splitext(exported_name)[0]
                 exported_name = exported_name.replace(os.path.sep, ".")
+                
+                unit_hash = self.get_sha256(entry.path)
 
                 self.module_symbol_results.append({
                     "module_id": unit_id,
@@ -253,6 +302,7 @@ class ModuleSymbolsBuilder:
                     "original_path": self.dst_file_to_src_file.get(entry.path, ""),
                     "is_extern": is_extern,
                     "exported_name": exported_name,
+                    "hash": unit_hash
                 })
 
     def scan_modules_by_scanning_module_symbol_table(self):
