@@ -2595,6 +2595,9 @@ class Loader:
         """返回扫描的根路径"""
         return getattr(self.options, "in_path", "")
 
+    def load_workspace_root_path(self):
+        workspace_root = getattr(self.options, "workspace", "")
+        return workspace_root + "/src" if workspace_root != "" else ""
 
 
 
