@@ -38,7 +38,7 @@ class UnitLevelIncrementalChecker:
 
     def revive_data_from_dict(self, data, Classname):
         empty_object = Classname()
-        return empty_object.construct_from_dict(data)
+        return empty_object.from_dict(data)
 
     def revive_data_from_dict_list(self, dict_list, Classname):
         result = []

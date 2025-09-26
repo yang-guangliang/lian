@@ -416,7 +416,7 @@ class Scope(BasicElement):
         }
         return row_dict
 
-    def construct_from_dict(self, d: dict):
+    def from_dict(self, d: dict):
         for k, v in d.items():
             if hasattr(self, k):
                 setattr(self, k, v)

@@ -15,7 +15,7 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 # TARGET_PATH=$(realpath "$1")
 
 #CMD="python -W ignore"s
-CMD="python3 $ROOT_DIR/src/lian/interfaces/main.py"
+CMD="python $ROOT_DIR/src/lian/interfaces/main.py"
 OUTPUT_PATH="$ROOT_DIR/tests/lian_workspace"
 # OPTIONS="run -f -p -d -l python,java,c -w $OUTPUT_PATH"
 OPTIONS="run  --noextern --incremental -d -l python,php,javascript,java -w $OUTPUT_PATH"
@@ -30,5 +30,5 @@ $CMD $OPTIONS $@
 
 echo "============= Output dataframe files =============="
 
-# python3 $ROOT_DIR/scripts/dfview.py $OUTPUT_PATH
+# python $ROOT_DIR/scripts/dfview.py $OUTPUT_PATH
 

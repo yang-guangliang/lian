@@ -79,11 +79,17 @@ class BasicSemanticAnalysis:
         }
         self.loader.save_method_id_to_method_decl_format(method_id, method_format)
 
-    def analyze_stmt_def_use(self, method_id, import_analysis, external_symbol_id_collection):
+    def analyze_stmt_def_use(self, method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed = False):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
-        cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
+        
+        if unit_is_analyzed:
+            cfg = self.incremental_checker.fetch_cfg(method_id)
+            self.loader.save_method_cfg(method_id, cfg)
+        else:
+            cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
+        
         all_cfg_nodes = set(cfg.nodes())
 
         self.analyze_and_save_method_decl_format(method_id, method_decl_stmt, parameter_decls)
@@ -195,16 +201,16 @@ class BasicSemanticAnalysis:
             unit_gir = self.loader.load_unit_gir(unit_id)
 
             unit_scope = None
-            incremental_flag = False
+            unit_is_analyzed = False
             if self.options.incremental:
                 # if self.options.debug:
                 #     util.debug("Scope incremental:")
                 previous_scope_analysis_pack = self.incremental_checker.previous_scope_hierarchy_analysis_results(unit_info)
                 if previous_scope_analysis_pack:
-                    incremental_flag = True
+                    unit_is_analyzed = True
                     unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).reuse_analysis(previous_scope_analysis_pack)
 
-            if not incremental_flag:
+            if not unit_is_analyzed:
                 unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).analyze()
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
             if not self.options.noextern:
@@ -227,13 +233,17 @@ class BasicSemanticAnalysis:
         for unit_id in unit_list:
             external_symbol_id_collection = {}
             all_unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
+            if self.options.incremental:
+                unit_is_analyzed = (self.incremental_checker.check_unit_id_analyzed(unit_id) is not None)
+            else: 
+                unit_is_analyzed = False
             for method_id in all_unit_methods:
                 if self.options.strict_parse_mode:
                     external_symbol_id_collection = {}
-                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection)
+                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed)
                     self.loader.save_method_external_symbol_id_collection(method_id, external_symbol_id_collection)
                 else:
-                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection)
+                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed)
         self.loader.save_call_graph_p1(self.basic_call_graph)
 
         self.group_methods_by_callee_types()

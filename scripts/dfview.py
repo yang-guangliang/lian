@@ -212,8 +212,8 @@ def read_df(all_files, output_path):
         if file_path.endswith(".indexing"):
             continue
         # if "cfg" in os.path.basename(file_path):
-            # process_graph_files(all_files, file_path, output_path)
-            # continue
+        #     process_graph_files(all_files, file_path, output_path)
+        #     continue
 
         try:
             df = pd.read_feather(file_path)
