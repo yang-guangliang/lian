@@ -2604,13 +2604,14 @@ class Loader:
         }
         pprint.pprint(context, indent=2, width=80)
 
-    def load_method_in_class_with_method_name(self, class_id, method_name) -> int:
+    def load_method_in_class_with_method_name(self, class_id, method_name) -> set[int]:
         method_ids_of_class = self.convert_class_id_to_method_ids(class_id)
+        res = set()
         for method_id in method_ids_of_class:
             curr_method_name = self.convert_method_id_to_method_name(method_id)
             if curr_method_name == method_name:
-                return method_id
-        return -1
+                res.add(method_id)
+        return res
 
     def load_root_path(self):
         """返回扫描的根路径"""
