@@ -2612,8 +2612,6 @@ class Loader:
                 return method_id
         return -1
 
-
-
     def load_root_path(self):
         """返回扫描的根路径"""
         return getattr(self.options, "in_path", "")
