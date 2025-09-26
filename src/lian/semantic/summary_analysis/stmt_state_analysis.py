@@ -735,16 +735,19 @@ class StmtStateAnalysis:
         tmp_value1 = value1
         tmp_value2 = value2
 
+        is_bool = True if operator in ["and", "or"] else False
         is_string = False
         if data_type1 == LIAN_INTERNAL.STRING:
+            value1 = str(value1)
             if not value1.isdigit():
                 is_string = True
         if not is_string:
             if data_type2 == LIAN_INTERNAL.STRING:
+                value2 = str(value2)
                 if not value2.isdigit():
                     is_string = True
 
-        if is_string:
+        if not is_bool and is_string:
             tmp_value1 = f'"{tmp_value1}"'
             tmp_value2 = f'"{tmp_value2}"'
             data_type = LIAN_INTERNAL.STRING
