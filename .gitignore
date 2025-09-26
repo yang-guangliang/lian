@@ -318,7 +318,7 @@ results/
 *.bc
 *.ll
 
-./tests/lian_workspace/
-./tests/src 
-./tests/inc
-./*.sh
+/tests/lian_workspace/
+/tests/src*/ 
+/tests/inc/
+/*.sh
