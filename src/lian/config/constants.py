@@ -372,6 +372,9 @@ LIAN_INTERNAL = util.SimpleEnum({
     "PROTO"                         : "%__proto__",
 
     "CASE_AS"                       : "%case_as",
+
+    # Root_Scope_id
+    "ROOT_SCOPE"                    : 0
 })
 
 JS_PROTOTYPE = util.SimpleEnum({

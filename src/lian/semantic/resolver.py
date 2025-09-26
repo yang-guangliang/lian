@@ -1038,3 +1038,23 @@ class Resolver:
             all_def_stmt_ids_of_symbol_id = {def_node.stmt_id for def_node in frame_symbol_to_def}
             def_stmt_ids[ALL].update(all_def_stmt_ids_of_symbol_id)
         return def_stmt_ids
+
+    def find_symbol_global_def_in_unit(self, unit_id, symbol_name):
+        """找到unit中对symbol_name的全局定义(函数/类)"""
+        unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
+        root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE_ID, {})
+        global_defs = {
+            LIAN_SYMBOL_KIND.CLASS_KIND  : set(),
+            LIAN_SYMBOL_KIND.METHOD_KIND : set(),
+        }
+        # TODO：加上implicit_root_scope(比如if name=="main"下的scope定义)
+        if symbol_name not in root_scope_symbol_info: return global_defs  # 只要定义在顶层scope中的
+        symbol_row_id = root_scope_symbol_info[symbol_name]
+        unit_class_ids: list[int] = self.loader.convert_unit_id_to_class_ids(unit_id)
+        unit_methods_ids: list[int] = self.loader.convert_unit_id_to_method_ids(unit_id)
+        """symbol是该文件中位于顶层作用域的类或函数"""
+        if symbol_row_id in unit_class_ids:
+            global_defs[LIAN_SYMBOL_KIND.CLASS_KIND].add(symbol_row_id)
+        if symbol_row_id in unit_methods_ids:
+            global_defs[LIAN_SYMBOL_KIND.METHOD_KIND].add(symbol_row_id)
+        return global_defs
