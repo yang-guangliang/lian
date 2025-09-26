@@ -38,6 +38,7 @@ from lian.semantic.basic_analysis.basic_analysis import BasicSemanticAnalysis
 from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
 from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
+from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 
 class Lian:
     def __init__(self):
@@ -114,6 +115,8 @@ class Lian:
         self.app_manager.register_extern_system(self.extern_system)
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)
+        if self.options.incremental:
+            UnitLevelIncrementalChecker.init(self.options, self.app_manager, self.loader)
         if not self.options.noextern:
             self.extern_system.init()
 

@@ -160,10 +160,13 @@ def init():
 def collect_all_file_paths(directory):
     file_paths = []
     for root, directories, files in os.walk(directory):
+        if "bak" in directories:
+            directories.remove("bak")
         for filename in files:
             filepath = os.path.join(root, filename)
             if os.path.islink(filepath):
                 continue
+            
             if os.path.isfile(filepath):
                 file_paths.append(filepath)
     return file_paths

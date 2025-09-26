@@ -275,6 +275,18 @@ class DataModel:
         self.refresh_rows()
         if config.DEBUG_FLAG:
             util.debug(self._rows)
+    
+    def convert_to_dict_list(self):
+        df = self._data
+        records = df.to_dict(orient="records")
+        cleaned_records = []
+        for row in records:
+            cleaned_row = {}
+            for key, value in row.items():
+                if pd.notnull(value):
+                    cleaned_row[key] = value
+            cleaned_records.append(cleaned_row)
+        return cleaned_records
 
     def get_schema(self):
         return self._data.columns
