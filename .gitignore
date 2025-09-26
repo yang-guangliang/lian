@@ -319,3 +319,4 @@ results/
 *.ll
 
 /tests/inc/
+/tests/incremental/
