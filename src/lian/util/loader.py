@@ -2011,6 +2011,7 @@ class Loader:
         if self.stmt_scope_cache.contain(scope_id):
             return self.stmt_scope_cache.get(scope_id)
         unit_id = self.convert_stmt_id_to_unit_id(scope_id)
+        if unit_id < 0: return None # 可能的，比如import的fake节点的symbol_id是虚构的
         scope_data = self.load_unit_scope_hierarchy(unit_id)
         stmt_scope = scope_data.query_first(scope_data.stmt_id == scope_id)
         self.stmt_scope_cache.put(scope_id, stmt_scope)
