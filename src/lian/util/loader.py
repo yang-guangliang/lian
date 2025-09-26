@@ -2250,7 +2250,13 @@ class Loader:
     def save_stmt_id_to_scope_id(self, stmt_id_to_scope_id_cache):
         return self._stmt_id_to_scope_id_loader.save(stmt_id_to_scope_id_cache)
     def convert_stmt_id_to_scope_id(self, stmt_id):
-        return self._stmt_id_to_scope_id_loader.load(stmt_id)
+        scope_id = self._stmt_id_to_scope_id_loader.load(stmt_id)
+        if scope_id == -1:
+            # 可能自己就是scope
+            self_scope = self.load_scope_by_id(stmt_id)
+            if self_scope:
+                scope_id = self_scope.scope_id
+        return scope_id
 
     def save_symbol_name_to_decl_ids(self, unit_id, symbol_name_to_decl_ids):
         return self._symbol_name_to_decl_ids_loader.save(unit_id, symbol_name_to_decl_ids)
