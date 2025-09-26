@@ -389,7 +389,7 @@ class LangAnalysis:
 
         units_to_analyze = all_units
         if self.options.incremental:
-            unit_level_checker = UnitLevelIncrementalChecker.unit_level_checker()
+            unit_level_checker = UnitLevelIncrementalChecker.unit_level_incremental_checker()
             units_to_analyze = []
             for unit_info in all_units:
                 current_node_id, previous_results = unit_level_checker.previous_lang_analysis_results(unit_info, current_node_id)#

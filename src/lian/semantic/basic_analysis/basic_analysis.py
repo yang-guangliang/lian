@@ -30,6 +30,7 @@ from lian.semantic.semantic_structs import (
     SimplyGroupedMethodTypes,
 )
 from lian.util.loader import Loader
+from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.semantic.resolver import Resolver
 from lian.semantic.basic_analysis.scope_hierarchy import UnitScopeHierarchyAnalysis
 from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
@@ -38,6 +39,7 @@ from lian.semantic.basic_analysis.type_hierarchy import TypeHierarchy
 from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
 from lian.semantic.basic_analysis.control_flow import ControlFlowAnalysis
 from lian.semantic.basic_analysis.stmt_def_use_analysis import StmtDefUseAnalysis
+
 
 class BasicSemanticAnalysis:
     def __init__(self, lian):
@@ -51,7 +53,9 @@ class BasicSemanticAnalysis:
         self.entry_points = EntryPointGenerator(lian.options, lian.app_manager, lian.loader)
         self.basic_call_graph = BasicCallGraph()
         self.analyzed_method_ids = set()
-
+        self.incremental_checker = None
+        if self.options.incremental:
+            self.incremental_checker = UnitLevelIncrementalChecker.unit_level_incremental_checker()
 
     def config(self):
         pass
@@ -189,7 +193,19 @@ class BasicSemanticAnalysis:
             unit_id = unit_info.module_id
             unit_list.append(unit_id)
             unit_gir = self.loader.load_unit_gir(unit_id)
-            unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).analyze()
+
+            unit_scope = None
+            incremental_flag = False
+            if self.options.incremental:
+                # if self.options.debug:
+                #     util.debug("Scope incremental:")
+                previous_scope_analysis_pack = self.incremental_checker.previous_scope_hierarchy_analysis_results(unit_info)
+                if previous_scope_analysis_pack:
+                    incremental_flag = True
+                    unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).reuse_analysis(previous_scope_analysis_pack)
+
+            if not incremental_flag:
+                unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).analyze()
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
             if not self.options.noextern:
                 self.extern_system.install_mock_code_file(unit_info, unit_scope)

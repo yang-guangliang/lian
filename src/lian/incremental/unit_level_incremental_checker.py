@@ -29,7 +29,7 @@ class UnitLevelIncrementalChecker:
     def init(cls, options, app_manager, current_loader):
         cls._instance = UnitLevelIncrementalChecker(options, app_manager, current_loader)
     @classmethod
-    def unit_level_checker(cls):
+    def unit_level_incremental_checker(cls):
         if cls._instance is None:
             util.error_and_quit("Accessing a nonexistent incremental checker instance")
         # util.debug("Singleton called")
