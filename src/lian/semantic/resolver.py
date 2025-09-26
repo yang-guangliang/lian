@@ -132,9 +132,26 @@ class Resolver:
                 )
         return SourceSymbolScopeInfo(unit_id, symbol_id)
 
-    # locate symbol to (unit_id, decl_stmt_id]
-    def resolve_symbol_source(self, unit_id, method_id, stmt_id, stmt, symbol_name, source_symbol_must_be_global = False):
+    def resolve_implicit_root_scopes(self, unit_id):
         """
+            找到指定unit中的implicit_root_scope
+             - implicit_root_scope：
+                既在顶层scope下，又是BLOCK scope类型(比如.py的 "if name == __main__"，实际上里面定义的变量是在顶层作用域)
+        """
+        unit_scope_space_dm = self.loader.load_unit_scope_hierarchy(unit_id)
+        query_implicit_root_scope_condition =(
+            (unit_scope_space_dm.get_data()["scope_id"] == 0) &
+            (unit_scope_space_dm.get_data()["scope_kind"] == LIAN_SYMBOL_KIND.BLOCK_KIND)
+        )
+        implicit_root_scopes = set(unit_scope_space_dm.query(
+            condition_or_index = query_implicit_root_scope_condition,
+            column_name = "stmt_id"
+        ).tolist())
+        return implicit_root_scopes
+
+    def resolve_symbol_source_decl(self, unit_id, method_id, stmt_id, stmt, symbol_name, source_symbol_must_be_global = False):
+        """
+        locate symbol to (unit_id, decl_stmt_id]
         This function is to address the key question:
             Given a symbol, how to find its symbol_id, i.e., where it is declared?
 
