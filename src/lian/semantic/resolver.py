@@ -154,7 +154,7 @@ class Resolver:
 
     def resolve_symbol_source_decl(self, unit_id, stmt_id, symbol_name, source_symbol_must_be_global = False):
         """
-        给定symbol_name 解析其最近的声明位置
+        给定symbol_name，解析其最近的声明位置
         This function is to address the key question:
             Given a symbol, how to find its symbol_id, i.e., where it is declared?
 
@@ -1042,7 +1042,7 @@ class Resolver:
     def find_symbol_global_def_in_unit(self, unit_id, symbol_name):
         """找到unit中对symbol_name的全局定义(函数/类)"""
         unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
-        root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE_ID, {})
+        root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE, {})
         global_defs = {
             LIAN_SYMBOL_KIND.CLASS_KIND  : set(),
             LIAN_SYMBOL_KIND.METHOD_KIND : set(),
