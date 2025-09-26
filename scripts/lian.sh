@@ -7,7 +7,7 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 # TARGET_PATH=$(realpath "$1")
 
 #CMD="python -W ignore"s
-CMD="python3 $ROOT_DIR/src/lian/interfaces/main.py"
+CMD="python $ROOT_DIR/src/lian/interfaces/main.py"
 OPTIONS="run"
 
 if [ $# -eq 0 ]; then

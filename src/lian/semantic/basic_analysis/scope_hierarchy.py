@@ -421,12 +421,12 @@ class UnitScopeHierarchyAnalysis:
     def reuse_analysis(self, previous_scope_analysis_results_pack):
         pack = previous_scope_analysis_results_pack # alias
         self.init()
-        for k, v in pack.items():
-            if hasattr(self, k):
-                setattr(self, k, v)
+        for key, value in pack.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
             else:
-                if k == "unit_symbol_decl_summary":
-                    self.loader.save_unit_symbol_decl_summary(self.unit_id, v)
+                if key == "unit_symbol_decl_summary":
+                    self.loader.save_unit_symbol_decl_summary(self.unit_id, value)
         return self.save_necessary_info()
     
     def save_necessary_info(self):

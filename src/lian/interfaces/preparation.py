@@ -208,7 +208,9 @@ class WorkspaceBuilder:
         self.manage_directory()
 
         # backup the previous workspace. the backup should be empty if forced mode is used.
-        self.backup_workspace()
+        if self.options.incremental:
+            util.debug("Running under incremental mode, backing up previous workspace")
+            self.backup_workspace()
         # util.error_and_quit("Q")
         #build the sub-directories
         for subdir in self.required_subdirs:
@@ -251,7 +253,7 @@ class ModuleSymbolsBuilder:
         self.global_module_id += 1
         return result
 
-    def get_sha256(self, file_path):
+    def file_hash(self, file_path):
         sha256 = hashlib.sha256()
         f = open(file_path, "rb")
         for chunk in iter(lambda: f.read(4096), b""):
@@ -287,7 +289,7 @@ class ModuleSymbolsBuilder:
                 exported_name = os.path.splitext(exported_name)[0]
                 exported_name = exported_name.replace(os.path.sep, ".")
                 
-                unit_hash = self.get_sha256(entry.path)
+                unit_hash = self.file_hash(entry.path)
 
                 self.module_symbol_results.append({
                     "module_id": unit_id,

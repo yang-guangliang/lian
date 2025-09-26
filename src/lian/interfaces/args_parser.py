@@ -36,7 +36,7 @@ class ArgsParser:
             parser.add_argument("-a", "--apps", default=[], action='append', help="Config the <plugin> dir")
             parser.add_argument('-l', "--lang", default="", type=str, help='programming lang', required=True)
             parser.add_argument("--strict-parse-mode", action="store_true", help="Enable the strict way to parse code")
-            parser.add_argument("--incremental", action="store_true", help="Reuse previous analysis results for GIR, scope and cfg")
+            parser.add_argument("-inc", "--incremental", action="store_true", help="Reuse previous analysis results for GIR, scope and cfg")
 
             parser.add_argument("--noextern", action="store_true", help="Disable the external processing module")
 
