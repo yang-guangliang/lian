@@ -214,7 +214,7 @@ class StmtDefUseAnalysis:
                     )
                 if util.is_available(source_info):
                     defined_symbol.source_unit_id = source_info.source_unit_id
-                    defined_symbol.symbol_id = source_info.symbol_id
+                    defined_symbol.symbol_id = source_info.source_symbol_id
 
                 # Finishing nonlocal and global statements
                 return
@@ -227,7 +227,7 @@ class StmtDefUseAnalysis:
                 #print(f"@@@@ {stmt} {source_info}")
                 if util.is_available(source_info):
                     defined_symbol.source_unit_id = source_info.source_unit_id
-                    symbol_id = source_info.symbol_id
+                    symbol_id = source_info.source_symbol_id
                     if symbol_id == stmt.stmt_id:
                         if defined_symbol.name in self.external_symbol_id_collection:
                             symbol_id = self.external_symbol_id_collection[defined_symbol.name]
@@ -265,15 +265,15 @@ class StmtDefUseAnalysis:
             )
             #print("source_info:", source_info, self.unit_id, self.method_id, stmt_id, used_symbol, stmt)
             if util.is_available(source_info):
-                if source_info.symbol_id == stmt_id or source_info.symbol_id < 0:
+                if source_info.source_symbol_id == stmt_id or source_info.source_symbol_id < 0:
                     if used_symbol.name in self.external_symbol_id_collection:
-                        source_info.symbol_id = self.external_symbol_id_collection[used_symbol.name]
+                        source_info.source_symbol_id = self.external_symbol_id_collection[used_symbol.name]
                     else:
-                        source_info.symbol_id = self.loader.assign_new_unique_positive_id()
-                        self.external_symbol_id_collection[used_symbol.name] = source_info.symbol_id
+                        source_info.source_symbol_id = self.loader.assign_new_unique_positive_id()
+                        self.external_symbol_id_collection[used_symbol.name] = source_info.source_symbol_id
 
                 used_symbol.source_unit_id = source_info.source_unit_id
-                symbol_id = source_info.symbol_id
+                symbol_id = source_info.source_symbol_id
                 used_symbol.symbol_id = symbol_id
                 if symbol_id not in frame.symbol_to_use:
                     frame.symbol_to_use[symbol_id] = set()
