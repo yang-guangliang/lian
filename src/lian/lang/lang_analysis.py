@@ -14,7 +14,7 @@ from lian.config.constants import EVENT_KIND
 
 from lian.apps.app_template import EventData
 from lian.util.loader import Loader
-from lian.incremental.unit_level_checker import UnitLevelChecker
+from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 
 EXTENSIONS_LANG = lang_config.EXTENSIONS_LANG
 
@@ -389,22 +389,19 @@ class LangAnalysis:
 
         units_to_analyze = all_units
         if self.options.incremental:
-            unit_level_checker = UnitLevelChecker.unit_level_checker()
+            unit_level_checker = UnitLevelIncrementalChecker.unit_level_checker()
             units_to_analyze = []
             for unit_info in all_units:
                 current_node_id, previous_results = unit_level_checker.previous_lang_analysis_results(unit_info, current_node_id)#
                 if previous_results:
-                    # util.debug(current_node_id)
-                    # if self.options.debug:
-                    #     util.debug("Incremental: Previous result found")
+                    # util.debug("Incremental: Previous result found")
                     gir_parser.add_unit_gir(unit_info, previous_results)
                     current_node_id = self.adjust_node_id(current_node_id)
                    
                 else:
                     # util.debug("main not found:",unit_info.module_id)
                     units_to_analyze.append(unit_info)
-                #util.debug(current_node_id)
-        
+                    
         for unit_info in units_to_analyze:
             # if row.symbol_type == constants.SymbolKind.UNIT_SYMBOL and row.unit_ext in extensions:
             unit_path = ""

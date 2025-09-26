@@ -1954,7 +1954,7 @@ class Loader:
 
     def restore(self):
         for loader in self._all_loaders:
-            print(type(loader))
+            # print(type(loader))
             if hasattr(loader, 'restore_indexing'):
                 #util.debug(loader.__class__.__name__ + " is restoring index")
                 try:

@@ -6,7 +6,7 @@ import copy
 from lian.semantic.semantic_structs import Scope
 
 
-class UnitLevelChecker:
+class UnitLevelIncrementalChecker:
 
     _instance = None
 
@@ -27,7 +27,7 @@ class UnitLevelChecker:
     # singleton pattern
     @classmethod
     def init(cls, options, app_manager, current_loader):
-        cls._instance = UnitLevelChecker(options, app_manager, current_loader)
+        cls._instance = UnitLevelIncrementalChecker(options, app_manager, current_loader)
     @classmethod
     def unit_level_checker(cls):
         if cls._instance is None:
