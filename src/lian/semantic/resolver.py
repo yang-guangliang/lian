@@ -989,8 +989,8 @@ class Resolver:
 
         # 收集symbol_name对应的symbol_ids
         symbol_ids = set()
-        # insight: symbol_id就是该symbol的decl_stmt_id  TODO:当前收集的是整个文件所有对symbol_name的decl，后续只收集方法内的即可
-        symbol_decl_stmt_ids = self.loader.load_symbol_name_to_decl_ids(unit_id).get(symbol_name, set())
+        # insight: symbol_id就是该symbol的decl_stmt_id
+        symbol_decl_stmt_ids = self.loader.load_symbol_name_to_decl_ids(unit_id).get(symbol_name, set()) & frame.stmt_id_to_status.keys()
         symbol_ids.update(symbol_decl_stmt_ids)
         # import等语句(见def-use阶段)会修改defined_symbol的symbol_id，需要采集到修改后的symbol_id
         for decl_stmt_id in symbol_decl_stmt_ids:
