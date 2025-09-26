@@ -317,3 +317,6 @@ results/
 
 *.bc
 *.ll
+
+/tests/inc/
+/tests/incremental/

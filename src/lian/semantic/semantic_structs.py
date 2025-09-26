@@ -416,6 +416,12 @@ class Scope(BasicElement):
         }
         return row_dict
 
+    def from_dict(self, _dict: dict):
+        for key, value in _dict.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        return self
+
     def __repr__(self):
         result = self.to_dict()
         return (f"Scope [{str(result)}]")
