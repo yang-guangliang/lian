@@ -114,9 +114,10 @@ class Resolver:
         return result
 
     def organize_return_value(self, unit_id, scope_id, symbol_name, summary, default_return):
+        # 找到scope中该symbol_name的decl_stmt_id
         symbol_id = summary.scope_id_to_symbol_info[scope_id][symbol_name]
         if not self.loader.is_import_stmt(symbol_id):
-            return SourceSymbolScopeInfo(unit_id, symbol_id)
+            return SourceSymbolScopeInfo(unit_id, symbol_id, scope_id)
 
         # since this is an import stmt, we need to read import information to find the real symbol_id
         export_symbols = self.loader.load_unit_export_symbols(unit_id)
@@ -126,9 +127,11 @@ class Resolver:
         import_info = export_symbols.query_first(export_symbols.symbol_name == symbol_name)
         if import_info:
             if import_info.symbol_id != -1:
+                imported_unit_id = self.loader.convert_stmt_id_to_unit_id(import_info.symbol_id)
                 return SourceSymbolScopeInfo(
-                    self.loader.convert_stmt_id_to_unit_id(import_info.symbol_id),
-                    import_info.symbol_id
+                    imported_unit_id,
+                    import_info.symbol_id,
+                    self.loader.convert_stmt_id_to_scope_id(import_info.symbol_id)
                 )
         return SourceSymbolScopeInfo(unit_id, symbol_id)
 
@@ -149,9 +152,9 @@ class Resolver:
         ).tolist())
         return implicit_root_scopes
 
-    def resolve_symbol_source_decl(self, unit_id, method_id, stmt_id, stmt, symbol_name, source_symbol_must_be_global = False):
+    def resolve_symbol_source_decl(self, unit_id, stmt_id, symbol_name, source_symbol_must_be_global = False):
         """
-        locate symbol to (unit_id, decl_stmt_id]
+        给定symbol_name 解析其最近的声明位置
         This function is to address the key question:
             Given a symbol, how to find its symbol_id, i.e., where it is declared?
 
@@ -160,46 +163,48 @@ class Resolver:
             2. Outside a unit, since an external symbol must be imported, we can use the results of import symbol analysis.
 
         Return:
-            SourceSymbolScopeInfo: source unit & source stmt
+            SourceSymbolScopeInfo:
+                source_unit_id &
+                source_decl_stmt_id (also source_symbol_id) &
+                source_decl_scope_id
         """
         if symbol_name == LIAN_INTERNAL.THIS:
-            return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID)
-
+            return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID, -1)
         # default return value
-        default_return = SourceSymbolScopeInfo(unit_id, stmt_id)
+        default_return = SourceSymbolScopeInfo(unit_id, -1, -1)
         if util.is_empty(symbol_name):
-            #print("@@@@@@1111")
             return default_return
 
-        summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
+        unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
 
         if source_symbol_must_be_global:
             global_scope_id = 0
-            if symbol_name in summary.symbol_name_to_scope_ids:
-                scope_ids = summary.symbol_name_to_scope_ids[symbol_name]
-                if global_scope_id in scope_ids:
-                    return self.organize_return_value(unit_id, global_scope_id, symbol_name, summary, default_return)
+            if symbol_name in unit_symbol_decl_summary.symbol_name_to_scope_ids:
+                symbol_decl_scopes = unit_symbol_decl_summary.symbol_name_to_scope_ids[symbol_name]
+                if global_scope_id in symbol_decl_scopes:
+                    return self.organize_return_value(unit_id, global_scope_id, symbol_name, unit_symbol_decl_summary, default_return)
         else:
-            scope_id = -1
-            if stmt.parent_stmt_id in summary.scope_id_to_available_scope_ids:
-                scope_id = stmt.parent_stmt_id
-            if scope_id == -1:
-                #print("@@@@@@112222")
+            # 获取当前语句所在scope_id
+            current_scope = self.loader.convert_stmt_id_to_scope_id(stmt_id)
+            # if stmt.parent_stmt_id in unit_symbol_decl_summary.scope_id_to_available_scope_ids:
+            #     scope_id = stmt.parent_stmt_id
+            if current_scope == -1:
                 return default_return
 
-            #print("if symbol.name in summary.symbol_name_to_scope_ids", symbol.name, summary.symbol_name_to_scope_ids)
-            if symbol_name in summary.symbol_name_to_scope_ids:
-                scope_ids = summary.symbol_name_to_scope_ids[symbol_name]
-                available_scope_ids = summary.scope_id_to_available_scope_ids.get(scope_id, set())
-                target_scope_ids = available_scope_ids & scope_ids
+            if symbol_name in unit_symbol_decl_summary.symbol_name_to_scope_ids:
+                # symbol声明所在的scopes
+                symbol_decl_scope_ids = unit_symbol_decl_summary.symbol_name_to_scope_ids[symbol_name]
+                # 当前scope可见的scopes
+                available_scope_ids = unit_symbol_decl_summary.scope_id_to_available_scope_ids.get(current_scope, set())
+                implicit_root_scope_ids = self.resolve_implicit_root_scopes(unit_id)
+                # 可用的、声明symbol的scopes
+                target_scope_ids = (implicit_root_scope_ids | available_scope_ids) & symbol_decl_scope_ids
                 if len(target_scope_ids) != 0:
-                    # find this name in this unit
-                    scope_id = max(target_scope_ids)
-                    return self.organize_return_value(unit_id, scope_id, symbol_name, summary, default_return)
-
-                #print("@@@@@@444")
-            #print("@@@@@@4555")
-        #print("@@@@@@333")
+                    # scope_id越大越近，我们要找最近的decl
+                    # sorted_scopes_list = sorted(target_scope_ids, reverse=True)
+                    # nearest_scope_id = sorted_scopes_list[0]
+                    nearest_scope_id = max(target_scope_ids)
+                    return self.organize_return_value(unit_id, nearest_scope_id, symbol_name, unit_symbol_decl_summary, default_return)
         return default_return
 
     def collect_newest_states_by_state_indexes(
@@ -995,7 +1000,9 @@ class Resolver:
                 return state1.value == state2.value
         return are_child_identical(state_index1, state_index2)
 
-    def resolve_symbol_name_to_def_stmt_in_method(self, frame:ComputeFrame, unit_id, stmt_id, symbol_name):
+    def resolve_symbol_name_to_def_stmt_in_method(
+        self, frame:ComputeFrame, unit_id, stmt_id, symbol_name
+    ) -> dict[str,set[int]]:
         """
             给定symbol_name和当前语句，返回在<当前方法中>：
             1、def_stmt_ids[NEAREST]：nearest、reachable def_stmt_ids

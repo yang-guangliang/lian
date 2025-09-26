@@ -1006,7 +1006,8 @@ class StateGraph(SymbolGraph):
 @dataclasses.dataclass
 class SourceSymbolScopeInfo:
     source_unit_id:int = -1
-    symbol_id:int = -1
+    source_symbol_id:int = -1 # 也是source_decl_stmt_id
+    decl_scope_id: int = -1
 
 class MethodCall:
     def __init__(self, unit_id, stmt_id, name, method_state = None):

@@ -203,13 +203,13 @@ class StmtDefUseAnalysis:
 
             elif stmt.operation in ["nonlocal_stmt", "global_stmt"]:
                 if stmt.operation == "global_stmt":
-                    source_info = self.resolver.resolve_symbol_source(
-                        self.unit_id, self.method_id, stmt_id, stmt, defined_symbol.name,
+                    source_info = self.resolver.resolve_symbol_source_decl(
+                        self.unit_id, stmt_id, defined_symbol.name,
                         source_symbol_must_be_global = True
                     )
                 else:
-                    source_info = self.resolver.resolve_symbol_source(
-                        self.unit_id, self.method_id, stmt_id, stmt, defined_symbol.name,
+                    source_info = self.resolver.resolve_symbol_source_decl(
+                        self.unit_id, stmt_id, defined_symbol.name,
                         source_symbol_must_be_global = False
                     )
                 if util.is_available(source_info):
@@ -220,8 +220,8 @@ class StmtDefUseAnalysis:
                 return
 
             else:
-                source_info = self.resolver.resolve_symbol_source(
-                    self.unit_id, self.method_id, stmt.stmt_id, stmt, defined_symbol.name
+                source_info = self.resolver.resolve_symbol_source_decl(
+                    self.unit_id, stmt.stmt_id, defined_symbol.name
                 )
 
                 #print(f"@@@@ {stmt} {source_info}")
@@ -260,8 +260,8 @@ class StmtDefUseAnalysis:
                 used_symbol.symbol_id = self.tmp_variable_to_define.get(used_symbol.name, (-1))
                 continue
 
-            source_info = self.resolver.resolve_symbol_source(
-                self.unit_id, self.method_id, stmt_id, stmt, used_symbol.name
+            source_info = self.resolver.resolve_symbol_source_decl(
+                self.unit_id, stmt_id, used_symbol.name
             )
             #print("source_info:", source_info, self.unit_id, self.method_id, stmt_id, used_symbol, stmt)
             if util.is_available(source_info):
