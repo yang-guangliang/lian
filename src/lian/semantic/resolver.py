@@ -989,7 +989,7 @@ class Resolver:
 
         # 收集symbol_name对应的symbol_ids
         symbol_ids = set()
-        # insight: symbol_id就是该symbol的decl_stmt_id
+        # insight: symbol_id就是该symbol的decl_stmt_id  TODO:当前收集的是整个文件所有对symbol_name的decl，后续只收集方法内的即可
         symbol_decl_stmt_ids = self.loader.load_symbol_name_to_decl_ids(unit_id).get(symbol_name, set())
         symbol_ids.update(symbol_decl_stmt_ids)
         # import等语句(见def-use阶段)会修改defined_symbol的symbol_id，需要采集到修改后的symbol_id
@@ -1010,7 +1010,7 @@ class Resolver:
                 def_stmt_ids[NEAREST].add(symbol_def_node.stmt_id)
         # 当前方法中所有该symbol_name的def
         for symbol_id in symbol_ids:
-            frame_symbol_to_def:set[SymbolDefNode] = frame.symbol_to_define[symbol_id]
+            frame_symbol_to_def:set[SymbolDefNode] = frame.symbol_to_define.get(symbol_id, set())
             all_def_stmt_ids_of_symbol_id = {def_node.stmt_id for def_node in frame_symbol_to_def}
             def_stmt_ids[ALL].update(all_def_stmt_ids_of_symbol_id)
         return def_stmt_ids
