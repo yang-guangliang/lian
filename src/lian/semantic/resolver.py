@@ -125,15 +125,15 @@ class Resolver:
         if util.is_empty(export_symbols):
             return default_return
         import_info = export_symbols.query_first(export_symbols.symbol_name == symbol_name)
-        if import_info:
-            if import_info.symbol_id != -1:
-                imported_unit_id = self.loader.convert_stmt_id_to_unit_id(import_info.symbol_id)
+        if import_info and import_info.symbol_id != -1:
+            imported_unit_id = self.loader.convert_stmt_id_to_unit_id(import_info.symbol_id)
+            if imported_unit_id != -1:
                 return SourceSymbolScopeInfo(
                     imported_unit_id,
                     import_info.symbol_id,
                     self.loader.convert_stmt_id_to_scope_id(import_info.symbol_id)
                 )
-        return SourceSymbolScopeInfo(unit_id, symbol_id)
+        return SourceSymbolScopeInfo(-1, symbol_id, scope_id)
 
     def resolve_implicit_root_scopes(self, unit_id):
         """
