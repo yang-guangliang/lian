@@ -2518,6 +2518,7 @@ class Loader:
     def get_stmt_source_code_with_comment(self, stmt_id):
         """获取stmt的source_code，并添加注释"""
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+        if unit_id == -1: return []
         unit_info = self.convert_module_id_to_module_info(unit_id)
         unit_path = unit_info.original_path
         with open(unit_path, 'r') as f:
