@@ -298,13 +298,13 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         # if not continue_flag:
-        if not continue_flag and stmt.operation != "call_stmt":
-            if config.DEBUG_FLAG:
-                print(f"  CONTINUE")
-            if status.in_state_bits != old_in_state_bits:
-                self.update_out_states(stmt_id, frame, status, old_index_ceiling, old_status_defined_states)
-            self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
-            return P2ResultFlag()
+        # if not continue_flag and stmt.operation != "call_stmt":
+        #     if config.DEBUG_FLAG:
+        #         print(f"  CONTINUE")
+        #     if status.in_state_bits != old_in_state_bits:
+        #         self.update_out_states(stmt_id, frame, status, old_index_ceiling, old_status_defined_states)
+        #     self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
+        #     return P2ResultFlag()
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
         change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
