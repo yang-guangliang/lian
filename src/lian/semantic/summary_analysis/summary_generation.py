@@ -684,12 +684,12 @@ class SemanticSummaryGeneration:
                         old_key_state_indexes.add(index_pair.raw_index)
 
                 # print("收集到的old_key_state_indexes是", old_key_state_indexes)
-                current_states = self.collect_external_symbol_states(
-                    frame, stmt_id, stmt, symbol_id, method_summary, old_key_state_indexes
-                )
-            else:
-                # 如果能直接从in_symbol中获取，就直接用
-                current_states = old_key_state_indexes
+            # else:
+            #     # 如果能直接从in_symbol中获取，就直接用
+            #     current_states = old_key_state_indexes
+            current_states = self.collect_external_symbol_states(
+                frame, stmt_id, stmt, symbol_id, method_summary, old_key_state_indexes
+            )
 
             # print("收集到的current_States是", current_states)
             if util.is_empty(current_states):

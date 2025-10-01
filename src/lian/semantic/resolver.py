@@ -672,6 +672,7 @@ class Resolver:
 
         for current_frame_index in range(len(frame_stack) - 1, 0, -1):
             current_frame: ComputeFrame = frame_stack[current_frame_index]
+            current_space = frame.symbol_state_space
             # if config.DEBUG_FLAG:
                 # print(f"--current method id: {current_frame.method_id} state_symbol_id: {state_symbol_id} access_path: {access_path}")
             if len(current_frame.stmt_worklist) == 0:
