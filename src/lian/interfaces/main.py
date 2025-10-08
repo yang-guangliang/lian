@@ -19,6 +19,8 @@ pd.options.mode.copy_on_write = False
 
 # Init path
 sys.path.append(os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
+# Add path for problem_monitor
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))), "src"))
 
 ############################################################
 # Essential content
@@ -39,6 +41,7 @@ from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGen
 from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
+from example.problem_monitor import ProblemMonitor
 
 class Lian:
     def __init__(self):
@@ -46,6 +49,7 @@ class Lian:
         self.app_manager = None
         self.loader = None
         self.extern_system = None
+        self.problem_monitor = None
         self.resolver = None
         self.lang_table = lang_config.LANG_TABLE
         self.command_handler = {
@@ -111,8 +115,14 @@ class Lian:
         self.app_manager = AppManager(self.options)
         self.loader = Loader(self.options, self.app_manager)
         self.resolver = Resolver(self.options, self.app_manager, self.loader)
+        self.problem_monitor = ProblemMonitor(self)
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
-        self.app_manager.register_extern_system(self.extern_system)
+
+        # 旧版llm_driven_sec
+        # self.app_manager.register_extern_system(self.extern_system)
+        # 新版problem_monitor
+        self.app_manager.register_problem_monitor(self.problem_monitor)
+
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)
         if self.options.incremental:
