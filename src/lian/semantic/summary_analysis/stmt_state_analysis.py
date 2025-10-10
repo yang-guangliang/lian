@@ -2010,15 +2010,22 @@ class StmtStateAnalysis:
         if len(callee_method_ids) == 0:
             name_index = status.used_symbols[0]
             name_symbol = self.frame.symbol_state_space[name_index]
+            return_access_path = []
+            for index in name_symbol.states:
+                name_state = self.frame.symbol_state_space[index]
+                if len(name_state.access_path) == 0:
+                    continue
+                return_access_path = copy.deepcopy(name_state.access_path)
+            return_access_path.append(AccessPoint(
+                    kind=ACCESS_POINT_KIND.CALL_RETURN,
+                    key=util.read_stmt_field(name_symbol.name)
+                ))
             unsolved_state_index = self.create_state_and_add_space(
                 status, stmt_id,
                 source_symbol_id=defined_symbol.symbol_id,
                 state_type = STATE_TYPE_KIND.UNSOLVED,
                 data_type = util.read_stmt_field(stmt.data_type), # LianInternal.RETURN_VALUE,
-                access_path=[AccessPoint(
-                    kind=ACCESS_POINT_KIND.CALL_RETURN,
-                    key=util.read_stmt_field(name_symbol.name)
-                )]
+                access_path=return_access_path
             )
             self.update_access_path_state_id(unsolved_state_index)
             defined_symbol.states = {unsolved_state_index}

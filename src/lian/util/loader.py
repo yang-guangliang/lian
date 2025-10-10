@@ -2643,5 +2643,62 @@ class Loader:
         workspace_root = getattr(self.options, "workspace", "")
         return workspace_root + "/src" if workspace_root != "" else ""
 
+    def convert_unit_name_to_method_ids(self, unit_name):
+        method_ids = set()
+        module_symbol_table = self.load_module_symbol_table()
+
+        for module_symbol in module_symbol_table:
+            if self.is_unit_id(module_symbol.unit_id) and module_symbol.unit_path.endwith(unit_name)  :
+                method_ids = method_ids | self.convert_unit_id_to_method_ids(module_symbol.unit_id)
+
+        return method_ids
+
+    def load_call_path_with_method_name(self, start_method_name, end_method_name, start_method_class = None, end_method_class = None, start_method_unit = None, end_method_unit = None):
+
+        start_method_ids = self.convert_method_name_to_method_ids(start_method_name)
+        end_method_ids = self.convert_method_name_to_method_ids(end_method_name)
+
+        if start_method_class:
+            start_method_class_ids = self.convert_class_name_to_class_ids(start_method_class)
+            for class_id in start_method_class_ids:
+                methods_in_class = self.convert_class_id_to_method_ids(class_id)
+                start_method_ids = start_method_ids & methods_in_class
+
+        if end_method_class:
+            end_method_class_ids = self.convert_class_name_to_class_ids(end_method_class)
+            for class_id in end_method_class_ids:
+                methods_in_class = self.convert_class_id_to_method_ids(class_id)
+                end_method_ids = end_method_ids & methods_in_class
+
+        if start_method_unit:
+            unit_method_ids = self.convert_unit_name_to_method_ids(start_method_unit)
+            start_method_ids = start_method_ids & unit_method_ids
+
+        if end_method_unit:
+            unit_method_ids = self.convert_unit_name_to_method_ids(end_method_unit)
+            end_method_ids = end_method_ids & unit_method_ids
+
+        call_paths = self.load_call_paths_p3()
+        all_paths = set()
+        for call_path in call_paths:
+
+            path = call_path.path
+            if len(path) < 2:
+                continue
+            methods = path[::2]
+            start_indices = [i for i, method in enumerate(methods) if method in start_method_ids]
+            if not start_indices:
+                continue
+
+            for start_idx in start_indices:
+                # 检查起始函数之后的所有函数
+                for method in methods[start_idx + 1:]:
+                    if method in end_method_ids:
+                        all_paths.add(path)
+
+
+
+
+
 
 

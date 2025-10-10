@@ -557,3 +557,34 @@ def bytes_to_int(b: bytes) -> int:
     if b is None:
         return 0
     return int.from_bytes(b, byteorder='big', signed=False)
+
+def access_path_formatter(state_access_path):
+    key_list = []
+    for item in state_access_path:
+        key = item.key
+        key = key if isinstance(key, str) else str(key)
+        if key != "" and not key.startswith("%vv"):
+            key_list.append(key)
+
+    # 使用点号连接所有 key 值
+    access_path = '.'.join(key_list)
+    return access_path
+
+
+
+def get_call_name_access_path(stmt_id, frame):
+    status = frame.stmt_id_to_status.get(stmt_id, None)
+    if not status:
+        return "None"
+    name_index = status.used_symbols[0]
+    name_symbol = frame.symbol_state_space[name_index]
+
+    access_path = "None"
+    if name_symbol.name.startswith("%vv"):
+        for index in name_symbol.states:
+            name_state = frame.symbol_state_space[index]
+            print(name_state.access_path)
+            print(name_symbol.name)
+            if name_state.access_path and len(name_state.access_path) > 0:
+                access_path = access_path_formatter(name_state.access_path)
+    return access_path
