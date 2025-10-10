@@ -133,13 +133,13 @@ class ModuleSymbolsLoader:
     def load_module_symbol_table(self):
         return self.module_symbol_table
 
-    def find_unit_lang_name_by_unit_id(self, unit_id):
+    def convert_unit_id_to_unit_lang_name(self, unit_id):
         return self.unit_id_to_lang.get(unit_id, "unknown")
 
-    def find_module_info_by_module_id(self, unit_id):
+    def convert_module_id_to_module_info(self, unit_id):
         return self.module_id_to_module_info.get(unit_id, None)
 
-    def find_child_ids_by_module_id(self, module_id):
+    def convert_module_id_to_child_ids(self, module_id):
         return self.module_id_to_children_ids.get(module_id, set())
 
     def load_all_unit_info(self):
@@ -156,12 +156,13 @@ class ModuleSymbolsLoader:
 
         return all_units
 
-    def find_unit_id_by_unit_path(self, unit_path):
+    def convert_unit_path_to_unit_id(self, unit_path):
         for path in  self.unit_path_to_id:
             if path.endswith(unit_path):
                 return self.unit_path_to_id[path]
+        return -1
 
-    def find_unit_path_by_unit_id(self, unit_id):
+    def convert_unit_id_to_unit_path(self, unit_id):
         return self.unit_id_to_path.get(unit_id, None)
 
 
@@ -668,10 +669,10 @@ class OneToManyMapLoader:
             for each_id in many:
                 self.many_to_one[each_id] = one
 
-    def find_many_by_one(self, one):
+    def convert_one_to_many(self, one):
         return self.one_to_many.get(one, [])
 
-    def find_one_by_many(self, item_in_many):
+    def convert_many_to_one(self, item_in_many):
         return self.many_to_one.get(item_in_many, -1)
 
     def load_all_items_in_many(self):
@@ -748,7 +749,7 @@ class MethodIDToParameterIDLoader(OneToManyMapLoader):
         return stmt_id in self.many_to_one
 
     def is_parameter_decl_of_method(self, stmt_id, method_id):
-        parameters = self.find_many_by_one(method_id)
+        parameters = self.convert_one_to_many(method_id)
         return stmt_id in parameters
 
 class ClassIDToMethodIDLoader(OneToManyMapLoader):
@@ -759,7 +760,7 @@ class ClassIDToMethodIDLoader(OneToManyMapLoader):
         return stmt_id in self.many_to_one
 
     def is_method_decl_of_class(self, stmt_id, class_id):
-        methods = self.find_many_by_one(class_id)
+        methods = self.convert_one_to_many(class_id)
         return stmt_id in methods
 
 class ClassIDToFieldIDLoader(OneToManyMapLoader):
@@ -770,7 +771,7 @@ class ClassIDToFieldIDLoader(OneToManyMapLoader):
         return stmt_id in self.many_to_one
 
     def is_field_decl_of_class(self, stmt_id, class_id):
-        fields = self.find_many_by_one(class_id)
+        fields = self.convert_one_to_many(class_id)
         return stmt_id in fields
 
 class ClassIDToMethodsLoader(OneToManyMapLoader):
@@ -2048,7 +2049,7 @@ class Loader:
         if self.method_header_cache.contain(method_id):
             return self.method_header_cache.get(method_id)
 
-        unit_id = self._unit_id_to_method_id_loader.find_one_by_many(method_id)
+        unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
         unit_gir = self._gir_loader.load(unit_id)
         if util.is_empty(unit_gir):
             return (None, None)
@@ -2069,7 +2070,7 @@ class Loader:
         if self.method_body_cache.contain(method_id):
             self.method_body_cache.get(method_id)
 
-        unit_id = self._unit_id_to_method_id_loader.find_one_by_many(method_id)
+        unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
         unit_gir = self._gir_loader.load(unit_id)
         method_body = unit_gir.read_block(method_decl_stmt.body)
         self.method_body_cache.put(method_id, method_body)
@@ -2141,13 +2142,13 @@ class Loader:
     def load_all_unit_info(self):
         return self._module_symbols_loader.load_all_unit_info()
     def convert_module_id_to_module_info(self, *args):
-        return self._module_symbols_loader.find_module_info_by_module_id(*args)
+        return self._module_symbols_loader.convert_module_id_to_module_info(*args)
     def convert_unit_id_to_info(self, *args):
-        return self._module_symbols_loader.find_module_info_by_module_id(*args)
+        return self._module_symbols_loader.convert_module_id_to_module_info(*args)
     def convert_unit_id_to_unit_path(self, *args):
-        return self._module_symbols_loader.find_unit_path_by_unit_id(*args)
+        return self._module_symbols_loader.convert_unit_id_to_unit_path(*args)
     def convert_unit_path_to_unit_id(self, *args):
-        return self._module_symbols_loader.find_unit_id_by_unit_path(*args)
+        return self._module_symbols_loader.convert_unit_path_to_unit_id(*args)
 
     def is_module_id(self, *args):
         return self._module_symbols_loader.is_module_id(*args)
@@ -2156,9 +2157,9 @@ class Loader:
     def is_module_dir_id(self, *args):
         return self._module_symbols_loader.is_module_dir_id(*args)
     def convert_unit_id_to_lang_name(self, *args):
-        return self._module_symbols_loader.find_unit_lang_name_by_unit_id(*args)
+        return self._module_symbols_loader.load_unit_lang_name(*args)
     def convert_module_id_to_child_ids(self, *args):
-        return self._module_symbols_loader.find_child_ids_by_module_id(*args)
+        return self._module_symbols_loader.convert_module_id_to_child_ids(*args)
 
     def load_unit_gir(self, *args):
         return self._gir_loader.load(*args)
@@ -2182,7 +2183,7 @@ class Loader:
         return self._unit_id_to_export_symbols_loader.save(*args)
 
     def load_methods_in_class(self, *args):
-        return self._class_id_to_methods_loader.find_many_by_one(*args)
+        return self._class_id_to_methods_loader.load_key_to_values(*args)
     def save_methods_in_class(self, *args):
         return self._class_id_to_methods_loader.save(*args)
 
@@ -2214,14 +2215,14 @@ class Loader:
     def load_method_external_symbol_id_collection(self, *args):
         return self._external_symbol_id_collection_loader.load_external_symbol_id_collection(*args)
 
-    def find_variable_ids_by_unit_id(self, *args):
-        return self._unit_id_to_variable_id_loader.find_many_by_one(*args)
+    def convert_unit_id_to_variable_ids(self, *args):
+        return self._unit_id_to_variable_id_loader.load_key_to_values(*args)
     def save_unit_id_to_variable_ids(self, *args):
         return self._unit_id_to_variable_id_loader.save(*args)
-    def find_unit_id_by_variable_id(self, *args):
-        return self._unit_id_to_variable_id_loader.find_one_by_many(*args)
+    def convert_variable_id_to_unit_id(self, *args):
+        return self._unit_id_to_variable_id_loader.load_value_to_key(*args)
     def load_all_variable_ids(self, *args):
-        return self._unit_id_to_variable_id_loader.load_all_items_in_many(*args)
+        return self._unit_id_to_variable_id_loader.load_all_values(*args)
     def is_variable_decl(self, *args):
         return self._unit_id_to_variable_id_loader.is_variable_decl(*args)
 
@@ -2618,7 +2619,7 @@ class Loader:
         unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
         stmt = self.convert_stmt_id_to_stmt(stmt_id)
         return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
-    
+
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         unit_gir = self.load_unit_gir(unit_id)
@@ -2626,7 +2627,7 @@ class Loader:
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
         return stmt_id_to_stmt.get(stmt_id)
-        
+
     def get_method_decl_source_code(self, method_id):
         """
             给定method_id，获取method_decl源代码(仅函数声明部分)
@@ -2813,6 +2814,4 @@ class Loader:
                     parent_index = wt.parent_pos
                 ))
         return class_relevant_info
-
-
 
