@@ -564,7 +564,7 @@ def access_path_formatter(state_access_path):
         key = key if isinstance(key, str) else str(key)
         if key != "" and not key.startswith("%vv"):
             key_list.append(key)
-        elif key.startswith("%vv") and item.kind == 13:
+        elif key.startswith("%vv") and item.kind == 13 and len(key_list) > 0:
             key_list[-1] = key_list[-1] + "()"
     # 使用点号连接所有 key 值
     access_path = '.'.join(key_list)

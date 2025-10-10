@@ -3433,24 +3433,25 @@ class StmtStateAnalysis:
                 new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
                 # print("@field_state write", new_receiver_state)
 
-                if is_anonymous:
-                    for each_source_state_index in source_states:
-                        each_source_state = self.frame.symbol_state_space[each_source_state_index]
-                        if not (each_source_state and isinstance(each_source_state, State)):
-                            continue
+                # if is_anonymous:
+                # a.b = c.d access_path 变成a.b
+                for each_source_state_index in source_states:
+                    each_source_state = self.frame.symbol_state_space[each_source_state_index]
+                    if not (each_source_state and isinstance(each_source_state, State)):
+                        continue
 
-                        if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                            continue
+                    if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                        continue
 
-                        access_path = self.copy_and_extend_access_path(
-                            original_access_path = receiver_state.access_path,
-                            access_point = AccessPoint(
-                                kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
-                                key = each_field_state.value
-                            )
+                    access_path = self.copy_and_extend_access_path(
+                        original_access_path = receiver_state.access_path,
+                        access_point = AccessPoint(
+                            kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
+                            key = each_field_state.value
                         )
-                        each_source_state.access_path = access_path
-                        self.update_access_path_state_id(each_source_state_index)
+                    )
+                    each_source_state.access_path = access_path
+                    self.update_access_path_state_id(each_source_state_index)
 
                 new_receiver_state.fields[each_field_state.value] = source_states
                 defined_symbol_states.add(new_receiver_state_index)
