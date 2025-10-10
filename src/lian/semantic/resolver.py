@@ -1086,6 +1086,24 @@ class Resolver:
                 method_ids.add(each_method.stmt_id)
         return method_ids
 
+    def get_previous_call_site(self, frame:ComputeFrame, index:int):
+        """global阶段使用：给定一个index，找到调用栈中向上的第index个调用点信息"""
+        call_stack:ComputeFrameStack = frame.frame_stack
+        previous_frame_index = index + 1
+
+        if len(call_stack) > previous_frame_index:
+            previous_frame:ComputeFrame = call_stack[-previous_frame_index]
+            if not isinstance(previous_frame,ComputeFrame):
+                return
+            caller_method_id, call_stmt_id, callee_method_id = previous_frame.call_site
+            caller_method_decl = self.loader.get_method_decl_source_code(caller_method_id)
+            call_stmt_src_code = self.loader.get_stmt_source_code_with_comment(call_stmt_id)
+            callee_method_decl = self.loader.get_method_decl_source_code(callee_method_id)
+            return {
+                "caller_method_decl"     :  caller_method_decl,
+                "call_stmt_source_code"  :  call_stmt_src_code,
+                "callee_method_decl"     :  callee_method_decl
+            }
 
 
 
