@@ -7,5 +7,6 @@
     ],
     "cSpell.words": [
         "lian"
-    ]
+    ],
+    "python.analysis.typeCheckingMode": "standard"
 }
