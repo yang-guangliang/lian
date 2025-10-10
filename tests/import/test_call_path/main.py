@@ -1,9 +1,12 @@
 # 定义f1函数
-def f1():
+def f1(self):
     print("f1")
     # 直接通过函数名调用f2
     exec_update = self.db_client.update_execution_status()
     self.db_client.send_execution_update(exec_update.model_dump())
+
+    a.b = cc.dd()
+    ff = a.b.ff()
     f2()
 
 
