@@ -81,7 +81,7 @@ class UnitLevelIncrementalChecker:
         scope_pack["method_stmt_ids"] = self.bak_loader.convert_unit_id_to_method_ids(previous_uid)
         scope_pack["class_stmt_ids"] = self.bak_loader.convert_unit_id_to_class_ids(previous_uid)
         scope_pack["namespace_stmt_ids"] = self.bak_loader.convert_unit_id_to_namespace_ids(previous_uid)
-        scope_pack["variable_ids"] = self.bak_loader.convert_unit_id_to_variable_ids(previous_uid)
+        scope_pack["variable_ids"] = self.bak_loader.find_variable_ids_by_unit_id(previous_uid)
         scope_pack["import_stmt_ids"] = self.bak_loader.convert_unit_id_to_import_stmt_ids(previous_uid)
 
         method_id_to_method_name = {}

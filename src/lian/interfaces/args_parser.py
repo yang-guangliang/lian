@@ -37,6 +37,8 @@ class ArgsParser:
             parser.add_argument('-l', "--lang", default="", type=str, help='programming lang', required=True)
             parser.add_argument("--strict-parse-mode", action="store_true", help="Enable the strict way to parse code")
             parser.add_argument("-inc", "--incremental", action="store_true", help="Reuse previous analysis results for GIR, scope and cfg")
+            parser.add_argument("--settings", type=str, help="Specify the settings folder")
+            parser.add_argument("--user-settings", type=str, help="Specify the additional settings folder")
 
             parser.add_argument("--noextern", action="store_true", help="Disable the external processing module")
 
