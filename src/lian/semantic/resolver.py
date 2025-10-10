@@ -152,7 +152,7 @@ class Resolver:
         ).tolist())
         return implicit_root_scopes
 
-    def resolve_symbol_source_decl(self, unit_id, stmt_id, symbol_name, source_symbol_must_be_global = False):
+    def resolve_symbol_source_decl(self, unit_id, stmt_id, symbol_name:str, source_symbol_must_be_global = False):
         """
         给定symbol_name，解析其最近的声明位置
         This function is to address the key question:
@@ -260,7 +260,7 @@ class Resolver:
         return result | newest_remaining
 
     def collect_newest_states_by_state_ids(
-        self, frame: ComputeFrame, available_state_defs: set[StateDefNode], state_id_set
+        self, frame: ComputeFrame, status, state_id_set
     ):
         """
         通过状态ID集合收集索引：
@@ -269,6 +269,7 @@ class Resolver:
         3. 返回最新状态索引集合
         """
         index_set = set()
+        available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
         def collect_single_state_id(state_id):
             reachable_state_defs: set[StateDefNode] = set()
             if state_id in frame.state_to_define:
@@ -312,7 +313,7 @@ class Resolver:
         #         frame.state_bit_vector_manager.add_bit_id(bit_id)
 
         # print(f"available_state_defs: {available_state_defs}")
-        newest_states = self.collect_newest_states_by_state_ids(frame, available_state_defs, {parent_state_id})
+        newest_states = self.collect_newest_states_by_state_ids(frame, status, {parent_state_id})
         # print("obtain_parent_states@ 找到的newest_states是",newest_states, ", method_id是",frame.method_id)
         return newest_states
 
@@ -1002,8 +1003,31 @@ class Resolver:
         return are_child_identical(state_index1, state_index2)
 
     def resolve_symbol_name_to_def_stmt_in_method(
-        self, frame:ComputeFrame, unit_id, stmt_id, symbol_name
+        self, frame:ComputeFrame, unit_id, stmt_id, symbol_name, ignore_field_read_def = True
     ) -> dict[str,set[int]]:
+
+        def find_symbol_def_above_stmt(_stmt_id, _symbol_ids):
+            """找能够流到stmt的非field_read_stmt symbol定义"""
+            result = set()
+            status = frame.stmt_id_to_status[_stmt_id]
+
+            available_defs: list[SymbolDefNode] = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+            for symbol_def_node in available_defs:
+                if symbol_def_node.symbol_id not in _symbol_ids:
+                    continue
+
+                def_stmt = self.loader.convert_stmt_id_to_stmt(symbol_def_node.stmt_id)
+
+                if ignore_field_read_def:
+                    if def_stmt.operation != "field_read":
+                        result.add(symbol_def_node.stmt_id)
+                    else:
+                        # 仍是field_read，递归继续找它的上一层定义
+                        result.update(find_symbol_def_above_stmt(def_stmt.stmt_id, _symbol_ids))
+                else:
+                    result.add(symbol_def_node.stmt_id)
+            return result
+
         """
             给定symbol_name和当前语句，返回在<当前方法中>：
             1、def_stmt_ids[NEAREST]：nearest、reachable def_stmt_ids
@@ -1025,14 +1049,11 @@ class Resolver:
                 new_symbol_id = frame.symbol_state_space[decl_stmt_status.defined_symbol].symbol_id
                 symbol_ids.add(new_symbol_id)
 
-        status = frame.stmt_id_to_status[stmt_id]
-        available_defs:list[SymbolDefNode] = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         def_stmt_ids = {NEAREST:set(), ALL:set()}
 
         # 当前方法中最近的对该symbol_name的def
-        for symbol_def_node in available_defs:
-            if symbol_def_node.symbol_id in symbol_ids:
-                def_stmt_ids[NEAREST].add(symbol_def_node.stmt_id)
+        def_stmt_ids[NEAREST].update(find_symbol_def_above_stmt(stmt_id, symbol_ids))
+
         # 当前方法中所有该symbol_name的def
         for symbol_id in symbol_ids:
             frame_symbol_to_def:set[SymbolDefNode] = frame.symbol_to_define.get(symbol_id, set())
@@ -1040,7 +1061,7 @@ class Resolver:
             def_stmt_ids[ALL].update(all_def_stmt_ids_of_symbol_id)
         return def_stmt_ids
 
-    def find_symbol_global_def_in_unit(self, unit_id, symbol_name):
+    def find_symbol_global_def_in_unit(self, unit_id, symbol_name)->dict:
         """找到unit中对symbol_name的全局定义(函数/类)"""
         unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
         root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE, {})
@@ -1061,7 +1082,7 @@ class Resolver:
         return global_defs
 
     def get_file_symbol_import_by_name(self, unit_id, symbol_name: str) -> list[str]:
-        """获取指定代码文件的import部分中对应symbol的import源代码"""
+        """获取指定文件中，指定symbol_name的import源代码"""
         import_stmts = []
         # 获取当前文件中该symbol_name的import信息
         edge_node_list = self.loader.get_edges_and_nodes_with_edge_attrs_in_import_graph(unit_id, {"realName": symbol_name})

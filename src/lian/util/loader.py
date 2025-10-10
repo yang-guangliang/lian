@@ -2627,6 +2627,10 @@ class Loader:
         pprint.pprint(context, indent=2, width=80)
 
     def load_method_in_class_with_method_name(self, class_id, method_name) -> set[int]:
+        """
+            给定method_name和class_id。如果class中有同名方法，返回method_id
+            ** 必须是定义在该class中的方法，不包含继承方法
+        """
         method_ids_of_class = self.convert_class_id_to_method_ids(class_id)
         res = set()
         for method_id in method_ids_of_class:

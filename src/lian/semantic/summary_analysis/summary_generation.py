@@ -607,7 +607,7 @@ class SemanticSummaryGeneration:
         if stmt.operation == "parameter_decl":
             return True
 
-        # TODO：暂时注释。如果一条call语句在这return了，会导致其找不到callee。
+        # TODO：暂时注释。global阶段如果一条call语句在这return了，会导致其找不到callee。
         # if stmt_id not in frame.symbol_changed_stmts:
         #     return False
 
