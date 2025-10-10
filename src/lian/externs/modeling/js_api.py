@@ -67,7 +67,6 @@ def js_then(data: EventData):
     name_symbol: Symbol = frame.symbol_state_space[this_symbol_index]
     this_states = state_analysis.read_used_states(this_symbol_index, in_states)
 
-    available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
     real_method_ids = set()
     unsolved_callee_states = in_data.unsolved_callee_states
     arg_set = set()
@@ -76,7 +75,7 @@ def js_then(data: EventData):
         access_path = callee_state.access_path
         receiver_path = access_path[-2]
         receiver_state_id = receiver_path.state_id
-        receiver_state_indexs = resolver.collect_newest_states_by_state_ids(frame, available_state_defs, {receiver_state_id})
+        receiver_state_indexs = resolver.collect_newest_states_by_state_ids(frame, status, {receiver_state_id})
 
         for receiver_state_index in receiver_state_indexs:
             if receiver_state_index < 0:
