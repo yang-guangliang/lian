@@ -1586,6 +1586,7 @@ class ComputeFrame(MetaComputeFrame):
         if self.loader:
             self.unit_id = self.loader.convert_method_id_to_unit_id(method_id)
             self.lang = self.loader.convert_unit_id_to_lang_name(self.unit_id)
+            self.name = self.loader.convert_method_id_to_method_name(self.method_id)
 
         self.method_decl_stmt = None
         self.frame_stack = None

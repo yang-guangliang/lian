@@ -606,8 +606,10 @@ class SemanticSummaryGeneration:
         # print("@in_states before", in_states)
         if stmt.operation == "parameter_decl":
             return True
-        if stmt_id not in frame.symbol_changed_stmts:
-            return False
+
+        # TODO：暂时注释。如果一条call语句在这return了，会导致其找不到callee。
+        # if stmt_id not in frame.symbol_changed_stmts:
+        #     return False
 
         if (
             frame.stmt_counters[stmt_id] >= config.MAX_STMT_STATE_ANALYSIS_ROUND or
