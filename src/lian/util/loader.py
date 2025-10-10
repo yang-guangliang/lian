@@ -2504,19 +2504,19 @@ class Loader:
         else:
             return method_name
 
-    def get_stmt_source_code(self, lines, stmt):
-        """极速版获取stmt的source_code"""
-        stmt_start_line = int(stmt.start_row) if not util.isna(stmt.start_row) else 0
-        stmt_end_line = int(stmt.end_row) + 1 if not util.isna(stmt.end_row) else -1
+    def _get_source_code_from_start_to_end(self, lines, start, end):
+        """获取给定行数区间的source_code"""
+        start_line = int(start) if not util.isna(start) else 0
+        end_line = int(end) + 1 if not util.isna(end) else -1
 
-        if stmt_end_line > 0 and stmt_end_line < len(lines):
-            stmt_source_code = lines[stmt_start_line: stmt_end_line]
+        if start_line > 0 and end_line < len(lines):
+            stmt_source_code = lines[start_line: end_line]
         else:
-            stmt_source_code = lines[stmt_start_line:]
+            stmt_source_code = lines[start_line:]
         return stmt_source_code
-    
-    def get_stmt_source_code_with_comment(self, stmt_id):
-        """获取stmt的source_code，并添加注释"""
+
+    def get_unit_source_code_by_stmt_id(self, stmt_id):
+        """给定一个stmt_id，获取其所在unit的源代码"""
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         if unit_id == -1: return []
         unit_info = self.convert_module_id_to_module_info(unit_id)
@@ -2524,8 +2524,16 @@ class Loader:
         with open(unit_path, 'r') as f:
             lines = f.readlines()
         lines = [line.rstrip() for line in lines]
+        return lines
+
+    def get_stmt_source_code_with_comment(self, stmt_id):
+        """
+            获取stmt的source_code(包含注释)
+            对于method_decl语句，会获得整个方法体的源代码
+        """
+        unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
         stmt = self.convert_stmt_id_to_stmt(stmt_id)
-        return self.get_stmt_source_code(lines, stmt)
+        return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
     
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
@@ -2535,7 +2543,20 @@ class Loader:
             stmt_id_to_stmt[row.stmt_id] = row
         return stmt_id_to_stmt.get(stmt_id)
         
-        
+    def get_method_decl_source_code(self, method_id):
+        """
+            给定method_id，获取method_decl源代码(仅函数声明部分)
+        """
+        method_decl_stmt = self.convert_stmt_id_to_stmt(method_id)
+        parameters_decl_id = getattr(method_decl_stmt, "parameters", None) + 1 # +1才是第一个parameter_decl的位置，不+1是block_start
+        unit_source_code = self.get_unit_source_code_by_stmt_id(method_id)
+        if util.is_available(parameters_decl_id):
+            parameters_decl = self.convert_stmt_id_to_stmt(parameters_decl_id)
+            return self._get_source_code_from_start_to_end(unit_source_code, parameters_decl.start_row, parameters_decl.end_row)
+        else:
+            method_decl_line_id = int(method_decl_stmt.start_row)
+            return unit_source_code[method_decl_line_id]
+
 
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
@@ -2566,7 +2587,7 @@ class Loader:
                     stmts.append(stmt)
             code_with_comment = []
             for stmt in stmts:
-                code_with_comment.extend(self.get_stmt_source_code(lines, stmt))
+                code_with_comment.extend(self._get_source_code_from_start_to_end(lines, stmt.start_row, stmt.end_row))
             return code_with_comment
 
         method_start_line = 0
