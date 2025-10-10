@@ -13,7 +13,6 @@ import dis
 
 from lian.config import config
 
-
 def is_empty(element):
     #print("is_empty:", element)
     if element is None:
@@ -565,7 +564,8 @@ def access_path_formatter(state_access_path):
         key = key if isinstance(key, str) else str(key)
         if key != "" and not key.startswith("%vv"):
             key_list.append(key)
-
+        elif key.startswith("%vv") and item.kind == 13:
+            key_list[-1] = key_list[-1] + "()"
     # 使用点号连接所有 key 值
     access_path = '.'.join(key_list)
     return access_path
@@ -583,8 +583,9 @@ def get_call_name_access_path(stmt_id, frame):
     if name_symbol.name.startswith("%vv"):
         for index in name_symbol.states:
             name_state = frame.symbol_state_space[index]
-            print(name_state.access_path)
-            print(name_symbol.name)
+
             if name_state.access_path and len(name_state.access_path) > 0:
                 access_path = access_path_formatter(name_state.access_path)
-    return access_path
+        return access_path
+    else:
+        return name_symbol.name
