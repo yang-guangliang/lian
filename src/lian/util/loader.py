@@ -47,6 +47,9 @@ from lian.semantic.semantic_structs import (
 )
 
 class ModuleSymbolsLoader:
+    """
+    This loader is used to manage module information, including directories and files.
+    """
     def __init__(self, options, path):
         self.options = options
         self.path = path
@@ -129,13 +132,13 @@ class ModuleSymbolsLoader:
     def load_module_symbol_table(self):
         return self.module_symbol_table
 
-    def load_unit_lang_name(self, unit_id):
+    def find_unit_lang_name_by_unit_id(self, unit_id):
         return self.unit_id_to_lang.get(unit_id, "unknown")
 
-    def convert_module_id_to_module_info(self, unit_id):
+    def find_module_info_by_module_id(self, unit_id):
         return self.module_id_to_module_info.get(unit_id, None)
 
-    def convert_module_id_to_child_ids(self, module_id):
+    def find_child_ids_by_module_id(self, module_id):
         return self.module_id_to_children_ids.get(module_id, set())
 
     def load_all_unit_info(self):
@@ -152,15 +155,34 @@ class ModuleSymbolsLoader:
 
         return all_units
 
-    def convert_unit_path_to_unit_id(self, unit_path):
+    def find_unit_id_by_unit_path(self, unit_path):
         for path in  self.unit_path_to_id:
             if path.endswith(unit_path):
                 return self.unit_path_to_id[path]
 
-    def convert_unit_id_to_unit_path(self, unit_id):
+    def find_unit_path_by_unit_id(self, unit_id):
         return self.unit_id_to_path.get(unit_id, None)
 
+
 class GeneralLoader:
+    """
+    This loader is a general loader template. For child classes, they should implement the following methods:
+    1. query_flattened_item_when_loading: when loading data from storage to memory, query the item from the bundle data
+    2. unflatten_item_dataframe_when_loading: when loading data from storage to memory, unflatten the item dataframe to restore its original structure
+    3. flatten_item_when_saving: when saving data from memory to storage, flatten the item content
+
+    Arguments:
+        options: the options of Lian
+        item_schema: the schema of the item
+        bundle_path_summary: the summary of the bundle path
+        item_cache_capacity: the capacity of the item cache
+        bundle_cache_capacity: the capacity of the bundle cache
+
+    Methods:
+        save: save the item to the living bundle
+        load: load the item from the storage
+        export: export the items in the living bundle to the storage
+    """
     def __init__(self, options, item_schema, bundle_path_summary, item_cache_capacity, bundle_cache_capacity):
         # use this to find the path of the corresponding bundle
         self.options = options
@@ -286,6 +308,9 @@ class GeneralLoader:
 
 
 class UnitLevelLoader(GeneralLoader):
+    """
+    This loader is used to manage unit-level data content
+    """
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
         flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
         return flattened_item
@@ -375,7 +400,7 @@ class ClassIDToMembersLoader(UnitLevelLoader):
 
 class SymbolNameToScopeIDsLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(bundle_data.unit_id.bundle_search(unit_id))
+        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, symbol_name_to_scope_ids):
@@ -396,7 +421,7 @@ class SymbolNameToScopeIDsLoader(GeneralLoader):
 
 class ScopeIDToSymbolInfoLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(bundle_data.unit_id.bundle_search(unit_id))
+        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, scope_id_to_symbol_info):
@@ -429,7 +454,7 @@ class ScopeIDToSymbolInfoLoader(GeneralLoader):
 
 class ScopeIDToAvailableScopeIDsLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(bundle_data.unit_id.bundle_search(unit_id))
+        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, scope_id_to_available_scope_ids):
@@ -502,7 +527,7 @@ class StmtIDToScopeIDLoader:
 
 class SymbolNameToDeclIDsLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(bundle_data.unit_id.bundle_search(unit_id))
+        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, symbol_name_to_decl_ids):
@@ -549,7 +574,7 @@ class CallStmtIDToCallFormatInfoLoader:
         for row in df:
             self.call_stmt_id_to_call_format_info[row.stmt_id] = row
 
-class MethodIDToMethodDeclFormat:
+class MethodIDToMethodDeclFormatLoader:
     def __init__(self, path):
         self.method_id_to_method_decl_format = {}
         self.path = path
@@ -620,106 +645,164 @@ class UnitIDToStmtIDLoader:
             for stmt_id in stmt_ids:
                 self.stmt_id_to_unit_id[stmt_id] = unit_id
 
-class UnitIDToMethodIDLoader:
-    def __init__(self, path):
-        self.unit_id_to_stmt_ids = {}
-        self.stmt_id_to_unit_id = {}
+class OneToManyMapLoader:
+    def __init__(self, path, schema):
         self.path = path
+        self.schema = schema
+        self.one_to_many = {}
+        self.many_to_one = {}
 
-    def save(self, unit_id, stmt_ids):
-        if len(stmt_ids) == 0:
+    def save(self, one, many):
+        if len(many) == 0:
             return
-        if isinstance(stmt_ids, set):
-            stmt_ids = list(stmt_ids)
-        self.unit_id_to_stmt_ids[unit_id] = stmt_ids
 
-        if isinstance(stmt_ids, (int, float, str)):
-            self.stmt_id_to_unit_id[stmt_ids] = unit_id
+        if isinstance(many, set):
+            many = list(many)
+
+        self.one_to_many[one] = many
+
+        if isinstance(many, (int, float, str)):
+            self.many_to_one[many] = one
         else:
-            for each_id in stmt_ids:
-                self.stmt_id_to_unit_id[each_id] = unit_id
+            for each_id in many:
+                self.many_to_one[each_id] = one
 
-    def load_value_to_key(self, stmt_id):
-        return self.stmt_id_to_unit_id.get(stmt_id, -1)
+    def find_many_by_one(self, one):
+        return self.one_to_many.get(one, [])
 
-    def load_key_to_values(self, unit_id):
-        return self.unit_id_to_stmt_ids.get(unit_id, [])
+    def find_one_by_many(self, item_in_many):
+        return self.many_to_one.get(item_in_many, -1)
 
-    def load_all_values(self):
-        return self.stmt_id_to_unit_id.keys()
+    def load_all_items_in_many(self):
+        return self.many_to_one.keys()
 
-    def load_all_unit_ids(self):
-        return self.unit_id_to_stmt_ids.keys()
-
-    def is_method_decl(self, stmt_id):
-        return stmt_id in self.stmt_id_to_unit_id
+    def load_all_items_in_one(self):
+        return self.one_to_many.keys()
 
     def export(self):
-        if len(self.unit_id_to_stmt_ids) == 0:
+        if len(self.one_to_many) == 0:
             return
 
         results = []
-        for (unit_id, stmt_ids) in self.unit_id_to_stmt_ids.items():
-            results.append([unit_id, stmt_ids])
-        DataModel(results, columns = schema.unit_id_to_method_id_schema).save(self.path)
+        for (one, many) in self.one_to_many.items():
+            results.append([one, many])
+        DataModel(results, columns = self.schema).save(self.path)
 
     def restore(self):
         df = DataModel().load(self.path)
         for row in df:
-            unit_id, stmt_ids = row.raw_data()
-            self.unit_id_to_stmt_ids[unit_id] = stmt_ids
-            for stmt_id in stmt_ids:
-                self.stmt_id_to_unit_id[stmt_id] = unit_id
+            one, many = row.raw_data()
+            self.one_to_many[one] = many
+            for item_in_many in many:
+                self.many_to_one[item_in_many] = one
 
-class ClassIdToNameLoader(UnitIDToMethodIDLoader):
-    def export(self):
-        if len(self.unit_id_to_stmt_ids) == 0:
-            return
+class UnitIDToMethodIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.unit_id_to_method_id_schema)
 
-        results = []
-        for (unit_id, stmt_ids) in self.unit_id_to_stmt_ids.items():
-            results.append([unit_id, stmt_ids])
-        DataModel(results, columns = schema.class_id_to_name_schema).save(self.path)
+    def is_method_decl(self, stmt_id):
+        return stmt_id in self.many_to_one
 
-class UnitIDToClassIDLoader(UnitIDToMethodIDLoader):
+class ClassIdToNameLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.class_id_to_class_name_schema)
+
+class MethodIDToMethodNameLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.method_id_to_method_name_schema)
+
+class UnitIDToClassIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.unit_id_to_class_id_schema)
+
     def is_class_decl(self, stmt_id):
-        return stmt_id in self.stmt_id_to_unit_id
+        return stmt_id in self.many_to_one
 
-class UnitIDToNamespaceIDLoader(UnitIDToMethodIDLoader):
+class UnitIDToNamespaceIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.unit_id_to_namespace_id_schema)
+
     def is_namespace_decl(self, stmt_id):
-        return stmt_id in self.stmt_id_to_unit_id
+        return stmt_id in self.many_to_one
 
-class UnitIDToVariableIDLoader(UnitIDToMethodIDLoader):
+class UnitIDToVariableIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.unit_id_to_variable_ids_schema)
+
     def is_variable_decl(self, stmt_id):
-        return stmt_id in self.stmt_id_to_unit_id
+        return stmt_id in self.many_to_one
 
-class UnitIDToImportStmtIDLoader(UnitIDToMethodIDLoader):
+class UnitIDToImportStmtIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.unit_id_to_import_stmt_id_schema)
+
     def is_import_stmt(self, stmt_id):
-        return stmt_id in self.stmt_id_to_unit_id
+        return stmt_id in self.many_to_one
 
-class MethodIDToParameterIDLoader(UnitIDToMethodIDLoader):
+class MethodIDToParameterIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.method_id_to_parameter_id_schema)
+
     def is_parameter_decl(self, stmt_id):
-        return stmt_id in self.stmt_id_to_unit_id
+        return stmt_id in self.many_to_one
 
     def is_parameter_decl_of_method(self, stmt_id, method_id):
-        parameters = self.unit_id_to_stmt_ids.get(method_id, set())
+        parameters = self.find_many_by_one(method_id)
         return stmt_id in parameters
 
-class MethodsInClassLoader(UnitIDToMethodIDLoader):
+class ClassIDToMethodIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.class_id_to_method_id_schema)
+
+    def is_method_decl(self, stmt_id):
+        return stmt_id in self.many_to_one
+
     def is_method_decl_of_class(self, stmt_id, class_id):
-        methods = self.unit_id_to_stmt_ids.get(class_id, set())
+        methods = self.find_many_by_one(class_id)
         return stmt_id in methods
 
+class ClassIDToFieldIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.class_id_to_field_id_schema)
+
+    def is_field_decl(self, stmt_id):
+        return stmt_id in self.many_to_one
+
+    def is_field_decl_of_class(self, stmt_id, class_id):
+        fields = self.find_many_by_one(class_id)
+        return stmt_id in fields
+
+class ClassIDToMethodsLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.class_id_to_methods_schema)
+
+    def save(self, class_id, methods):
+        if len(methods) == 0:
+            return
+
+        if not isinstance(methods, list):
+            return
+
+        self.one_to_many[class_id] = methods
+        for each_method in methods:
+            self.many_to_one[each_method.stmt_id] = class_id
+
+    def is_method_decl_of_class(self, method_stmt_id, class_id):
+        if method_stmt_id in self.many_to_one:
+            return self.many_to_one[method_stmt_id] == class_id
+        return False
+
     def export(self):
-        if len(self.unit_id_to_stmt_ids) == 0:
+        if len(self.one_to_many) == 0:
             return
 
         results = []
-        for (unit_id, class_ids) in self.unit_id_to_stmt_ids.items():
-
-            for method in class_ids:
-                results.append([method.unit_id, method.class_id, method.name, method.stmt_id])
-        DataModel(results, columns = schema.class_id_to_method_id_schema).save(self.path)
+        for (class_id, methods) in self.one_to_many.items():
+            for each_method in methods:
+                results.append([
+                    each_method.unit_id, each_method.class_id, each_method.name, each_method.stmt_id
+                ])
+        DataModel(results, columns = schema.class_id_to_methods_schema).save(self.path)
 
     def restore(self):
         df = DataModel().load(self.path)
@@ -728,11 +811,11 @@ class MethodsInClassLoader(UnitIDToMethodIDLoader):
             method = MethodInClass(
                 unit_id, class_id, method_name, method_stmt_id
             )
-            self.stmt_id_to_unit_id[method] = class_id
-            if class_id not in self.unit_id_to_stmt_ids:
-                self.unit_id_to_stmt_ids[class_id] = []
-            self.unit_id_to_stmt_ids[class_id].append(method)
-    
+            self.many_to_one[method_stmt_id] = class_id
+            if class_id not in self.one_to_many:
+                self.one_to_many[class_id] = []
+            self.one_to_many[class_id].append(method)
+
 class ExternalSymbolIDCollectionLoader:
     def __init__(self, path):
         self.path = path
@@ -795,7 +878,7 @@ class EntryPointsLoader:
 
 class CFGLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, method_id, bundle_data):
-        flattened_item = bundle_data.query(bundle_data.method_id.bundle_search(method_id))
+        flattened_item = bundle_data.query(sorted(bundle_data.method_id.bundle_search(method_id)))
         return flattened_item
 
     def unflatten_item_dataframe_when_loading(self, method_id, item_df):
@@ -817,7 +900,7 @@ class CFGLoader(GeneralLoader):
         return edges
 
 ##############################################################
-# The following is to deal with the results of basice analysis
+# The following is to deal with the results of basic analysis
 ##############################################################
 class MethodLevelAnalysisResultLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, _id, bundle_data):
@@ -1586,7 +1669,7 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._class_id_to_methods_loader = MethodsInClassLoader(
+        self._class_id_to_methods_loader = ClassIDToMethodsLoader(
             os.path.join(self.semantic_path_p1, config.CLASS_METHODS_PATH),
         )
 
@@ -1594,27 +1677,27 @@ class Loader:
             os.path.join(self.semantic_path_p1, config.CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH)
         )
 
-        self._method_id_to_method_decl_format_loader = MethodIDToMethodDeclFormat(
+        self._method_id_to_method_decl_format_loader = MethodIDToMethodDeclFormatLoader(
             os.path.join(self.semantic_path_p1, config.METHOD_ID_TO_METHOD_DECL_FORMAT_PATH)
         )
 
-        self._unit_id_to_stmt_id_loader: UnitIDToStmtIDLoader = UnitIDToStmtIDLoader(
+        self._unit_id_to_stmt_id_loader = UnitIDToStmtIDLoader(
             os.path.join(self.basic_path, config.UNIT_ID_TO_STMT_ID_PATH)
         )
 
-        self._unit_id_to_method_id_loader: UnitIDToMethodIDLoader = UnitIDToMethodIDLoader(
+        self._unit_id_to_method_id_loader = UnitIDToMethodIDLoader(
             os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_METHOD_ID_PATH)
         )
 
-        self._unit_id_to_class_id_loader: UnitIDToClassIDLoader = UnitIDToClassIDLoader(
+        self._unit_id_to_class_id_loader = UnitIDToClassIDLoader(
             os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_CLASS_ID_PATH)
         )
 
-        self._unit_id_to_namespace_id_loader: UnitIDToNamespaceIDLoader = UnitIDToNamespaceIDLoader(
+        self._unit_id_to_namespace_id_loader = UnitIDToNamespaceIDLoader(
             os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_NAMESPACE_ID_PATH)
         )
 
-        self._unit_id_to_variable_id_loader: UnitIDToVariableIDLoader = UnitIDToVariableIDLoader(
+        self._unit_id_to_variable_id_loader = UnitIDToVariableIDLoader(
             os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_VARIABLE_ID_PATH)
         )
 
@@ -1622,15 +1705,15 @@ class Loader:
             os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_IMPORT_STMT_ID_PATH)
         )
 
-        self._method_id_to_parameter_id_loader: MethodIDToParameterIDLoader = MethodIDToParameterIDLoader(
+        self._method_id_to_parameter_id_loader = MethodIDToParameterIDLoader(
             os.path.join(self.semantic_path_p1, config.METHOD_ID_TO_PARAMETER_ID_PATH)
         )
 
-        self._class_id_to_method_id_loader = MethodIDToParameterIDLoader(
+        self._class_id_to_method_id_loader = ClassIDToMethodIDLoader(
             os.path.join(self.semantic_path_p1, config.CLASS_ID_TO_METHOD_ID_PATH)
         )
 
-        self._class_id_to_field_id_loader = MethodIDToParameterIDLoader(
+        self._class_id_to_field_id_loader = ClassIDToFieldIDLoader(
             os.path.join(self.semantic_path_p1, config.CLASS_ID_TO_FIELD_ID_PATH)
         )
 
@@ -1638,11 +1721,11 @@ class Loader:
             os.path.join(self.semantic_path_p1, config.CLASS_ID_TO_CLASS_NAME_PATH)
         )
 
-        self._method_id_to_method_name_loader = UnitIDToMethodIDLoader(
+        self._method_id_to_method_name_loader = MethodIDToMethodNameLoader(
             os.path.join(self.semantic_path_p1, config.METHOD_ID_TO_METHOD_NAME_PATH)
         )
 
-        self._symbol_name_to_scope_ids_loader: SymbolNameToScopeIDsLoader = SymbolNameToScopeIDsLoader(
+        self._symbol_name_to_scope_ids_loader = SymbolNameToScopeIDsLoader(
             options,
             [],
             os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_SCOPE_IDS_PATH),
@@ -1650,7 +1733,7 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._symbol_name_to_decl_ids_loader: SymbolNameToDeclIDsLoader = SymbolNameToDeclIDsLoader(
+        self._symbol_name_to_decl_ids_loader = SymbolNameToDeclIDsLoader(
             options,
             [],
             os.path.join(self.basic_path, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
@@ -1658,7 +1741,7 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._scope_id_to_symbol_info_loader: ScopeIDToSymbolInfoLoader = ScopeIDToSymbolInfoLoader(
+        self._scope_id_to_symbol_info_loader = ScopeIDToSymbolInfoLoader(
             options,
             [],
             os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_SYMBOL_INFO_PATH),
@@ -1666,7 +1749,7 @@ class Loader:
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._scope_id_to_available_scope_ids_loader: ScopeIDToAvailableScopeIDsLoader = ScopeIDToAvailableScopeIDsLoader(
+        self._scope_id_to_available_scope_ids_loader = ScopeIDToAvailableScopeIDsLoader(
             options,
             [],
             os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
@@ -1682,13 +1765,13 @@ class Loader:
         #     config.BUNDLE_CACHE_CAPACITY
         # )
 
-        self._unit_symbol_decl_summary_loader: UnitSymbolDeclSummaryLoader = UnitSymbolDeclSummaryLoader(
+        self._unit_symbol_decl_summary_loader = UnitSymbolDeclSummaryLoader(
             self._symbol_name_to_scope_ids_loader,
             self._scope_id_to_symbol_info_loader,
             self._scope_id_to_available_scope_ids_loader
         )
 
-        self._entry_points_loader: EntryPointsLoader = EntryPointsLoader(
+        self._entry_points_loader = EntryPointsLoader(
             os.path.join(self.semantic_path_p1, config.ENTRY_POINTS_PATH)
         )
 
@@ -1964,7 +2047,7 @@ class Loader:
         if self.method_header_cache.contain(method_id):
             return self.method_header_cache.get(method_id)
 
-        unit_id = self._unit_id_to_method_id_loader.load_value_to_key(method_id)
+        unit_id = self._unit_id_to_method_id_loader.find_one_by_many(method_id)
         unit_gir = self._gir_loader.load(unit_id)
         if util.is_empty(unit_gir):
             return (None, None)
@@ -1985,7 +2068,7 @@ class Loader:
         if self.method_body_cache.contain(method_id):
             self.method_body_cache.get(method_id)
 
-        unit_id = self._unit_id_to_method_id_loader.load_value_to_key(method_id)
+        unit_id = self._unit_id_to_method_id_loader.find_one_by_many(method_id)
         unit_gir = self._gir_loader.load(unit_id)
         method_body = unit_gir.read_block(method_decl_stmt.body)
         self.method_body_cache.put(method_id, method_body)
@@ -1995,7 +2078,7 @@ class Loader:
         method_decl_stmt, method_parameters = self.load_method_header(method_id)
         method_body = self._load_method_body_by_header(method_id, method_decl_stmt)
         return (method_decl_stmt, method_parameters, method_body)
- 
+
     def load_stmt_gir(self, stmt_id):
         if stmt_id <= 0:
             return None
@@ -2003,7 +2086,7 @@ class Loader:
         unit_gir = self._gir_loader.load(unit_id)
         stmt_gir = unit_gir.query_first(unit_gir.stmt_id.eq(stmt_id))
         return stmt_gir
-    
+
     def load_scope_by_id(self, scope_id):
         """返回指定id对应的scope"""
         if scope_id <= 0:
@@ -2057,13 +2140,13 @@ class Loader:
     def load_all_unit_info(self):
         return self._module_symbols_loader.load_all_unit_info()
     def convert_module_id_to_module_info(self, *args):
-        return self._module_symbols_loader.convert_module_id_to_module_info(*args)
+        return self._module_symbols_loader.find_module_info_by_module_id(*args)
     def convert_unit_id_to_info(self, *args):
-        return self._module_symbols_loader.convert_module_id_to_module_info(*args)
+        return self._module_symbols_loader.find_module_info_by_module_id(*args)
     def convert_unit_id_to_unit_path(self, *args):
-        return self._module_symbols_loader.convert_unit_id_to_unit_path(*args)
+        return self._module_symbols_loader.find_unit_path_by_unit_id(*args)
     def convert_unit_path_to_unit_id(self, *args):
-        return self._module_symbols_loader.convert_unit_path_to_unit_id(*args)
+        return self._module_symbols_loader.find_unit_id_by_unit_path(*args)
 
     def is_module_id(self, *args):
         return self._module_symbols_loader.is_module_id(*args)
@@ -2072,9 +2155,9 @@ class Loader:
     def is_module_dir_id(self, *args):
         return self._module_symbols_loader.is_module_dir_id(*args)
     def convert_unit_id_to_lang_name(self, *args):
-        return self._module_symbols_loader.load_unit_lang_name(*args)
+        return self._module_symbols_loader.find_unit_lang_name_by_unit_id(*args)
     def convert_module_id_to_child_ids(self, *args):
-        return self._module_symbols_loader.convert_module_id_to_child_ids(*args)
+        return self._module_symbols_loader.find_child_ids_by_module_id(*args)
 
     def load_unit_gir(self, *args):
         return self._gir_loader.load(*args)
@@ -2098,7 +2181,7 @@ class Loader:
         return self._unit_id_to_export_symbols_loader.save(*args)
 
     def load_methods_in_class(self, *args):
-        return self._class_id_to_methods_loader.load_key_to_values(*args)
+        return self._class_id_to_methods_loader.find_many_by_one(*args)
     def save_methods_in_class(self, *args):
         return self._class_id_to_methods_loader.save(*args)
 
@@ -2130,14 +2213,14 @@ class Loader:
     def load_method_external_symbol_id_collection(self, *args):
         return self._external_symbol_id_collection_loader.load_external_symbol_id_collection(*args)
 
-    def convert_unit_id_to_variable_ids(self, *args):
-        return self._unit_id_to_variable_id_loader.load_key_to_values(*args)
+    def find_variable_ids_by_unit_id(self, *args):
+        return self._unit_id_to_variable_id_loader.find_many_by_one(*args)
     def save_unit_id_to_variable_ids(self, *args):
         return self._unit_id_to_variable_id_loader.save(*args)
-    def convert_variable_id_to_unit_id(self, *args):
-        return self._unit_id_to_variable_id_loader.load_value_to_key(*args)
+    def find_unit_id_by_variable_id(self, *args):
+        return self._unit_id_to_variable_id_loader.find_one_by_many(*args)
     def load_all_variable_ids(self, *args):
-        return self._unit_id_to_variable_id_loader.load_all_values(*args)
+        return self._unit_id_to_variable_id_loader.load_all_items_in_many(*args)
     def is_variable_decl(self, *args):
         return self._unit_id_to_variable_id_loader.is_variable_decl(*args)
 
@@ -2185,7 +2268,7 @@ class Loader:
         if not util.is_empty(class_members_dm):
             class_members_df = class_members_dm.get_data()
             if not class_members_df.empty and hasattr(class_members_df, "members"):
-                return class_members_df["members"].to_dict()        
+                return class_members_df["members"].to_dict()
         return {}
     def load_all_class_id_to_members(self):
         return self._class_id_to_members_loader.load_all()
@@ -2514,7 +2597,7 @@ class Loader:
         else:
             stmt_source_code = lines[stmt_start_line:]
         return stmt_source_code
-    
+
     def get_stmt_source_code_with_comment(self, stmt_id):
         """获取stmt的source_code，并添加注释"""
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
@@ -2525,7 +2608,7 @@ class Loader:
         lines = [line.rstrip() for line in lines]
         stmt = self.convert_stmt_id_to_stmt(stmt_id)
         return self.get_stmt_source_code(lines, stmt)
-    
+
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         unit_gir = self.load_unit_gir(unit_id)
@@ -2533,8 +2616,8 @@ class Loader:
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
         return stmt_id_to_stmt.get(stmt_id)
-        
-        
+
+
 
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始

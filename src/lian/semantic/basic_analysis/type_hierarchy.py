@@ -20,13 +20,14 @@ from lian.util import util
 from lian.util.loader import Loader
 
 class TypeHierarchy:
-    def __init__(self, loader, resolver):
+    def __init__(self, loader, resolver, unit_list):
         self.loader: Loader = loader
         self.resolver: Resolver = resolver
         self.type_graph = BasicGraph()
         self.analyzed_type_hierarchy_ids = set()
         self.analyzed_class_ids = set()
         self.class_to_methods = {}
+        self.unit_list = unit_list
 
     def parse_class_decl_stmt(self, unit_id, stmt_id, stmt):
         result = []
@@ -158,8 +159,8 @@ class TypeHierarchy:
 
         self.loader.save_methods_in_class(class_id, methods_in_class)
 
-    def analyze(self, unit_id_list):
-        for unit_id in unit_id_list:
+    def run(self):
+        for unit_id in self.unit_list:
             self.analyze_type_hierarchy(unit_id)
 
         # adjust methods in class and save

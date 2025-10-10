@@ -83,13 +83,13 @@ class BasicSemanticAnalysis:
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
-        
+
         if unit_is_analyzed:
             cfg = self.incremental_checker.fetch_cfg(method_id)
             self.loader.save_method_cfg(method_id, cfg)
         else:
             cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
-        
+
         all_cfg_nodes = set(cfg.nodes())
 
         self.analyze_and_save_method_decl_format(method_id, method_decl_stmt, parameter_decls)
@@ -189,7 +189,7 @@ class BasicSemanticAnalysis:
                 for row in parameter_decls:
                     self.loader.save_method_parameter(method_id, row)
 
-     
+
     def run(self):
         if self.options.debug:
             util.debug("\n\t###########  # Basic Analysis #  ###########")
@@ -224,7 +224,7 @@ class BasicSemanticAnalysis:
 
         unit_list.reverse()
         import_analysis = ImportHierarchy(self.lian, self.loader, self.resolver, unit_list).run()
-        TypeHierarchy(self.loader, self.resolver).analyze(unit_list)
+        TypeHierarchy(self.loader, self.resolver, unit_list).run()
 
         # Conduct basic analysis, i.e., context-insensitive and flow-insensitive analysis
         # reversed() is to improve cache hit rates
@@ -235,7 +235,7 @@ class BasicSemanticAnalysis:
             all_unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
             if self.options.incremental:
                 unit_is_analyzed = (self.incremental_checker.check_unit_id_analyzed(unit_id) is not None)
-            else: 
+            else:
                 unit_is_analyzed = False
             for method_id in all_unit_methods:
                 if self.options.strict_parse_mode:
