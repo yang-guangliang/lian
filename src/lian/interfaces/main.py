@@ -4,7 +4,7 @@ import sys
 ############################################################
 # Initliaze the configuration
 ############################################################
-# Support empty  
+# Support empty
 import builtins
 
 try:
@@ -32,6 +32,7 @@ from lian.interfaces import (
 
 from lian.config import constants, config
 from lian.apps.app_manager import AppManager
+from lian.interfaces.settings_manager import SettingsManager
 from lian.config import config, constants, lang_config
 from lian.util import util
 from lian.util.loader import Loader
@@ -41,6 +42,7 @@ from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGen
 from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
+from lian.externs.extern_system import ExternSystem
 from example.problem_monitor import ProblemMonitor
 
 class Lian:
@@ -66,6 +68,12 @@ class Lian:
 
     def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
+        print(self.options)
+
+        if not hasattr(self.options, "default_settings") or len(self.options.default_settings) == 0:
+            self.options.default_settings = config.DEFAULT_SETTINGS
+        if not hasattr(self.options, "addition_settings") or len(self.options.addition_settings) == 0:
+            self.options.addition_settings = ""
 
         if util.is_available(custom_options):
             if isinstance(self.options, dict):
@@ -106,16 +114,13 @@ class Lian:
         # update lang config & options.lang_extensions
         self.update_lang_config()
 
-        # Set up the analysis environment
-        if hasattr(self.options, "extern_path") and self.options.extern_path:
-            sys.path.append(self.options.extern_path)  # 添加绝对路径
-            from externs.extern_system import ExternSystem
-        else:
-            from lian.externs.extern_system import ExternSystem
         self.app_manager = AppManager(self.options)
         self.loader = Loader(self.options, self.app_manager)
         self.resolver = Resolver(self.options, self.app_manager, self.loader)
         self.problem_monitor = ProblemMonitor(self)
+        self.settings_manager = SettingsManager(self.options)
+        self.settings_manager.init()
+
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
 
         # 旧版llm_driven_sec
