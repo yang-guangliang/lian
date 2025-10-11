@@ -2,8 +2,21 @@
 def f1(self):
     print("f1")
     # 直接通过函数名调用f2
-    exec_update = self.db_client.update_execution_status()
-    self.db_client.send_execution_update(exec_update.model_dump())
+    # exec_update = self.db_client.update_execution_status()
+    # self.db_client.send_execution_update(exec_update.model_dump())
+
+    self.db = db or self.config.db
+    # Embedder
+    if embedder is None:
+        raise ValueError("App requires Embedder.")
+    self.embedder = embedder
+
+    # Initialize database
+    self.db._set_embedder(self.embedder)
+    self.db._initialize()
+    # Set collection name from app config for backwards compatibility.
+    if config.collection_name:
+        self.db.set_collection_name(config.collection_name)
 
     a.b = cc.dd()
     ff = a.b.ff()

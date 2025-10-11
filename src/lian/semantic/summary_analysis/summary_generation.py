@@ -1179,6 +1179,8 @@ class SemanticSummaryGeneration:
             self.loader.save_method_symbol_to_define_p2(frame.method_id, frame.symbol_to_define)
             self.loader.save_method_state_to_define_p2(frame.method_id, frame.state_to_define)
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
+            # print(util.get_call_name_access_path(38, frame))
+            # print(util.get_call_name_access_path(41, frame))
             frame_stack.pop()
 
     def sort_methods_by_unit_id(self, methods):

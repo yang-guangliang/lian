@@ -3439,9 +3439,9 @@ class StmtStateAnalysis:
                     each_source_state = self.frame.symbol_state_space[each_source_state_index]
                     if not (each_source_state and isinstance(each_source_state, State)):
                         continue
-
-                    if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                        continue
+                    #
+                    # if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                    #     continue
 
                     access_path = self.copy_and_extend_access_path(
                         original_access_path = receiver_state.access_path,
