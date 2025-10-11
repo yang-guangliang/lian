@@ -20,7 +20,7 @@ class UnitLevelIncrementalChecker:
         self.bak_loader = Loader(self.options, self.app_manager)
 
         self.bak_loader.restore()
-        self.module_symbol_backup = self.bak_loader.load_module_symbol_table()
+        self.module_symbol_backup = self.bak_loader.get_module_symbol_table()
 
         self.max_stmt_id = -1
 
@@ -64,7 +64,7 @@ class UnitLevelIncrementalChecker:
         return previous_uid
 
     def fetch_gir(self, previous_uid, current_node_id):
-        unit_gir_df = self.bak_loader.load_unit_gir(previous_uid)
+        unit_gir_df = self.bak_loader.get_unit_gir(previous_uid)
         if not unit_gir_df:
             return current_node_id, None
         if len(unit_gir_df) == 0:
@@ -81,7 +81,7 @@ class UnitLevelIncrementalChecker:
         scope_pack["method_stmt_ids"] = self.bak_loader.convert_unit_id_to_method_ids(previous_uid)
         scope_pack["class_stmt_ids"] = self.bak_loader.convert_unit_id_to_class_ids(previous_uid)
         scope_pack["namespace_stmt_ids"] = self.bak_loader.convert_unit_id_to_namespace_ids(previous_uid)
-        scope_pack["variable_ids"] = self.bak_loader.convert_unit_id_to_variable_ids(previous_uid)
+        scope_pack["variable_ids"] = self.bak_loader.find_variable_ids_by_unit_id(previous_uid)
         scope_pack["import_stmt_ids"] = self.bak_loader.convert_unit_id_to_import_stmt_ids(previous_uid)
 
         method_id_to_method_name = {}
@@ -106,15 +106,15 @@ class UnitLevelIncrementalChecker:
         scope_pack["class_id_to_class_method_ids"] = class_id_to_class_method_ids
         scope_pack["class_id_to_class_field_ids"] = class_id_to_class_field_ids
 
-        scope_space_df = self.bak_loader.load_unit_scope_hierarchy(previous_uid)
+        scope_space_df = self.bak_loader.get_unit_scope_hierarchy(previous_uid)
         scope_space_list = scope_space_df.convert_to_dict_list()
         scope_pack["scope_space"] = self.revive_data_from_dict_list(scope_space_list, Scope)
 
-        scope_pack["unit_symbol_decl_summary"] = self.bak_loader.load_unit_symbol_decl_summary(previous_uid)
+        scope_pack["unit_symbol_decl_summary"] = self.bak_loader.get_unit_symbol_decl_summary(previous_uid)
         return scope_pack
 
     def fetch_cfg(self, method_id):
-        return self.bak_loader.load_method_cfg(method_id)
+        return self.bak_loader.get_method_cfg(method_id)
 
     def previous_lang_analysis_results(self, unit_info, current_node_id):
         # util.debug("inc:", unit_info.module_id)

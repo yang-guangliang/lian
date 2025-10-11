@@ -55,6 +55,12 @@ METHOD_HEADER_CACHE_CAPABILITY              = 10000
 METHOD_BODY_CACHE_CAPABILITY                = 1000
 STMT_SCOPE_CACHE_CAPABILITY                 = 1000
 
+DEFAULT_SETTINGS                            = "default_settings"
+ENTRY_POINTS_FILE                           = "entry-point.yaml"
+PROPAGATION_FILE                            = "propagation.yaml"
+SOURCE_FILE                                 = "source.yaml"
+SINK_FILE                                   = "sink.yaml"
+
 MODULE_SYMBOLS_PATH                         = "module_symbols"
 LOADER_INDEXING_PATH                        = "indexing"
 GIR_BUNDLE_PATH                             = "gir"

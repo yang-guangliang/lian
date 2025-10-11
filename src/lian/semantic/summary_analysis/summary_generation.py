@@ -81,7 +81,7 @@ class SemanticSummaryGeneration:
         调整符号的定义位向量，初始化符号状态空间。
         处理旧符号定义，构建新的符号到定义节点的映射关系。
         """
-        old_symbol_to_define = self.loader.load_method_symbol_to_define(method_id)
+        old_symbol_to_define = self.loader.get_method_symbol_to_define(method_id)
         if not old_symbol_to_define:
             return
 
@@ -113,7 +113,7 @@ class SemanticSummaryGeneration:
         调整状态的定义位向量，初始化状态状态空间。
         处理旧状态定义，构建状态到定义节点的映射关系。
         """
-        frame.state_to_define = self.loader.load_method_state_to_define_p1(method_id)
+        frame.state_to_define = self.loader.get_method_state_to_define_p1(method_id)
         all_state_defs = set()
         for state_id, defined_set in frame.state_to_define.items():
             for state_def_node in defined_set:
@@ -131,7 +131,7 @@ class SemanticSummaryGeneration:
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
-        _, parameter_decls, method_body = self.loader.load_method_gir(method_id)
+        _, parameter_decls, method_body = self.loader.get_method_gir(method_id)
         if util.is_available(parameter_decls):
             for row in parameter_decls:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
@@ -150,7 +150,7 @@ class SemanticSummaryGeneration:
             analyzed_method_list = self.analyzed_method_list
         )
 
-        frame.cfg = self.loader.load_method_cfg(method_id)
+        frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
             return
 
@@ -159,15 +159,15 @@ class SemanticSummaryGeneration:
         frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
 
         # avoid changing the content of the loader
-        frame.stmt_id_to_status = copy.deepcopy(self.loader.load_stmt_status_p1(method_id))
-        frame.symbol_state_space = self.loader.load_symbol_state_space_p1(method_id).copy()
+        frame.stmt_id_to_status = copy.deepcopy(self.loader.get_stmt_status_p1(method_id))
+        frame.symbol_state_space = self.loader.get_symbol_state_space_p1(method_id).copy()
         if util.is_empty(frame.symbol_state_space):
             return
 
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(
-            self.loader.load_method_internal_callees(method_id)
+            self.loader.get_method_internal_callees(method_id)
         )
-        frame.method_def_use_summary = self.loader.load_method_def_use_summary(method_id).copy()
+        frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id).copy()
         frame.all_local_symbol_ids = frame.method_def_use_summary.local_symbol_ids
         #print(frame.method_def_use_summary)
 
@@ -1190,7 +1190,7 @@ class SemanticSummaryGeneration:
         return reversed(self.sort_methods_by_unit_id(methods))
 
     def collect_def_states_amount_each_stmt(self, stmt_id, new_out_states_len, in_states):
-        stmt = self.loader.load_stmt_gir(stmt_id)
+        stmt = self.loader.get_stmt_gir(stmt_id)
         op = stmt.operation
 
         if stmt_id not in self.count_stmt_def_states:
@@ -1237,7 +1237,7 @@ class SemanticSummaryGeneration:
                        "\t------------------------------------------------\n")
 
         # analyze all methods
-        grouped_methods:SimplyGroupedMethodTypes = self.loader.load_grouped_methods()
+        grouped_methods:SimplyGroupedMethodTypes = self.loader.get_grouped_methods()
         for method_id in grouped_methods.get_all_method_list():
             if method_id not in self.analyzed_method_list:
                 self.analyze_method(method_id)

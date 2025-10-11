@@ -4,7 +4,7 @@ import sys
 ############################################################
 # Initliaze the configuration
 ############################################################
-# Support empty  
+# Support empty
 import builtins
 
 try:
@@ -62,6 +62,11 @@ class Lian:
 
     def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
+
+        if not hasattr(self.options, "default_settings") or len(self.options.default_settings) == 0:
+            self.options.default_settings = config.DEFAULT_SETTINGS
+        if not hasattr(self.options, "addition_settings") or len(self.options.addition_settings) == 0:
+            self.options.addition_settings = ""
 
         if util.is_available(custom_options):
             if isinstance(self.options, dict):

@@ -99,12 +99,12 @@ def init_new_object(data: EventData):
             type_name = loader.convert_method_id_to_method_name(each_type_state.value)
 
         elif loader.is_class_decl(each_type_state.value) or each_type_state.data_type == LIAN_INTERNAL.THIS:
-            methods_in_class = loader.load_methods_in_class(each_type_state.value)
+            methods_in_class = loader.get_methods_in_class(each_type_state.value)
             type_name = loader.convert_class_id_to_class_name(each_type_state.value)
             if each_type_state.data_type == LIAN_INTERNAL.THIS:
                 method_id = loader.convert_stmt_id_to_method_id(stmt_id)
                 class_id = loader.convert_method_id_to_class_id(method_id)
-                methods_in_class = loader.load_methods_in_class(class_id)
+                methods_in_class = loader.get_methods_in_class(class_id)
                 type_name = loader.convert_class_id_to_class_name(class_id)
             if methods_in_class:
                 for each_method in methods_in_class:

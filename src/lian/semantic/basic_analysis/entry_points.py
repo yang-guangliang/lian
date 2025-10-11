@@ -44,6 +44,10 @@ class EntryPointGenerator:
 
         ]
 
+    def load_config(self):
+        pass
+
+
     def scan_js_ts_exported_method(self):
         pass
 
