@@ -30,9 +30,11 @@ class SettingsManager:
         self.lang_to_sink_settings = {}
 
     def init(self):
+        print("...........", self.default_settings_dir, self.additional_settings_dir)
         #从self.default_settings_dir文件夹中扫描entry-point.yaml、propagation.yaml、source.yaml、sink.yaml文件
         for dirpath, dirnames, filenames in os.walk(self.default_settings_dir):
             for filename in filenames:
+                print("haha", filename)
                 file_path = os.path.join(dirpath, filename)
                 file_name, file_ext = os.path.splitext(filename)
                 if file_ext == ".yaml":

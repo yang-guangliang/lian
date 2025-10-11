@@ -30,6 +30,7 @@ from lian.interfaces import (
 
 from lian.config import constants, config
 from lian.apps.app_manager import AppManager
+from lian.interfaces.settings_manager import SettingsManager
 from lian.config import config, constants, lang_config
 from lian.util import util
 from lian.util.loader import Loader
@@ -39,6 +40,7 @@ from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGen
 from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
 from lian.semantic.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
+from lian.externs.extern_system import ExternSystem
 
 class Lian:
     def __init__(self):
@@ -62,6 +64,7 @@ class Lian:
 
     def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
+        print(self.options)
 
         if not hasattr(self.options, "default_settings") or len(self.options.default_settings) == 0:
             self.options.default_settings = config.DEFAULT_SETTINGS
@@ -107,15 +110,12 @@ class Lian:
         # update lang config & options.lang_extensions
         self.update_lang_config()
 
-        # Set up the analysis environment
-        if hasattr(self.options, "extern_path") and self.options.extern_path:
-            sys.path.append(self.options.extern_path)  # 添加绝对路径
-            from externs.extern_system import ExternSystem
-        else:
-            from lian.externs.extern_system import ExternSystem
         self.app_manager = AppManager(self.options)
         self.loader = Loader(self.options, self.app_manager)
         self.resolver = Resolver(self.options, self.app_manager, self.loader)
+        self.settings_manager = SettingsManager(self.options)
+        self.settings_manager.init()
+
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
         self.app_manager.register_extern_system(self.extern_system)
         # prepare folders and unit info tables
