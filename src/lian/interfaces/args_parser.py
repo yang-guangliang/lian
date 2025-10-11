@@ -4,6 +4,7 @@ import sys
 import argparse
 import types
 from lian.config import config
+from lian.util import util
 
 class ArgsParser:
     def __init__(self):
@@ -37,8 +38,8 @@ class ArgsParser:
             parser.add_argument('-l', "--lang", default="", type=str, help='programming lang', required=True)
             parser.add_argument("--strict-parse-mode", action="store_true", help="Enable the strict way to parse code")
             parser.add_argument("-inc", "--incremental", action="store_true", help="Reuse previous analysis results for GIR, scope and cfg")
-            parser.add_argument("--settings", type=str, help="Specify the settings folder")
-            parser.add_argument("--user-settings", type=str, help="Specify the additional settings folder")
+            parser.add_argument("--default-settings", default="", type=str, help="Specify the default settings folder")
+            parser.add_argument("--additional-settings", default="", type=str, help="Specify the additional settings folder")
 
             parser.add_argument("--noextern", action="store_true", help="Disable the external processing module")
 
@@ -65,6 +66,9 @@ class ArgsParser:
             default_workspace_dir = config.DEFAULT_WORKSPACE,
             sub_command = "",
             in_path = "",
+            incremental = False,
+            default_settings = "",
+            additional_settings = "",
         )
 
     def print_help(self):
