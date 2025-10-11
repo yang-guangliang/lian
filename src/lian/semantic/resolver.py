@@ -1099,9 +1099,9 @@ class Resolver:
             输出：如果有，返回method_id；没有则为-1
         """
         class_id = self.loader.convert_class_name_to_class_ids(class_name)
-        method_ids = self.loader.load_method_in_class_with_method_name(class_id, method_name)
+        method_ids = self.loader.get_method_in_class_with_method_name(class_id, method_name)
         if util.is_available(method_ids): return method_ids # 该类自身就有该方法
-        methods_in_class = self.loader.load_methods_in_class(class_id)
+        methods_in_class = self.loader.get_methods_in_class(class_id)
         for each_method in methods_in_class:
             if each_method.name == method_name: # 继承
                 method_ids.add(each_method.stmt_id)
