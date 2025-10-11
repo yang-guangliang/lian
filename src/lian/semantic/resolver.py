@@ -1126,5 +1126,65 @@ class Resolver:
                 "callee_method_decl"     :  callee_method_decl
             }
 
+    def recover_callee_name(self, stmt_id, frame: ComputeFrame):
 
+        def access_path_formatter(state_access_path):
+            key_list = []
+            
+            for item in state_access_path:
+                key = item.key
+                key = key if isinstance(key, str) else str(key)
+                # 处理非空且不以%vv开头的key
+                if key and not key.startswith("%vv"):
+                    key_list.append(key)
+                # 处理以%vv开头且kind为13(call)的情况，添加()后缀
+                elif key.startswith("%vv") and item.kind == 13 and key_list:
+                    key_list[-1] = key_list[-1] + "()"
+            
+            return '.'.join(key_list)
 
+        status = None
+        s2space = None
+        
+        if frame.stmt_state_analysis.phase == 2:
+            status = frame.stmt_id_to_status.get(stmt_id)
+            s2space = frame.symbol_state_space
+            
+            if not status:
+                return "None"
+                
+        elif frame.stmt_state_analysis.phase == 3:
+            method_id = frame.method_id
+            loader = frame.loader
+            
+            method_status = loader.load_stmt_status_p2(method_id)
+            if method_status is None:
+                return ""
+                
+            s2space = loader.load_symbol_state_space_p2(method_id)
+            status = method_status.get(stmt_id)
+            
+            if status is None:
+                return ""
+        else:
+            return ""
+
+        if not status.used_symbols:
+            return "None"
+            
+        name_index = status.used_symbols[0]
+        name_symbol = s2space[name_index]
+
+        if name_symbol.name.startswith("%vv"):
+            access_path = "None"
+            
+            for index in name_symbol.states:
+                name_state = s2space[index]
+                
+                if name_state.access_path and len(name_state.access_path) > 0:
+                    access_path = access_path_formatter(name_state.access_path)
+                    break 
+                    
+            return access_path
+        else:
+            return name_symbol.name

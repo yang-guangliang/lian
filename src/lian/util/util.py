@@ -557,38 +557,5 @@ def bytes_to_int(b: bytes) -> int:
         return 0
     return int.from_bytes(b, byteorder='big', signed=False)
 
-def access_path_formatter(state_access_path):
-    key_list = []
-    for item in state_access_path:
-        key = item.key
-        key = key if isinstance(key, str) else str(key)
-        if key != "" and not key.startswith("%vv"):
-            key_list.append(key)
-        elif key.startswith("%vv") and item.kind == 13 and len(key_list) > 0:
-            key_list[-1] = key_list[-1] + "()"
-    # 使用点号连接所有 key 值
-    access_path = '.'.join(key_list)
-    return access_path
 
 
-
-def get_call_name_access_path(stmt_id, loader):
-    method_id = loader.convert_stmt_id_to_method_id(stmt_id)
-    method_status = loader.load_stmt_status_p2(method_id)
-    space = loader.load_symbol_state_space_p2(method_id)
-    status = method_status.get(stmt_id, None)
-    if not status:
-        return "None"
-    name_index = status.used_symbols[0]
-    name_symbol = space[name_index]
-
-    access_path = "None"
-    if name_symbol.name.startswith("%vv"):
-        for index in name_symbol.states:
-            name_state = space[index]
-
-            if name_state.access_path and len(name_state.access_path) > 0:
-                access_path = access_path_formatter(name_state.access_path)
-        return access_path
-    else:
-        return name_symbol.name
