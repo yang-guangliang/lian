@@ -121,7 +121,7 @@ class Lian:
         # 旧版llm_driven_sec
         # self.app_manager.register_extern_system(self.extern_system)
         # 新版problem_monitor
-        if self.options.tecent:
+        if hasattr(self.options,"tecent") and self.options.tecent:
             self.app_manager.register_problem_monitor(self.problem_monitor)
 
         # prepare folders and unit info tables
