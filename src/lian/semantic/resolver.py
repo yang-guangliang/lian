@@ -1102,7 +1102,7 @@ class Resolver:
             获取某个类是否拥有某个方法（包括从父类继承的）
             输出：如果有，返回method_id；没有则为-1
         """
-        class_id = self.loader.convert_class_name_to_class_ids(class_name)
+        class_id = self.loader.convert_class_name_to_class_ids(class_name).pop()
         method_ids = self.loader.get_method_in_class_with_method_name(class_id, method_name)
         if util.is_available(method_ids): return method_ids # 该类自身就有该方法
         methods_in_class = self.loader.get_methods_in_class(class_id)

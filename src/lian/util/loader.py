@@ -711,6 +711,12 @@ class ClassIdToNameLoader(OneToManyMapLoader):
     def __init__(self, path):
         super().__init__(path, schema.class_id_to_class_name_schema)
 
+    def save(self, class_name, class_id):
+        if class_name not in self.one_to_many:
+            self.one_to_many[class_name] = set()
+        self.one_to_many[class_name].add(class_id)
+        self.many_to_one[class_id] = class_name
+
 class MethodIDToMethodNameLoader(OneToManyMapLoader):
     def __init__(self, path):
         super().__init__(path, schema.method_id_to_method_name_schema)
@@ -2315,7 +2321,7 @@ class Loader:
     def convert_class_name_to_class_ids(self, class_name):
         return self._class_id_to_class_name_loader.convert_one_to_many(class_name)
     def save_class_id_to_class_name(self, class_id, class_name):
-        return self._class_id_to_class_name_loader.save(class_id, class_name)
+        return self._class_id_to_class_name_loader.save(class_name, class_id)
 
     def convert_method_id_to_method_name(self, method_id):
         return self._method_id_to_method_name_loader.convert_many_to_one(method_id)
