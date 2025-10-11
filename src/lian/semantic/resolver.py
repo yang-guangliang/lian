@@ -1157,11 +1157,11 @@ class Resolver:
             method_id = frame.method_id
             loader = frame.loader
             
-            method_status = loader.load_stmt_status_p2(method_id)
+            method_status = loader.get_stmt_status_p2(method_id)
             if method_status is None:
                 return ""
                 
-            s2space = loader.load_symbol_state_space_p2(method_id)
+            s2space = loader.get_symbol_state_space_p2(method_id)
             status = method_status.get(stmt_id)
             
             if status is None:
