@@ -1068,17 +1068,21 @@ class Resolver:
         global_defs = {
             LIAN_SYMBOL_KIND.CLASS_KIND  : set(),
             LIAN_SYMBOL_KIND.METHOD_KIND : set(),
+            LIAN_SYMBOL_KIND.IMPORT_STMT : set()
         }
         # TODO：加上implicit_root_scope(比如if name=="main"下的scope定义)
         if symbol_name not in root_scope_symbol_info: return global_defs  # 只要定义在顶层scope中的
         symbol_row_id = root_scope_symbol_info[symbol_name]
         unit_class_ids: list[int] = self.loader.convert_unit_id_to_class_ids(unit_id)
         unit_methods_ids: list[int] = self.loader.convert_unit_id_to_method_ids(unit_id)
+        unit_import_stmt_ids: list[int] = self.loader.convert_unit_id_to_import_stmt_ids(unit_id)
         """symbol是该文件中位于顶层作用域的类或函数"""
         if symbol_row_id in unit_class_ids:
             global_defs[LIAN_SYMBOL_KIND.CLASS_KIND].add(symbol_row_id)
         if symbol_row_id in unit_methods_ids:
             global_defs[LIAN_SYMBOL_KIND.METHOD_KIND].add(symbol_row_id)
+        if symbol_row_id in unit_import_stmt_ids:
+            global_defs[LIAN_SYMBOL_KIND.IMPORT_STMT].add(symbol_row_id)
         return global_defs
 
     def get_file_symbol_import_by_name(self, unit_id, symbol_name: str) -> list[str]:
