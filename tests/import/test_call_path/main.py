@@ -1,25 +1,35 @@
-# 定义f1函数
+
+def f1():
+    pass
+
 def f1(self):
     print("f1")
     # 直接通过函数名调用f2
     # exec_update = self.db_client.update_execution_status()
     # self.db_client.send_execution_update(exec_update.model_dump())
 
-    self.db = db or self.config.db
-    # Embedder
-    if embedder is None:
-        raise ValueError("App requires Embedder.")
-    self.embedder = embedder
+    # self.db = db or self.config.db
+    # # Embedder
+    # if embedder is None:
+    #     raise ValueError("App requires Embedder.")
+    # self.embedder = embedder
+    #
+    # # Initialize database
+    # self.db._set_embedder(self.embedder)
+    # self.db._initialize()
+    # # Set collection name from app config for backwards compatibility.
+    # if config.collection_name:
+    #     self.db.set_collection_name(config.collection_name)
+    #
+    # a.b = cc.dd()
+    # ff = a.b.ff()
 
-    # Initialize database
-    self.db._set_embedder(self.embedder)
-    self.db._initialize()
-    # Set collection name from app config for backwards compatibility.
-    if config.collection_name:
-        self.db.set_collection_name(config.collection_name)
+    # @expose
+    # def add_execution(
+    #     self, graph_id: str, data: BlockInput, user_id: str
+    # ) -> dict[str, Any]:
+    #     graph: Graph | None = self.db_client.get_graph(graph_id, user_id=user_id)
 
-    a.b = cc.dd()
-    ff = a.b.ff()
     f2()
 
 

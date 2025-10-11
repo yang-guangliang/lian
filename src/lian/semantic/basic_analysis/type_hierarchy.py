@@ -18,7 +18,6 @@ from lian.semantic.semantic_structs import (
 )
 from lian.util import util
 from lian.util.loader import Loader
-
 class TypeHierarchy:
     def __init__(self, loader, resolver):
         self.loader: Loader = loader
@@ -27,6 +26,7 @@ class TypeHierarchy:
         self.analyzed_type_hierarchy_ids = set()
         self.analyzed_class_ids = set()
         self.class_to_methods = {}
+        self.unsolved_class_id = -2
 
     def parse_class_decl_stmt(self, unit_id, stmt_id, stmt):
         result = []
@@ -53,11 +53,12 @@ class TypeHierarchy:
                             name = stmt.name,
                             unit_id= unit_id,
                             class_stmt_id = stmt_id,
-                            parent_id = -1,
+                            parent_id = self.unsolved_class_id,
                             parent_name = each_name,
                             parent_index = counter
                         )
                     )
+                    self.unsolved_class_id -= 1
                 counter += 1
         else :
             result.append(

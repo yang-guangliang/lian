@@ -572,17 +572,20 @@ def access_path_formatter(state_access_path):
 
 
 
-def get_call_name_access_path(stmt_id, frame):
-    status = frame.stmt_id_to_status.get(stmt_id, None)
+def get_call_name_access_path(stmt_id, loader):
+    method_id = loader.convert_stmt_id_to_method_id(stmt_id)
+    method_status = loader.load_stmt_status_p2(method_id)
+    space = loader.load_symbol_state_space_p2(method_id)
+    status = method_status.get(stmt_id, None)
     if not status:
         return "None"
     name_index = status.used_symbols[0]
-    name_symbol = frame.symbol_state_space[name_index]
+    name_symbol = space[name_index]
 
     access_path = "None"
     if name_symbol.name.startswith("%vv"):
         for index in name_symbol.states:
-            name_state = frame.symbol_state_space[index]
+            name_state = space[index]
 
             if name_state.access_path and len(name_state.access_path) > 0:
                 access_path = access_path_formatter(name_state.access_path)

@@ -44,6 +44,7 @@ from lian.semantic.semantic_structs import (
     MethodInClass,
     APath,
     SymbolNodeInImportGraph,
+    TypeNode
 )
 
 class ModuleSymbolsLoader:
@@ -2685,30 +2686,50 @@ class Loader:
     #     call_paths = self.load_call_paths_p3()
     #     all_paths = set()
     #     for call_path in call_paths:
-    #
+    #         index = 0
     #         path = call_path.path
     #         if len(path) < 2:
     #             continue
-    #         methods = path[::2]
-    #         start_indices = [i for i, method in enumerate(methods) if method in start_method_ids]
-    #         if not start_indices:
+    #         start_index = -1
+    #         while index < len(path):
+    #             if path[index] in start_method_ids:
+    #                 start_index = index
+    #                 break
+    #             index = index + 2
+    #         if start_index == -1:
     #             continue
     #
-    #         start_index = start_indices[0]
     #         end_index = -1
     #             # 检查起始函数之后的所有函数
-    #         for method in reversed(methods[start_index + 1:]):
-    #             if method in end_method_ids:
-    #                 end_index = method
-    #                 break
     #
-    #         index = 0
-    #         while index < len(methods):
+    #         while index > start_index:
+    #             if path[index] in end_method_ids:
+    #                 end_index = index
+    #             index = index - 2
     #
+    #         if end_index == -1:
+    #             continue
     #
-    #
-    #
-    #
-    #
-    #
-    #
+    #         print(call_path)
+    #         # while index < len(methods):
+
+
+
+
+    def get_parent_class_by_class_name(self, class_name):
+        type_graph = self.load_type_graph().graph
+        c = type_graph
+        class_relevant_info = []
+        for u, v, wt in type_graph.edges(data="weight"):
+            if wt.name == class_name:
+                class_relevant_info.append(TypeNode(
+                    name = class_name,
+                    class_stmt_id = u,
+                    parent_id = v,
+                    parent_name = wt.parent_name,
+                    parent_index = wt.parent_pos
+                ))
+        return class_relevant_info
+
+
+
