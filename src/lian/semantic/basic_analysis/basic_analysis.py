@@ -81,7 +81,7 @@ class BasicSemanticAnalysis:
 
     def analyze_stmt_def_use(self, method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed = False):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
-        method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
+        method_decl_stmt, parameter_decls, method_body = self.loader.get_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
 
         if unit_is_analyzed:
@@ -165,7 +165,7 @@ class BasicSemanticAnalysis:
         only_dynamic_callees = containing_dynamic_callees - mixed_direct_callees
         only_direct_callees -= leaf_nodes
         has_calls = only_direct_callees | mixed_direct_callees | only_dynamic_callees | containing_error_callees | containing_dynamic_callees
-        no_callees = self.loader.load_all_method_ids() - has_calls
+        no_callees = self.loader.get_all_method_ids() - has_calls
 
         extra = {BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD, BASIC_CALL_GRAPH_NODE_KIND.ERROR_METHOD}
         types = SimplyGroupedMethodTypes(
@@ -184,7 +184,7 @@ class BasicSemanticAnalysis:
     def analyze_unit_method_parameters(self, unit_id, unit_gir):
         unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
         for method_id in unit_methods:
-            method_decl_stmt, parameter_decls, method_body = self.loader.load_method_gir(method_id)
+            method_decl_stmt, parameter_decls, method_body = self.loader.get_method_gir(method_id)
             if util.is_available(parameter_decls):
                 for row in parameter_decls:
                     self.loader.save_method_parameter(method_id, row)
@@ -195,10 +195,10 @@ class BasicSemanticAnalysis:
             util.debug("\n\t###########  # Basic Analysis #  ###########")
         unit_list = []
         # Analyze each unit's scope hierarchy and entry points
-        for unit_info in self.loader.load_all_unit_info():
+        for unit_info in self.loader.get_all_unit_info():
             unit_id = unit_info.module_id
             unit_list.append(unit_id)
-            unit_gir = self.loader.load_unit_gir(unit_id)
+            unit_gir = self.loader.get_unit_gir(unit_id)
 
             unit_scope = None
             unit_is_analyzed = False

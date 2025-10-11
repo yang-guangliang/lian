@@ -71,7 +71,7 @@ class Resolver:
 
         result = []
 
-        summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
+        summary: UnitSymbolDeclSummary = self.loader.get_unit_symbol_decl_summary(unit_id)
         if util.is_empty(summary):
             return result
 
@@ -120,7 +120,7 @@ class Resolver:
             return SourceSymbolScopeInfo(unit_id, symbol_id, scope_id)
 
         # since this is an import stmt, we need to read import information to find the real symbol_id
-        export_symbols = self.loader.load_unit_export_symbols(unit_id)
+        export_symbols = self.loader.get_unit_export_symbols(unit_id)
         #print("export symbols:", unit_id, export_symbols)
         if util.is_empty(export_symbols):
             return default_return
@@ -141,7 +141,7 @@ class Resolver:
              - implicit_root_scope：
                 既在顶层scope下，又是BLOCK scope类型(比如.py的 "if name == __main__"，实际上里面定义的变量是在顶层作用域)
         """
-        unit_scope_space_dm = self.loader.load_unit_scope_hierarchy(unit_id)
+        unit_scope_space_dm = self.loader.get_unit_scope_hierarchy(unit_id)
         query_implicit_root_scope_condition =(
             (unit_scope_space_dm.get_data()["scope_id"] == 0) &
             (unit_scope_space_dm.get_data()["scope_kind"] == LIAN_SYMBOL_KIND.BLOCK_KIND)
@@ -175,7 +175,7 @@ class Resolver:
         if util.is_empty(symbol_name):
             return default_return
 
-        unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
+        unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.get_unit_symbol_decl_summary(unit_id)
 
         if source_symbol_must_be_global:
             global_scope_id = 0
@@ -380,7 +380,7 @@ class Resolver:
         current_space = caller_frame.symbol_state_space
         source_states.clear()
         # print(f"{callee_id, caller_id, call_stmt_id} load_parameter_mapping")
-        parameter_mapping_list: list[ParameterMapping] = self.loader.load_parameter_mapping_p2(callee_frame.call_site)
+        parameter_mapping_list: list[ParameterMapping] = self.loader.get_parameter_mapping_p2(callee_frame.call_site)
         # print("parameter_mapping_list")
         # pprint.pprint(parameter_mapping_list)
         if not parameter_mapping_list:
@@ -811,7 +811,7 @@ class Resolver:
             # 收集初始的arg_indexes
             arg_state_indexes = set()
             call_site = (caller_frame.method_id, stmt_id, callee_id)
-            parameter_mapping_list = self.loader.load_parameter_mapping_p2(call_site)
+            parameter_mapping_list = self.loader.get_parameter_mapping_p2(call_site)
             if util.is_empty(parameter_mapping_list):
                 return
             for each_mapping in parameter_mapping_list:
@@ -1014,7 +1014,7 @@ class Resolver:
         # 收集symbol_name对应的symbol_ids
         symbol_ids = set()
         # insight: symbol_id就是该symbol的decl_stmt_id
-        symbol_decl_stmt_ids = self.loader.load_symbol_name_to_decl_ids(unit_id).get(symbol_name, set()) & frame.stmt_id_to_status.keys()
+        symbol_decl_stmt_ids = self.loader.get_symbol_name_to_decl_ids(unit_id).get(symbol_name, set()) & frame.stmt_id_to_status.keys()
         symbol_ids.update(symbol_decl_stmt_ids)
         # import等语句(见def-use阶段)会修改defined_symbol的symbol_id，需要采集到修改后的symbol_id
         for decl_stmt_id in symbol_decl_stmt_ids:
@@ -1041,7 +1041,7 @@ class Resolver:
 
     def find_symbol_global_def_in_unit(self, unit_id, symbol_name):
         """找到unit中对symbol_name的全局定义(函数/类)"""
-        unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.load_unit_symbol_decl_summary(unit_id)
+        unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.get_unit_symbol_decl_summary(unit_id)
         root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE, {})
         global_defs = {
             LIAN_SYMBOL_KIND.CLASS_KIND  : set(),

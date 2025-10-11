@@ -22,7 +22,7 @@ def determine_lang_by_path(file_path):
     ext = os.path.splitext(file_path)[1]
     return EXTENSIONS_LANG.get(ext, None)
 
- 
+
 def is_empty_strict_version(node):
     """
     严格模式检查数据结构是否为空：
@@ -340,7 +340,7 @@ class LangAnalysis:
         1. 根据符号表长度计算初始偏移
         2. 保证ID起始值对齐到10的倍数
         """
-        symbol_table = self.loader.load_module_symbol_table()
+        symbol_table = self.loader.get_module_symbol_table()
         result = len(symbol_table)
         return self.adjust_node_id(result)
 
@@ -376,7 +376,7 @@ class LangAnalysis:
             self.loader,
             os.path.join(self.options.workspace, config.BASIC_DIR)
         )
-        all_units = self.loader.load_all_unit_info()
+        all_units = self.loader.get_all_unit_info()
         #all_units = [unit for unit in all_units if unit.lang !='c' or (unit.lang == 'c' and unit.unit_ext == '.i')]
 
         if self.options.benchmark:
@@ -397,11 +397,11 @@ class LangAnalysis:
                     # util.debug("Incremental: Previous result found")
                     gir_parser.add_unit_gir(unit_info, previous_results)
                     current_node_id = self.adjust_node_id(current_node_id)
-                   
+
                 else:
                     # util.debug("main not found:",unit_info.module_id)
                     units_to_analyze.append(unit_info)
-                    
+
         for unit_info in units_to_analyze:
             # if row.symbol_type == constants.SymbolKind.UNIT_SYMBOL and row.unit_ext in extensions:
             unit_path = ""
