@@ -710,6 +710,12 @@ class ClassIdToNameLoader(OneToManyMapLoader):
     def __init__(self, path):
         super().__init__(path, schema.class_id_to_class_name_schema)
 
+    def save(self, class_id, class_name):
+        if class_name not in self.many_to_one:
+            self.many_to_one[class_name] = set()
+        self.many_to_one[class_name].add(class_id)
+        self.one_to_many[class_id] = class_name
+
 class MethodIDToMethodNameLoader(OneToManyMapLoader):
     def __init__(self, path):
         super().__init__(path, schema.method_id_to_method_name_schema)
@@ -2310,9 +2316,9 @@ class Loader:
         return self._unit_id_to_namespace_id_loader.is_namespace_decl(namespace_id)
 
     def convert_class_id_to_class_name(self, class_id):
-        return self._class_id_to_class_name_loader.convert_many_to_one(class_id)
+        return self._class_id_to_class_name_loader.convert_one_to_many(class_id)
     def convert_class_name_to_class_ids(self, class_name):
-        return self._class_id_to_class_name_loader.convert_one_to_many(class_name)
+        return self._class_id_to_class_name_loader.convert_many_to_one(class_name)
     def save_class_id_to_class_name(self, class_id, class_name):
         return self._class_id_to_class_name_loader.save(class_id, class_name)
 
@@ -2625,7 +2631,7 @@ class Loader:
         unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
         stmt = self.convert_stmt_id_to_stmt(stmt_id)
         return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
-    
+
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         unit_gir = self.get_unit_gir(unit_id)
@@ -2633,7 +2639,7 @@ class Loader:
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
         return stmt_id_to_stmt.get(stmt_id)
-        
+
     def get_method_decl_source_code(self, method_id):
         """
             给定method_id，获取method_decl源代码(仅函数声明部分)
