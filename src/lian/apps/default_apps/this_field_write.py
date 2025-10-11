@@ -49,7 +49,7 @@ def write_to_this_class(data: EventData):
     if not check_this_write(receiver_symbol, receiver_states, frame):
         return app_return
     class_id = loader.convert_method_id_to_class_id(frame.method_id)
-    class_members = loader.load_class_id_to_members(class_id)
+    class_members = loader.convert_class_id_to_members(class_id)
     for each_field_state_index in field_states:
         each_field_state = frame.symbol_state_space[each_field_state_index]
         if not isinstance(each_field_state, State):
@@ -77,7 +77,7 @@ def appstorage_read_and_write(data: EventData):
     # arg1 = list(positional_arg[1])
     arg0_state = space[arg0[0].index_in_space]
     arg0_access_path = access_path_formatter(arg0_state.access_path)
-    class_members = loader.load_class_id_to_members(1000086)
+    class_members = loader.convert_class_id_to_members(1000086)
     app_return = er.config_event_unprocessed()
     arg_index_set = set()
     for arg in positional_args[1]:
@@ -93,7 +93,7 @@ def appstorage_read_and_write(data: EventData):
             app_return = er.config_block_event_requester
             break
         elif access_path == "AppStorage.Get":
-            read_members = loader.load_class_id_to_members(1000086)
+            read_members = loader.convert_class_id_to_members(1000086)
             if read_members and read_members != set():
                 defined_symbol.states = read_members
                 app_return = er.config_block_event_requester()

@@ -19,13 +19,14 @@ from lian.semantic.semantic_structs import (
 from lian.util import util
 from lian.util.loader import Loader
 class TypeHierarchy:
-    def __init__(self, loader, resolver):
+    def __init__(self, loader, resolver, unit_list):
         self.loader: Loader = loader
         self.resolver: Resolver = resolver
         self.type_graph = BasicGraph()
         self.analyzed_type_hierarchy_ids = set()
         self.analyzed_class_ids = set()
         self.class_to_methods = {}
+        self.unit_list = unit_list
         self.unsolved_class_id = -2
 
     def parse_class_decl_stmt(self, unit_id, stmt_id, stmt):
@@ -111,7 +112,7 @@ class TypeHierarchy:
         self.analyzed_type_hierarchy_ids.add(unit_id)
 
         # start analysis from scope_hierarchy
-        scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
+        scope_hierarchy = self.loader.get_unit_scope_hierarchy(unit_id)
         if not scope_hierarchy:
             return
 
@@ -144,7 +145,7 @@ class TypeHierarchy:
             if each_parent_id == -1:
                 continue
             self.adjust_method_in_class_and_save(each_parent_id)
-            parent_methods = self.loader.load_methods_in_class(each_parent_id)
+            parent_methods = self.loader.get_methods_in_class(each_parent_id)
             for each_method in parent_methods:
                 if each_method.stmt_id not in method_ids:
                     methods_in_class.append(
@@ -159,8 +160,8 @@ class TypeHierarchy:
 
         self.loader.save_methods_in_class(class_id, methods_in_class)
 
-    def analyze(self, unit_id_list):
-        for unit_id in unit_id_list:
+    def run(self):
+        for unit_id in self.unit_list:
             self.analyze_type_hierarchy(unit_id)
 
         # adjust methods in class and save

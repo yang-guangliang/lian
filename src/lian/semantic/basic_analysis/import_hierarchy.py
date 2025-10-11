@@ -74,7 +74,7 @@ class ImportHierarchy:
             self.import_deps.add_edge(unit_id, import_unit_id)
 
     def initialize_import_graph(self):
-        for module_item in self.loader.load_module_symbol_table():
+        for module_item in self.loader.get_module_symbol_table():
             self.add_import_graph_node(
                 symbol_type=module_item.symbol_type,
                 symbol_id=module_item.module_id,
@@ -145,8 +145,8 @@ class ImportHierarchy:
 
     def analyze_unit_public_symbols(self, unit_id):
         # start analysis from scope_hierarchy
-        scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
-        gir = self.loader.load_unit_gir(unit_id)
+        scope_hierarchy = self.loader.get_unit_scope_hierarchy(unit_id)
+        gir = self.loader.get_unit_gir(unit_id)
         if util.is_empty(scope_hierarchy) or util.is_empty(gir):
             return
 
@@ -417,7 +417,7 @@ class ImportHierarchy:
         self.analyzed_imported_unit_ids.add(unit_id)
 
         unit_info = self.loader.convert_module_id_to_module_info(unit_id)
-        scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
+        scope_hierarchy = self.loader.get_unit_scope_hierarchy(unit_id)
         if util.is_empty(scope_hierarchy):
             return
 

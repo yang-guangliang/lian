@@ -37,12 +37,62 @@ unit_id_to_stmt_id_schema = [
     "max_stmt_id"
 ]
 
+one_to_many_schema = [
+    "one",
+    "many"
+]
+
 unit_id_to_method_id_schema = [
     "unit_id",
-    "stmt_ids"
+    "method_ids"
+]
+
+class_id_to_class_name_schema = [
+    "class_id",
+    "class_name"
+]
+
+method_id_to_method_name_schema = [
+    "method_id",
+    "method_name"
 ]
 
 class_id_to_method_id_schema = [
+    "class_id",
+    "method_ids"
+]
+
+class_id_to_field_id_schema = [
+    "class_id",
+    "field_ids"
+]
+
+unit_id_to_class_id_schema = [
+    "unit_id",
+    "class_ids"
+]
+
+unit_id_to_namespace_id_schema = [
+    "unit_id",
+    "namespace_ids"
+]
+
+unit_id_to_variable_ids_schema = [
+    "unit_id",
+    "variable_ids"
+]
+
+unit_id_to_import_stmt_id_schema = [
+    "unit_id",
+    "import_stmt_ids"
+]
+
+method_id_to_parameter_id_schema = [
+    "method_id",
+    "parameter_ids"
+]
+
+class_id_to_methods_schema = [
     "unit_id",
     "class_id",
     "name",
