@@ -2625,7 +2625,7 @@ class Loader:
         unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
         stmt = self.convert_stmt_id_to_stmt(stmt_id)
         return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
-
+    
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         unit_gir = self.get_unit_gir(unit_id)
@@ -2633,7 +2633,7 @@ class Loader:
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
         return stmt_id_to_stmt.get(stmt_id)
-
+        
     def get_method_decl_source_code(self, method_id):
         """
             给定method_id，获取method_decl源代码(仅函数声明部分)
@@ -2647,6 +2647,7 @@ class Loader:
         else:
             method_decl_line_id = int(method_decl_stmt.start_row)
             return unit_source_code[method_decl_line_id]
+
 
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始

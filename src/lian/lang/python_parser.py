@@ -220,7 +220,7 @@ class Parser(common_parser.Parser):
                 parameter_node_type = parameter.type
                 if parameter_node_type == "identifier":
                     parameter_decls.append(self.add_col_row_info(
-                        node, {"parameter_decl": {"name": self.read_node_text(parameter), "attrs": attrs}}
+                        parameters, {"parameter_decl": {"name": self.read_node_text(parameter), "attrs": attrs}}
                     ))
 
                 elif parameter_node_type == "typed_parameter":
@@ -232,7 +232,7 @@ class Parser(common_parser.Parser):
                         shadow_type = self.read_node_text(parameter_type)
 
                         parameter_decls.append(self.add_col_row_info(
-                            node,
+                            parameters,
                             {"parameter_decl": {
                                 "data_type": shadow_type, "name": shadow_parameter_name, "attrs": attrs
                             }}
@@ -246,7 +246,7 @@ class Parser(common_parser.Parser):
                     if self.is_literal(parameter_value) and parameter_value.type != "identifier":
                         shadow_value = self.parse(parameter_value, statements)
                         parameter_decls.append(self.add_col_row_info(
-                            node,
+                            parameters,
                             {"parameter_decl": {
                                 "name": shadow_parameter_name, "attrs": attrs, "default_value": shadow_value
                             }}
@@ -274,7 +274,7 @@ class Parser(common_parser.Parser):
                             {"assign_stmt": {"target": tmp_parameter, "operand": shadow_value}}
                         )
                         parameter_decls.append(self.add_col_row_info(
-                            node,
+                            parameters,
                             {"parameter_decl": {
                                 "name": shadow_parameter_name, "attrs": attrs, "default_value": tmp_parameter
                             }}
@@ -290,7 +290,7 @@ class Parser(common_parser.Parser):
 
                     if self.is_literal(parameter_value) and parameter_value.type != "identifier":
                         shadow_value = self.parse(parameter_value, statements)
-                        parameter_decls.append(self.add_col_row_info(node, {
+                        parameter_decls.append(self.add_col_row_info(parameters, {
                             "parameter_decl": {
                                 "data_type"     : shadow_parameter_type,
                                 "name"          : shadow_parameter_name,
@@ -316,7 +316,7 @@ class Parser(common_parser.Parser):
                                     node, {"assign_stmt": {"target": tmp_parameter, "operand": shadow_value}}
                                 )
 
-                        parameter_decls.append(self.add_col_row_info(node, {
+                        parameter_decls.append(self.add_col_row_info(parameters, {
                             "parameter_decl": {
                                 "data_type"     : shadow_parameter_type,
                                 "name"          : shadow_parameter_name,
@@ -327,14 +327,14 @@ class Parser(common_parser.Parser):
                     parameter_name = parameter.named_children[0]
                     shadow_parameter_name = self.parse(parameter_name, statements)
                     attrs.append(LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER)
-                    parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
+                    parameter_decls.append(self.add_col_row_info(parameters, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
                     only_keyword = True
 
                 elif parameter_node_type == "dictionary_splat_pattern":
                     parameter_name = parameter.named_children[0]
                     shadow_parameter_name = self.parse(parameter_name, statements)
                     attrs.append(LIAN_INTERNAL.PACKED_NAMED_PARAMETER)
-                    parameter_decls.append(self.add_col_row_info(node, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
+                    parameter_decls.append(self.add_col_row_info(parameters, {"parameter_decl": {"name": shadow_parameter_name, "attrs": attrs}}))
 
                 elif parameter_node_type == "positional_separator":
                     only_positional = False
