@@ -54,7 +54,7 @@ class TaintAnalysis:
         frame = MethodTaintFrame(method_id=method_id, frame_stack=frame_stack, env=taint_env)
         frame.lian = self.lian
         frame.taint_state_manager = taint_state_manager
-        method_decl, parameter_decls, method_body = self.loader.load_method_gir(method_id)
+        method_decl, parameter_decls, method_body = self.loader.get_method_gir(method_id)
         frame.stmt_id_to_stmt[method_id] = method_decl
         if util.is_available(parameter_decls):
             for row in parameter_decls:
@@ -65,10 +65,10 @@ class TaintAnalysis:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = 0
 
-        frame.cfg = self.loader.load_method_cfg(method_id)
+        frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
             return
-        
+
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
         # frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
@@ -103,13 +103,13 @@ class TaintAnalysis:
         frame.current_call_site = current_call_site
         frame.previous_call_site = previous_call_site
         if self.phase == 2:
-            frame.stmt_id_to_status = self.loader.load_stmt_status_p2(method_id)
-            frame.symbol_state_space = self.loader.load_symbol_state_space_p2(method_id)
-            frame.symbol_graph = self.loader.load_method_symbol_graph_p2(method_id)
+            frame.stmt_id_to_status = self.loader.get_stmt_status_p2(method_id)
+            frame.symbol_state_space = self.loader.get_symbol_state_space_p2(method_id)
+            frame.symbol_graph = self.loader.get_method_symbol_graph_p2(method_id)
             frame.propagation = TaintPropagationInMethod(frame)
         elif self.phase == 3:
-            frame.stmt_id_to_status = self.loader.load_stmt_status_p3(frame.previous_call_site)
-            frame.symbol_state_space = self.loader.load_symbol_state_space_p3(0)
+            frame.stmt_id_to_status = self.loader.get_stmt_status_p3(frame.previous_call_site)
+            frame.symbol_state_space = self.loader.get_symbol_state_space_p3(0)
             frame.propagation = GlobalPropagation(frame)
             # frame.symbol_graph = self.loader.load_method_symbol_graph_p3(method_id)
         # 初始化state_id_to_access_path
@@ -198,7 +198,7 @@ class TaintAnalysis:
         taint_env:TaintEnv = frame.taint_env
         stmt_status = frame.stmt_id_to_status[stmt_id]
         all_symbols_indexes = stmt_status.used_symbols + stmt_status.implicitly_used_symbols + stmt_status.implicitly_defined_symbols + [stmt_status.defined_symbol]
-        
+
         # 构建symbol_id->symbols的映射
         symbol_id_to_symbols = {}
         for symbol_index in all_symbols_indexes:
@@ -258,7 +258,7 @@ class TaintAnalysis:
                 # stmt = frame.stmt_id_to_stmt[stmt_id]
                 if stmt_id < 0:
                     continue
-                
+
                 if frame.stmt_counters[stmt_id] > config.MAX_STMT_TAINT_ANALYSIS_COUNT:
                     continue
                 frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
@@ -276,7 +276,7 @@ class TaintAnalysis:
                 print("in method")
                 if isinstance(result, PropagationResult) and result.interruption_flag:
                     return result
-                new_out_taint = taint_status.out_taint                
+                new_out_taint = taint_status.out_taint
                 out_changed_flag:bool = self.process_out_taint(stmt_id, frame, old_out_taint, new_out_taint)
                 # if out_changed_flag:
 
@@ -300,7 +300,7 @@ class TaintAnalysis:
             method_counter = {}
             frame_stack = ComputeFrameStack()
 
-            first_frame = self.init_taint_frame(first_node, taint_env, frame_stack, call_graph.graph) 
+            first_frame = self.init_taint_frame(first_node, taint_env, frame_stack, call_graph.graph)
             frame_stack.add(first_frame) #  used for collecting the final results
 
             while frame_stack:
@@ -329,7 +329,7 @@ class TaintAnalysis:
                             frame.content_to_be_analyzed[key] = True
                             children_done_flag = False
                             #在这里准备好arg_to_param的映射
-                            param_list = self.loader.load_parameter_mapping_p2(key)
+                            param_list = self.loader.get_parameter_mapping_p2(key)
                             taint_state_manager = TaintStateManager()
                             taint_state_manager.sync_arg_to_param(param_list, frame.taint_state_manager)
                             taint_env.sync_arg_to_param(param_list)
@@ -342,14 +342,14 @@ class TaintAnalysis:
                 # 分析该函数，函数内遇到call时，中断分析，进入该call函数
                 result = self.analyze_method(frame)
                 # push stack
-                if isinstance(result, PropagationResult) and result.interruption_flag: 
+                if isinstance(result, PropagationResult) and result.interruption_flag:
                     # print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
                     found_callee = False
                     for callee_id in frame.stmt_id_to_callees[result.stmt_id]:
                         key = (method_id, result.stmt_id, callee_id)
                         frame.content_to_be_analyzed[key] = False
-                        found_callee = True 
-                    
+                        found_callee = True
+
                     if found_callee:
                         continue
 
@@ -378,7 +378,7 @@ class TaintAnalysis:
         for each_path in call_paths_list:
             frame_stack = ComputeFrameStack()
             path:tuple = each_path.path
-            frame = self.init_taint_frame(path[0], taint_env, current_call_site = path[0:3], previous_call_site = (-1, -1, path[0]), taint_state_manager = taint_state_manager) 
+            frame = self.init_taint_frame(path[0], taint_env, current_call_site = path[0:3], previous_call_site = (-1, -1, path[0]), taint_state_manager = taint_state_manager)
             frame.current_call_site = path[0:3]
             frame_stack.add(frame) #  used for collecting the final results
             while frame_stack:
@@ -391,10 +391,10 @@ class TaintAnalysis:
                         # callee_frame.current_call_site = path[0:3]
                         frame_stack.push(callee_frame)
                         continue
-                
+
                 result = self.analyze_method(frame)
 
-                if isinstance(result, PropagationResult) and result.interruption_flag: 
+                if isinstance(result, PropagationResult) and result.interruption_flag:
                     frame.content_to_be_analyzed[frame.current_call_site] = path[0 : 3]
                     path = path[2:]
                     continue
@@ -415,19 +415,19 @@ class TaintAnalysis:
             )
 
         # 1. load data from loader (phase2, phase3)
-        call_graph_p2 = self.loader.load_call_graph_p2()
-        call_paths_p3 = self.loader.load_call_paths_p3()
+        call_graph_p2 = self.loader.get_call_graph_p2()
+        call_paths_p3 = self.loader.get_call_paths_p3()
         print("call_paths_p2: ", list(call_graph_p2.graph.edges))
         # 2. traverse call_graph
         self.analyze_call_graph(call_graph_p2)
 
         # 3. traverse call_paths
         self.analyze_call_paths(call_paths_p3)
-    
+
     def run_as_app(self, lian):
         self.lian = lian
         self.loader = self.lian.loader
-        
+
         if self.lian.options.debug:
             util.debug()
             util.debug(
@@ -437,8 +437,8 @@ class TaintAnalysis:
             )
 
         # 1. load data from loader (phase2, phase3)
-        call_graph_p2 = self.loader.load_call_graph_p2()
-        call_paths_p3 = self.loader.load_call_paths_p3()
+        call_graph_p2 = self.loader.get_call_graph_p2()
+        call_paths_p3 = self.loader.get_call_paths_p3()
         print("call_paths_p2: ", list(call_graph_p2.graph.edges))
         # 2. traverse call_graph
         # self.analyze_call_graph(call_graph_p2)

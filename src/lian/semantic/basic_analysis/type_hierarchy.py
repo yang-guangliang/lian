@@ -112,7 +112,7 @@ class TypeHierarchy:
         self.analyzed_type_hierarchy_ids.add(unit_id)
 
         # start analysis from scope_hierarchy
-        scope_hierarchy = self.loader.load_unit_scope_hierarchy(unit_id)
+        scope_hierarchy = self.loader.get_unit_scope_hierarchy(unit_id)
         if not scope_hierarchy:
             return
 
@@ -145,7 +145,7 @@ class TypeHierarchy:
             if each_parent_id == -1:
                 continue
             self.adjust_method_in_class_and_save(each_parent_id)
-            parent_methods = self.loader.load_methods_in_class(each_parent_id)
+            parent_methods = self.loader.get_methods_in_class(each_parent_id)
             for each_method in parent_methods:
                 if each_method.stmt_id not in method_ids:
                     methods_in_class.append(

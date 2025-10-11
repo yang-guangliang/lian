@@ -121,7 +121,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
-        _, parameter_decls, method_body = self.loader.load_method_gir(method_id)
+        _, parameter_decls, method_body = self.loader.get_method_gir(method_id)
         if util.is_available(parameter_decls):
             for row in parameter_decls:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
@@ -149,12 +149,12 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         frame.all_defs = all_defs
 
-        frame.state_to_define = self.loader.load_method_state_to_define_p2(method_id).copy()
+        frame.state_to_define = self.loader.get_method_state_to_define_p2(method_id).copy()
 
-        frame.cfg = self.loader.load_method_cfg(method_id)
+        frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
             return
-        
+
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
         frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
@@ -165,11 +165,11 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             frame_path = APath(frame.path)
             self.path_manager.add_path(frame_path)
         # avoid changing the content of the loader
-        status = copy.deepcopy(self.loader.load_stmt_status_p2(method_id))
-        symbol_state_space = self.loader.load_symbol_state_space_p2(method_id).copy()
-        symbol_to_define = self.loader.load_method_symbol_to_define_p2(method_id).copy()
-        symbol_bit_vector = copy.deepcopy(self.loader.load_symbol_bit_vector_p2(method_id))
-        state_bit_vector = self.loader.load_state_bit_vector_p2(method_id).copy()
+        status = copy.deepcopy(self.loader.get_stmt_status_p2(method_id))
+        symbol_state_space = self.loader.get_symbol_state_space_p2(method_id).copy()
+        symbol_to_define = self.loader.get_method_symbol_to_define_p2(method_id).copy()
+        symbol_bit_vector = copy.deepcopy(self.loader.get_symbol_bit_vector_p2(method_id))
+        state_bit_vector = self.loader.get_state_bit_vector_p2(method_id).copy()
         self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, symbol_to_define, symbol_bit_vector, state_bit_vector)
         frame.stmt_id_to_status = status
         frame.symbol_to_define = symbol_to_define
@@ -178,16 +178,16 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         frame.symbol_state_space = global_space
 
-        frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(self.loader.load_method_internal_callees(method_id))
+        frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(self.loader.get_method_internal_callees(method_id))
 
         frame.symbol_bit_vector_manager = symbol_bit_vector
-        frame.state_bit_vector_manager = self.loader.load_state_bit_vector_p2(method_id).copy()
-        frame.method_def_use_summary = self.loader.load_method_def_use_summary(method_id).copy()
-        frame.method_summary_template = self.loader.load_method_summary_template(method_id).copy()
+        frame.state_bit_vector_manager = self.loader.get_state_bit_vector_p2(method_id).copy()
+        frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id).copy()
+        frame.method_summary_template = self.loader.get_method_summary_template(method_id).copy()
         frame.external_symbol_id_to_initial_state_index = frame.method_summary_template.external_symbol_to_state
 
-        frame.space_summary = self.loader.load_symbol_state_space_summary_p2(method_id).copy()
-        symbol_graph = self.loader.load_method_symbol_graph_p2(method_id).copy()
+        frame.space_summary = self.loader.get_symbol_state_space_summary_p2(method_id).copy()
+        symbol_graph = self.loader.get_method_symbol_graph_p2(method_id).copy()
         frame.symbol_graph.graph = symbol_graph
 
         frame.method_summary_instance.copy_template_to_instance(frame.method_summary_template)
@@ -486,22 +486,22 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
             else:
                 self.path_manager.add_path(frame_path)
-                summary_instance: MethodSummaryInstance = self.loader.load_method_summary_instance(frame.call_site)
-                summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p3(frame.call_site)
+                summary_instance: MethodSummaryInstance = self.loader.get_method_summary_instance(frame.call_site)
+                summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p3(frame.call_site)
                 if summary_instance and summary_compact_space:
                     self.save_analysis_summary_and_space(frame, summary_instance.copy(), summary_compact_space.copy(), caller_frame)
                     frame_stack.pop()
                     continue
 
                 # check if there is an available method summary
-                p2_summary_template = self.loader.load_method_summary_template(frame.method_id)
+                p2_summary_template = self.loader.get_method_summary_template(frame.method_id)
                 # 如果没有summary->函数体为空->跳过
                 if util.is_empty(p2_summary_template):
                     frame_stack.pop()
                     continue
 
                 summary_template: MethodSummaryTemplate = p2_summary_template.copy()
-                summary_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(frame.method_id)
+                summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(frame.method_id)
 
                 # if not summary_template.dynamic_call_stmt:
                 #     if config.DEBUG_FLAG:
@@ -586,7 +586,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                        "\t======== Phase III analysis is ongoing =========\n"
                        "\t++++++++++++++++++++++++++++++++++++++++++++++++\n")
         global_space = SymbolStateSpace()
-        for entry_point in self.loader.load_entry_points():
+        for entry_point in self.loader.get_entry_points():
             # for path in self.call_graph.find_paths(entry_point):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
@@ -596,7 +596,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
 
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader._call_path_p3_loader.export()
-        all_APaths = self.loader.load_call_paths_p3()
+        all_APaths = self.loader.get_call_paths_p3()
         # print("所有的APaths: ",all_APaths)
 
 

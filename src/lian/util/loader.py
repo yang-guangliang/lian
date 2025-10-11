@@ -79,6 +79,8 @@ class ModuleSymbolsLoader:
         self._do_cache()
 
     def _do_cache(self):
+        assert self.module_symbol_table is not None
+
         self.init_self()
 
         for row in self.module_symbol_table:
@@ -118,31 +120,32 @@ class ModuleSymbolsLoader:
         if util.is_available(self.module_symbol_table):
             self.module_symbol_table.save(self.path)
 
-    def is_module_id(self, unit_id):
-        return unit_id in self.all_module_ids
+    def is_module_id(self, module_id):
+        return module_id in self.all_module_ids
 
     def is_unit_id(self, unit_id):
         return unit_id in self.module_unit_ids
 
-    def is_module_dir_id(self, unit_id):
-        return unit_id in self.module_dir_ids
+    def is_module_dir_id(self, module_dir_id):
+        return module_dir_id in self.module_dir_ids
 
-    def load_all_module_ids(self):
+    def get_all_module_ids(self):
         return self.all_module_ids
 
-    def load_module_symbol_table(self):
+    def get_module_symbol_table(self):
         return self.module_symbol_table
 
     def convert_unit_id_to_unit_lang_name(self, unit_id):
         return self.unit_id_to_lang.get(unit_id, "unknown")
 
-    def convert_module_id_to_module_info(self, unit_id):
-        return self.module_id_to_module_info.get(unit_id, None)
+    def convert_module_id_to_module_info(self, module_id):
+        return self.module_id_to_module_info.get(module_id, None)
 
     def convert_module_id_to_child_ids(self, module_id):
         return self.module_id_to_children_ids.get(module_id, set())
 
-    def load_all_unit_info(self):
+    def get_all_unit_info(self):
+        assert self.module_symbol_table is not None
         if len(self.module_symbol_table) == 0:
             return []
 
@@ -165,7 +168,6 @@ class ModuleSymbolsLoader:
     def convert_unit_id_to_unit_path(self, unit_id):
         return self.unit_id_to_path.get(unit_id, None)
 
-
 class GeneralLoader:
     """
     This loader is a general loader template. For child classes, they should implement the following methods:
@@ -181,8 +183,8 @@ class GeneralLoader:
         bundle_cache_capacity: the capacity of the bundle cache
 
     Methods:
+        get: load the item from the storage
         save: save the item to the living bundle
-        load: load the item from the storage
         export: export the items in the living bundle to the storage
     """
     def __init__(self, options, item_schema, bundle_path_summary, item_cache_capacity, bundle_cache_capacity):
@@ -224,7 +226,7 @@ class GeneralLoader:
         self.bundle_count += 1
         return result
 
-    def load(self, _id):
+    def get(self, _id):
         if self.item_cache.contain(_id):
             return self.item_cache.get(_id)
 
@@ -254,10 +256,10 @@ class GeneralLoader:
         self.item_cache.put(_id, formatted_item)
         return formatted_item
 
-    def load_all(self):
+    def get_all(self):
         all_results = {}
         for item_id in self.item_id_to_bundle_id:
-            all_results[item_id] = self.load(item_id)
+            all_results[item_id] = self.get(item_id)
         return all_results
 
     def save(self, _id, item_content):
@@ -481,12 +483,12 @@ class UnitSymbolDeclSummaryLoader:
         self.scope_id_to_symbol_info_loader = scope_id_to_symbol_info_loader
         self.scope_id_to_available_scope_ids_loader = scope_id_to_available_scope_ids_loader
 
-    def load(self, unit_id):
+    def get(self, unit_id):
         return UnitSymbolDeclSummary(
             unit_id,
-            self.symbol_name_to_scope_ids_loader.load(unit_id),
-            self.scope_id_to_symbol_info_loader.load(unit_id),
-            self.scope_id_to_available_scope_ids_loader.load(unit_id)
+            self.symbol_name_to_scope_ids_loader.get(unit_id),
+            self.scope_id_to_symbol_info_loader.get(unit_id),
+            self.scope_id_to_available_scope_ids_loader.get(unit_id)
         )
 
     def save(self, unit_id, summary: UnitSymbolDeclSummary):
@@ -509,7 +511,7 @@ class StmtIDToScopeIDLoader:
             return
         self.stmt_id_to_scope_id.update(stmt_id_to_scope_id)
 
-    def load(self, stmt_id):
+    def get(self, stmt_id):
         return self.stmt_id_to_scope_id.get(stmt_id, -1)
 
     def export(self):
@@ -553,13 +555,13 @@ class CallStmtIDToCallFormatInfoLoader:
         self.call_stmt_id_to_call_format_info = {}
         self.path = path
 
-    def load_all_call_stmt_id_to_call_format_info(self):
+    def get_map_call_stmt_id_to_call_format_info(self):
         return self.call_stmt_id_to_call_format_info
 
     def save(self, call_stmt_id, call_format_info):
         self.call_stmt_id_to_call_format_info[call_stmt_id] = call_format_info
 
-    def load(self, call_stmt_id):
+    def get(self, call_stmt_id):
         return self.call_stmt_id_to_call_format_info.get(call_stmt_id, None)
 
     def export(self):
@@ -584,7 +586,7 @@ class MethodIDToMethodDeclFormatLoader:
     def save(self, method_id, method_decl_format):
         self.method_id_to_method_decl_format[method_id] = method_decl_format
 
-    def load(self, method_id):
+    def get(self, method_id):
         return self.method_id_to_method_decl_format.get(method_id, None)
 
     def export(self):
@@ -615,16 +617,16 @@ class UnitIDToStmtIDLoader:
         for stmt_id in all_ids:
             self.stmt_id_to_unit_id[stmt_id] = unit_id
 
-    def load(self, stmt_id):
+    def get(self, stmt_id):
         return self.stmt_id_to_unit_id.get(stmt_id, -1)
 
-    def load_one_to_many(self, unit_id):
+    def convert_one_to_many(self, unit_id):
         return self.unit_id_to_stmt_ids.get(unit_id, [])
 
-    def load_all_stmt_ids(self):
+    def get_all_stmt_ids(self):
         return self.stmt_id_to_unit_id.keys()
 
-    def load_all_unit_ids(self):
+    def get_all_unit_ids(self):
         return self.unit_id_to_stmt_ids.keys()
 
     def export(self):
@@ -675,10 +677,10 @@ class OneToManyMapLoader:
     def convert_many_to_one(self, item_in_many):
         return self.many_to_one.get(item_in_many, -1)
 
-    def load_all_items_in_many(self):
+    def get_all_items_in_many(self):
         return self.many_to_one.keys()
 
-    def load_all_items_in_one(self):
+    def get_all_items_in_one(self):
         return self.one_to_many.keys()
 
     def export(self):
@@ -834,7 +836,7 @@ class ExternalSymbolIDCollectionLoader:
             results = external_symbol_id_collection
         self.method_id_to_external_symbol_id_collection[method_id] = results
 
-    def load_external_symbol_id_collection(self, method_id):
+    def get_external_symbol_id_collection(self, method_id):
         return self.method_id_to_external_symbol_id_collection.get(method_id, {})
 
     def export(self):
@@ -862,7 +864,7 @@ class EntryPointsLoader:
     def save(self, entry_points):
         self.entry_points |= set(entry_points)
 
-    def load_entry_points(self):
+    def get_entry_points(self):
         return self.entry_points
 
     def export(self):
@@ -1061,7 +1063,7 @@ class MethodDefUseSummaryLoader:
         self.method_summary_records = {}
         self.path = path
 
-    def load(self, method_id):
+    def get(self, method_id):
         return self.method_summary_records.get(method_id)
 
     def save(self, method_id, basic_method_summary: MethodDefUseSummary):
@@ -1097,7 +1099,7 @@ class MethodSummaryLoader:
         self.method_summary_records = {}
         self.path = path
 
-    def load(self, _id):
+    def get(self, _id):
         return self.method_summary_records.get(_id)
 
     def save(self, _id, method_summary):
@@ -1168,7 +1170,7 @@ class MethodInternalCalleesLoader:
         self.path = path
         self.method_internal_callees_records = {}
 
-    def load(self, method_id):
+    def get(self, method_id):
         return self.method_internal_callees_records.get(method_id)
 
     def save(self, method_id, method_internal_callees):
@@ -1208,7 +1210,7 @@ class CallGraphP1Loader:
     def save(self, basic_call_graph: CallGraph):
         self.call_graph = basic_call_graph
 
-    def load(self):
+    def get(self):
         return self.call_graph
 
     def restore(self):
@@ -1238,7 +1240,7 @@ class CallPathLoader:
     def save(self, all_APaths: set):
         self.all_APaths = all_APaths
 
-    def load(self):
+    def get(self):
         # 防止该文件不存在第三阶段call_path从而读取报错
         if not os.path.exists(self.path):
             return {}
@@ -1266,7 +1268,7 @@ class UniqueSymbolIDAssignerLoader:
         # 向上取整到 POSITIVE_GIR_INTERVAL 的整数倍（抹掉后面几位）
         self.positive_symbol_id = (base_value + config.POSITIVE_GIR_INTERVAL - 1) // config.POSITIVE_GIR_INTERVAL * config.POSITIVE_GIR_INTERVAL
 
-    def load_max_gir_id(self):
+    def get_max_gir_id(self):
         return self.max_gir_id
 
     def is_greater_than_max_gir_id(self, symbol_id):
@@ -1313,7 +1315,7 @@ class ImportGraphLoader:
     def save(self, import_graph):
         self.import_graph = import_graph
 
-    def load(self):
+    def get(self):
         return self.import_graph
 
     def save_nodes(self, symbol_id_to_symbol_node):
@@ -1330,13 +1332,13 @@ class ImportGraphLoader:
         self.import_graph_nodes = result
         self.symbol_id_to_import_node = symbol_id_to_symbol_node
 
-    def load_nodes(self):
+    def get_nodes(self):
         return self.import_graph_nodes
 
     def save_deps(self, import_deps):
         self.import_deps = import_deps
 
-    def load_deps(self):
+    def get_deps(self):
         return self.import_deps
 
     def get_successor_nodes_from_ids(self, successor_ids):
@@ -1433,7 +1435,7 @@ class TypeGraphLoader:
     def save(self, type_graph):
         self.type_graph = type_graph
 
-    def load(self):
+    def get(self):
         return self.type_graph
 
     def restore(self):
@@ -1549,7 +1551,7 @@ class GroupedMethodsLoader:
     def save(self, grouped_methods):
         self.grouped_methods = grouped_methods
 
-    def load(self):
+    def get(self):
         return self.grouped_methods
 
     def export(self):
@@ -2042,7 +2044,7 @@ class Loader:
                     results.append(getattr(self, loader))
         return results
 
-    def load_method_header(self, method_id):
+    def get_method_header(self, method_id):
         if method_id <= 0:
             return (None, None)
 
@@ -2050,7 +2052,7 @@ class Loader:
             return self.method_header_cache.get(method_id)
 
         unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
-        unit_gir = self._gir_loader.load(unit_id)
+        unit_gir = self._gir_loader.get(unit_id)
         if util.is_empty(unit_gir):
             return (None, None)
         method_decl_stmt = unit_gir.query_first(unit_gir.stmt_id.eq(method_id))
@@ -2059,8 +2061,8 @@ class Loader:
         self.method_header_cache.put(method_id, result)
         return result
 
-    def load_method_body(self, method_id):
-        method_decl_stmt, _ = self.load_method_header(method_id)
+    def get_method_body(self, method_id):
+        method_decl_stmt, _ = self.get_method_header(method_id)
         return self._load_method_body_by_header(method_id, method_decl_stmt)
 
     def _load_method_body_by_header(self, method_id, method_decl_stmt):
@@ -2071,36 +2073,23 @@ class Loader:
             self.method_body_cache.get(method_id)
 
         unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
-        unit_gir = self._gir_loader.load(unit_id)
+        unit_gir = self._gir_loader.get(unit_id)
         method_body = unit_gir.read_block(method_decl_stmt.body)
         self.method_body_cache.put(method_id, method_body)
         return method_body
 
-    def load_method_gir(self, method_id):
-        method_decl_stmt, method_parameters = self.load_method_header(method_id)
+    def get_method_gir(self, method_id):
+        method_decl_stmt, method_parameters = self.get_method_header(method_id)
         method_body = self._load_method_body_by_header(method_id, method_decl_stmt)
         return (method_decl_stmt, method_parameters, method_body)
 
-    def load_stmt_gir(self, stmt_id):
+    def get_stmt_gir(self, stmt_id):
         if stmt_id <= 0:
             return None
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        unit_gir = self._gir_loader.load(unit_id)
+        unit_gir = self._gir_loader.get(unit_id)
         stmt_gir = unit_gir.query_first(unit_gir.stmt_id.eq(stmt_id))
         return stmt_gir
-
-    def load_scope_by_id(self, scope_id):
-        """返回指定id对应的scope"""
-        if scope_id <= 0:
-            return None
-        if self.stmt_scope_cache.contain(scope_id):
-            return self.stmt_scope_cache.get(scope_id)
-        unit_id = self.convert_stmt_id_to_unit_id(scope_id)
-        if unit_id < 0: return None # 可能的，比如import的fake节点的symbol_id是虚构的
-        scope_data = self.load_unit_scope_hierarchy(unit_id)
-        stmt_scope = scope_data.query_first(scope_data.stmt_id == scope_id)
-        self.stmt_scope_cache.put(scope_id, stmt_scope)
-        return stmt_scope
 
     def export(self):
         for loader in self._all_loaders:
@@ -2133,213 +2122,217 @@ class Loader:
     # For load_xxx(), its parameter is usually <_id>
     # For export_xxx(), it does not have a parameter
     ############################################################
-    def load_module_symbol_table(self, *args):
-        return self._module_symbols_loader.load_module_symbol_table(*args)
-    def save_module_symbols(self, *args):
-        return self._module_symbols_loader.save(*args)
-    def load_all_module_ids(self):
-        return self._module_symbols_loader.load_all_module_ids()
-    def load_all_unit_info(self):
-        return self._module_symbols_loader.load_all_unit_info()
-    def convert_module_id_to_module_info(self, *args):
-        return self._module_symbols_loader.convert_module_id_to_module_info(*args)
-    def convert_unit_id_to_info(self, *args):
-        return self._module_symbols_loader.convert_module_id_to_module_info(*args)
-    def convert_unit_id_to_unit_path(self, *args):
-        return self._module_symbols_loader.convert_unit_id_to_unit_path(*args)
-    def convert_unit_path_to_unit_id(self, *args):
-        return self._module_symbols_loader.convert_unit_path_to_unit_id(*args)
+    def get_module_symbol_table(self):
+        return self._module_symbols_loader.get_module_symbol_table()
+    def save_module_symbols(self, module_symbol_results):
+        return self._module_symbols_loader.save(module_symbol_results)
+    def get_all_module_ids(self):
+        return self._module_symbols_loader.get_all_module_ids()
+    def get_all_unit_info(self):
+        return self._module_symbols_loader.get_all_unit_info()
+    def convert_module_id_to_module_info(self, module_id):
+        return self._module_symbols_loader.convert_module_id_to_module_info(module_id)
+    # def convert_unit_id_to_unit_info(self, unit_id):
+    #     return self._module_symbols_loader.convert_unit_id_to_unit_info(unit_id)
+    def convert_unit_id_to_unit_path(self, unit_id):
+        return self._module_symbols_loader.convert_unit_id_to_unit_path(unit_id)
+    def convert_unit_path_to_unit_id(self, unit_path):
+        return self._module_symbols_loader.convert_unit_path_to_unit_id(unit_path)
 
-    def is_module_id(self, *args):
-        return self._module_symbols_loader.is_module_id(*args)
-    def is_unit_id(self, *args):
-        return self._module_symbols_loader.is_unit_id(*args)
-    def is_module_dir_id(self, *args):
-        return self._module_symbols_loader.is_module_dir_id(*args)
-    def convert_unit_id_to_lang_name(self, *args):
-        return self._module_symbols_loader.load_unit_lang_name(*args)
-    def convert_module_id_to_child_ids(self, *args):
-        return self._module_symbols_loader.convert_module_id_to_child_ids(*args)
+    def is_module_id(self, module_id):
+        return self._module_symbols_loader.is_module_id(module_id)
+    def is_unit_id(self, unit_id):
+        return self._module_symbols_loader.is_unit_id(unit_id)
+    def is_module_dir_id(self, module_dir_id):
+        return self._module_symbols_loader.is_module_dir_id(module_dir_id)
+    def convert_unit_id_to_lang_name(self, unit_id):
+        return self._module_symbols_loader.convert_unit_id_to_unit_lang_name(unit_id)
+    def convert_module_id_to_child_ids(self, module_id):
+        return self._module_symbols_loader.convert_module_id_to_child_ids(module_id)
 
-    def load_unit_gir(self, *args):
-        return self._gir_loader.load(*args)
-    def save_unit_gir(self, *args):
-        return self._gir_loader.save(*args)
+    def get_unit_gir(self, unit_id):
+        return self._gir_loader.get(unit_id)
+    def save_unit_gir(self, unit_id, unit_gir):
+        return self._gir_loader.save(unit_id, unit_gir)
     def export_gir(self):
         return self._gir_loader.export()
 
-    def load_unit_scope_hierarchy(self, *args) -> DataModel:
-        return self._scope_hierarchy_loader.load(*args)
-    def save_unit_scope_hierarchy(self, *args):
-        return self._scope_hierarchy_loader.save(*args)
-    def load_all_scope_hierarchy(self, *args):
-        return self._scope_hierarchy_loader.load_all(*args)
+    def get_unit_scope_hierarchy(self, unit_id) -> DataModel:
+        return self._scope_hierarchy_loader.get(unit_id)
+    def save_unit_scope_hierarchy(self, unit_id, scope_hierarchy):
+        return self._scope_hierarchy_loader.save(unit_id, scope_hierarchy)
+    def get_all_scope_hierarchy(self):
+        return self._scope_hierarchy_loader.get_all()
     def export_scope_hierarchy(self):
         return self._scope_hierarchy_loader.export()
 
-    def load_unit_export_symbols(self, *args):
-        return self._unit_id_to_export_symbols_loader.load(*args)
-    def save_unit_export_symbols(self, *args):
-        return self._unit_id_to_export_symbols_loader.save(*args)
+    def get_unit_export_symbols(self, unit_id):
+        return self._unit_id_to_export_symbols_loader.get(unit_id)
+    def save_unit_export_symbols(self, unit_id, export_symbols):
+        return self._unit_id_to_export_symbols_loader.save(unit_id, export_symbols)
 
-    def load_methods_in_class(self, *args):
-        return self._class_id_to_methods_loader.load_key_to_values(*args)
-    def save_methods_in_class(self, *args):
-        return self._class_id_to_methods_loader.save(*args)
+    def get_methods_in_class(self, class_id):
+        return self._class_id_to_methods_loader.convert_one_to_many(class_id)
+    def save_methods_in_class(self, class_id, methods):
+        return self._class_id_to_methods_loader.save(class_id, methods)
 
     def convert_stmt_id_to_call_stmt_format(self, stmt_id):
-        return self._call_stmt_id_to_call_format_info_loader.load(stmt_id)
+        return self._call_stmt_id_to_call_format_info_loader.get(stmt_id)
     def save_stmt_id_to_call_stmt_format(self, stmt_id, call_format_info):
         return self._call_stmt_id_to_call_format_info_loader.save(stmt_id, call_format_info)
-    def load_all_call_stmt_id_to_call_format_info(self):
-        return self._call_stmt_id_to_call_format_info_loader.load_all_call_stmt_id_to_call_format_info()
+    def get_map_call_stmt_id_to_call_format_info(self):
+        return self._call_stmt_id_to_call_format_info_loader.get_map_call_stmt_id_to_call_format_info()
 
     def convert_method_id_to_method_decl_format(self, method_id):
-        return self._method_id_to_method_decl_format_loader.load(method_id)
+        return self._method_id_to_method_decl_format_loader.get(method_id)
     def save_method_id_to_method_decl_format(self, method_id, method_decl_format):
         return self._method_id_to_method_decl_format_loader.save(method_id, method_decl_format)
 
-    def convert_unit_id_to_stmt_ids(self, *args):
-        return self._unit_id_to_stmt_id_loader.load_one_to_many(*args)
-    def save_unit_id_to_stmt_ids(self, *args):
-        return self._unit_id_to_stmt_id_loader.save(*args)
-    def convert_stmt_id_to_unit_id(self, *args):
-        return self._unit_id_to_stmt_id_loader.load(*args)
-    def load_all_stmt_ids(self, *args):
-        return self._unit_id_to_stmt_id_loader.load_all_stmt_ids(*args)
-    def load_all_unit_ids(self, *args):
-        return self._unit_id_to_stmt_id_loader.load_all_unit_ids(*args)
+    def convert_unit_id_to_stmt_ids(self, unit_id):
+        return self._unit_id_to_stmt_id_loader.convert_one_to_many(unit_id)
+    def save_unit_id_to_stmt_ids(self, unit_id, stmt_ids):
+        return self._unit_id_to_stmt_id_loader.save(unit_id, stmt_ids)
+    def convert_stmt_id_to_unit_id(self, stmt_id):
+        return self._unit_id_to_stmt_id_loader.get(stmt_id)
+    def get_all_stmt_ids(self):
+        return self._unit_id_to_stmt_id_loader.get_all_stmt_ids()
+    def get_all_unit_ids(self):
+        return self._unit_id_to_stmt_id_loader.get_all_unit_ids()
 
-    def save_method_external_symbol_id_collection(self, *args):
-        self._external_symbol_id_collection_loader.save_external_symbol_id_collection(*args)
-    def load_method_external_symbol_id_collection(self, *args):
-        return self._external_symbol_id_collection_loader.load_external_symbol_id_collection(*args)
+    def save_method_external_symbol_id_collection(self, method_id, external_symbol_id_collection):
+        self._external_symbol_id_collection_loader.save_external_symbol_id_collection(method_id, external_symbol_id_collection)
+    def get_method_external_symbol_id_collection(self, method_id):
+        return self._external_symbol_id_collection_loader.get_external_symbol_id_collection(method_id)
 
-    def convert_unit_id_to_variable_ids(self, *args):
-        return self._unit_id_to_variable_id_loader.load_key_to_values(*args)
-    def save_unit_id_to_variable_ids(self, *args):
-        return self._unit_id_to_variable_id_loader.save(*args)
-    def convert_variable_id_to_unit_id(self, *args):
-        return self._unit_id_to_variable_id_loader.load_value_to_key(*args)
-    def load_all_variable_ids(self, *args):
-        return self._unit_id_to_variable_id_loader.load_all_values(*args)
-    def is_variable_decl(self, *args):
-        return self._unit_id_to_variable_id_loader.is_variable_decl(*args)
+    def convert_unit_id_to_variable_ids(self, unit_id):
+        return self._unit_id_to_variable_id_loader.convert_one_to_many(unit_id)
+    def save_unit_id_to_variable_ids(self, unit_id, variable_ids):
+        return self._unit_id_to_variable_id_loader.save(unit_id, variable_ids)
+    def convert_variable_id_to_unit_id(self, variable_id):
+        return self._unit_id_to_variable_id_loader.convert_many_to_one(variable_id)
+    def get_all_variable_ids(self):
+        return self._unit_id_to_variable_id_loader.get_all_items_in_many()
+    def is_variable_decl(self, variable_id):
+        return self._unit_id_to_variable_id_loader.is_variable_decl(variable_id)
 
-    def convert_unit_id_to_import_stmt_ids(self, *args):
-        return self._unit_id_to_import_stmt_id_loader.load_key_to_values(*args)
-    def save_unit_id_to_import_stmt_ids(self, *args):
-        return self._unit_id_to_import_stmt_id_loader.save(*args)
-    def convert_import_stmt_id_to_unit_id(self, *args):
-        return self._unit_id_to_import_stmt_id_loader.load_value_to_key(*args)
-    def load_all_import_stmt_ids(self, *args):
-        return self._unit_id_to_import_stmt_id_loader.load_all_values(*args)
-    def is_import_stmt(self, *args):
-        return self._unit_id_to_import_stmt_id_loader.is_import_stmt(*args)
+    def convert_unit_id_to_import_stmt_ids(self, unit_id):
+        return self._unit_id_to_import_stmt_id_loader.convert_one_to_many(unit_id)
+    def save_unit_id_to_import_stmt_ids(self, unit_id, import_stmt_ids):
+        return self._unit_id_to_import_stmt_id_loader.save(unit_id, import_stmt_ids)
+    def convert_import_stmt_id_to_unit_id(self, import_stmt_id):
+        return self._unit_id_to_import_stmt_id_loader.convert_many_to_one(import_stmt_id)
+    def get_all_import_stmt_ids(self):
+        return self._unit_id_to_import_stmt_id_loader.get_all_items_in_many()
+    def is_import_stmt(self, import_stmt_id):
+        return self._unit_id_to_import_stmt_id_loader.is_import_stmt(import_stmt_id)
 
-    def convert_method_id_to_parameter_ids(self, *args):
-        return self._method_id_to_parameter_id_loader.load_key_to_values(*args)
-    def convert_parameter_id_to_method_id(self, *args):
-        return self._method_id_to_parameter_id_loader.load_value_to_key(*args)
-    def save_method_id_to_parameter_ids(self, *args):
-        return self._method_id_to_parameter_id_loader.save(*args)
-    def is_parameter_decl(self, *args):
-        return self._method_id_to_parameter_id_loader.is_parameter_decl(*args)
-    def is_parameter_decl_of_method(self, *args):
-        return self._method_id_to_parameter_id_loader.is_parameter_decl_of_method(*args)
+    def convert_method_id_to_parameter_ids(self, method_id):
+        return self._method_id_to_parameter_id_loader.convert_one_to_many(method_id)
+    def convert_parameter_id_to_method_id(self, parameter_id):
+        return self._method_id_to_parameter_id_loader.convert_many_to_one(parameter_id)
+    def save_method_id_to_parameter_ids(self, method_id, parameter_ids):
+        return self._method_id_to_parameter_id_loader.save(method_id, parameter_ids)
+    def is_parameter_decl(self, parameter_id):
+        return self._method_id_to_parameter_id_loader.is_parameter_decl(parameter_id)
+    def is_parameter_decl_of_method(self, method_id, parameter_id):
+        return self._method_id_to_parameter_id_loader.is_parameter_decl_of_method(method_id, parameter_id)
 
-    def convert_class_id_to_method_ids(self, *args):
-        return self._class_id_to_method_id_loader.load_key_to_values(*args)
-    def save_class_id_to_method_ids(self, *args):
-        return self._class_id_to_method_id_loader.save(*args)
-    def convert_method_id_to_class_id(self, *args):
-        return self._class_id_to_method_id_loader.load_value_to_key(*args)
-    def is_method_decl_of_class(self, *args):
-        return self._class_id_to_method_id_loader.is_parameter_decl_of_method(*args)
+    def convert_class_id_to_method_ids(self, class_id):
+        return self._class_id_to_method_id_loader.convert_one_to_many(class_id)
+    def save_class_id_to_method_ids(self, class_id, method_ids):
+        return self._class_id_to_method_id_loader.save(class_id, method_ids)
+    def convert_method_id_to_class_id(self, method_id):
+        return self._class_id_to_method_id_loader.convert_many_to_one(method_id)
+    def is_method_decl_of_class(self, class_id, method_id):
+        return self._class_id_to_method_id_loader.is_method_decl_of_class(class_id, method_id)
 
     def save_class_id_to_members(self, class_id, class_members):
         return self._class_id_to_members_loader.save(class_id, class_members)
     def save_all_class_id_to_members(self, class_id_to_members):
         return self._class_id_to_members_loader.save_all(class_id_to_members)
-    def load_class_id_to_members(self, class_id, create_if_not_exists = False):
-        class_members_dm: DataModel = self._class_id_to_members_loader.load(class_id)
-        if class_members_dm is None and create_if_not_exists:
-            nil_members = {}
-            self.save_class_id_to_members(class_id, nil_members)
+    def convert_class_id_to_members(self, class_id, create_if_not_exists = False):
+        class_members: DataModel = self._class_id_to_members_loader.get(class_id)
+        nil_members = {}
+        if util.is_empty(class_members):
+            if create_if_not_exists:
+                self.save_class_id_to_members(class_id, nil_members)
             return nil_members
-        if not util.is_empty(class_members_dm):
-            class_members_df = class_members_dm.get_data()
-            if not class_members_df.empty and hasattr(class_members_df, "members"):
-                return class_members_df["members"].to_dict()
-        return {}
-    def load_all_class_id_to_members(self):
-        return self._class_id_to_members_loader.load_all()
 
-    def convert_class_id_to_field_ids(self, *args):
-        return self._class_id_to_field_id_loader.load_key_to_values(*args)
-    def save_class_id_to_field_ids(self, *args):
-        return self._class_id_to_field_id_loader.save(*args)
-    def convert_field_id_to_class_id(self, *args):
-        return self._class_id_to_field_id_loader.load_value_to_key(*args)
-    def is_field_decl_of_class(self, *args):
-        return self._class_id_to_field_id_loader.is_parameter_decl_of_method(*args)
+        class_members_df = class_members.get_data()
+        if not class_members_df.empty and hasattr(class_members_df, "members"):
+            return class_members_df["members"].to_dict()
+        return nil_members
 
-    def convert_unit_id_to_method_ids(self, *args):
-        return self._unit_id_to_method_id_loader.load_key_to_values(*args)
-    def save_unit_id_to_method_ids(self, *args):
-        return self._unit_id_to_method_id_loader.save(*args)
-    def convert_method_id_to_unit_id(self, *args):
-        return self._unit_id_to_method_id_loader.load_value_to_key(*args)
-    def load_all_method_ids(self, *args):
-        return self._unit_id_to_method_id_loader.load_all_values(*args)
-    def is_method_decl(self, *args):
-        return self._unit_id_to_method_id_loader.is_method_decl(*args)
+    def get_map_class_id_to_members(self):
+        return self._class_id_to_members_loader.get_all()
 
-    def convert_unit_id_to_class_ids(self, *args):
-        return self._unit_id_to_class_id_loader.load_key_to_values(*args)
-    def save_unit_id_to_class_ids(self, *args):
-        return self._unit_id_to_class_id_loader.save(*args)
-    def convert_class_id_to_unit_id(self, *args):
-        return self._unit_id_to_class_id_loader.load_value_to_key(*args)
-    def load_all_class_ids(self, *args):
-        return self._unit_id_to_class_id_loader.load_all_values(*args)
-    def is_class_decl(self, *args):
-        return self._unit_id_to_class_id_loader.is_class_decl(*args)
+    def convert_class_id_to_field_ids(self, class_id):
+        return self._class_id_to_field_id_loader.convert_one_to_many(class_id)
+    def save_class_id_to_field_ids(self, class_id, field_ids):
+        return self._class_id_to_field_id_loader.save(class_id, field_ids)
+    def convert_field_id_to_class_id(self, field_id):
+        return self._class_id_to_field_id_loader.convert_many_to_one(field_id)
+    def is_field_decl(self, field_id):
+        return self._class_id_to_field_id_loader.is_field_decl(field_id)
+    def is_field_decl_of_class(self, field_id, class_id):
+        return self._class_id_to_field_id_loader.is_field_decl_of_class(field_id, class_id)
 
-    def convert_unit_id_to_namespace_ids(self, *args):
-        return self._unit_id_to_namespace_id_loader.load_key_to_values(*args)
-    def save_unit_id_to_namespace_ids(self, *args):
-        return self._unit_id_to_namespace_id_loader.save(*args)
-    def convert_namespace_id_to_unit_id(self, *args):
-        return self._unit_id_to_namespace_id_loader.load_value_to_key(*args)
-    def load_all_namespace_ids(self, *args):
-        return self._unit_id_to_namespace_id_loader.load_all_values(*args)
-    def is_namespace_decl(self, *args):
-        return self._unit_id_to_namespace_id_loader.is_namespace_decl(*args)
+    def convert_unit_id_to_method_ids(self, unit_id):
+        return self._unit_id_to_method_id_loader.convert_one_to_many(unit_id)
+    def save_unit_id_to_method_ids(self, unit_id, method_ids):
+        return self._unit_id_to_method_id_loader.save(unit_id, method_ids)
+    def convert_method_id_to_unit_id(self, method_id):
+        return self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
+    def get_all_method_ids(self):
+        return self._unit_id_to_method_id_loader.get_all_items_in_many()
+    def is_method_decl(self, method_id):
+        return self._unit_id_to_method_id_loader.is_method_decl(method_id)
 
-    def convert_class_id_to_class_name(self, *args):
-        return self._class_id_to_class_name_loader.load_key_to_values(*args)
-    def convert_class_name_to_class_ids(self, *args):
-        return self._class_id_to_class_name_loader.load_value_to_key(*args)
-    def save_class_id_to_class_name(self, *args):
-        return self._class_id_to_class_name_loader.save(*args)
+    def convert_unit_id_to_class_ids(self, unit_id):
+        return self._unit_id_to_class_id_loader.convert_one_to_many(unit_id)
+    def save_unit_id_to_class_ids(self, unit_id, class_ids):
+        return self._unit_id_to_class_id_loader.save(unit_id, class_ids)
+    def convert_class_id_to_unit_id(self, class_id):
+        return self._unit_id_to_class_id_loader.convert_many_to_one(class_id)
+    def get_all_class_ids(self):
+        return self._unit_id_to_class_id_loader.get_all_items_in_many()
+    def is_class_decl(self, class_id):
+        return self._unit_id_to_class_id_loader.is_class_decl(class_id)
 
-    def convert_method_id_to_method_name(self, *args):
-        return self._method_id_to_method_name_loader.load_key_to_values(*args)
-    def convert_method_name_to_method_ids(self, *args):
-        return self._method_id_to_method_name_loader.load_value_to_key(*args)
-    def save_method_id_to_method_name(self, *args):
-        return self._method_id_to_method_name_loader.save(*args)
+    def convert_unit_id_to_namespace_ids(self, unit_id):
+        return self._unit_id_to_namespace_id_loader.convert_one_to_many(unit_id)
+    def save_unit_id_to_namespace_ids(self, unit_id, namespace_ids):
+        return self._unit_id_to_namespace_id_loader.save(unit_id, namespace_ids)
+    def convert_namespace_id_to_unit_id(self, namespace_id):
+        return self._unit_id_to_namespace_id_loader.convert_many_to_one(namespace_id)
+    def get_all_namespace_ids(self):
+        return self._unit_id_to_namespace_id_loader.get_all_items_in_many()
+    def is_namespace_decl(self, namespace_id):
+        return self._unit_id_to_namespace_id_loader.is_namespace_decl(namespace_id)
+
+    def convert_class_id_to_class_name(self, class_id):
+        return self._class_id_to_class_name_loader.convert_many_to_one(class_id)
+    def convert_class_name_to_class_ids(self, class_name):
+        return self._class_id_to_class_name_loader.convert_one_to_many(class_name)
+    def save_class_id_to_class_name(self, class_id, class_name):
+        return self._class_id_to_class_name_loader.save(class_id, class_name)
+
+    def convert_method_id_to_method_name(self, method_id):
+        return self._method_id_to_method_name_loader.convert_many_to_one(method_id)
+    def convert_method_name_to_method_ids(self, method_name):
+        return self._method_id_to_method_name_loader.convert_one_to_many(method_name)
+    def save_method_id_to_method_name(self, method_id, method_name):
+        return self._method_id_to_method_name_loader.save(method_id, method_name)
 
     def save_unit_symbol_decl_summary(self, unit_id, summary):
         return self._unit_symbol_decl_summary_loader.save(unit_id, summary)
-    def load_unit_symbol_decl_summary(self, unit_id) -> UnitSymbolDeclSummary:
-        return self._unit_symbol_decl_summary_loader.load(unit_id)
+    def get_unit_symbol_decl_summary(self, unit_id) -> UnitSymbolDeclSummary:
+        return self._unit_symbol_decl_summary_loader.get(unit_id)
 
     def save_max_gir_id(self, max_gir_id):
         return self._unique_symbol_id_assigner_loader.save_max_gir_id(max_gir_id)
-    def load_max_gir_id(self):
-        return self._unique_symbol_id_assigner_loader.load_max_gir_id()
+    def get_max_gir_id(self):
+        return self._unique_symbol_id_assigner_loader.get_max_gir_id()
     def is_greater_than_max_gir_id(self, symbol_id):
         return self._unique_symbol_id_assigner_loader.is_greater_than_max_gir_id(symbol_id)
     def assign_new_unique_positive_id(self):
@@ -2349,134 +2342,146 @@ class Loader:
 
     def save_stmt_id_to_scope_id(self, stmt_id_to_scope_id_cache):
         return self._stmt_id_to_scope_id_loader.save(stmt_id_to_scope_id_cache)
+    def _convert_id_to_scope(self, scope_id):
+        """返回指定id对应的scope"""
+        if scope_id <= 0:
+            return None
+        if self.stmt_scope_cache.contain(scope_id):
+            return self.stmt_scope_cache.get(scope_id)
+        unit_id = self.convert_stmt_id_to_unit_id(scope_id)
+        if unit_id < 0: return None # 可能的，比如import的fake节点的symbol_id是虚构的
+        scope_data = self.get_unit_scope_hierarchy(unit_id)
+        stmt_scope = scope_data.query_first(scope_data.stmt_id == scope_id)
+        self.stmt_scope_cache.put(scope_id, stmt_scope)
+        return stmt_scope
     def convert_stmt_id_to_scope_id(self, stmt_id):
-        scope_id = self._stmt_id_to_scope_id_loader.load(stmt_id)
+        scope_id = self._stmt_id_to_scope_id_loader.get(stmt_id)
         if scope_id == -1:
             # 可能自己就是scope
-            self_scope = self.load_scope_by_id(stmt_id)
+            self_scope = self._convert_id_to_scope(stmt_id)
             if self_scope:
                 scope_id = self_scope.scope_id
         return scope_id
 
     def save_symbol_name_to_decl_ids(self, unit_id, symbol_name_to_decl_ids):
         return self._symbol_name_to_decl_ids_loader.save(unit_id, symbol_name_to_decl_ids)
-    def load_symbol_name_to_decl_ids(self, unit_id):
-        return self._symbol_name_to_decl_ids_loader.load(unit_id)
+    def get_symbol_name_to_decl_ids(self, unit_id):
+        return self._symbol_name_to_decl_ids_loader.get(unit_id)
 
     # def save_symbol_name_to_scope_ids(self, *args):
     #     return self._symbol_name_to_scope_ids_loader.save(*args)
-    # def load_symbol_name_to_scope_ids(self, *args):
-    #     return self._symbol_name_to_scope_ids_loader.load(*args)
+    # def get_symbol_name_to_scope_ids(self, *args):
+    #     return self._symbol_name_to_scope_ids_loader.get(*args)
     #
     # def save_scope_id_to_symbol_info(self, *args):
     #     return self._scope_id_to_symbol_info_loader.save(*args)
-    # def load_scope_id_to_symbol_info(self, *args):
-    #     return self._scope_id_to_symbol_info_loader.load(*args)
+    # def get_scope_id_to_symbol_info(self, *args):
+    #     return self._scope_id_to_symbol_info_loader.get(*args)
     #
     # def save_scope_id_to_available_scope_ids(self, *args):
     #     return self._scope_id_to_available_scope_ids_loader.save(*args)
-    # def load_scope_id_to_available_scope_ids(self, *args):
-    #     return self._scope_id_to_available_scope_ids_loader.load(*args)
+    # def get_scope_id_to_available_scope_ids(self, *args):
+    #     return self._scope_id_to_available_scope_ids_loader.get(*args)
 
-    def save_entry_points(self, *args):
-        return self._entry_points_loader.save(*args)
-    def load_entry_points(self, *args):
-        return self._entry_points_loader.load_entry_points(*args)
+    def save_entry_points(self, entry_points):
+        return self._entry_points_loader.save(entry_points)
+    def get_entry_points(self):
+        return self._entry_points_loader.get_entry_points()
     def export_entry_points(self):
         return self._entry_points_loader.export()
 
-    def load_method_cfg(self, *args):
-        return self._cfg_loader.load(*args)
-    def save_method_cfg(self, *args):
-        return self._cfg_loader.save(*args)
+    def get_method_cfg(self, method_id):
+        return self._cfg_loader.get(method_id)
+    def save_method_cfg(self, method_id, cfg):
+        return self._cfg_loader.save(method_id, cfg)
 
-    def save_symbol_bit_vector_p1(self, *args):
-        return self._symbol_bit_vector_manager_p1_loader.save(*args)
-    def load_symbol_bit_vector_p1(self, *args):
-        return self._symbol_bit_vector_manager_p1_loader.load(*args)
+    def save_symbol_bit_vector_p1(self, method_id, bit_vector):
+        return self._symbol_bit_vector_manager_p1_loader.save(method_id, bit_vector)
+    def get_symbol_bit_vector_p1(self, method_id):
+        return self._symbol_bit_vector_manager_p1_loader.get(method_id)
 
-    def save_symbol_bit_vector_p2(self, *args):
-        return self._symbol_bit_vector_manager_p2_loader.save(*args)
-    def load_symbol_bit_vector_p2(self, *args):
-        return self._symbol_bit_vector_manager_p2_loader.load(*args)
+    def save_symbol_bit_vector_p2(self, method_id, bit_vector):
+        return self._symbol_bit_vector_manager_p2_loader.save(method_id, bit_vector)
+    def get_symbol_bit_vector_p2(self, method_id):
+        return self._symbol_bit_vector_manager_p2_loader.get(method_id)
 
-    def save_symbol_bit_vector_p3(self, *args):
-        return self._symbol_bit_vector_manager_p3_loader.save(*args)
-    def load_symbol_bit_vector_p3(self, *args):
-        return self._symbol_bit_vector_manager_p3_loader.load(*args)
+    def save_symbol_bit_vector_p3(self, method_id, bit_vector):
+        return self._symbol_bit_vector_manager_p3_loader.save(method_id, bit_vector)
+    def get_symbol_bit_vector_p3(self, method_id):
+        return self._symbol_bit_vector_manager_p3_loader.get(method_id)
 
-    def save_state_bit_vector_p2(self, *args):
-        return self._state_bit_vector_manager_p2_loader.save(*args)
-    def load_state_bit_vector_p2(self, *args):
-        return self._state_bit_vector_manager_p2_loader.load(*args)
+    def save_state_bit_vector_p2(self, method_id, bit_vector):
+        return self._state_bit_vector_manager_p2_loader.save(method_id, bit_vector)
+    def get_state_bit_vector_p2(self, method_id):
+        return self._state_bit_vector_manager_p2_loader.get(method_id)
 
-    def save_state_bit_vector_p3(self, *args):
-        return self._state_bit_vector_manager_p2_loader.save(*args)
-    def load_state_bit_vector_p3(self, *args):
-        return self._state_bit_vector_manager_p2_loader.load(*args)
+    def save_state_bit_vector_p3(self, method_id, bit_vector):
+        return self._state_bit_vector_manager_p3_loader.save(method_id, bit_vector)
+    def get_state_bit_vector_p3(self, method_id):
+        return self._state_bit_vector_manager_p3_loader.get(method_id)
 
-    def save_stmt_status_p1(self, *args):
-        return self._stmt_status_p1_loader.save(*args)
-    def load_stmt_status_p1(self, *args):
-        return self._stmt_status_p1_loader.load(*args)
+    def save_stmt_status_p1(self, method_id, status):
+        return self._stmt_status_p1_loader.save(method_id, status)
+    def get_stmt_status_p1(self, method_id):
+        return self._stmt_status_p1_loader.get(method_id)
 
-    def save_stmt_status_p2(self, *args):
-        return self._stmt_status_p2_loader.save(*args)
-    def load_stmt_status_p2(self, *args):
-        return self._stmt_status_p2_loader.load(*args)
+    def save_stmt_status_p2(self, method_id, status):
+        return self._stmt_status_p2_loader.save(method_id, status)
+    def get_stmt_status_p2(self, method_id):
+        return self._stmt_status_p2_loader.get(method_id)
 
-    def save_stmt_status_p3(self, *args):
-        return self._stmt_status_p3_loader.save(*args)
-    def load_stmt_status_p3(self, *args):
-        return self._stmt_status_p3_loader.load(*args)
+    def save_stmt_status_p3(self, method_id, status):
+        return self._stmt_status_p3_loader.save(method_id, status)
+    def get_stmt_status_p3(self, method_id):
+        return self._stmt_status_p3_loader.get(method_id)
 
-    def save_symbol_state_space_p1(self, *args):
-        return self._symbol_state_space_p1_loader.save(*args)
-    def load_symbol_state_space_p1(self, *args):
-        return self._symbol_state_space_p1_loader.load(*args)
+    def save_symbol_state_space_p1(self, method_id, state_space):
+        return self._symbol_state_space_p1_loader.save(method_id, state_space)
+    def get_symbol_state_space_p1(self, method_id):
+        return self._symbol_state_space_p1_loader.get(method_id)
 
-    def save_symbol_state_space_p2(self, *args):
-        return self._symbol_state_space_p2_loader.save(*args)
-    def load_symbol_state_space_p2(self, *args):
-        return self._symbol_state_space_p2_loader.load(*args)
+    def save_symbol_state_space_p2(self, method_id, state_space):
+        return self._symbol_state_space_p2_loader.save(method_id, state_space)
+    def get_symbol_state_space_p2(self, method_id):
+        return self._symbol_state_space_p2_loader.get(method_id)
 
-    def save_symbol_state_space_summary_p2(self, *args):
-        return self._symbol_state_space_summary_p2_loader.save(*args)
-    def load_symbol_state_space_summary_p2(self, *args):
-        return self._symbol_state_space_summary_p2_loader.load(*args)
+    def save_symbol_state_space_summary_p2(self, method_id, summary):
+        return self._symbol_state_space_summary_p2_loader.save(method_id, summary)
+    def get_symbol_state_space_summary_p2(self, method_id):
+        return self._symbol_state_space_summary_p2_loader.get(method_id)
 
-    def save_symbol_state_space_p3(self, *args):
-        return self._symbol_state_space_p3_loader.save(*args)
-    def load_symbol_state_space_p3(self, *args):
-        return self._symbol_state_space_p3_loader.load(*args)
+    def save_symbol_state_space_p3(self, method_id, state_space):
+        return self._symbol_state_space_p3_loader.save(method_id, state_space)
+    def get_symbol_state_space_p3(self, method_id):
+        return self._symbol_state_space_p3_loader.get(method_id)
 
-    def save_symbol_state_space_summary_p3(self, *args):
-        return self._symbol_state_space_summary_p3_loader.save(*args)
-    def load_symbol_state_space_summary_p3(self, *args):
-        return self._symbol_state_space_summary_p3_loader.load(*args)
+    def save_symbol_state_space_summary_p3(self, method_id, summary):
+        return self._symbol_state_space_summary_p3_loader.save(method_id, summary)
+    def get_symbol_state_space_summary_p3(self, method_id):
+        return self._symbol_state_space_summary_p3_loader.get(method_id)
 
-    def save_method_internal_callees(self, *args):
-        return self._method_internal_callees_loader.save(*args)
-    def load_method_internal_callees(self, *args):
-        return self._method_internal_callees_loader.load(*args)
+    def save_method_internal_callees(self, method_id, callees):
+        return self._method_internal_callees_loader.save(method_id, callees)
+    def get_method_internal_callees(self, method_id):
+        return self._method_internal_callees_loader.get(method_id)
 
-    def save_grouped_methods(self, *args):
-        return self._grouped_methods_loader.save(*args)
-    def load_grouped_methods(self, *args):
-        return self._grouped_methods_loader.load(*args)
+    def save_grouped_methods(self, grouped_methods):
+        return self._grouped_methods_loader.save(grouped_methods)
+    def get_grouped_methods(self):
+        return self._grouped_methods_loader.get()
 
-    def save_import_graph(self, *args):
-        return self._import_graph_loader.save(*args)
-    def load_import_graph(self, *args):
-        return self._import_graph_loader.load(*args)
-    def save_import_graph_nodes(self, *args):
-        return self._import_graph_loader.save_nodes(*args)
-    def load_import_graph_nodes(self, *args):
-        return self._import_graph_loader.load_nodes(*args)
-    def save_import_deps(self, *args):
-        return self._import_graph_loader.save_deps(*args)
-    def load_import_deps(self, *args):
-        return self._import_graph_loader.load_deps(*args)
+    def save_import_graph(self, graph):
+        return self._import_graph_loader.save(graph)
+    def get_import_graph(self):
+        return self._import_graph_loader.get()
+    def save_import_graph_nodes(self, nodes):
+        return self._import_graph_loader.save_nodes(nodes)
+    def get_import_graph_nodes(self):
+        return self._import_graph_loader.get_nodes()
+    def save_import_deps(self, deps):
+        return self._import_graph_loader.save_deps(deps)
+    def get_import_deps(self):
+        return self._import_graph_loader.get_deps()
     def get_internal_successor_nodes_in_import_graph(self, node_id):
         return self._import_graph_loader.get_internal_successor_nodes(node_id)
     def get_external_successor_nodes_in_import_graph(self, node_id):
@@ -2484,91 +2489,94 @@ class Loader:
     def get_edges_and_nodes_with_edge_attrs_in_import_graph(self, node_id, attr_dict):
         return self._import_graph_loader.get_edges_and_nodes_with_edge_attrs(node_id, attr_dict)
 
-    def save_type_graph(self, *args):
-        return self._type_graph_loader.save(*args)
-    def load_type_graph(self, *args):
-        return self._type_graph_loader.load(*args)
+    def save_type_graph(self, graph):
+        return self._type_graph_loader.save(graph)
+    def get_type_graph(self):
+        return self._type_graph_loader.get()
 
-    def save_call_graph_p1(self, *args):
-        return self._call_graph_p1_loader.save(*args)
-    def load_call_graph_p1(self, *args):
-        return self._call_graph_p1_loader.load(*args)
+    def save_call_graph_p1(self, graph):
+        return self._call_graph_p1_loader.save(graph)
+    def get_call_graph_p1(self):
+        return self._call_graph_p1_loader.get()
 
-    def save_call_graph_p2(self, *args):
-        return self._call_graph_p2_loader.save(*args)
-    def load_call_graph_p2(self, *args):
-        return self._call_graph_p2_loader.load(*args)
+    def save_call_graph_p2(self, graph):
+        return self._call_graph_p2_loader.save(graph)
+    def get_call_graph_p2(self):
+        return self._call_graph_p2_loader.get()
 
-    def save_call_paths_p3(self, *args):
-        return self._call_path_p3_loader.save(*args)
-    def load_call_paths_p3(self, *args):
-        return self._call_path_p3_loader.load(*args)
+    def save_call_paths_p3(self, graph):
+        return self._call_path_p3_loader.save(graph)
+    def get_call_paths_p3(self):
+        return self._call_path_p3_loader.get()
 
-    def load_method_symbol_to_define(self, *args):
-        return self._symbol_to_define_loader.load(*args)
-    def save_method_symbol_to_define(self, *args):
-        return self._symbol_to_define_loader.save(*args)
+    def get_method_symbol_to_define(self, method_id):
+        return self._symbol_to_define_loader.get(method_id)
+    def save_method_symbol_to_define(self, method_id, symbols):
+        return self._symbol_to_define_loader.save(method_id, symbols)
 
-    def load_method_symbol_to_define_p2(self, *args):
-        return self._symbol_to_define_p2_loader.load(*args)
-    def save_method_symbol_to_define_p2(self, *args):
-        return self._symbol_to_define_p2_loader.save(*args)
+    def get_method_symbol_to_define_p2(self, method_id):
+        return self._symbol_to_define_p2_loader.get(method_id)
+    def save_method_symbol_to_define_p2(self, method_id, symbols):
+        return self._symbol_to_define_p2_loader.save(method_id, symbols)
 
-    def load_method_symbol_to_define_p3(self, *args):
-        return self._symbol_to_define_p3_loader.load(*args)
-    def save_method_symbol_to_define_p3(self, *args):
-        return self._symbol_to_define_p3_loader.save(*args)
+    def get_method_symbol_to_define_p3(self, method_id):
+        return self._symbol_to_define_p3_loader.get(method_id)
+    def save_method_symbol_to_define_p3(self, method_id, symbols):
+        return self._symbol_to_define_p3_loader.save(method_id, symbols)
 
-    def load_method_state_to_define_p1(self, *args):
-        return self._state_to_define_p1_loader.load(*args)
-    def save_method_state_to_define_p1(self, *args):
-        return self._state_to_define_p1_loader.save(*args)
+    def get_method_state_to_define_p1(self, method_id):
+        return self._state_to_define_p1_loader.get(method_id)
+    def save_method_state_to_define_p1(self, method_id, states):
+        return self._state_to_define_p1_loader.save(method_id, states)
 
-    def load_method_state_to_define_p2(self, *args):
-        return self._state_to_define_p2_loader.load(*args)
-    def save_method_state_to_define_p2(self, *args):
-        return self._state_to_define_p2_loader.save(*args)
+    def get_method_state_to_define_p2(self, method_id):
+        return self._state_to_define_p2_loader.get(method_id)
+    def save_method_state_to_define_p2(self, method_id, states):
+        return self._state_to_define_p2_loader.save(method_id, states)
 
-    def load_method_symbol_to_use(self, *args):
-        return self._symbol_to_use_loader.load(*args)
-    def save_method_symbol_to_use(self, *args):
-        return self._symbol_to_use_loader.save(*args)
+    def get_method_symbol_to_use(self, method_id):
+        return self._symbol_to_use_loader.get(method_id)
+    def save_method_symbol_to_use(self, method_id, symbols):
+        return self._symbol_to_use_loader.save(method_id, symbols)
 
-    def load_method_symbol_graph_p2(self, *args):
-        return self._symbol_graph_p2_loader.load(*args)
-    def save_method_symbol_graph_p2(self, *args):
-        return self._symbol_graph_p2_loader.save(*args)
-    def save_method_symbol_graph_p3(self, *args):
-        return self._symbol_graph_p3_loader.save(*args)
+    def get_method_symbol_graph_p2(self, method_id):
+        return self._symbol_graph_p2_loader.get(method_id)
+    def save_method_symbol_graph_p2(self, method_id, graph):
+        return self._symbol_graph_p2_loader.save(method_id, graph)
+    def save_method_symbol_graph_p3(self, method_id, graph):
+        return self._symbol_graph_p3_loader.save(method_id, graph)
 
-    def load_method_def_use_summary(self, *args):
-        return self._method_def_use_summary_loader.load(*args)
-    def save_method_def_use_summary(self, *args):
-        return self._method_def_use_summary_loader.save(*args)
+    def get_method_def_use_summary(self, method_id):
+        return self._method_def_use_summary_loader.get(method_id)
+    def save_method_def_use_summary(self, method_id, summary):
+        return self._method_def_use_summary_loader.save(method_id, summary)
 
-    def load_method_summary_template(self, *args):
-        return self._method_summary_template_loader.load(*args)
-    def save_method_summary_template(self, *args):
-        return self._method_summary_template_loader.save(*args)
+    def get_method_summary_template(self, method_id):
+        return self._method_summary_template_loader.get(method_id)
+    def save_method_summary_template(self, method_id, template):
+        return self._method_summary_template_loader.save(method_id, template)
 
-    def load_method_summary_instance(self, *args):
-        return self._method_summary_template_instance.load(*args)
-    def save_method_summary_instance(self, *args):
-        return self._method_summary_template_instance.save(*args)
+    def get_method_summary_instance(self, method_id):
+        return self._method_summary_template_instance.get(method_id)
+    def save_method_summary_instance(self, method_id, instance):
+        return self._method_summary_template_instance.save(method_id, instance)
 
-    def load_parameter_mapping_p2(self, *args):
-        return self._callee_parameter_mapping_p2_loader.load(*args)
-    def save_parameter_mapping_p2(self, *args):
-        return self._callee_parameter_mapping_p2_loader.save(*args)
+    def get_parameter_mapping_p2(self, method_id):
+        return self._callee_parameter_mapping_p2_loader.get(method_id)
+    def save_parameter_mapping_p2(self, method_id, mapping):
+        return self._callee_parameter_mapping_p2_loader.save(method_id, mapping)
 
-    def load_parameter_mapping_p3(self, *args):
-        return self._callee_parameter_mapping_p3_loader.load(*args)
-    def save_parameter_mapping_p3(self, *args):
-        return self._callee_parameter_mapping_p3_loader.save(*args)
+    def get_parameter_mapping_p3(self, method_id):
+        return self._callee_parameter_mapping_p3_loader.get(method_id)
+    def save_parameter_mapping_p3(self, method_id, mapping):
+        return self._callee_parameter_mapping_p3_loader.save(method_id, mapping)
 
     def convert_stmt_id_to_method_id(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        unit_gir = self.load_unit_gir(unit_id)
+        unit_gir = self.get_unit_gir(unit_id)
+        if unit_gir is None:
+            return -1
+
         stmt_id_to_stmt = {}
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
@@ -2580,9 +2588,9 @@ class Loader:
 
         return current_stmt.stmt_id
 
-    def get_method_name_by_method_id(self, stmt_id):
-        method_name = self.convert_method_id_to_method_name(stmt_id)
-        class_id = self.convert_method_id_to_class_id(stmt_id)
+    def get_method_name_by_method_id(self, method_id):
+        method_name = self.convert_method_id_to_method_name(method_id)
+        class_id = self.convert_method_id_to_class_id(method_id)
         class_name = self.convert_class_id_to_class_name(class_id)
         if class_name:
             return f"{class_name}.{method_name}"
@@ -2622,7 +2630,7 @@ class Loader:
 
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        unit_gir = self.load_unit_gir(unit_id)
+        unit_gir = self.get_unit_gir(unit_id)
         stmt_id_to_stmt = {}
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
@@ -2642,11 +2650,10 @@ class Loader:
             method_decl_line_id = int(method_decl_stmt.start_row)
             return unit_source_code[method_decl_line_id]
 
-
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        unit_gir = self.load_unit_gir(unit_id)
+        unit_gir = self.get_unit_gir(unit_id)
         stmt_id_to_stmt = {}
         for row in unit_gir:
             stmt_id_to_stmt[row.stmt_id] = row
@@ -2702,7 +2709,7 @@ class Loader:
         class_name = self.convert_class_id_to_class_name(class_id)
         if util.is_empty(class_name):
             class_name = "None"
-        gir_stmt = self.load_stmt_gir(stmt_id)
+        gir_stmt = self.get_stmt_gir(stmt_id)
 
         context = {
             'unit_path': unit_path,
@@ -2711,7 +2718,7 @@ class Loader:
         }
         pprint.pprint(context, indent=2, width=80)
 
-    def load_method_in_class_with_method_name(self, class_id, method_name) -> set[int]:
+    def get_method_in_class_with_method_name(self, class_id, method_name) -> set[int]:
         """
             给定method_name和class_id。如果class中有同名方法，返回method_id
             ** 必须是定义在该class中的方法，不包含继承方法
@@ -2724,11 +2731,11 @@ class Loader:
                 res.add(method_id)
         return res
 
-    def load_root_path(self):
+    def get_target_paths_to_be_analyzed(self):
         """返回扫描的根路径"""
         return getattr(self.options, "in_path", "")
 
-    def load_workspace_root_path(self):
+    def get_workspace_path(self):
         workspace_root = getattr(self.options, "workspace", "")
         return workspace_root + "/src" if workspace_root != "" else ""
 

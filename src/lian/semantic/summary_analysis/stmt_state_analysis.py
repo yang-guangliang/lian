@@ -263,7 +263,7 @@ class StmtStateAnalysis:
             else:
                 self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
-     
+
     def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index, overwritten_flag = False):
         """复制已有状态并添加到状态空间，更新相关定义信息"""
         state = self.frame.symbol_state_space[state_index]
@@ -1092,7 +1092,7 @@ class StmtStateAnalysis:
 
     def prepare_parameters(self, callee_id):
         result = MethodDeclParameters()
-        _, parameters_block = self.loader.load_method_header(callee_id)
+        _, parameters_block = self.loader.get_method_header(callee_id)
         if not parameters_block:
             return result
 
@@ -1242,7 +1242,7 @@ class StmtStateAnalysis:
             for each_parameter in rest_parameters:
                 parameter_symbol_id = each_parameter.symbol_id
                 default_value_symbol_id = None
-                callee_method_def_use_summary = self.loader.load_method_def_use_summary(call_site[2]).copy()
+                callee_method_def_use_summary = self.loader.get_method_def_use_summary(call_site[2]).copy()
                 for symbol_default_pair in callee_method_def_use_summary.parameter_symbol_ids:
                     if parameter_symbol_id == symbol_default_pair[0]:
                         default_value_symbol_id = symbol_default_pair[1]
@@ -1785,9 +1785,9 @@ class StmtStateAnalysis:
         call_stmt_id = stmt_id
         # print(f"load_parameter_mapping: {callee_id, caller_id, call_stmt_id}")
         if self.phase == 2:
-            parameter_mapping_list = self.loader.load_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
+            parameter_mapping_list = self.loader.get_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
         else:
-            parameter_mapping_list = self.loader.load_parameter_mapping_p3((caller_id, call_stmt_id, callee_id))
+            parameter_mapping_list = self.loader.get_parameter_mapping_p3((caller_id, call_stmt_id, callee_id))
         # apply parameter's state in callee_summary to args
         self.apply_parameter_semantic_summary(
             stmt_id, callee_id, callee_summary, callee_compact_space, parameter_mapping_list
@@ -1849,8 +1849,8 @@ class StmtStateAnalysis:
 
         return None
 
-    
-     
+
+
     def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         call_stmt   target  name    return_type prototype   args
@@ -1952,7 +1952,7 @@ class StmtStateAnalysis:
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )
-     
+
     def compute_target_method_states(
         self, stmt_id, stmt, status, in_states,
         callee_method_ids, defined_symbol, args,
@@ -1976,8 +1976,8 @@ class StmtStateAnalysis:
             if config.DEBUG_FLAG:
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
             new_call_site = (caller_id, stmt_id, each_callee_id)
-            callee_method_def_use_summary:MethodDefUseSummary = self.loader.load_method_def_use_summary(each_callee_id)
-            parameter_mapping_list = self.loader.load_parameter_mapping_p2(new_call_site)
+            callee_method_def_use_summary:MethodDefUseSummary = self.loader.get_method_def_use_summary(each_callee_id)
+            parameter_mapping_list = self.loader.get_parameter_mapping_p2(new_call_site)
             if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site, 2)
@@ -2044,13 +2044,13 @@ class StmtStateAnalysis:
                     self.call_graph.add_edge(int(self.frame.method_id), int(each_callee_id), int(stmt_id))
 
             # prepare callee summary template and compact space
-            callee_summary = self.loader.load_method_summary_template(each_callee_id)
+            callee_summary = self.loader.get_method_summary_template(each_callee_id)
             if util.is_empty(callee_summary):
                 # print(f"\neach_callee_id: {each_callee_id}")
                 continue
             callee_summary = callee_summary.copy()
 
-            callee_compact_space: SymbolStateSpace = self.loader.load_symbol_state_space_summary_p2(each_callee_id)
+            callee_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(each_callee_id)
             if util.is_empty(callee_compact_space):
                 continue
             callee_compact_space = callee_compact_space.copy()
@@ -3185,7 +3185,7 @@ class StmtStateAnalysis:
 
         # print("source_index",source_index)
         # print("new_receiver_symbol.states",new_receiver_symbol.states)
-  
+
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         <field_read: target, receiver_object, field>
@@ -3273,7 +3273,7 @@ class StmtStateAnalysis:
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_unit(each_receiver_state):
-                    import_symbols = self.loader.load_unit_export_symbols(each_receiver_state.value)
+                    import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
                     if import_symbols:
                         for import_symbol in import_symbols:
                             if import_symbol.symbol_name == field_name:
@@ -3302,7 +3302,7 @@ class StmtStateAnalysis:
 
                 elif self.is_state_a_class_decl(each_receiver_state):
                     first_found_class_id = -1 # 记录从下往上找到该方法的第一个class_id。最后只返回该class中所有的同名方法，不继续向上找。
-                    class_methods = self.loader.load_methods_in_class(each_receiver_state.value)
+                    class_methods = self.loader.get_methods_in_class(each_receiver_state.value)
                     if class_methods:
                         for method in class_methods:
                             if method.name == field_name:
@@ -3364,7 +3364,7 @@ class StmtStateAnalysis:
         app_return = self.app_manager.notify(event)
         return P2ResultFlag()
 
-    
+
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         field_write: receiver_object, field, source
