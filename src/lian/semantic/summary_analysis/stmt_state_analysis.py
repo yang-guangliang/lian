@@ -3273,8 +3273,40 @@ class StmtStateAnalysis:
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_unit(each_receiver_state):
+
+                    import_graph = self.loader.get_import_graph()
                     import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
-                    if import_symbols:
+                    found_in_import_graph = False
+                    for u, v, wt in import_graph.edges(data=True):
+                        real_name = wt.get("realName", None)
+                        if real_name == field_name:
+                            symbol_type = wt.get("symbol_type", None)
+                            if symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
+                                data_type = LIAN_INTERNAL.METHOD_DECL
+                            elif symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
+                                data_type = LIAN_INTERNAL.CLASS_DECL
+                            else:
+                                data_type = LIAN_INTERNAL.UNIT
+
+                            state_index = self.create_state_and_add_space(
+                                status, stmt_id=stmt_id,
+                                source_symbol_id=v,
+                                source_state_id=each_receiver_state.source_state_id,
+                                data_type=data_type,
+                                value=v,
+                                access_path=self.copy_and_extend_access_path(
+                                    each_receiver_state.access_path,
+                                    AccessPoint(
+                                        key=real_name,
+                                    )
+                                )
+                            )
+                            found_in_import_graph = True
+                            self.update_access_path_state_id(state_index)
+                            each_defined_states.add(state_index)
+
+
+                    if import_symbols and not found_in_import_graph:
                         for import_symbol in import_symbols:
                             if import_symbol.symbol_name == field_name:
                                 if import_symbol.symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:

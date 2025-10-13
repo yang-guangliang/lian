@@ -44,13 +44,13 @@ class ImportHierarchy:
             unit_id = unit_id
         )
         self.symbol_id_to_symbol_node[symbol_id] = import_node
-        self.add_import_graph_edge(parent_node_id, symbol_id, symbol_name)
+        self.add_import_graph_edge(parent_node_id, symbol_id, symbol_name, symbol_type = symbol_type)
         return import_node
 
     def add_import_graph_edge(
         self, parent_node_id, node_id, node_name,
         edge_kind = IMPORT_GRAPH_EDGE_KIND.INTERNAL_SYMBOL,
-        import_stmt_id = -1, alias = ""
+        import_stmt_id = -1, alias = "", symbol_type = None
     ):
         if alias == "":
             real_name = node_name
@@ -60,9 +60,9 @@ class ImportHierarchy:
             parent_node_id in self.symbol_id_to_symbol_node
             and node_id in self.symbol_id_to_symbol_node
         ):
-            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name)
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name, symbol_type = symbol_type)
         elif edge_kind == IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL:
-            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name)
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name, symbol_type = symbol_type)
 
     def add_import_deps(self, unit_id, node_id):
         if self.loader.is_unit_id(node_id):
