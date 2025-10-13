@@ -1940,7 +1940,7 @@ class StmtStateAnalysis:
 
         # call plugin to deal with undefined_callee_error
         # if len(unsolved_callee_states) != 0:
-        if len(callee_method_ids) == 0 and len(unsolved_callee_states) != 0:
+        if len(callee_method_ids) == 0:
             out_data = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
             )
