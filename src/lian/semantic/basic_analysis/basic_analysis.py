@@ -46,11 +46,11 @@ class BasicSemanticAnalysis:
         self.lian = lian
         self.analysis_phases = []
         self.options = lian.options
-        self.app_manager = lian.app_manager
+        self.event_manager = lian.event_manager
         self.extern_system = lian.extern_system
         self.loader:Loader = lian.loader
         self.resolver: Resolver = lian.resolver
-        self.entry_points = EntryPointGenerator(lian.options, lian.app_manager, lian.loader)
+        self.entry_points = EntryPointGenerator(lian.options, lian.event_manager, lian.loader)
         self.basic_call_graph = BasicCallGraph()
         self.analyzed_method_ids = set()
         self.incremental_checker = None

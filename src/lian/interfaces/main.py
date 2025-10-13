@@ -29,8 +29,7 @@ from lian.interfaces import (
 )
 
 from lian.config import constants, config
-from lian.apps.app_manager import AppManager
-from lian.interfaces.settings_manager import SettingsManager
+from lian.events.event_manager import EventManager
 from lian.config import config, constants, lang_config
 from lian.util import util
 from lian.util.loader import Loader
@@ -45,7 +44,7 @@ from lian.externs.extern_system import ExternSystem
 class Lian:
     def __init__(self):
         self.options = None
-        self.app_manager = None
+        self.event_manager = None
         self.loader = None
         self.extern_system = None
         self.resolver = None
@@ -64,7 +63,6 @@ class Lian:
 
     def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
-        print(self.options)
 
         if not hasattr(self.options, "default_settings") or len(self.options.default_settings) == 0:
             self.options.default_settings = config.DEFAULT_SETTINGS
@@ -110,18 +108,15 @@ class Lian:
         # update lang config & options.lang_extensions
         self.update_lang_config()
 
-        self.app_manager = AppManager(self.options)
-        self.loader = Loader(self.options, self.app_manager)
-        self.resolver = Resolver(self.options, self.app_manager, self.loader)
-        self.settings_manager = SettingsManager(self.options)
-        self.settings_manager.init()
-
+        self.event_manager = EventManager(self.options)
+        self.loader = Loader(self.options, self.event_manager)
+        self.resolver = Resolver(self.options, self.event_manager, self.loader)
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
-        self.app_manager.register_extern_system(self.extern_system)
+        self.event_manager.register_extern_system(self.extern_system)
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)
         if self.options.incremental:
-            UnitLevelIncrementalChecker.init(self.options, self.app_manager, self.loader)
+            UnitLevelIncrementalChecker.init(self.options, self.event_manager, self.loader)
         if not self.options.noextern:
             self.extern_system.init()
 
@@ -137,7 +132,6 @@ class Lian:
             )
         )
 
-    # app path -> options -> app_manager -> load app from the path (importlib) -> register app
     def dispatch_command(self):
         handler = self.command_handler.get(self.options.sub_command)
         if not handler:
@@ -150,8 +144,8 @@ class Lian:
         return self
 
     def semantic_analysis(self):
-        if self.options.debug:
-            util.debug("\n\t###########  # Semantic Analysis #  ###########")
+        # if self.options.debug:
+        #     util.debug("\n\t###########  # Semantic Analysis #  ###########")
 
         BasicSemanticAnalysis(self).run()
         summary_generation = SemanticSummaryGeneration(self)

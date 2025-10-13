@@ -34,7 +34,7 @@ class ArgsParser:
             parser.add_argument("-p", "--print_stmts", action="store_true", help="Print statements")
             parser.add_argument("-c", "--cores", default=1, help="Configure the available CPU cores")
             parser.add_argument("--android", action="store_true", help="Enable the Android analysis mode")
-            parser.add_argument("-a", "--apps", default=[], action='append', help="Config the <plugin> dir")
+            parser.add_argument("-e", "--event-handlers", default=[], action='append', help="Config the event handlers dir")
             parser.add_argument('-l', "--lang", default="", type=str, help='programming lang', required=True)
             parser.add_argument("--strict-parse-mode", action="store_true", help="Enable the strict way to parse code")
             parser.add_argument("-inc", "--incremental", action="store_true", help="Reuse previous analysis results for GIR, scope and cfg")
@@ -46,12 +46,14 @@ class ArgsParser:
         return self
 
     def merge_options(self, parsed_args):
+        # print("parsed_args", parsed_args)
         for key, value in vars(parsed_args).items():
-            setattr(self.options, key, value)
+            if util.is_available(value):
+                setattr(self.options, key, value)
 
     def obtain_default_options(self):
         return types.SimpleNamespace(
-            apps = [],
+            event_handlers = [],
             lang = "",
             benchmark = False,
             android = False,
@@ -81,6 +83,9 @@ class ArgsParser:
         else:
             if not self.options.lang or not self.options.in_path:
                 correctness = False
+
+        if len(self.options.default_settings) == 0:
+            correctness = False
 
         if not correctness:
             self.print_help()

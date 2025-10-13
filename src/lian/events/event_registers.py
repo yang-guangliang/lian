@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-from lian.apps.default_apps import (
+from lian.events.default_event_handlers import (
     basic,
     js_handlers,
     init_new_file_and_object,
     this_field_read,
     this_field_write
 )
-from lian.apps.app_template import (
-    AppSummary,
+from lian.events.handler_template import (
+    EventHandlerManager,
     EventHandler
 )
 from lian.config.constants import (
@@ -17,9 +17,9 @@ from lian.config.constants import (
 )
 from lian.config import config
 
-class DefaultApp(AppSummary):
+class DefaultEventHandlerManager(EventHandlerManager):
     def enable(self):
-        self.app_manager.register_list([
+        self.event_manager.register_list([
             EventHandler(
                 event = EVENT_KIND.MOCK_SOURCE_CODE_READY,
                 handler = basic.replace_percent_symbol_in_mock,

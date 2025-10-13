@@ -3,8 +3,8 @@
 import dataclasses
 import pprint
 from lian.semantic.semantic_structs import State
-from lian.apps.app_template import EventData
-import lian.apps.event_return as er
+from lian.events.handler_template import EventData
+import lian.events.event_return as er
 from lian.config.constants import (
     EVENT_KIND,
     LIAN_INTERNAL,

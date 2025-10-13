@@ -132,7 +132,7 @@ class GlobalAnalysis(SemanticSummaryGeneration):
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
         frame.stmt_state_analysis = GlobalStmtStateAnalysis(
-            app_manager = self.app_manager,
+            event_manager = self.event_manager,
             loader = self.loader,
             resolver = self.resolver,
             compute_frame = frame,

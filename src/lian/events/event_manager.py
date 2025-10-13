@@ -10,11 +10,11 @@ from lian.config import config
 from lian.config.constants import (
     EVENT_KIND,
 )
-import lian.apps.event_return as er
-from lian.apps.app_template import EventData
-from lian.apps.app_registers import DefaultApp
+import lian.events.event_return as er
+from lian.events.handler_template import EventData
+from lian.events.event_registers import DefaultEventHandlerManager
 
-class AppManager:
+class EventManager:
     def __init__(self, options):
         """
         the format of these hangles:
@@ -26,7 +26,7 @@ class AppManager:
         }
         """
         self.options = options
-        self.optional_app_paths = options.apps
+        self.optional_event_handler_paths = options.event_handlers
         self.mock_source_code_handlers = []
         self.source_code_handlers = []
         self.gir_list_handlers = []
@@ -65,8 +65,8 @@ class AppManager:
             EVENT_KIND.P2STATE_FIELD_WRITE_AFTER                     : self.p2state_field_write_after_handlers,
         }
 
-        self.register_default_apps()
-        self.register_optional_apps()
+        self.register_default_event_handlers()
+        self.register_optional_event_handlers()
 
         # if self.options.debug:
         #     self.list_installed_handlers()
@@ -103,7 +103,7 @@ class AppManager:
                     util.debug("Handling the event: ", EVENT_KIND[data.event], " with the handler: ", handler)
                 current_return = handler(data)
                 event_return = er.sync_event_return(current_return, event_return)
-                if er.should_block_other_event_apps(event_return):
+                if er.should_block_other_event_handlers(event_return):
                     return event_return
                 if er.is_event_successfully_processed(current_return):
                     data.in_data = data.out_data
@@ -115,7 +115,7 @@ class AppManager:
 
         #         current_return = handler(data)
         #         event_return = er.sync_event_return(current_return, event_return)
-        #         if er.should_block_other_event_apps(event_return):
+        #         if er.should_block_other_event_handlers(event_return):
         #             return event_return
         #         if er.is_event_successfully_processed(current_return):
         #             data.in_data = data.out_data
@@ -127,15 +127,15 @@ class AppManager:
         #     current_return = handler(data)
 
         #     event_return = er.sync_event_return(current_return, event_return)
-        #     if er.should_block_other_event_apps(event_return):
+        #     if er.should_block_other_event_handlers(event_return):
         #         return event_return
         #     if er.is_event_successfully_processed(current_return):
         #         data.in_data = data.out_data
 
         return event_return
 
-    def register_default_apps(self):
-        DefaultApp(self).enable()
+    def register_default_event_handlers(self):
+        DefaultEventHandlerManager(self).enable()
 
     def register_extern_system(self, extern_system):
         if extern_system:
@@ -145,7 +145,7 @@ class AppManager:
                 langs = [config.ANY_LANG]
             )
 
-    def register_optional_apps(self):
+    def register_optional_event_handlers(self):
         def get_concrete_classes(module):
             classes = inspect.getmembers(module, inspect.isclass)
 
@@ -169,7 +169,7 @@ class AppManager:
             if concrete_class:
                 concrete_class(self)
 
-        for path in self.optional_app_paths:
+        for path in self.optional_event_handler_paths:
             create_instance_from_path(path)
 
     def register(self, event, handler, langs = config.ANY_LANG):

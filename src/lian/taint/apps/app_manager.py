@@ -14,7 +14,7 @@ import taint.apps.event_return as er
 from taint.apps.app_template import EventData
 from taint.apps.app_registers import DefaultApp
 
-class AppManager:
+class EventManager:
     def __init__(self, options):
         """
         the format of these hangles:
@@ -39,7 +39,7 @@ class AppManager:
             EventKind.SINK_BEFORE                         : self.sink_before_handlers,
             EventKind.PROP_BEFORE                         : self.prop_before_handlers,
             EventKind.CALL_BEFORE                         : self.call_before_handlers,
-            
+
         }
 
         self.register_default_apps()

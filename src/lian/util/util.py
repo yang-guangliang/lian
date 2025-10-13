@@ -557,3 +557,16 @@ def bytes_to_int(b: bytes) -> int:
     if b is None:
         return 0
     return int.from_bytes(b, byteorder='big', signed=False)
+
+def check_file_processing_flag_and_extract_lang(file_name, requirement):
+    processing_flag = False
+    default_lang = ""
+    if file_name == requirement:
+        processing_flag = True
+    elif file_name.endswith("-" + requirement):
+        default_lang = file_name.split("-")[0]
+        processing_flag = True
+        if len(default_lang) == 0:
+            error("Invalid entry point file name: " + file_name)
+            processing_flag = False
+    return (processing_flag, default_lang)

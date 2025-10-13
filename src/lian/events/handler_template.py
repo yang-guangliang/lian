@@ -22,11 +22,11 @@ class EventHandler:
     event: int
     handler: object
 
-class AppSummary:
-    def __init__(self, app_manager):
-        self.app_manager = app_manager
+class EventHandlerManager:
+    def __init__(self, event_manager):
+        self.event_manager = event_manager
         self.app_path = __file__
 
     def enable(self):
-        # self.app_manager.register(event, None)
+        # self.event_manager.register(event, None)
         pass

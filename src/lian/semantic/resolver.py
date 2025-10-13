@@ -34,7 +34,7 @@ from lian.util import util
 from lian.util.decorators import static_vars
 
 class Resolver:
-    def __init__(self, options, app_manager, loader):
+    def __init__(self, options, event_manager, loader):
         """
         初始化解析器上下文：
         1. 注册加载器和应用管理器
@@ -43,7 +43,7 @@ class Resolver:
         """
         self.options = options
         self.loader:Loader = loader
-        self.app_manager = app_manager
+        self.event_manager = event_manager
         self.file_path_to_unit_ids = {}
 
         # Please note that the variable decls in class scope should not be included

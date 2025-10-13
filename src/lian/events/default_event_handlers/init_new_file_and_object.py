@@ -4,7 +4,7 @@ import dataclasses
 import os
 from lian.semantic.semantic_structs import AccessPoint, State, ComputeFrame
 from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
-from lian.apps.app_template import EventData
+from lian.events.handler_template import EventData
 from lian.config.constants import (
     EVENT_KIND,
     LIAN_INTERNAL,
@@ -12,7 +12,7 @@ from lian.config.constants import (
     LIAN_SYMBOL_KIND,
     ACCESS_POINT_KIND
 )
-import lian.apps.event_return as er
+import lian.events.event_return as er
 from lian.util import util
 from lian.util.loader import Loader
 from lian.config import type_table

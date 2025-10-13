@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from lian.apps.app_template import EventData
+from lian.events.handler_template import EventData
 
 from lian.semantic.semantic_structs import (
     Argument,

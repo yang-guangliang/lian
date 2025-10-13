@@ -4,11 +4,11 @@ import pprint
 import re
 import copy
 
-from lian.apps.app_template import EventData
+from lian.events.handler_template import EventData
 from lian.util import util
 from lian.config import config, type_table
 from lian.util.loader import Loader
-# from lian.apps.app_template import AppTemplate
+# from lian.events.handler_template import AppTemplate
 from lian.config.constants import (
     CONDITION_STMT_PATH_FLAG,
     LIAN_SYMBOL_KIND,
@@ -20,7 +20,7 @@ from lian.config.constants import (
     SYMBOL_OR_STATE,
     ACCESS_POINT_KIND,
 )
-import lian.apps.event_return as er
+import lian.events.event_return as er
 from lian.semantic.semantic_structs import (
     MethodDeclParameters,
     Parameter,
@@ -52,7 +52,7 @@ from lian.semantic.resolver import Resolver
 
 class StmtStateAnalysis:
     def __init__(
-            self, app_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
+            self, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
             call_graph: CallGraph, analyzed_method_list = []
     ):
         """
@@ -61,7 +61,7 @@ class StmtStateAnalysis:
         2. 初始化状态处理器映射表
         3. 准备符号状态空间和定义集合
         """
-        self.app_manager = app_manager
+        self.event_manager = event_manager
         self.loader = loader
         self.resolver: Resolver = resolver
         self.frame = compute_frame
@@ -1829,7 +1829,7 @@ class StmtStateAnalysis:
                 "loader": self.loader,
             }
         )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         if hasattr(event.out_data, "interruption_flag") and event.out_data.interruption_flag:
             return event.out_data
 
@@ -1897,7 +1897,7 @@ class StmtStateAnalysis:
                 "space": self.frame.symbol_state_space,
             }
         )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         if er.should_block_event_requester(app_return):
             return P2ResultFlag()
         if util.is_empty(callee_info):
@@ -2348,7 +2348,7 @@ class StmtStateAnalysis:
                 "args":args
             }
         )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
 
         # 如果需要先去分析callee，先中断
         if p2result_flag.interruption_flag:
@@ -2390,7 +2390,7 @@ class StmtStateAnalysis:
                 "args":args
             }
         )
-        self.app_manager.notify(event)
+        self.event_manager.notify(event)
         return p2result_flag
 
     def new_array_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -3203,7 +3203,7 @@ class StmtStateAnalysis:
                 "defined_states": defined_states
             }
         )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         if er.should_block_event_requester(app_return):
             defined_symbol.states = event.out_data.defined_states
             return P2ResultFlag()
@@ -3337,7 +3337,7 @@ class StmtStateAnalysis:
                 "defined_states": defined_states
             }
         )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         return P2ResultFlag()
 
 
@@ -3452,7 +3452,7 @@ class StmtStateAnalysis:
                 "defined_states": defined_symbol_states
             }
         )
-        self.app_manager.notify(event)
+        self.event_manager.notify(event)
 
         return P2ResultFlag()
 

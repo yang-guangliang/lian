@@ -2,6 +2,7 @@
 
 import os
 import ast
+import yaml
 import dataclasses,pprint
 import lian.util.data_model as dm
 
@@ -13,7 +14,7 @@ from lian.config.constants import (
     LIAN_SYMBOL_KIND,
     LIAN_INTERNAL
 )
-from lian.apps.app_template import EventData
+from lian.events.handler_template import EventData
 from lian.semantic.semantic_structs import SimpleWorkList
 
 @dataclasses.dataclass
@@ -23,33 +24,52 @@ class EntryPointRule:
     unit_path: str = ""
     unit_name: str = ""
     method_id: int = -1
-    method_name: list[str] = dataclasses.field(default_factory=list)
+    method_list: list[str] = dataclasses.field(default_factory=list)
     attrs: list[str] = dataclasses.field(default_factory=list)
     args: str = ""
     return_type: str = ""
 
 class EntryPointGenerator:
-    def __init__(self, options, app_manager, loader) -> None:
+    def __init__(self, options, event_manager, loader) -> None:
         self.options = options
-        self.app_manager = app_manager
+        self.event_manager = event_manager
         self.loader:Loader = loader
         self.entry_points = set()
-        self.entry_point_rules = [
-            EntryPointRule(method_name = [LIAN_INTERNAL.UNIT_INIT, "start"]),
-            EntryPointRule(lang = "java", method_name = ["main"], attrs = ["static"]),
-            # EntryPointRule(lang = "abc", method_name = ["Index", "init", "initialRender", "send", "paramsLambda", "requestOAIDTrackingConsentPermissions", "onChangeCallback", "onPageShow", "aboutToAppear", "func_main_0", "onWindowStageCreate", ]),
-            EntryPointRule(lang = "abc", method_name = ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]),
-            # EntryPointRule(lang = "abc", method_name = ["Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "init", "send", "requestOAIDTrackingConsentPermissions", "onChangeCallback", "onPageShow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]),
-            # EntryPointRule(lang = "abc", method_name = ["Index", "SunsPage", "RegisterPage", "LoadAd", "init", "send", "paramsLambda", "requestOAIDTrackingConsentPermissions", "onChangeCallback", "onPageShow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]),
+        self.entry_point_rules = []
 
-        ]
+        self._load_settings()
 
-    def load_config(self):
-        pass
+    def _extract_entry_point_rules(self, data, default_lang):
+        for line in data:
+            self.entry_point_rules.append(
+                EntryPointRule(
+                    **line
+                )
+            )
 
+    def _parse_config_file(self, default_lang, file_path):
+        # 判断是否可以打开
+        if not os.path.isfile(file_path):
+            util.error("Failed to parse entry point file: " + file_path)
+            return
 
-    def scan_js_ts_exported_method(self):
-        pass
+        data = None
+        with open(file_path, "r") as f:
+            data = yaml.safe_load(f)
+            if data is None:
+                util.error("Failed to parse entry point file: " + file_path)
+                return
+
+        self._extract_entry_point_rules(data, default_lang)
+
+    def _load_settings(self):
+        for root, dirs, files in os.walk(self.options.default_settings):
+            for file_name in files:
+                processing_flag, default_lang = util.check_file_processing_flag_and_extract_lang(file_name, config.ENTRY_POINTS_FILE)
+                if not processing_flag:
+                    continue
+
+                self._parse_config_file(default_lang, os.path.join(root, file_name))
 
     def check_entry_point_rules(self, lang, unit_id, unit_path, method_id, method_name, attrs = [], args = "", return_type = ""):
         unit_name = os.path.basename(unit_path)
@@ -74,8 +94,8 @@ class EntryPointGenerator:
                     return True
                 continue
 
-            if len(rule.method_name) > 0:
-                if method_name not in rule.method_name:
+            if len(rule.method_list) > 0:
+                if method_name not in rule.method_list:
                     continue
 
             if rule.attrs:
@@ -100,6 +120,9 @@ class EntryPointGenerator:
 
         return False
 
+    def export(self):
+        self.loader.save_entry_points(self.entry_points)
+
     def collect_entry_points_from_unit_scope(self, unit_info, unit_scope):
         all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(LIAN_SYMBOL_KIND.METHOD_KIND))
         for scope in all_method_scopes:
@@ -117,6 +140,3 @@ class EntryPointGenerator:
 
         self.export()
 
-
-    def export(self):
-        self.loader.save_entry_points(self.entry_points)

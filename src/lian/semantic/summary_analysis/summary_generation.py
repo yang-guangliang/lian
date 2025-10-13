@@ -20,8 +20,8 @@ from lian.config.constants import (
     RETURN_STMT_OPERATION,
     SUMMARY_GENERAL_SYMBOL_ID
 )
-import lian.apps.event_return as er
-from lian.apps.app_template import EventData
+import lian.events.event_return as er
+from lian.events.handler_template import EventData
 from lian.semantic.semantic_structs import (
     AccessPoint,
     SimpleWorkList,
@@ -61,7 +61,7 @@ class SemanticSummaryGeneration:
         self.count_stmt_def_states = {}
         self.count_stmt_op_def_states = {}
         self.options = lian.options
-        self.app_manager = lian.app_manager
+        self.event_manager = lian.event_manager
         self.loader:Loader = lian.loader
         self.resolver: Resolver = lian.resolver
         self.call_graph = CallGraph()
@@ -142,7 +142,7 @@ class SemanticSummaryGeneration:
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
         frame.stmt_state_analysis = StmtStateAnalysis(
-            app_manager = self.app_manager,
+            event_manager = self.event_manager,
             loader = self.loader,
             resolver = self.resolver,
             compute_frame = frame,
@@ -571,7 +571,7 @@ class SemanticSummaryGeneration:
                 "external_state_index": index
             }
         )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
 
         status = frame.stmt_id_to_status[stmt_id]
         util.add_to_dict_with_default_set(

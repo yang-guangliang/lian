@@ -1624,18 +1624,18 @@ class SymbolGraphLoader(MethodLevelAnalysisResultLoader):
 
 class Loader:
     # This is our file system manager
-    def __init__(self, options, apps):
+    def __init__(self, options, event_handlers):
         self.options = options
         self.basic_path = os.path.join(options.workspace, config.BASIC_DIR)
         self.semantic_path_p1 = os.path.join(options.workspace, config.SEMANTIC_DIR_P1)
         self.semantic_path_p2 = os.path.join(options.workspace, config.SEMANTIC_DIR_P2)
         self.semantic_path_p3 = os.path.join(options.workspace, config.SEMANTIC_DIR_P3)
-        self.apps = apps
+        self.event_handlers = event_handlers
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
             options,
             os.path.join(self.semantic_path_p1, config.MODULE_SYMBOLS_PATH),
-        )
+        ) 
 
         self._gir_loader = UnitGIRLoader(
             options,

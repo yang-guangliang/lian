@@ -6,8 +6,8 @@ import re
 import sys
 import yaml
 import dataclasses
-import lian.apps.event_return as er
-from lian.apps.app_template import EventData
+import lian.events.event_return as er
+from lian.events.handler_template import EventData
 from lian.config import config
 from lian.config.constants import (
     LIAN_SYMBOL_KIND,

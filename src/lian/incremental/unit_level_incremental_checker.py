@@ -10,14 +10,14 @@ class UnitLevelIncrementalChecker:
 
     _instance = None
 
-    def __init__(self, options, app_manager, current_loader):
+    def __init__(self, options, event_manager, current_loader):
         self.options = copy.deepcopy(options)
         workspace_path = self.options.workspace
         self.current_loader = current_loader
         self.bak_path = os.path.join(workspace_path, config.BACKUP_DIR)
         self.options.workspace = self.bak_path
-        self.app_manager = app_manager
-        self.bak_loader = Loader(self.options, self.app_manager)
+        self.event_manager = event_manager
+        self.bak_loader = Loader(self.options, self.event_manager)
 
         self.bak_loader.restore()
         self.module_symbol_backup = self.bak_loader.get_module_symbol_table()
@@ -26,8 +26,8 @@ class UnitLevelIncrementalChecker:
 
     # singleton pattern
     @classmethod
-    def init(cls, options, app_manager, current_loader):
-        cls._instance = UnitLevelIncrementalChecker(options, app_manager, current_loader)
+    def init(cls, options, event_manager, current_loader):
+        cls._instance = UnitLevelIncrementalChecker(options, event_manager, current_loader)
     @classmethod
     def unit_level_incremental_checker(cls):
         if cls._instance is None:

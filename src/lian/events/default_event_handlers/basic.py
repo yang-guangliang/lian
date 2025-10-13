@@ -5,9 +5,9 @@ import struct
 import ast
 import dataclasses
 
-from lian.apps.app_template import EventData
+from lian.events.handler_template import EventData
 from lian.util import util
-import lian.apps.event_return as er
+import lian.events.event_return as er
 from lian.config import type_table
 from lian.config.constants import (
     LIAN_INTERNAL
