@@ -2811,10 +2811,8 @@ class Loader:
     #         # while index < len(methods):
 
 
-
-
     def get_parent_class_by_class_name(self, class_name):
-        type_graph = self.load_type_graph().graph
+        type_graph = self.get_type_graph().graph
         c = type_graph
         class_relevant_info = []
         for u, v, wt in type_graph.edges(data="weight"):
