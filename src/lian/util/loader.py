@@ -2813,7 +2813,6 @@ class Loader:
 
     def get_parent_class_by_class_name(self, class_name):
         type_graph = self.get_type_graph().graph
-        c = type_graph
         class_relevant_info = []
         for u, v, wt in type_graph.edges(data="weight"):
             if wt.name == class_name:
