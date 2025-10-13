@@ -1123,6 +1123,8 @@ class Resolver:
             if not isinstance(previous_frame, ComputeFrame):
                 return None
             caller_method_id, call_stmt_id, callee_method_id = previous_frame.call_site
+            if caller_method_id == call_stmt_id == -1:
+                return None
             caller_method_decl = self.loader.get_method_decl_source_code(caller_method_id)
             call_stmt_src_code = self.loader.get_stmt_source_code_with_comment(call_stmt_id)
             callee_method_decl = self.loader.get_method_decl_source_code(callee_method_id)
@@ -1131,7 +1133,8 @@ class Resolver:
                 "caller_method_id"       :  caller_method_id,
                 "call_stmt_source_code"  :  call_stmt_src_code,
                 "callee_method_decl"     :  callee_method_decl,
-                "callee_method_id"       :  callee_method_id
+                "callee_method_id"       :  callee_method_id,
+                "caller_frame"           :  previous_frame
             }
 
     def recover_callee_name(self, stmt_id, frame: ComputeFrame):
