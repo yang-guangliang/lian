@@ -2747,7 +2747,7 @@ class Loader:
 
     def convert_unit_name_to_method_ids(self, unit_name):
         method_ids = set()
-        module_symbol_table = self.load_module_symbol_table()
+        module_symbol_table = self.get_module_symbol_table()
 
         for module_symbol in module_symbol_table:
             if self.is_unit_id(module_symbol.unit_id) and module_symbol.unit_path.endwith(unit_name)  :
@@ -2809,8 +2809,6 @@ class Loader:
     #
     #         print(call_path)
     #         # while index < len(methods):
-
-
 
 
     def get_parent_class_by_class_name(self, class_name):
