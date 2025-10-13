@@ -39,14 +39,6 @@ class EntryPointGenerator:
 
         self._load_settings()
 
-    def _extract_entry_point_rules(self, data, default_lang):
-        for line in data:
-            self.entry_point_rules.append(
-                EntryPointRule(
-                    **line
-                )
-            )
-
     def _parse_config_file(self, default_lang, file_path):
         # 判断是否可以打开
         if not os.path.isfile(file_path):
@@ -60,7 +52,12 @@ class EntryPointGenerator:
                 util.error("Failed to parse entry point file: " + file_path)
                 return
 
-        self._extract_entry_point_rules(data, default_lang)
+        for line in data:
+            self.entry_point_rules.append(
+                EntryPointRule(
+                    **line
+                )
+            )
 
     def _load_settings(self):
         for root, dirs, files in os.walk(self.options.default_settings):
