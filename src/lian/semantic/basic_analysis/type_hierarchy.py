@@ -49,17 +49,18 @@ class TypeHierarchy:
                             )
                         )
                 else :
+                    max_id = self.loader.get_max_gir_id()
                     result.append(
                         TypeNode(
                             name = stmt.name,
                             unit_id= unit_id,
                             class_stmt_id = stmt_id,
-                            parent_id = self.unsolved_class_id,
+                            parent_id = max_id,
                             parent_name = each_name,
                             parent_index = counter
                         )
                     )
-                    self.unsolved_class_id -= 1
+                    self.loader.save_max_gir_id(max_id + 1)
                 counter += 1
         else :
             result.append(
@@ -67,7 +68,7 @@ class TypeHierarchy:
                     name = stmt.name,
                     unit_id= unit_id,
                     class_stmt_id = stmt_id,
-                    parent_id = -1,
+                    parent_id = 0,
                     parent_name = "virtual_parent",
                     parent_index = 0
                     )

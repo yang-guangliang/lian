@@ -244,7 +244,7 @@ class BasicSemanticAnalysis:
                     self.loader.save_method_external_symbol_id_collection(method_id, external_symbol_id_collection)
                 else:
                     self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed)
-        self.loader.save_call_graph_p1(self.basic_call_graph)
+        self.loader.save_classified_method_call(self.basic_call_graph)
 
         self.group_methods_by_callee_types()
         self.loader.export()

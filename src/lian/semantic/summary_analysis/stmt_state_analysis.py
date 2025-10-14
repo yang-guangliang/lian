@@ -3277,6 +3277,7 @@ class StmtStateAnalysis:
                     import_graph = self.loader.get_import_graph()
                     import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
                     found_in_import_graph = False
+                    # 解决file.symbol的情况，从import graph里找symbol
                     for u, v, wt in import_graph.edges(data=True):
                         real_name = wt.get("realName", None)
                         if real_name == field_name:

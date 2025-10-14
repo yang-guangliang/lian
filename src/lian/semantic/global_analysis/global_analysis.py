@@ -594,9 +594,9 @@ class GlobalAnalysis(SemanticSummaryGeneration):
             result = self.analyze_frame_stack(frame_stack, global_space)
         self.loader.save_symbol_state_space_p3(0, global_space)
 
-        self.loader.save_call_paths_p3(self.path_manager.paths)
-        self.loader._call_path_p3_loader.export()
-        all_APaths = self.loader.get_call_paths_p3()
+        self.loader.save_dynamic_call_path(self.path_manager.paths)
+        self.loader._dynamic_call_path_loader.export()
+        all_APaths = self.loader.get_dynamic_call_path()
         # print("所有的APaths: ",all_APaths)
 
 
