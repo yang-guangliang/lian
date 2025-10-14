@@ -9,13 +9,7 @@ import lian.util.data_model as dm
 from lian.util import util
 from lian.config import config
 from lian.util.loader import Loader
-from lian.config.constants import (
-    EVENT_KIND,
-    LIAN_SYMBOL_KIND,
-    LIAN_INTERNAL
-)
-from lian.events.handler_template import EventData
-from lian.semantic.semantic_structs import SimpleWorkList
+from lian.config.constants import (LIAN_SYMBOL_KIND)
 
 @dataclasses.dataclass
 class EntryPointRule:

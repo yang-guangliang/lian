@@ -4,8 +4,8 @@ import os,sys
 import pprint
 import copy
 
-from lian.semantic.global_analysis.global_stmt_state_analysis import GlobalStmtStateAnalysis
-from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
+from lian.core.dynamic_state_analysis import GlobalStmtStateAnalysis
+from lian.core.static_semantics import StaticSemanticAnalysis
 from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
@@ -18,7 +18,7 @@ from lian.config.constants import (
     CALL_OPERATION,
     SENSITIVE_OPERATIONS
 )
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     MetaComputeFrame,
     P2ResultFlag,
     Symbol,
@@ -40,14 +40,14 @@ from lian.semantic.semantic_structs import (
     APath,
     StmtStatus
 )
-from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
-from lian.semantic.basic_analysis.control_flow import ControlFlowAnalysis
-from lian.semantic.basic_analysis.stmt_def_use_analysis import StmtDefUseAnalysis
-from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
+from lian.basics.entry_points import EntryPointGenerator
+from lian.basics.control_flow import ControlFlowAnalysis
+from lian.basics.stmt_def_use_analysis import StmtDefUseAnalysis
+from lian.core.stmt_state_analysis import StmtStateAnalysis
 from lian.util.loader import Loader
-from lian.semantic.resolver import Resolver
+from lian.core.resolver import Resolver
 
-class GlobalAnalysis(SemanticSummaryGeneration):
+class GlobalAnalysis(StaticSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
         """
         初始化全局分析上下文：

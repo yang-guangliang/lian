@@ -5,7 +5,7 @@ import re
 import networkx as nx
 
 from lian.config import config
-from lian.semantic.resolver import Resolver
+from lian.core.resolver import Resolver
 from lian.config.constants import (
     CASE_AS_OPERATION,
     CLASS_DECL_OPERATION,
@@ -19,7 +19,7 @@ from lian.config.constants import (
     LIAN_SYMBOL_KIND,
 )
 
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     Scope,
     ScopeSpace,
     UnitSymbolDeclSummary,
@@ -470,7 +470,7 @@ class UnitScopeHierarchyAnalysis:
                 if key == "unit_symbol_decl_summary":
                     self.loader.save_unit_symbol_decl_summary(self.unit_id, value)
         return self.save_necessary_info()
-    
+
     def save_necessary_info(self):
         self.loader.save_unit_id_to_stmt_ids(self.unit_id, self.stmt_id_to_gir.keys())
         self.loader.save_unit_id_to_method_ids(self.unit_id, self.method_stmt_ids)

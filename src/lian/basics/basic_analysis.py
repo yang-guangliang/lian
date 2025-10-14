@@ -15,7 +15,7 @@ from lian.config.constants import (
     CALLEE_TYPE,
     BASIC_CALL_GRAPH_NODE_KIND
 )
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     Symbol,
     State,
     ComputeFrame,
@@ -31,14 +31,14 @@ from lian.semantic.semantic_structs import (
 )
 from lian.util.loader import Loader
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
-from lian.semantic.resolver import Resolver
-from lian.semantic.basic_analysis.scope_hierarchy import UnitScopeHierarchyAnalysis
-from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
-from lian.semantic.basic_analysis.type_hierarchy import TypeHierarchy
+from lian.core.resolver import Resolver
+from lian.basics.scope_hierarchy import UnitScopeHierarchyAnalysis
+from lian.basics.import_hierarchy import ImportHierarchy
+from lian.basics.type_hierarchy import TypeHierarchy
 
-from lian.semantic.basic_analysis.entry_points import EntryPointGenerator
-from lian.semantic.basic_analysis.control_flow import ControlFlowAnalysis
-from lian.semantic.basic_analysis.stmt_def_use_analysis import StmtDefUseAnalysis
+from lian.basics.entry_points import EntryPointGenerator
+from lian.basics.control_flow import ControlFlowAnalysis
+from lian.basics.stmt_def_use_analysis import StmtDefUseAnalysis
 
 
 class BasicSemanticAnalysis:

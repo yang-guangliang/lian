@@ -23,7 +23,7 @@ sys.path.append(os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname
 ############################################################
 # Essential content
 ############################################################
-from lian.interfaces import (
+from lian import (
     preparation,
     args_parser
 )
@@ -34,10 +34,10 @@ from lian.config import config, constants, lang_config
 from lian.util import util
 from lian.util.loader import Loader
 from lian.lang.lang_analysis import LangAnalysis
-from lian.semantic.basic_analysis.basic_analysis import BasicSemanticAnalysis
-from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
-from lian.semantic.global_analysis.global_analysis import GlobalAnalysis
-from lian.semantic.resolver import Resolver
+from lian.basics.basic_analysis import BasicSemanticAnalysis
+from lian.core.static_semantics import StaticSemanticAnalysis
+from lian.core.dynamic_semantics import GlobalAnalysis
+from lian.core.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.externs.extern_system import ExternSystem
 
@@ -148,7 +148,7 @@ class Lian:
         #     util.debug("\n\t###########  # Semantic Analysis #  ###########")
 
         BasicSemanticAnalysis(self).run()
-        summary_generation = SemanticSummaryGeneration(self)
+        summary_generation = StaticSemanticAnalysis(self)
         summary_generation.run()
         print(summary_generation.analyzed_method_list)
         GlobalAnalysis(self, summary_generation.analyzed_method_list).run()

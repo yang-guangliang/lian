@@ -20,7 +20,7 @@ from lian.config.constants import (
     SYMBOL_OR_STATE,
     LIAN_SYMBOL_KIND
 )
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     BasicGraph,
     State,
     StateDefNode,
@@ -1635,7 +1635,7 @@ class Loader:
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
             options,
             os.path.join(self.semantic_path_p1, config.MODULE_SYMBOLS_PATH),
-        ) 
+        )
 
         self._gir_loader = UnitGIRLoader(
             options,

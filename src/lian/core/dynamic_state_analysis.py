@@ -6,8 +6,8 @@ import pprint
 
 from pandas.core import frame
 
-from lian.semantic.resolver import Resolver
-from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
+from lian.core.resolver import Resolver
+from lian.core.stmt_state_analysis import StmtStateAnalysis
 from lian.util import util
 from lian.config import config
 from lian.util.loader import Loader
@@ -20,7 +20,7 @@ from lian.config.constants import (
     CALLEE_TYPE,
     EVENT_KIND
 )
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     CallGraph,
     MethodDeclParameters,
     Parameter,

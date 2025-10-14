@@ -4,13 +4,13 @@ import networkx as nx
 
 from lian.config import config,schema
 from lian.util import util
-import lian.util.data_model as dm
 from lian.config.constants import CONTROL_FLOW_KIND
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     ControlFlowGraph,
-    CFGNode
+    CFGNode,
+    ComputeFrame
 )
-from lian.semantic.semantic_structs import ComputeFrame
+import lian.util.data_model as dm
 from lian.util.loader import Loader
 
 class ControlFlowAnalysis:

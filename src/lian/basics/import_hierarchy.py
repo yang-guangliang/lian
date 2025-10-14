@@ -5,13 +5,13 @@ import re
 import networkx as nx
 import pdb
 from lian.config import config
-from lian.semantic.resolver import Resolver
+from lian.core.resolver import Resolver
 from lian.config.constants import (
     IMPORT_GRAPH_EDGE_KIND,
     LIAN_SYMBOL_KIND
 )
 
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     SymbolNodeInImportGraph,
 )
 from lian.util import util

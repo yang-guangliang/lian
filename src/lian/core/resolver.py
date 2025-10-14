@@ -2,7 +2,7 @@
 
 import pprint
 from lian.config import config
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     AccessPoint,
     SimpleWorkList,
     SourceSymbolScopeInfo,

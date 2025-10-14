@@ -15,7 +15,7 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 # TARGET_PATH=$(realpath "$1")
 
 #CMD="python -W ignore"
-CMD="python $ROOT_DIR/src/lian/interfaces/main.py"
+CMD="python $ROOT_DIR/src/lian/main.py"
 OUTPUT_PATH="$ROOT_DIR/tests/lian_workspace"
 # OPTIONS="lang -f -d -l python,java,c,php,llvm,go,mir -w $OUTPUT_PATH"
 OPTIONS="lang -d -f -l python,java,php,javascript -w $OUTPUT_PATH"

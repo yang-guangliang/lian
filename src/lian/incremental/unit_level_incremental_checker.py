@@ -3,7 +3,7 @@ import os
 from lian.config import config
 from lian.util import util
 import copy
-from lian.semantic.semantic_structs import Scope
+from lian.common_structs import Scope
 
 
 class UnitLevelIncrementalChecker:

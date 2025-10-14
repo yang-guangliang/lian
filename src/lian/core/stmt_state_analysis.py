@@ -21,7 +21,7 @@ from lian.config.constants import (
     ACCESS_POINT_KIND,
 )
 import lian.events.event_return as er
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     MethodDeclParameters,
     Parameter,
     Argument,
@@ -48,7 +48,7 @@ from lian.semantic.semantic_structs import (
     UnionFind,
     IndexMapInSummary
 )
-from lian.semantic.resolver import Resolver
+from lian.core.resolver import Resolver
 
 class StmtStateAnalysis:
     def __init__(

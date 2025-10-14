@@ -2,7 +2,7 @@
 
 from lian.events.handler_template import EventData
 
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     Argument,
     MethodCallArguments,
     State,

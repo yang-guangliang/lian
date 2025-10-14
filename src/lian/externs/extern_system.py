@@ -17,7 +17,7 @@ from lian.config.constants import (
 )
 from lian.externs.extern_rule import Rule
 from lian.externs.modeling import js_api
-from lian.semantic.semantic_structs import AccessPoint, InterruptionData, State, Symbol
+from lian.common_structs import AccessPoint, InterruptionData, State, Symbol
 from lian.util import util
 
 
@@ -370,13 +370,13 @@ class ExternSystem:
         # 不要写死，用options配置
         all_modelings = dict()
         if hasattr(self.options, "extern_path") and self.options.extern_path:
-            all_modelings["abc"] = []
-            sys.path.append(self.options.extern_path)  # 添加绝对路径
-            from externs.modeling import abc_modeling
-            method_name_to_model = abc_modeling.METHOD_NAME_TO_MODEL
-            for key, value in method_name_to_model.items():
-                all_modelings["abc"].append(Rule(method_name=key, model_method=value))
-
+            # all_modelings["abc"] = []
+            # sys.path.append(self.options.extern_path)  # 添加绝对路径
+            # from externs.modeling import abc_modeling
+            # method_name_to_model = abc_modeling.METHOD_NAME_TO_MODEL
+            # for key, value in method_name_to_model.items():
+            #     all_modelings["abc"].append(Rule(method_name=key, model_method=value))
+            pass
         else:
             all_modelings[config.ANY_LANG] = []
 

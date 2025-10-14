@@ -14,7 +14,7 @@ from lian.config.constants import (
     CALLEE_TYPE,
     BASIC_CALL_GRAPH_NODE_KIND
 )
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     StmtStatus,
     Symbol,
     State,
@@ -25,8 +25,8 @@ from lian.semantic.semantic_structs import (
     StateDefNode
 )
 from lian.util.loader import Loader
-from lian.semantic.resolver import Resolver
-from lian.semantic.basic_analysis.import_hierarchy import ImportHierarchy
+from lian.core.resolver import Resolver
+from lian.basics.import_hierarchy import ImportHierarchy
 
 class StmtDefUseAnalysis:
     def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_analysis:ImportHierarchy, external_symbol_id_collection):

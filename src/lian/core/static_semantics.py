@@ -22,7 +22,7 @@ from lian.config.constants import (
 )
 import lian.events.event_return as er
 from lian.events.handler_template import EventData
-from lian.semantic.semantic_structs import (
+from lian.common_structs import (
     AccessPoint,
     SimpleWorkList,
     StateDefNode,
@@ -43,14 +43,14 @@ from lian.semantic.semantic_structs import (
     CountStmtDefStateNode
 )
 from lian.util.loader import Loader
-from lian.semantic.resolver import Resolver
-from lian.semantic.summary_analysis.stmt_state_analysis import StmtStateAnalysis
+from lian.core.resolver import Resolver
+from lian.core.stmt_state_analysis import StmtStateAnalysis
 
 # from lian.config.type_table import get_lang_init_script_name
 
 stmt_counts = 0
 
-class SemanticSummaryGeneration:
+class StaticSemanticAnalysis:
     def __init__(self, lian):
         """
         构建语句ID到被调用者信息的映射表。
