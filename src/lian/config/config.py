@@ -61,7 +61,7 @@ ENTRY_POINTS_FILE                           = "entry.yaml"
 PROPAGATION_FILE                            = "propagation.yaml"
 SOURCE_FILE                                 = "source.yaml"
 SINK_FILE                                   = "sink.yaml"
-INDIRECT_CALL_FILE                          = "call.yaml"
+INDIRECT_CALL_FILE                          = "icall.yaml"
 
 MODULE_SYMBOLS_PATH                         = "module_symbols"
 LOADER_INDEXING_PATH                        = "indexing"
