@@ -1897,6 +1897,8 @@ class StmtStateAnalysis:
                 "space": self.frame.symbol_state_space,
             }
         )
+        # 方便debug
+        callee_name = self.resolver.recover_callee_name(stmt_id, self.frame)
         app_return = self.app_manager.notify(event)
         if er.should_block_event_requester(app_return):
             return P2ResultFlag()
