@@ -34,30 +34,35 @@ class EntryPointGenerator:
         self.options = options
         self.event_manager = event_manager
         self.loader:Loader = loader
-        self.entry_points = set()
         self.entry_point_rules = []
+
+        self.entry_point_results = set()
 
         self._load_settings()
 
     def _parse_config_file(self, default_lang, file_path):
         # 判断是否可以打开
         if not os.path.isfile(file_path):
-            util.error("Failed to parse entry point file: " + file_path)
+            util.error("Failed to open entry point file: " + file_path)
             return
 
         data = None
         with open(file_path, "r") as f:
             data = yaml.safe_load(f)
             if data is None:
-                util.error("Failed to parse entry point file: " + file_path)
+                util.error("Failed to load entry point file: " + file_path)
                 return
 
         for line in data:
-            self.entry_point_rules.append(
-                EntryPointRule(
-                    **line
+            try:
+                self.entry_point_rules.append(
+                    EntryPointRule(
+                        **line
+                    )
                 )
-            )
+            except Exception as e:
+                util.error_and_quit(f"Failed to parse entry point file ({file_path}), error: {e}")
+                continue
 
     def _load_settings(self):
         for root, dirs, files in os.walk(self.options.default_settings):
@@ -118,7 +123,7 @@ class EntryPointGenerator:
         return False
 
     def export(self):
-        self.loader.save_entry_points(self.entry_points)
+        self.loader.save_entry_points(self.entry_point_results)
 
     def collect_entry_points_from_unit_scope(self, unit_info, unit_scope):
         all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(LIAN_SYMBOL_KIND.METHOD_KIND))
@@ -132,7 +137,7 @@ class EntryPointGenerator:
             if self.check_entry_point_rules(
                     unit_info.lang, unit_info.module_id, unit_info.unit_path, scope.stmt_id, name, attrs
             ):
-                self.entry_points.add(scope.stmt_id)
+                self.entry_point_results.add(scope.stmt_id)
                 continue
 
         self.export()
