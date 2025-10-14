@@ -6,6 +6,7 @@ import sys
 ############################################################
 # Support empty
 import builtins
+import types
 
 try:
     builtins.profile
@@ -43,11 +44,13 @@ from lian.externs.extern_system import ExternSystem
 
 class Lian:
     def __init__(self):
-        self.options = None
-        self.event_manager = None
-        self.loader = None
-        self.extern_system = None
-        self.resolver = None
+        self.args_parser = args_parser.ArgsParser()
+        self.options: types.SimpleNamespace = self.args_parser.obtain_default_options()
+
+        self.event_manager: EventManager = None
+        self.loader: Loader = None
+        self.extern_system: ExternSystem = None
+        self.resolver: Resolver = None
         self.lang_table = lang_config.LANG_TABLE
         self.command_handler = {
             "lang":         self.lang_analysis,
@@ -57,9 +60,6 @@ class Lian:
         }
 
         self.set_workspace_dir_flag = False
-
-        self.args_parser = args_parser.ArgsParser()
-        self.options = self.args_parser.obtain_default_options()
 
     def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
