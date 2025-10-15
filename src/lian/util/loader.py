@@ -2834,5 +2834,4 @@ class Loader:
                 ))
         return class_relevant_info
 
-    def get_class_method(self, class_id):
-        pass
+

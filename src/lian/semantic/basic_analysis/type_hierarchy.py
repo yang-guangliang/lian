@@ -152,7 +152,7 @@ class TypeHierarchy:
                     methods_in_class.append(
                         MethodInClass(
                             unit_id = each_method.unit_id,
-                            class_id = class_id,
+                            class_id = each_parent_id,
                             name = each_method.name,
                             stmt_id = each_method.stmt_id
                         )

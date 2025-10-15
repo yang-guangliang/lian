@@ -1199,3 +1199,17 @@ class Resolver:
             return access_path
         else:
             return name_symbol.name
+
+    def get_class_method(self, class_id):
+        methods_in_class = self.loader.get_methods_in_class(class_id)
+        class_id_to_methods = {}
+        for method in methods_in_class:
+            method_class_id = method.class_id
+            class_name = self.loader.convert_class_id_to_class_name(method_class_id)
+            class_tuple = (method_class_id, class_name)
+            if class_tuple not in class_id_to_methods:
+                class_id_to_methods[class_tuple] = [method]
+            else:
+                class_id_to_methods[class_tuple].append(method)
+
+        return class_id_to_methods
