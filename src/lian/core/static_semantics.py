@@ -131,7 +131,7 @@ class StaticSemanticAnalysis:
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
-        _, parameter_decls, method_body = self.loader.get_method_gir(method_id)
+        _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
         if util.is_available(parameter_decls):
             for row in parameter_decls:
                 frame.stmt_id_to_stmt[row.stmt_id] = row

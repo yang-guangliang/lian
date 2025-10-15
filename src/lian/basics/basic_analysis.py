@@ -81,7 +81,7 @@ class BasicSemanticAnalysis:
 
     def analyze_stmt_def_use(self, method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed = False):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
-        method_decl_stmt, parameter_decls, method_body = self.loader.get_method_gir(method_id)
+        method_decl_stmt, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
 
         if unit_is_analyzed:
@@ -184,7 +184,7 @@ class BasicSemanticAnalysis:
     def analyze_unit_method_parameters(self, unit_id, unit_gir):
         unit_methods = self.loader.convert_unit_id_to_method_ids(unit_id)
         for method_id in unit_methods:
-            method_decl_stmt, parameter_decls, method_body = self.loader.get_method_gir(method_id)
+            method_decl_stmt, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
             if util.is_available(parameter_decls):
                 for row in parameter_decls:
                     self.loader.save_method_parameter(method_id, row)

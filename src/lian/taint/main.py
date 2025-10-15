@@ -54,7 +54,7 @@ class TaintAnalysis:
         frame = MethodTaintFrame(method_id=method_id, frame_stack=frame_stack, env=taint_env)
         frame.lian = self.lian
         frame.taint_state_manager = taint_state_manager
-        method_decl, parameter_decls, method_body = self.loader.get_method_gir(method_id)
+        method_decl, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
         frame.stmt_id_to_stmt[method_id] = method_decl
         if util.is_available(parameter_decls):
             for row in parameter_decls:

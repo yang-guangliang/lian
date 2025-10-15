@@ -392,7 +392,7 @@ class ImportHierarchy:
         #         unit_info.original_path, stmt, "Import Error: import module path not found"
         #     )
 
-        fake_node_id = self.loader.assign_new_unique_positive_id()
+        fake_node_id = self.loader.assign_new_unique_negative_id()
         fake_node = self.add_import_graph_node(
             symbol_type=LIAN_SYMBOL_KIND.UNKNOWN_KIND,
             symbol_id=fake_node_id,

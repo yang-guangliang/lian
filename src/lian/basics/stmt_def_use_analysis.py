@@ -232,7 +232,7 @@ class StmtDefUseAnalysis:
                         if defined_symbol.name in self.external_symbol_id_collection:
                             symbol_id = self.external_symbol_id_collection[defined_symbol.name]
                         else:
-                            symbol_id = self.loader.assign_new_unique_positive_id()
+                            symbol_id = self.loader.assign_new_unique_negative_id()
                         self.external_symbol_id_collection[defined_symbol.name] = symbol_id
                     defined_symbol.symbol_id = symbol_id
                     if symbol_id not in frame.symbol_to_define:
@@ -269,7 +269,7 @@ class StmtDefUseAnalysis:
                     if used_symbol.name in self.external_symbol_id_collection:
                         source_info.source_symbol_id = self.external_symbol_id_collection[used_symbol.name]
                     else:
-                        source_info.source_symbol_id = self.loader.assign_new_unique_positive_id()
+                        source_info.source_symbol_id = self.loader.assign_new_unique_negative_id()
                         self.external_symbol_id_collection[used_symbol.name] = source_info.source_symbol_id
 
                 used_symbol.source_unit_id = source_info.source_unit_id
@@ -788,14 +788,8 @@ class StmtDefUseAnalysis:
                 break
 
         if not found_flag and util.is_available(defined_symbol):
-            # index = self.create_symbol_and_add_space(stmt_id, name)
-            # if index != -1:
-            #     status.implicitly_defined_symbols.append(index)
-            #     symbol = self.symbol_state_space[index]
-            #     symbol.source_unit_id = self.unit_id
-            #     symbol.symbol_id = self.loader.assign_new_unique_positive_id()
             defined_symbol.source_unit_id = self.unit_id
-            defined_symbol.symbol_id = self.loader.assign_new_unique_positive_id()
+            defined_symbol.symbol_id = self.loader.assign_new_unique_negative_id()
 
     def export_stmt_def_use(self, stmt_id, stmt):
         target = stmt.alias

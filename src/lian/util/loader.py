@@ -221,6 +221,9 @@ class GeneralLoader:
 
         return DataModel(accumulated_rows, columns=self.item_schema)
 
+    def get_bundle_path(self, bundle_id):
+        return f"{self.bundle_path_summary}.bundle{bundle_id}"
+
     def new_bundle_id(self):
         result = self.bundle_count
         self.bundle_count += 1
@@ -247,7 +250,7 @@ class GeneralLoader:
         if self.bundle_cache.contain(bundle_id):
             bundle_data = self.bundle_cache.get(bundle_id)
         else:
-            bundle_path = f"{self.bundle_path_summary}.bundle{bundle_id}"
+            bundle_path = self.get_bundle_path(bundle_id)
             bundle_data = DataModel().load(bundle_path)
             self.bundle_cache.put(bundle_id, bundle_data)
 
@@ -261,6 +264,23 @@ class GeneralLoader:
         for item_id in self.item_id_to_bundle_id:
             all_results[item_id] = self.get(item_id)
         return all_results
+
+    def remove_unit_id(self, _id):
+        self.item_cache.remove(_id)
+        if _id in self.item_id_to_bundle_id:
+            bundle_id = self.item_id_to_bundle_id[_id]
+            del self.item_id_to_bundle_id[_id]
+
+            if bundle_id == -1:
+                # in active bundle
+                del self.active_bundle[_id]
+            else:
+                # in storage
+                self.bundle_cache.remove(bundle_id)
+                bundle_path = self.get_bundle_path(bundle_id)
+                bundle_data = DataModel().load(bundle_path)
+                bundle_data.remove_rows("unit_id", _id)
+                bundle_data.save(bundle_path)
 
     def save(self, _id, item_content):
         self.item_cache.put(_id, item_content)
@@ -306,9 +326,11 @@ class GeneralLoader:
             #  This is due to pandas feather format saving tuples but loading numpy.ndarray
             try:
                 self.item_id_to_bundle_id[data[0]] = data[1]
+                self.bundle_count = max(self.bundle_count, data[1] + 1)
             except TypeError:
                 key_tuple = tuple(data[0])
                 self.item_id_to_bundle_id[key_tuple] = data[1]
+                self.bundle_count = max(self.bundle_count, data[1] + 1)
 
 
 class UnitLevelLoader(GeneralLoader):
@@ -350,14 +372,17 @@ class UnitGIRLoader(UnitLevelLoader):
         # print("flattened_item", flattened_item)
         # convert item_content to dataframe
         item_df = DataModel(flattened_item)
-        self.active_bundle[unit_id] = (item_df, flattened_item)
+        return self.save_data_model_and_flattened_item(unit_id, item_df, flattened_item)
+
+    def save_data_model_and_flattened_item(self, unit_id, data_model, flattened_item):
+        self.active_bundle[unit_id] = (data_model, flattened_item)
         self.item_id_to_bundle_id[unit_id] = -1
         self.active_bundle_length += len(flattened_item)
 
         if self.active_bundle_length > config.MAX_ROWS:
             self.export()
 
-        return item_df
+        return data_model
 
     def export(self):
         if self.active_bundle_length > 0:
@@ -706,6 +731,14 @@ class UnitIDToMethodIDLoader(OneToManyMapLoader):
 
     def is_method_decl(self, stmt_id):
         return stmt_id in self.many_to_one
+
+    def add_method_id_to_unit_id(self, method_id, unit_id):
+        if unit_id in self.one_to_many:
+            self.one_to_many[unit_id].append(method_id)
+        else:
+            self.one_to_many[unit_id] = [method_id]
+
+        self.many_to_one[method_id] = unit_id
 
 class ClassIdToNameLoader(OneToManyMapLoader):
     def __init__(self, path):
@@ -2082,16 +2115,91 @@ class Loader:
         if self.method_body_cache.contain(method_id):
             self.method_body_cache.get(method_id)
 
-        unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
+        unit_id = self.convert_method_id_to_unit_id(method_id)
         unit_gir = self._gir_loader.get(unit_id)
         method_body = unit_gir.read_block(method_decl_stmt.body)
         self.method_body_cache.put(method_id, method_body)
         return method_body
 
-    def get_method_gir(self, method_id):
+    def get_splitted_method_gir(self, method_id):
         method_decl_stmt, method_parameters = self.get_method_header(method_id)
         method_body = self._load_method_body_by_header(method_id, method_decl_stmt)
         return (method_decl_stmt, method_parameters, method_body)
+
+    def get_whole_method_gir(self, method_id):
+        stmts = []
+        method_decl_stmt, method_parameters, method_body = self.get_splitted_method_gir(method_id)
+        stmts.append(method_decl_stmt)
+        if util.is_available(method_parameters):
+            for parameter_stmt in method_parameters:
+                stmts.append(parameter_stmt)
+        if util.is_available(method_body):
+            for body_stmt in method_body:
+                stmts.append(body_stmt)
+        return stmts
+
+    def clone_method_in_strict_mode(self, method_id, new_name):
+        unit_id = self.convert_method_id_to_unit_id(method_id)
+        method_gir = self.get_whole_method_gir(method_id)
+        if len(method_gir) == 0:
+            return -1
+
+        stmt_ids = [stmt.stmt_id for stmt in method_gir]
+
+        new_method_id = self._clone_method_gir(unit_id, method_id, method_gir, new_name)
+        self.add_method_id_to_unit_id(new_method_id, unit_id)
+        self._clone_method_symbol_state_space_p1(method_id, stmt_ids, new_method_id)
+        return new_method_id
+
+    def _clone_method_gir(self, unit_id, method_id, method_gir, new_name):
+        unit_gir = self._gir_loader.get(unit_id)
+        unit_gir_to_dict = unit_gir.convert_to_dict_list()
+        start_stmt_id = self.get_max_gir_id()
+        interval = start_stmt_id - method_id
+
+        new_method_gir = []
+        for stmt in method_gir:
+            stmt_to_dict =  stmt.copy().to_dict()
+            for column in [
+                "body",
+                "fields",
+                "methods",
+                "nested",
+                "static_init",
+                "init",
+                "parameters",
+                "parameters_end",
+                "parameters_start",
+                "parent_stmt_id",
+                "stmt_id",
+                "body",
+                "then_body",
+                "else_body",
+                "condition_prebody",
+                "update_body",
+                "init_body",
+                "catch_body",
+                "final_body",
+            ]:
+                if column in stmt_to_dict:
+                    if isinstance(stmt_to_dict[column], int) and (stmt_to_dict[column] > 0):
+                        stmt_to_dict[column] += interval
+            new_method_gir.append(stmt_to_dict)
+
+        self._gir_loader.remove_unit_id(unit_id)
+        new_method_gir[0]["name"] = new_name
+        unit_gir_to_dict.extend(new_method_gir)
+
+        self.save_max_gir_id(start_stmt_id + len(new_method_gir))
+        self._gir_loader.save(unit_id, unit_gir_to_dict)
+
+        return start_stmt_id
+
+    def _clone_method_symbol_state_space_p1(self, method_id, old_stmt_ids, new_method_id):
+        method_space = self.get_symbol_state_space_p1(method_id)
+
+        return new_method_id
+
 
     def get_stmt_gir(self, stmt_id):
         if stmt_id <= 0:
@@ -2293,6 +2401,8 @@ class Loader:
         return self._unit_id_to_method_id_loader.save(unit_id, method_ids)
     def convert_method_id_to_unit_id(self, method_id):
         return self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
+    def add_method_id_to_unit_id(self, method_id, unit_id):
+        return self._unit_id_to_method_id_loader.add_method_id_to_unit_id(method_id, unit_id)
     def get_all_method_ids(self):
         return self._unit_id_to_method_id_loader.get_all_items_in_many()
     def is_method_decl(self, method_id):
@@ -2750,4 +2860,3 @@ class Loader:
     def get_workspace_path(self):
         workspace_root = getattr(self.options, "workspace", "")
         return workspace_root + "/src" if workspace_root != "" else ""
-

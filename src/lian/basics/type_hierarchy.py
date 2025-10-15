@@ -49,18 +49,17 @@ class TypeHierarchy:
                             )
                         )
                 else :
-                    max_id = self.loader.get_max_gir_id()
+                    new_id = self.loader.assign_new_unique_negative_id()
                     result.append(
                         TypeNode(
                             name = stmt.name,
                             unit_id= unit_id,
                             class_stmt_id = stmt_id,
-                            parent_id = max_id,
+                            parent_id = new_id,
                             parent_name = each_name,
                             parent_index = counter
                         )
                     )
-                    self.loader.save_max_gir_id(max_id + 1)
                 counter += 1
         else :
             result.append(
