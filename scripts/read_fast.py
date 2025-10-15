@@ -72,7 +72,7 @@ with st.sidebar:
     # 使用radio按钮让用户选择要查看的文件
     file_option = st.radio(
         "选择要查看的Feather文件:",
-        options=["gir", "s2space_p3", "s2space_p2", "cfg", "call_path_p3", "stmt_status_p2"],
+        options=["gir", "s2space_p3", "s2space_p2", "cfg", "dynamic_call_path", "stmt_status_p2"],
         help="选择您想要查看的数据集"
     )
 
@@ -103,10 +103,10 @@ def load_feather_file(file_choice):
             df = pd.read_feather(
                 "/home/corgi/workspace/lian/lian/tests/lian_workspace/basic/cfg.bundle0")
             st.session_state.current_file = "cfg"
-        elif file_choice == "call_path_p3":
+        elif file_choice == "dynamic_call_path":
             df = pd.read_feather(
-                "/home/corgi/workspace/lian/lian/tests/lian_workspace/semantic_p3/call_path_p3")
-            st.session_state.current_file = "call_path_p3"
+                "/home/corgi/workspace/lian/lian/tests/lian_workspace/semantic_p3/dynamic_call_path")
+            st.session_state.current_file = "dynamic_call_path"
         elif file_choice == "stmt_status_p2":
             df = pd.read_feather(
                 "/home/corgi/workspace/lian/lian/tests/lian_workspace/semantic_p2/stmt_status_p2.bundle0")

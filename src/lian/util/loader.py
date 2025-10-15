@@ -1947,6 +1947,10 @@ class Loader:
         )
 
         self._dynamic_call_path_loader = CallPathLoader(
+            os.path.join(self.semantic_path_p3, config.DYNAMIC_CALL_PATH_BUNDLE_PATH),
+        )
+
+        self._dynamic_call_tree_loader = CallGraphLoader(
             os.path.join(self.semantic_path_p3, config.DYNAMIC_CALL_TREE_BUNDLE_PATH),
         )
 
@@ -2510,10 +2514,15 @@ class Loader:
     def get_static_call_graph(self):
         return self._static_call_graph_loader.get()
 
-    def save_dynamic_call_path(self, graph):
-        return self._dynamic_call_path_loader.save(graph)
+    def save_dynamic_call_path(self, paths):
+        return self._dynamic_call_path_loader.save(paths)
     def get_dynamic_call_path(self):
         return self._dynamic_call_path_loader.get()
+
+    def save_dynamic_call_tree(self, graph):
+        return self._dynamic_call_tree_loader.save(graph)
+    def get_dynamic_call_tree(self):
+        return self._dynamic_call_tree_loader.get()
 
     def get_method_symbol_to_define(self, method_id):
         return self._symbol_to_define_loader.get(method_id)
@@ -2788,7 +2797,7 @@ class Loader:
     #         if len(path) < 2:
     #             continue
     #         start_index = -1
-    #         while index < len(path):
+    #         while index <= len(path):
     #             if path[index] in start_method_ids:
     #                 start_index = index
     #                 break
@@ -2825,3 +2834,5 @@ class Loader:
                 ))
         return class_relevant_info
 
+    def get_class_method(self, class_id):
+        pass

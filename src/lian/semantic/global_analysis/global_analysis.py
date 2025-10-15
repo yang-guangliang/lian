@@ -3,7 +3,8 @@
 import os,sys
 import pprint
 import copy
-
+import networkx as nx
+import matplotlib.pyplot as plt
 from lian.semantic.global_analysis.global_stmt_state_analysis import GlobalStmtStateAnalysis
 from lian.semantic.summary_analysis.summary_generation import SemanticSummaryGeneration
 from lian.util import util
@@ -595,7 +596,23 @@ class GlobalAnalysis(SemanticSummaryGeneration):
         self.loader.save_symbol_state_space_p3(0, global_space)
 
         self.loader.save_dynamic_call_path(self.path_manager.paths)
-        self.loader._dynamic_call_path_loader.export()
+        dynamic_call_tree = CallGraph()
+        for call_path in self.path_manager.paths:
+            path = call_path.path
+            index = 0
+            while index <= len(path)-3:
+                print(path)
+                if len(path) <= 1:
+                    break
+                caller_id = path[index]
+                call_stmt_id = path[index + 1]
+                callee_id = path[index + 2]
+                dynamic_call_tree.add_edge(caller_id, callee_id, call_stmt_id)
+                index +=2
+
+        self.loader.save_dynamic_call_tree(dynamic_call_tree)
+
+        self.loader.export()
         all_APaths = self.loader.get_dynamic_call_path()
         # print("所有的APaths: ",all_APaths)
 
