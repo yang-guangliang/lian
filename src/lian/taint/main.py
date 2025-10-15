@@ -415,8 +415,8 @@ class TaintAnalysis:
             )
 
         # 1. load data from loader (phase2, phase3)
-        call_graph_p2 = self.loader.get_call_graph_p2()
-        call_paths_p3 = self.loader.get_call_paths_p3()
+        call_graph_p2 = self.loader.get_static_call_graph()
+        call_paths_p3 = self.loader.get_dynamic_call_path()
         print("call_paths_p2: ", list(call_graph_p2.graph.edges))
         # 2. traverse call_graph
         self.analyze_call_graph(call_graph_p2)
@@ -437,8 +437,8 @@ class TaintAnalysis:
             )
 
         # 1. load data from loader (phase2, phase3)
-        call_graph_p2 = self.loader.get_call_graph_p2()
-        call_paths_p3 = self.loader.get_call_paths_p3()
+        call_graph_p2 = self.loader.get_static_call_graph()
+        call_paths_p3 = self.loader.get_dynamic_call_path()
         print("call_paths_p2: ", list(call_graph_p2.graph.edges))
         # 2. traverse call_graph
         # self.analyze_call_graph(call_graph_p2)

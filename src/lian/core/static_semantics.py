@@ -1243,7 +1243,7 @@ class StaticSemanticAnalysis:
                 self.analyze_method(method_id)
 
         # save all results here
-        self.loader.save_call_graph_p2(self.call_graph)
+        self.loader.save_static_call_graph(self.call_graph)
         self.loader.export()
         # self.print_count_stmt_def_states()
 

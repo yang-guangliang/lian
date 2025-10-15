@@ -44,6 +44,7 @@ from lian.common_structs import (
     MethodInClass,
     APath,
     SymbolNodeInImportGraph,
+    TypeNode
 )
 
 class ModuleSymbolsLoader:
@@ -1207,7 +1208,7 @@ class MethodInternalCalleesLoader:
         DataModel(results).save(self.path)
 
 
-class CallGraphP1Loader:
+class CallGraphLoader:
     def __init__(self, path):
         self.path = path
         self.call_graph = None
@@ -1937,16 +1938,20 @@ class Loader:
             os.path.join(self.semantic_path_p3, config.METHOD_SUMMARY_INSTANCE_PATH),
         )
 
-        self._call_graph_p1_loader = CallGraphP1Loader(
+        self._classified_method_call_loader = CallGraphLoader(
             os.path.join(self.semantic_path_p1, config.CALL_GRAPH_BUNDLE_PATH_P1),
         )
 
-        self._call_graph_p2_loader = CallGraphP1Loader(
-            os.path.join(self.semantic_path_p2, config.CALL_GRAPH_BUNDLE_PATH_P2),
+        self._static_call_graph_loader = CallGraphLoader(
+            os.path.join(self.semantic_path_p2, config.STATIC_CALL_GRAPH_BUNDLE_PATH_P2),
         )
 
-        self._call_path_p3_loader = CallPathLoader(
-            os.path.join(self.semantic_path_p3, config.CALL_PATH_BUNDLE_PATH_P3),
+        self._dynamic_call_path_loader = CallPathLoader(
+            os.path.join(self.semantic_path_p3, config.DYNAMIC_CALL_PATH_BUNDLE_PATH),
+        )
+
+        self._dynamic_call_tree_loader = CallGraphLoader(
+            os.path.join(self.semantic_path_p3, config.DYNAMIC_CALL_TREE_BUNDLE_PATH),
         )
 
         self._symbol_to_define_loader = MethodSymbolToDefinedLoader(
@@ -2499,20 +2504,25 @@ class Loader:
     def get_type_graph(self):
         return self._type_graph_loader.get()
 
-    def save_call_graph_p1(self, graph):
-        return self._call_graph_p1_loader.save(graph)
-    def get_call_graph_p1(self):
-        return self._call_graph_p1_loader.get()
+    def save_classified_method_call(self, graph):
+        return self._classified_method_call_loader.save(graph)
+    def get_classified_method_call(self):
+        return self._classified_method_call_loader.get()
 
-    def save_call_graph_p2(self, graph):
-        return self._call_graph_p2_loader.save(graph)
-    def get_call_graph_p2(self):
-        return self._call_graph_p2_loader.get()
+    def save_static_call_graph(self, graph):
+        return self._static_call_graph_loader.save(graph)
+    def get_static_call_graph(self):
+        return self._static_call_graph_loader.get()
 
-    def save_call_paths_p3(self, graph):
-        return self._call_path_p3_loader.save(graph)
-    def get_call_paths_p3(self):
-        return self._call_path_p3_loader.get()
+    def save_dynamic_call_path(self, paths):
+        return self._dynamic_call_path_loader.save(paths)
+    def get_dynamic_call_path(self):
+        return self._dynamic_call_path_loader.get()
+
+    def save_dynamic_call_tree(self, graph):
+        return self._dynamic_call_tree_loader.save(graph)
+    def get_dynamic_call_tree(self):
+        return self._dynamic_call_tree_loader.get()
 
     def get_method_symbol_to_define(self, method_id):
         return self._symbol_to_define_loader.get(method_id)
@@ -2616,6 +2626,7 @@ class Loader:
     def get_unit_source_code_by_stmt_id(self, stmt_id):
         """给定一个stmt_id，获取其所在unit的源代码"""
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+        if unit_id == -1: return []
         unit_info = self.convert_module_id_to_module_info(unit_id)
         unit_path = unit_info.original_path
         with open(unit_path, 'r') as f:
