@@ -7,7 +7,7 @@ from lian.config import config
 from lian.util import util
 
 class DataModel:
-     
+
     def __init__(self, data = None, columns = None, reset_index = False):
         self._data = None
         self._reset_index = reset_index
@@ -47,7 +47,7 @@ class DataModel:
         self._need_refresh_rows = True
         if self._data is not None:
             self.refresh_schema()
-   
+
     def __getitem__(self, item):
         # treat item as a column name if item is string
         if isinstance(item, str):
@@ -57,7 +57,7 @@ class DataModel:
 
     def __getattr__(self, column_name):
         return self.access_column(column_name)
-     
+
     def __iter__(self):
         self.refresh_rows()
         index = self._data.index
@@ -89,7 +89,7 @@ class DataModel:
 
     def refresh_schema(self):
         self._schema = util.list_to_dict_with_index(self._data.columns)
-    
+
     def refresh_rows(self):
         if not self._need_refresh_rows:
             return
@@ -161,12 +161,12 @@ class DataModel:
         column._column_name = column_name
         column._column_data = data
         return column
-    
+
     def slice(self, start_index, end_index):
         #print("self._data.iloc[start_index: end_index]", start_index, end_index, self._data.iloc[start_index: end_index], self._data)
         result = DataModel(self._data.iloc[start_index: end_index], columns = self._schema.keys())
         return result
-     
+
     def append_data_model(self, extra_data):
         target_to_be_merged = extra_data
         if isinstance(extra_data, DataModel):
@@ -189,7 +189,7 @@ class DataModel:
     def modify_element(self, row_index, column_name, value):
         self._data.loc[row_index, column_name] = value
         self.set_refresh_flag()
-     
+
     def query(self, condition_or_index, column_name = "", reset_index:bool = True):
         if isinstance(condition_or_index, set):
             condition_or_index = list(condition_or_index)
@@ -219,7 +219,7 @@ class DataModel:
 
     def fillna(self, value):
         self._data.fillna(value, inplace = True)
-    
+
     def reset_index(self, move_index_to_column = False, directly_modify_current_dataframe = True):
         new_data = self._data.reset_index(
             drop=(not move_index_to_column),
@@ -243,12 +243,12 @@ class DataModel:
             if (value not in target):
                 target[value] = []
             target[value].append(index)
- 
+
     def search_block_id(self, block_id):
         if util.isna(block_id):
             return None
         return sorted(self._data.index[self._data["stmt_id"].values == block_id])
-    
+
     def read_block(self, block_id, reset_index = True):
         block_start_end = self.search_block_id(block_id)
         if block_start_end is None:
@@ -260,7 +260,7 @@ class DataModel:
         if reset_index:
             block.reset_index()
         return block
-    
+
     def boundary_of_multi_blocks(self, multi_block_ids):
         ids = [-1]
         for block_id in multi_block_ids:
@@ -275,7 +275,7 @@ class DataModel:
         self.refresh_rows()
         if config.DEBUG_FLAG:
             util.debug(self._rows)
-    
+
     def convert_to_dict_list(self):
         df = self._data
         records = df.to_dict(orient="records")
@@ -293,6 +293,10 @@ class DataModel:
 
     def get_data(self):
         return self._data
+
+    def remove_rows(self, column_name, value):
+        self._data = self._data[self._data[column_name] != value]
+        self.set_refresh_flag()
 
 class Row:
     def __init__(self, row, schema, index):

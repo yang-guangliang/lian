@@ -1,1 +1,0 @@
-%3775 = call nsz x86_fp80 @llvm.fmuladd.f80(x86_fp80 %3770, x86_fp80 0xK401CEE6B280000000000, x86_fp80 %3774) #11, !dbg !3000

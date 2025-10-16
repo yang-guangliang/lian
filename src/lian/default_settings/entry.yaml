@@ -1,0 +1,8 @@
+- method_list: ["%unit_init", start]
+
+- lang: java
+  method_list: [main]
+  attrs: [static]
+
+- lang: abc
+  method_list: ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]

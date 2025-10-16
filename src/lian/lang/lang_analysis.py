@@ -6,13 +6,13 @@ import pprint
 from ctypes import c_void_p, cdll
 import tree_sitter
 import importlib
-from lian.apps.app_manager import AppManager
+from lian.events.event_manager import EventManager
 from lian.util import util
 from lian.config import lang_config
 from lian.config import config
 from lian.config.constants import EVENT_KIND
 
-from lian.apps.app_template import EventData
+from lian.events.handler_template import EventData
 from lian.util.loader import Loader
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 
@@ -209,9 +209,9 @@ class GIRProcessing:
         return (self.node_id, flattened_nodes)
 
 class GIRParser:
-    def __init__(self, options, app_manager, loader, output_path):
+    def __init__(self, options, event_manager, loader, output_path):
         self.options = options
-        self.app_manager = app_manager
+        self.event_manager = event_manager
         self.loader = loader
 
         self.accumulated_rows = []
@@ -260,11 +260,11 @@ class GIRParser:
         if not self.options.strict_parse_mode:
             if f"{config.DEFAULT_WORKSPACE}/{config.EXTERNS_DIR}" in file_path:
                 event = EventData(lang_option, EVENT_KIND.MOCK_SOURCE_CODE_READY, code)
-                self.app_manager.notify(event)
+                self.event_manager.notify(event)
                 code = event.out_data
 
             event = EventData(lang_option, EVENT_KIND.ORIGINAL_SOURCE_CODE_READY, code)
-            self.app_manager.notify(event)
+            self.event_manager.notify(event)
             code = event.out_data
 
         try:
@@ -298,13 +298,13 @@ class GIRParser:
             pprint.pprint(gir_statements, compact=True, sort_dicts=False)
 
         event = EventData(lang_option, EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED, gir_statements)
-        self.app_manager.notify(event)
+        self.event_manager.notify(event)
         current_node_id, flatten_nodes = GIRProcessing(current_node_id).flatten(event.out_data)
         if not flatten_nodes:
             return (current_node_id, flatten_nodes)
 
         event = EventData(lang_option, EVENT_KIND.GIR_LIST_GENERATED, flatten_nodes)
-        self.app_manager.notify(event)
+        self.event_manager.notify(event)
         if self.options.debug and self.options.print_stmts:
             pprint.pprint(event.out_data, compact=True, sort_dicts=False)
 
@@ -330,7 +330,7 @@ class GIRParser:
 class LangAnalysis:
     def __init__(self, lian):
         self.options = lian.options
-        self.app_manager: AppManager = lian.app_manager
+        self.event_manager: EventManager = lian.event_manager
         self.loader: Loader = lian.loader
         self.lang_table = lian.lang_table
 
@@ -372,7 +372,7 @@ class LangAnalysis:
 
         gir_parser = GIRParser(
             self.options,
-            self.app_manager,
+            self.event_manager,
             self.loader,
             os.path.join(self.options.workspace, config.BASIC_DIR)
         )

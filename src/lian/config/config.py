@@ -55,6 +55,14 @@ METHOD_HEADER_CACHE_CAPABILITY              = 10000
 METHOD_BODY_CACHE_CAPABILITY                = 1000
 STMT_SCOPE_CACHE_CAPABILITY                 = 1000
 
+DEFAULT_SETTINGS                            = "default_settings"
+DEFAULT_SETTINGS_PATH                       = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
+ENTRY_POINTS_FILE                           = "entry.yaml"
+PROPAGATION_FILE                            = "propagation.yaml"
+SOURCE_FILE                                 = "source.yaml"
+SINK_FILE                                   = "sink.yaml"
+INDIRECT_CALL_FILE                          = "icall.yaml"
+
 MODULE_SYMBOLS_PATH                         = "module_symbols"
 LOADER_INDEXING_PATH                        = "indexing"
 GIR_BUNDLE_PATH                             = "gir"

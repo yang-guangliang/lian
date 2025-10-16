@@ -20,7 +20,7 @@ from taint.util import access_path_formatter
 from taint import config1 as config
 from taint.constants import EventKind
 from taint.taint_structs import (MethodTaintFrame, PropagationResult)#, TagBitVectorManager, CallInfo
-from taint.apps.app_manager import AppManager
+from taint.apps.event_manager import EventManager
 from lian.util import util
 from lian.util.loader import Loader
 
@@ -34,7 +34,7 @@ class TaintPropagationInMethod:
         self.stmt_id_to_stmt = frame.stmt_id_to_stmt
         self.stmt_id_to_status = frame.stmt_id_to_status
         self.stmt_id_to_taint_status = frame.stmt_id_to_taint_status
-        self.app_manager = AppManager(frame.lian.options)
+        self.event_manager = EventManager(frame.lian.options)
         self.rule_manager = RuleManager()
         self.taint_analysis_handlers = {
             "comment_stmt"                          : self.comment_stmt_taint,
@@ -152,7 +152,7 @@ class TaintPropagationInMethod:
             taint_status.out_taint[symbol_id] = tag
         print("set_symbols_tags")
         print(f"out_taint: {taint_status.out_taint}")
-    
+
     def propagate_tags(self, stmt_id, in_taint, taint_status):
         """将used_symbols的tag直接传播到defined_symbol中"""
         status = self.stmt_id_to_status[stmt_id]
@@ -167,14 +167,14 @@ class TaintPropagationInMethod:
                 "stmt"              : self.stmt_id_to_stmt[stmt_id],
                 "operation"         : "call_stmt",
                 "rules"             : self.rule_manager,
-                "in_taint"          : in_taint,   
+                "in_taint"          : in_taint,
                 "taint_status"      : taint_status,
                 "frame"             : self.frame,
                 "status"            : self.stmt_id_to_status[stmt_id],
                 "tag"               : tag,
             }
         )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
 
 
     def empty_stmt_taint(self, stmt_id, stmt, in_taint, taint_status):
@@ -185,7 +185,7 @@ class TaintPropagationInMethod:
         pass
 
     def assign_stmt_taint(self, stmt_id, stmt, in_taint, taint_status):
-        
+
         self.propagate_tags(stmt_id, in_taint, taint_status)
         # print("assign_stmt")
         # print(taint_status.out_taint)
@@ -202,21 +202,21 @@ class TaintPropagationInMethod:
                     "stmt"              : stmt,
                     "operation"         : "call_stmt",
                     "rules"             : self.rule_manager,
-                    "in_taint"          : in_taint,   
+                    "in_taint"          : in_taint,
                     "taint_status"      : taint_status,
                     "frame"             : self.frame,
                     "taint_state_manager": self.frame.taint_state_manager,
                     "status"             : status,
                 }
             )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         event.event = EventKind.TAINT_BEFORE
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         event.event = EventKind.PROP_BEFORE
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         event.event = EventKind.SINK_BEFORE
-        app_return = self.app_manager.notify(event)
-        
+        app_return = self.event_manager.notify(event)
+
         if er.should_block_event_requester(app_return):
             return
 
@@ -229,7 +229,7 @@ class TaintPropagationInMethod:
                     callee_info.interruption_flag = True
                     break
 
-        
+
         target_space = self.frame.symbol_state_space[status.defined_symbol]
         # self.propagate_tags(stmt_id, in_taint, taint_status)
         # TODO：如果这条call_stmt在call_graph上没有后继，说明静态分析解析失败，调用LLM来处理
@@ -241,7 +241,7 @@ class TaintPropagationInMethod:
             taint_status.out_taint[target_space.symbol_id] = self.frame.callee_return
             self.frame.callee_return = None
         return callee_info
-    
+
 
     def echo_stmt_taint(self, stmt_id, stmt, in_taint, taint_status):
         pass
@@ -261,8 +261,8 @@ class TaintPropagationInMethod:
             else:
                 self.frame.return_tag = in_taint[target_symbol_id]
         print(f"return_stmt_taint: {self.frame.return_tag}")
-        
-        
+
+
     def yield_stmt_taint(self, stmt_id, stmt, in_taint, taint_status):
         pass
 
@@ -412,7 +412,7 @@ class TaintPropagationInMethod:
 
     def new_array_taint(self, stmt_id, stmt, in_taint, taint_status):
         pass
-        
+
     def new_object_taint(self, stmt_id, stmt, in_taint, taint_status):
         self.propagate_tags(stmt_id, in_taint, taint_status)
 
@@ -503,15 +503,15 @@ class TaintPropagationInMethod:
                 "stmt"              : stmt,
                 "operation"         : "field_read",
                 "rules"             : self.rule_manager,
-                "in_taint"          : in_taint,   
+                "in_taint"          : in_taint,
                 "taint_status"      : taint_status,
                 "frame"             : self.frame,
                 "status"            : self.stmt_id_to_status[stmt_id],
             }
         )
-        app_return1 = self.app_manager.notify(event)
+        app_return1 = self.event_manager.notify(event)
         event.event = EventKind.PROP_BEFORE
-        app_return2 = self.app_manager.notify(event)
+        app_return2 = self.event_manager.notify(event)
         # print("field_read")
         # print(taint_status.out_taint)
         status = self.stmt_id_to_status[stmt_id]

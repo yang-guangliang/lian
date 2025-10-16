@@ -13,6 +13,7 @@ import dis
 
 from lian.config import config
 
+
 def is_empty(element):
     #print("is_empty:", element)
     if element is None:
@@ -401,8 +402,8 @@ class LRUCache:
     def get(self, _id):
         if _id in self.cache:
             node = self.cache[_id]
-            self._remove(node)
-            self._add(node)
+            self._remove_node(node)
+            self._add_node(node)
             return node._data
         return None
 
@@ -411,22 +412,27 @@ class LRUCache:
 
     def put(self, _id, _data):
         if _id in self.cache:
-            self._remove(self.cache[_id])
+            self._remove_node(self.cache[_id])
         node = CacheNode(_id, _data)
-        self._add(node)
+        self._add_node(node)
         self.cache[_id] = node
         if len(self.cache) > self.capacity:
             removed_node = self.head.next
-            self._remove(removed_node)
+            self._remove_node(removed_node)
             del self.cache[removed_node._id]
 
-    def _remove(self, node):
+    def remove(self, _id):
+        if _id in self.cache:
+            self._remove_node(self.cache[_id])
+            del self.cache[_id]
+
+    def _remove_node(self, node):
         prev_node = node.prev
         next_node = node.next
         prev_node.next = next_node
         next_node.prev = prev_node
 
-    def _add(self, node):
+    def _add_node(self, node):
         last_node = self.tail.prev
         last_node.next = node
         self.tail.prev = node
@@ -557,5 +563,22 @@ def bytes_to_int(b: bytes) -> int:
         return 0
     return int.from_bytes(b, byteorder='big', signed=False)
 
+def check_file_processing_flag_and_extract_lang(file_name, requirement):
+    processing_flag = False
+    default_lang = ""
+    if file_name == requirement:
+        processing_flag = True
+    elif file_name.endswith("-" + requirement):
+        default_lang = file_name.split("-")[0]
+        processing_flag = True
+        if len(default_lang) == 0:
+            error("Invalid entry point file name: " + file_name)
+            processing_flag = False
+    return (processing_flag, default_lang)
 
+class FakeSpace:
+    def __init__(self, space):
+        self.space = space
 
+    def to_dict(self, _id = 0):
+        return self.space

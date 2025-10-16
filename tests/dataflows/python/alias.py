@@ -209,46 +209,25 @@
 #     pass
 
 
-# def func1():
-#     if hh:
-#         a = b.c
-#         return a
-#     else:
-#         t = n.d
-#         return t
-#
-# class B:
-#     def func3():
-#         pass
-#
-# class A:
-#     def __init__(self):
-#         self.a = func1()
-#         self.vm = B
-#
-#     def func2(self):
-#         self.a()
-#         self.vm.func3()
-#
-# A.func2()
-# class RunnableSerializable:
-#     def fun1(self):
-#         pass
-#
-# class Generic:
-#     def fun2(self):
-#         pass
-#
-# class ABC:
-#     def fun3(self):
-#         pass
+def func1():
+    if hh:
+        a = b.c
+        return a
+    else:
+        t = n.d
+        return t
 
-class BasePromptTemplate(
-    RunnableSerializable, Generic, ABC
-):
-    def fff(self):
+class B:
+    def func3():
         pass
 
-class ImagePromptTemplate(BasePromptTemplate):
-    def ff1(self):
-        pass
+class A:
+    def __init__(self):
+        self.a = func1()
+        self.vm = B
+
+    def func2(self):
+        self.a()
+        self.vm.func3()
+
+A.func2()
