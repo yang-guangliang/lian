@@ -1897,6 +1897,8 @@ class StmtStateAnalysis:
                 "space": self.frame.symbol_state_space,
             }
         )
+        # 方便debug
+        callee_name = self.resolver.recover_callee_name(stmt_id, self.frame)
         app_return = self.event_manager.notify(event)
         if er.should_block_event_requester(app_return):
             return P2ResultFlag()
@@ -1940,7 +1942,7 @@ class StmtStateAnalysis:
 
         # call plugin to deal with undefined_callee_error
         # if len(unsolved_callee_states) != 0:
-        if len(callee_method_ids) == 0 and len(unsolved_callee_states) != 0:
+        if len(callee_method_ids) == 0:
             out_data = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
             )
@@ -2010,15 +2012,22 @@ class StmtStateAnalysis:
         if len(callee_method_ids) == 0:
             name_index = status.used_symbols[0]
             name_symbol = self.frame.symbol_state_space[name_index]
+            return_access_path = []
+            for index in name_symbol.states:
+                name_state = self.frame.symbol_state_space[index]
+                if len(name_state.access_path) == 0:
+                    continue
+                return_access_path = copy.deepcopy(name_state.access_path)
+            return_access_path.append(AccessPoint(
+                    kind=ACCESS_POINT_KIND.CALL_RETURN,
+                    key=name_symbol.name
+                ))
             unsolved_state_index = self.create_state_and_add_space(
                 status, stmt_id,
                 source_symbol_id=defined_symbol.symbol_id,
                 state_type = STATE_TYPE_KIND.UNSOLVED,
                 data_type = util.read_stmt_field(stmt.data_type), # LianInternal.RETURN_VALUE,
-                access_path=[AccessPoint(
-                    kind=ACCESS_POINT_KIND.CALL_RETURN,
-                    key=util.read_stmt_field(name_symbol.name)
-                )]
+                access_path=return_access_path
             )
             self.update_access_path_state_id(unsolved_state_index)
             defined_symbol.states = {unsolved_state_index}
@@ -3084,19 +3093,37 @@ class StmtStateAnalysis:
                 new_receiver_state.fields[field_name] = defined_states
 
         else:
-            source_index = self.create_state_and_add_space(
-                status, stmt_id = stmt_id,
-                source_symbol_id=receiver_state.source_symbol_id,
-                source_state_id=receiver_state.source_state_id,
-                state_type = STATE_TYPE_KIND.ANYTHING,
-                access_path = self.copy_and_extend_access_path(
-                    original_access_path = receiver_state.access_path,
-                    access_point = AccessPoint(
-                        kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
-                        key = field_name
+            # [ah]
+            if new_receiver_symbol.name.startswith("%vv"):
+                source_index = self.create_state_and_add_space(
+                    status, stmt_id = stmt_id,
+                    source_symbol_id=receiver_state.source_symbol_id,
+                    source_state_id=receiver_state.source_state_id,
+                    state_type = STATE_TYPE_KIND.ANYTHING,
+                    access_path = self.copy_and_extend_access_path(
+                        original_access_path = receiver_state.access_path,
+                        access_point = AccessPoint(
+                            kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
+                            key = field_name
+                        )
                     )
                 )
-            )
+            else:
+                source_index = self.create_state_and_add_space(
+                    status, stmt_id=stmt_id,
+                    source_symbol_id=receiver_state.source_symbol_id,
+                    source_state_id=receiver_state.source_state_id,
+                    state_type=STATE_TYPE_KIND.ANYTHING,
+                    access_path=[AccessPoint(
+                            kind=ACCESS_POINT_KIND.TOP_LEVEL,
+                            key=new_receiver_symbol.name
+                        ),
+                        AccessPoint(
+                            kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
+                            key=field_name
+                        )]
+
+                )
             self.update_access_path_state_id(source_index)
 
             if new_receiver_state.tangping_flag:
@@ -3249,8 +3276,42 @@ class StmtStateAnalysis:
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_unit(each_receiver_state):
+
+                    import_graph = self.loader.get_import_graph()
                     import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
-                    if import_symbols:
+                    # [ah]
+                    found_in_import_graph = False
+                    # 解决file.symbol的情况，从import graph里找symbol
+                    for u, v, wt in import_graph.edges(data=True):
+                        real_name = wt.get("realName", None)
+                        if real_name == field_name:
+                            symbol_type = wt.get("symbol_type", None)
+                            if symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
+                                data_type = LIAN_INTERNAL.METHOD_DECL
+                            elif symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
+                                data_type = LIAN_INTERNAL.CLASS_DECL
+                            else:
+                                data_type = LIAN_INTERNAL.UNIT
+
+                            state_index = self.create_state_and_add_space(
+                                status, stmt_id=stmt_id,
+                                source_symbol_id=v,
+                                source_state_id=each_receiver_state.source_state_id,
+                                data_type=data_type,
+                                value=v,
+                                access_path=self.copy_and_extend_access_path(
+                                    each_receiver_state.access_path,
+                                    AccessPoint(
+                                        key=real_name,
+                                    )
+                                )
+                            )
+                            found_in_import_graph = True
+                            self.update_access_path_state_id(state_index)
+                            each_defined_states.add(state_index)
+
+
+                    if import_symbols and not found_in_import_graph:
                         for import_symbol in import_symbols:
                             if import_symbol.symbol_name == field_name:
                                 if import_symbol.symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
@@ -3409,24 +3470,25 @@ class StmtStateAnalysis:
                 new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
                 # print("@field_state write", new_receiver_state)
 
-                if is_anonymous:
-                    for each_source_state_index in source_states:
-                        each_source_state = self.frame.symbol_state_space[each_source_state_index]
-                        if not (each_source_state and isinstance(each_source_state, State)):
-                            continue
+                # if is_anonymous:
+                # [ah]a.b = c.d access_path 变成a.b
+                for each_source_state_index in source_states:
+                    each_source_state = self.frame.symbol_state_space[each_source_state_index]
+                    if not (each_source_state and isinstance(each_source_state, State)):
+                        continue
+                    #
+                    # if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                    #     continue
 
-                        if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                            continue
-
-                        access_path = self.copy_and_extend_access_path(
-                            original_access_path = receiver_state.access_path,
-                            access_point = AccessPoint(
-                                kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
-                                key = each_field_state.value
-                            )
+                    access_path = self.copy_and_extend_access_path(
+                        original_access_path = receiver_state.access_path,
+                        access_point = AccessPoint(
+                            kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
+                            key = each_field_state.value
                         )
-                        each_source_state.access_path = access_path
-                        self.update_access_path_state_id(each_source_state_index)
+                    )
+                    each_source_state.access_path = access_path
+                    self.update_access_path_state_id(each_source_state_index)
 
                 new_receiver_state.fields[each_field_state.value] = source_states
                 defined_symbol_states.add(new_receiver_state_index)

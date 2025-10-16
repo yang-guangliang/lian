@@ -19,8 +19,10 @@ import pandas as pd
 pd.options.mode.copy_on_write = False
 
 # Init path
-sys.path.append(os.path.realpath(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
-print(sys.path)
+sys.path.append(os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
+# Add path for problem_monitor
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))), "src"))
+
 ############################################################
 # Essential content
 ############################################################
@@ -41,6 +43,7 @@ from lian.core.dynamic_semantics import GlobalAnalysis
 from lian.core.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.externs.extern_system import ExternSystem
+from example.problem_monitor import ProblemMonitor
 
 class Lian:
     def __init__(self):
@@ -51,6 +54,7 @@ class Lian:
         self.loader: Loader = None
         self.extern_system: ExternSystem = None
         self.resolver: Resolver = None
+	self.problem_monitor = None
         self.lang_table = lang_config.LANG_TABLE
         self.command_handler = {
             "lang":         self.lang_analysis,
@@ -111,8 +115,15 @@ class Lian:
         self.event_manager = EventManager(self.options)
         self.loader = Loader(self.options, self.event_manager)
         self.resolver = Resolver(self.options, self.event_manager, self.loader)
+	self.problem_monitor = ProblemMonitor(self)
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
-        self.event_manager.register_extern_system(self.extern_system)
+
+        # 旧版llm_driven_sec
+        # self.app_manager.register_extern_system(self.extern_system)
+        # 新版problem_monitor
+        if hasattr(self.options,"tecent") and self.options.tecent:
+            self.app_manager.register_problem_monitor(self.problem_monitor)
+
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)
         if self.options.incremental:
