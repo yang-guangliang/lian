@@ -5,12 +5,12 @@ import re
 import networkx as nx
 
 from lian.config import config
-from lian.semantic.resolver import Resolver
+from lian.core.resolver import Resolver
 from lian.config.constants import (
     LIAN_SYMBOL_KIND,
 )
 
-from lian.semantic.semantic_structs import (
+from lian.core.semantic_structs import (
     BasicGraph,
     MethodInClass,
     TypeGraphEdge,
@@ -18,6 +18,7 @@ from lian.semantic.semantic_structs import (
 )
 from lian.util import util
 from lian.util.loader import Loader
+
 class TypeHierarchy:
     def __init__(self, loader, resolver, unit_list):
         self.loader: Loader = loader
