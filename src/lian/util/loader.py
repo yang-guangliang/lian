@@ -2942,6 +2942,9 @@ class Loader:
         class_relevant_info = []
         for u, v, wt in type_graph.edges(data="weight"):
             if wt.name == class_name:
+                if wt.parent_name.startswith("%vv"):
+                    # TODO 还原这里的%vv的AccessPath
+                    pass
                 class_relevant_info.append(TypeNode(
                     name = class_name,
                     class_stmt_id = u,
@@ -2955,7 +2958,7 @@ class Loader:
         type_graph = self.get_type_graph().graph
         class_relevant_info = []
         for u, v, wt in type_graph.edges(data="weight"):
-            parent_class_name = self.convert_class_id_to_class_name(v)
+            parent_class_name = wt.parent_name
             if parent_class_name == class_name:
                 class_relevant_info.append(TypeNode(
                     name = class_name,
