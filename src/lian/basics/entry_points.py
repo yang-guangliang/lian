@@ -29,9 +29,7 @@ class EntryPointGenerator:
         self.event_manager = event_manager
         self.loader:Loader = loader
         self.entry_point_rules = []
-
         self.entry_point_results = set()
-
         self._load_settings()
 
     def _parse_config_file(self, default_lang, file_path):
