@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 
 
-from lian.apps.app_template import (
-    AppSummary,
+from lian.events.handler_template import (
+    EventHandlerManager,
     EventHandler
 )
-from taint.apps.taint_apps.read_rules import (
+from lian.taint.apps.taint_apps.read_rules import (
     RuleApply,
 )
-from taint.apps.taint_apps.prop_app import (
+from lian.taint.apps.taint_apps.prop_app import (
     foreach_item_prop,
     send_to_router,
     read_from_router,
 )
-from taint.constants import (
+from lian.taint.constants import (
     EventKind,
 )
 from lian.config import config
 
-class DefaultApp(AppSummary):
+class DefaultApp(EventHandlerManager):
     def enable(self):
-        self.app_manager.register_list([
+        self.event_manager.register_list([
             EventHandler(
                 event = EventKind.PROP_FOREACH_ITEM,
                 handler = foreach_item_prop,

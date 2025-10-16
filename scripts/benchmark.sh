@@ -17,7 +17,7 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 #CMD="python -W ignore"
 OUTPUT_PATH="$ROOT_DIR/tests/lian_workspace"
 CMD="time python -m kernprof -o $OUTPUT_PATH/line_profiler.lprof -lvr -u 1e-3 -z"
-CMD2="$ROOT_DIR/src/lian/interfaces/main.py"
+CMD2="$ROOT_DIR/src/lian/main.py"
 OPTIONS="run -f -l python,java,c,php,llvm,go,mir -w $OUTPUT_PATH"
 
 # echo $CMD $OPTIONS $TARGET_PATH

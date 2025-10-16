@@ -20,7 +20,7 @@ from taint import config1 as config
 from taint.constants import EventKind
 from taint.taint_structs import (MethodTaintFrame, PropagationResult)#, TagBitVectorManager, CallInfo
 from taint.propagation import TaintPropagationInMethod
-from taint.apps.app_manager import AppManager
+from taint.apps.event_manager import EventManager
 from lian.util import util
 from lian.util.loader import Loader
 
@@ -31,7 +31,7 @@ from lian.semantic.semantic_structs import (
 class GlobalPropagation(TaintPropagationInMethod):
     def __init__(self, frame: MethodTaintFrame):
         super().__init__(frame)
-    
+
     def call_stmt_taint(self, stmt_id, stmt, in_taint, taint_status):
         status = self.frame.stmt_id_to_status[stmt_id]
         event = EventData(
@@ -42,20 +42,20 @@ class GlobalPropagation(TaintPropagationInMethod):
                     "stmt"              : stmt,
                     "operation"         : "call_stmt",
                     "rules"             : self.rule_manager,
-                    "in_taint"          : in_taint,   
+                    "in_taint"          : in_taint,
                     "taint_status"      : taint_status,
                     "frame"             : self.frame,
                     "taint_state_manager": self.frame.taint_state_manager,
                     "status"             : status,
                 }
             )
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         event.event = EventKind.TAINT_BEFORE
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         event.event = EventKind.PROP_BEFORE
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         event.event = EventKind.SINK_BEFORE
-        app_return = self.app_manager.notify(event)
+        app_return = self.event_manager.notify(event)
         if er.should_block_event_requester(app_return):
             return
 
