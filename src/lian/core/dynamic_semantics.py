@@ -298,13 +298,13 @@ class GlobalAnalysis(StaticSemanticAnalysis):
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
         # if not continue_flag:
-        if not continue_flag and stmt.operation != "call_stmt":
-            if config.DEBUG_FLAG:
-                print(f"  CONTINUE")
-            if status.in_state_bits != old_in_state_bits:
-                self.update_out_states(stmt_id, frame, status, old_index_ceiling, old_status_defined_states)
-            self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
-            return P2ResultFlag()
+        # if not continue_flag and stmt.operation != "call_stmt":
+        #     if config.DEBUG_FLAG:
+        #         print(f"  CONTINUE")
+        #     if status.in_state_bits != old_in_state_bits:
+        #         self.update_out_states(stmt_id, frame, status, old_index_ceiling, old_status_defined_states)
+        #     self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
+        #     return P2ResultFlag()
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
         change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
         if change_flag is None:
@@ -591,6 +591,8 @@ class GlobalAnalysis(StaticSemanticAnalysis):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
             frame_stack = self.init_frame_stack(entry_point, global_space)
+            unit_id = self.loader.convert_method_id_to_unit_id(entry_point)
+            unit_path = self.loader.convert_unit_id_to_unit_path(unit_id)
             result = self.analyze_frame_stack(frame_stack, global_space)
         self.loader.save_symbol_state_space_p3(0, global_space)
 

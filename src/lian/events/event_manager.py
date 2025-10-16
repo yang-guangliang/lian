@@ -5,6 +5,8 @@ import inspect
 import importlib
 import dataclasses
 import pprint
+
+from example.problem_monitor import ProblemMonitor
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
@@ -142,6 +144,14 @@ class EventManager:
             self.register(
                 event = EVENT_KIND.P2STATE_EXTERN_CALLEE,
                 handler = extern_system.handle,
+                langs = [config.ANY_LANG]
+            )
+
+    def register_problem_monitor(self, problem_monitor:ProblemMonitor):
+        if problem_monitor:
+            self.register(
+                event = EVENT_KIND.P2STATE_EXTERN_CALLEE,
+                handler = problem_monitor.method_call_handler,
                 langs = [config.ANY_LANG]
             )
 

@@ -744,11 +744,11 @@ class ClassIdToNameLoader(OneToManyMapLoader):
     def __init__(self, path):
         super().__init__(path, schema.class_id_to_class_name_schema)
 
-    def save(self, class_id, class_name):
-        if class_name not in self.many_to_one:
-            self.many_to_one[class_name] = set()
-        self.many_to_one[class_name].add(class_id)
-        self.one_to_many[class_id] = class_name
+    def save(self, class_name, class_id):
+        if class_name not in self.one_to_many:
+            self.one_to_many[class_name] = set()
+        self.one_to_many[class_name].add(class_id)
+        self.many_to_one[class_id] = class_name
 
 class MethodIDToMethodNameLoader(OneToManyMapLoader):
     def __init__(self, path):
@@ -2431,11 +2431,11 @@ class Loader:
         return self._unit_id_to_namespace_id_loader.is_namespace_decl(namespace_id)
 
     def convert_class_id_to_class_name(self, class_id):
-        return self._class_id_to_class_name_loader.convert_one_to_many(class_id)
+        return self._class_id_to_class_name_loader.convert_many_to_one(class_id)
     def convert_class_name_to_class_ids(self, class_name):
-        return self._class_id_to_class_name_loader.convert_many_to_one(class_name)
+        return self._class_id_to_class_name_loader.convert_one_to_many(class_name)
     def save_class_id_to_class_name(self, class_id, class_name):
-        return self._class_id_to_class_name_loader.save(class_id, class_name)
+        return self._class_id_to_class_name_loader.save(class_name, class_id)
 
     def convert_method_id_to_method_name(self, method_id):
         return self._method_id_to_method_name_loader.convert_many_to_one(method_id)
@@ -2845,6 +2845,10 @@ class Loader:
         pprint.pprint(context, indent=2, width=80)
 
     def get_method_in_class_with_method_name(self, class_id, method_name) -> set[int]:
+        """
+            给定method_name和class_id。如果class中有同名方法，返回method_id
+            ** 必须是定义在该class中的方法，不包含继承方法
+        """
         method_ids_of_class = self.convert_class_id_to_method_ids(class_id)
         res = set()
         for method_id in method_ids_of_class:
@@ -2860,3 +2864,85 @@ class Loader:
     def get_workspace_path(self):
         workspace_root = getattr(self.options, "workspace", "")
         return workspace_root + "/src" if workspace_root != "" else ""
+
+    def convert_unit_name_to_method_ids(self, unit_name):
+        method_ids = set()
+        module_symbol_table = self.get_module_symbol_table()
+
+        for module_symbol in module_symbol_table:
+            if self.is_unit_id(module_symbol.unit_id) and module_symbol.unit_path.endwith(unit_name)  :
+                method_ids = method_ids | self.convert_unit_id_to_method_ids(module_symbol.unit_id)
+
+        return method_ids
+
+    # def load_call_path_with_method_name(self, start_method_name, end_method_name, start_method_class = None, end_method_class = None, start_method_unit = None, end_method_unit = None):
+    #
+    #     start_method_ids = self.convert_method_name_to_method_ids(start_method_name)
+    #     end_method_ids = self.convert_method_name_to_method_ids(end_method_name)
+    #
+    #     if start_method_class:
+    #         start_method_class_ids = self.convert_class_name_to_class_ids(start_method_class)
+    #         for class_id in start_method_class_ids:
+    #             methods_in_class = self.convert_class_id_to_method_ids(class_id)
+    #             start_method_ids = start_method_ids & methods_in_class
+    #
+    #     if end_method_class:
+    #         end_method_class_ids = self.convert_class_name_to_class_ids(end_method_class)
+    #         for class_id in end_method_class_ids:
+    #             methods_in_class = self.convert_class_id_to_method_ids(class_id)
+    #             end_method_ids = end_method_ids & methods_in_class
+    #
+    #     if start_method_unit:
+    #         unit_method_ids = self.convert_unit_name_to_method_ids(start_method_unit)
+    #         start_method_ids = start_method_ids & unit_method_ids
+    #
+    #     if end_method_unit:
+    #         unit_method_ids = self.convert_unit_name_to_method_ids(end_method_unit)
+    #         end_method_ids = end_method_ids & unit_method_ids
+    #
+    #     call_paths = self.load_call_paths_p3()
+    #     all_paths = set()
+    #     for call_path in call_paths:
+    #         index = 0
+    #         path = call_path.path
+    #         if len(path) < 2:
+    #             continue
+    #         start_index = -1
+    #         while index <= len(path):
+    #             if path[index] in start_method_ids:
+    #                 start_index = index
+    #                 break
+    #             index = index + 2
+    #         if start_index == -1:
+    #             continue
+    #
+    #         end_index = -1
+    #             # 检查起始函数之后的所有函数
+    #
+    #         while index > start_index:
+    #             if path[index] in end_method_ids:
+    #                 end_index = index
+    #             index = index - 2
+    #
+    #         if end_index == -1:
+    #             continue
+    #
+    #         print(call_path)
+    #         # while index < len(methods):
+
+
+    def get_parent_class_by_class_name(self, class_name):
+        type_graph = self.get_type_graph().graph
+        class_relevant_info = []
+        for u, v, wt in type_graph.edges(data="weight"):
+            if wt.name == class_name:
+                class_relevant_info.append(TypeNode(
+                    name = class_name,
+                    class_stmt_id = u,
+                    parent_id = v,
+                    parent_name = wt.parent_name,
+                    parent_index = wt.parent_pos
+                ))
+        return class_relevant_info
+
+
