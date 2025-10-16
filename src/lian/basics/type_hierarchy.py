@@ -10,7 +10,7 @@ from lian.config.constants import (
     LIAN_SYMBOL_KIND,
 )
 
-from lian.core.semantic_structs import (
+from lian.common_structs import (
     BasicGraph,
     MethodInClass,
     TypeGraphEdge,
