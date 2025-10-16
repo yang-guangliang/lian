@@ -2945,4 +2945,15 @@ class Loader:
                 ))
         return class_relevant_info
 
+    def get_son_class_by_class_name(self, class_name):
+        type_graph = self.get_type_graph().graph
+        class_relevant_info = []
+        for u, v, wt in type_graph.edges(data="weight"):
+            parent_class_name = self.convert_class_id_to_class_name(v)
+            if parent_class_name == class_name:
+                class_relevant_info.append(TypeNode(
+                    name = class_name,
+                    class_stmt_id = v,
+                ))
+        return class_relevant_info
 
