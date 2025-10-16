@@ -183,6 +183,10 @@ class Parser(common_parser.Parser):
         return handler(node, statements, replacement)
 
     def function_definition(self, node: Node, statements: list):
+        parent = node.parent
+        # if parent.type == "decorated_definition":
+
+
         modifiers = []
         if node.named_child_count > 0 and self.read_node_text(node.children[0]) == "async":
             modifiers.append("async")

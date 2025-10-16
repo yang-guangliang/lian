@@ -55,7 +55,7 @@ METHOD_HEADER_CACHE_CAPABILITY              = 10000
 METHOD_BODY_CACHE_CAPABILITY                = 1000
 STMT_SCOPE_CACHE_CAPABILITY                 = 1000
 
-DEFAULT_SETTINGS                            = "default_settings"
+DEFAULT_SETTINGS                            = os.path.join(SRC_LIAN_DIR, "default_settings")
 DEFAULT_SETTINGS_PATH                       = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
 ENTRY_POINTS_FILE                           = "entry.yaml"
 PROPAGATION_FILE                            = "propagation.yaml"

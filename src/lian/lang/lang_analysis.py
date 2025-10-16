@@ -292,7 +292,7 @@ class GIRParser:
             util.debug("GIR-Parsing:", file_unit)
 
         gir_statements = self.parse(unit_info, file_unit, lang_option, lang_table = lang_table)
-        if self.options.strict_mode and all(not file_unit.endswith(f"/{std_lib}.an") for std_lib in STD_LIBS):
+        if self.options.strict_parse_mode and all(not file_unit.endswith(f"/{std_lib}.an") for std_lib in STD_LIBS):
             gir_statements.insert(0, {
                 'from_import_stmt': {'source': 'ptr', 'name': 'Ptr', 'start_row': 0, 'start_col': 0, 'end_row': 0,
                                      'end_col': 15}})
