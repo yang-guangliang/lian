@@ -2850,17 +2850,20 @@ class Loader:
         }
         pprint.pprint(context, indent=2, width=80)
 
-    def get_method_in_class_with_method_name(self, class_id, method_name) -> set[int]:
+    def get_method_of_class_with_name(self, class_name:str, method_name:str) -> set[int]:
         """
-            给定method_name和class_id。如果class中有同名方法，返回method_id
-            ** 必须是定义在该class中的方法，不包含继承方法
+            给定method_name和class_name。如果class中有同名方法，返回method_id
+            ** of_class，指必须是定义在该class中的方法，不包含继承方法
         """
-        method_ids_of_class = self.convert_class_id_to_method_ids(class_id)
         res = set()
-        for method_id in method_ids_of_class:
-            curr_method_name = self.convert_method_id_to_method_name(method_id)
-            if curr_method_name == method_name:
-                res.add(method_id)
+
+        class_ids = self.convert_class_name_to_class_ids(class_name)
+        for class_id in class_ids:
+            method_ids_of_class = self.convert_class_id_to_method_ids(class_id)
+            for method_id in method_ids_of_class:
+                curr_method_name = self.convert_method_id_to_method_name(method_id)
+                if curr_method_name == method_name:
+                    res.add(method_id)
         return res
 
     def get_target_paths_to_be_analyzed(self):

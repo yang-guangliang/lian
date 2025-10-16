@@ -1097,20 +1097,6 @@ class Resolver:
                 import_stmts.append(import_stmt)
         return import_stmts
 
-    def find_method_in_class_by_name(self, class_name: str, method_name: str) -> set[int]:
-        """
-            获取某个类是否拥有某个方法（包括从父类继承的）
-            输出：如果有，返回method_id；没有则为-1
-        """
-        class_id = self.loader.convert_class_name_to_class_ids(class_name).pop()
-        method_ids = self.loader.get_method_in_class_with_method_name(class_id, method_name)
-        if util.is_available(method_ids): return method_ids # 该类自身就有该方法
-        methods_in_class = self.loader.get_methods_in_class(class_id)
-        for each_method in methods_in_class:
-            if each_method.name == method_name: # 继承
-                method_ids.add(each_method.stmt_id)
-        return method_ids
-
     def get_previous_call_site(self, frame:ComputeFrame, index:int):
         """global阶段使用：给定一个index，找到调用栈中向上的第index个调用点信息"""
         call_stack:ComputeFrameStack = frame.frame_stack
