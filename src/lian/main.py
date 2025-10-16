@@ -18,11 +18,10 @@ except AttributeError:
 import pandas as pd
 pd.options.mode.copy_on_write = False
 
-# Init path
-sys.path.append(os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
-# Add path for problem_monitor
+# Init path - 添加 lian 模块的父目录
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+# Add path for problem_monitor - 添加 example 模块的父目录  
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))), "src"))
-
 ############################################################
 # Essential content
 ############################################################
