@@ -5,12 +5,12 @@ import re
 import networkx as nx
 
 from lian.config import config
-from lian.core.resolver import Resolver
+from lian.semantic.resolver import Resolver
 from lian.config.constants import (
     LIAN_SYMBOL_KIND,
 )
 
-from lian.common_structs import (
+from lian.semantic.semantic_structs import (
     BasicGraph,
     MethodInClass,
     TypeGraphEdge,
@@ -18,7 +18,6 @@ from lian.common_structs import (
 )
 from lian.util import util
 from lian.util.loader import Loader
-
 class TypeHierarchy:
     def __init__(self, loader, resolver, unit_list):
         self.loader: Loader = loader
@@ -26,6 +25,7 @@ class TypeHierarchy:
         self.type_graph = BasicGraph()
         self.analyzed_type_hierarchy_ids = set()
         self.analyzed_class_ids = set()
+        self.class_in_type_graph = set()
         self.class_to_methods = {}
         self.unit_list = unit_list
 
@@ -75,9 +75,9 @@ class TypeHierarchy:
         return result
 
     def analyze_class_decl_and_save_result(self, unit_id, stmt_id, stmt):
-        if stmt_id in self.analyzed_type_hierarchy_ids:
+        if stmt_id in self.class_in_type_graph:
             return
-        self.analyzed_type_hierarchy_ids.add(stmt_id)
+        self.class_in_type_graph.add(stmt_id)
 
         result = self.parse_class_decl_stmt(unit_id, stmt_id, stmt)
         for type_node in result:
