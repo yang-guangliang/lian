@@ -18,7 +18,7 @@ ROOT_DIR=$(dirname $ROOT_DIR)
 rm $ROOT_DIR/unknown_callees.txt
 
 #CMD="python -W ignore"s
-CMD="python $ROOT_DIR/src/lian/interfaces/main.py"
+CMD="python $ROOT_DIR/src/lian/main.py"
 OUTPUT_PATH="$ROOT_DIR/tests/lian_workspace"
 # OPTIONS="run -f -p -d -l python,java,c -w $OUTPUT_PATH"
 OPTIONS="run  -f -d -l python -w $OUTPUT_PATH"
