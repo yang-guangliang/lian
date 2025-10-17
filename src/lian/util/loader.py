@@ -2757,7 +2757,7 @@ class Loader:
         """
         unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
         stmt = self.convert_stmt_id_to_stmt(stmt_id)
-        return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
+        return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row-1, end = stmt.end_row)
 
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
@@ -2961,10 +2961,9 @@ class Loader:
         type_graph = self.get_type_graph().graph
         class_relevant_info = []
         for u, v, wt in type_graph.edges(data="weight"):
-            parent_class_name = wt.parent_name
-            if parent_class_name == class_name:
+            if wt.parent_name == class_name:
                 class_relevant_info.append(TypeNode(
-                    name = class_name,
+                    name = wt.name,
                     class_stmt_id = v,
                 ))
         return class_relevant_info
