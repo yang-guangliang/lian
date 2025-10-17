@@ -390,11 +390,14 @@ class Parser(common_parser.Parser):
             gir_node["type_parameters"] = type_parameters[1:-1]
 
         child = self.find_child_by_field(node, "superclasses")
-        if child:
+        if child :
             superclass = child.named_children
             for super in superclass:
-                parent_class = self.parse(super, statements)
-                gir_node["supers"].append(parent_class)
+                if super.type == "subscript":
+                    gir_node["supers"].append(self.read_node_text(super))
+                elif super.type != "keyword_argument":
+                    parent_class = self.parse(super, statements)
+                    gir_node["supers"].append(parent_class)
 
         body = self.find_child_by_field(node, "body")
         init_class_method = {}
