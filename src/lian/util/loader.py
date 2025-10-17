@@ -2961,7 +2961,7 @@ class Loader:
         type_graph = self.get_type_graph().graph
         class_relevant_info = []
         for u, v, wt in type_graph.edges(data="weight"):
-            if wt.parent_name == class_name:
+            if class_name in wt.parent_name:
                 class_relevant_info.append(TypeNode(
                     name=wt.name,
                     class_stmt_id=u,
