@@ -130,7 +130,7 @@ class BasicGraph:
     def retrieve_graph(self):
         return self.graph
 
-    def visible(self):
+    def show(self):
         # dot_graph = nx.drawing.nx_pydot.to_pydot(G)
         # dot_file_path = "graph.dot"
         # dot_graph.write_dot(dot_file_path)
@@ -504,7 +504,7 @@ class AccessPoint:
 #             self.access_path,
 #         )
 
-
+global_unique_id = config.START_INDEX
 global_state_id = config.START_INDEX
 
 @dataclasses.dataclass
@@ -535,6 +535,10 @@ class State(BasicElement):
     access_path: list[AccessPoint] = dataclasses.field(default_factory=list)
     call_site: tuple[int, int, int] = (0, 0, 0)
 
+    unique_id: int = -1
+    analysis_round_number: int = -1
+    analysis_phase_id: int = -1
+
     def __post_init__(self):
         if self.state_id == -1:
             global global_state_id
@@ -543,6 +547,10 @@ class State(BasicElement):
 
         if self.source_state_id == -1:
             self.source_state_id = self.state_id
+
+        global global_unique_id
+        global_unique_id += 1
+        self.unique_id = global_unique_id
 
     def get_id(self):
         return self.state_id
@@ -570,6 +578,9 @@ class State(BasicElement):
             "source_symbol_id"      : self.source_symbol_id,
             "source_state_id"       : self.source_state_id,
             "access_path"           : [p.to_dict_str() for p in self.access_path],
+            "unique_id"              : self.unique_id,
+            "analysis_round_number"  : self.analysis_round_number,
+            "analysis_phase_id"      : self.analysis_phase_id,
         }
 
         # if isinstance(_id, tuple):
@@ -612,6 +623,8 @@ class State(BasicElement):
             source_symbol_id = self.source_symbol_id,
             source_state_id= self.source_state_id,
             access_path = self.access_path.copy(),
+            analysis_round_number = self.analysis_round_number,
+            analysis_phase_id = self.analysis_phase_id,
         )
 
     def __hash__(self):
@@ -647,8 +660,12 @@ class Symbol(BasicElement):
     source_unit_id: int = -1
     call_site: tuple[int, int, int] = (0, 0, 0)
 
-    # def get_id(self):
-    #     return self.symbol_id
+    unique_id: int = -1
+
+    def __post_init__(self):
+        global global_unique_id
+        global_unique_id += 1
+        self.unique_id = global_unique_id
 
     def copy(self, stmt_id = None):
         if stmt_id is None:
@@ -692,6 +709,8 @@ class Symbol(BasicElement):
         result["method_id"] = _id
 
         return result
+
+class
 
 @dataclasses.dataclass
 class ParameterMapping:
@@ -980,10 +999,6 @@ class StmtStatus:
             "field"                     : self.field_name,
         }
 
-class StateFlowGraph(BasicGraphWithSelfCircle):
-    def __init__(self, method_id):
-        self.method_id = method_id
-        super().__init__()
 
 class SymbolGraph(BasicGraphWithSelfCircle):
     def __init__(self, method_id):
@@ -1001,6 +1016,9 @@ class SymbolGraph(BasicGraphWithSelfCircle):
             self._add_one_edge(src_stmt, dst_stmt, weight)
 
 class StateGraph(SymbolGraph):
+    pass
+
+class StateFlowGraph(BasicGraphWithSelfCircle):
     pass
 
 @dataclasses.dataclass
@@ -1621,6 +1639,7 @@ class ComputeFrame(MetaComputeFrame):
         self.state_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.symbol_graph = SymbolGraph(self.method_id)
         self.state_graph = StateGraph(self.method_id)
+        self.state_flow_graph = StateFlowGraph(self.method_id)
         self.method_summary_template: MethodSummaryTemplate = MethodSummaryTemplate(self.method_id)
         self.method_summary_instance: MethodSummaryInstance = MethodSummaryInstance(self.call_site)
 

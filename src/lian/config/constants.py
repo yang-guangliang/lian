@@ -225,8 +225,14 @@ ANALYSIS_PHASE_NAME = util.SimpleEnum({
     "MethodSummary"             : "method_summary",
     "AbstractCompute"           : "abstract_compute",
     "CallGraph"                 : "call_graph",
-    "SemanticSummaryGeneration" : "semantic_summary_generation",
-    "GlobalAnalysis"            : "global_analysis",
+    "StaticSemantics"           : "static_semantics",
+    "DynamicSemantics"          : "dynamic_semantics",
+})
+
+ANALYSIS_PHASE_ID = util.SimpleEnum({
+    "NO_PHASE"            : 0,
+    "STATIC_SEMANTICS"    : 1,
+    "DYNAMIC_SEMANTICS"   : 2,
 })
 
 BASIC_CALL_GRAPH_NODE_KIND = util.SimpleEnum({
