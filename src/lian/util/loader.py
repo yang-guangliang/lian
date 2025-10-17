@@ -2963,8 +2963,11 @@ class Loader:
         for u, v, wt in type_graph.edges(data="weight"):
             if wt.parent_name == class_name:
                 class_relevant_info.append(TypeNode(
-                    name = wt.name,
-                    class_stmt_id = v,
+                    name=wt.name,
+                    class_stmt_id=u,
+                    parent_id=v,
+                    parent_name=class_name,
+                    parent_index=wt.parent_pos
                 ))
         return class_relevant_info
 
