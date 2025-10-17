@@ -710,8 +710,6 @@ class Symbol(BasicElement):
 
         return result
 
-class
-
 @dataclasses.dataclass
 class ParameterMapping:
     arg_index_in_space: int = -1
@@ -1018,7 +1016,7 @@ class SymbolGraph(BasicGraphWithSelfCircle):
 class StateGraph(SymbolGraph):
     pass
 
-class StateFlowGraph(BasicGraphWithSelfCircle):
+class StateFlowGraph(SymbolGraph):
     pass
 
 @dataclasses.dataclass

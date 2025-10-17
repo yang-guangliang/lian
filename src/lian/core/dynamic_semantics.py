@@ -14,7 +14,7 @@ from lian.config.constants import (
     STATE_TYPE_KIND,
     SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND,
     SYMBOL_OR_STATE,
-    ANALYSIS_PHASE_NAME,
+    ANALYSIS_PHASE_ID,
     CALL_OPERATION,
     SENSITIVE_OPERATIONS
 )
@@ -58,7 +58,7 @@ class GlobalAnalysis(StaticSemanticAnalysis):
         self.path_manager = PathManager()
         super().__init__(lian)
         self.analyzed_method_list = analyzed_method_list
-        self.phase_name = ANALYSIS_PHASE_NAME.GlobalAnalysis
+        self.phase_id = ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS
 
     def get_stmt_id_to_callee_info(self, callees):
         """

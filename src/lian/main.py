@@ -20,7 +20,7 @@ pd.options.mode.copy_on_write = False
 
 # Init path - 添加 lian 模块的父目录
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-# Add path for problem_monitor - 添加 example 模块的父目录  
+# Add path for problem_monitor - 添加 example 模块的父目录
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))), "src"))
 ############################################################
 # Essential content
@@ -42,7 +42,6 @@ from lian.core.dynamic_semantics import GlobalAnalysis
 from lian.core.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.externs.extern_system import ExternSystem
-from example.problem_monitor import ProblemMonitor
 
 class Lian:
     def __init__(self):
@@ -114,14 +113,13 @@ class Lian:
         self.event_manager = EventManager(self.options)
         self.loader = Loader(self.options, self.event_manager)
         self.resolver = Resolver(self.options, self.event_manager, self.loader)
-        self.problem_monitor = ProblemMonitor(self)
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
 
         # 旧版llm_driven_sec
-        # self.event_manager.register_extern_system(self.extern_system)
+        self.event_manager.register_extern_system(self.extern_system)
         # 新版problem_monitor
-        if hasattr(self.options,"tecent") and self.options.tecent:
-            self.event_manager.register_problem_monitor(self.problem_monitor)
+        # if hasattr(self.options,"tecent") and self.options.tecent:
+        #     self.event_manager.register_problem_monitor(self.problem_monitor)
 
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)

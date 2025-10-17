@@ -16,7 +16,7 @@ from lian.config.constants import (
     CONTROL_FLOW_KIND,
     EVENT_KIND,
     LIAN_SYMBOL_KIND,
-    ANALYSIS_PHASE_NAME,
+    ANALYSIS_PHASE_ID,
     RETURN_STMT_OPERATION,
     SUMMARY_GENERAL_SYMBOL_ID
 )
@@ -67,7 +67,7 @@ class StaticSemanticAnalysis:
         self.call_graph = CallGraph()
         self.analyzed_method_list = set()
         self.inited_unit_list = set()
-        self.phase_name = ANALYSIS_PHASE_NAME.SemanticSummaryGeneration
+        self.phase_id = ANALYSIS_PHASE_ID.STATIC_SEMANTICS
         self.LOOP_OPERATIONS = set(["for_stmt", "forin_stmt", "for_value_stmt", "while_stmt", "dowhile_stmt"])
 
     def get_stmt_id_to_callee_info(self, callees):
@@ -308,7 +308,7 @@ class StaticSemanticAnalysis:
             if each_parent_stmt_id in frame.stmt_id_to_status:
                 status.in_symbol_bits |= frame.stmt_id_to_status[each_parent_stmt_id].out_symbol_bits
 
-        if self.phase_name in [ANALYSIS_PHASE_NAME.SemanticSummaryGeneration, ANALYSIS_PHASE_NAME.GlobalAnalysis]:
+        if self.phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS]:
             if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
@@ -331,14 +331,14 @@ class StaticSemanticAnalysis:
         status.out_symbol_bits = current_bits
 
         # check if the out bits are changed
-        if self.phase_name == ANALYSIS_PHASE_NAME.SemanticSummaryGeneration:
+        if self.phase_id == ANALYSIS_PHASE_ID.STATIC_SEMANTICS:
             if frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
                 self.update_used_symbols_to_symbol_graph(stmt_id, frame)
                 frame.symbol_changed_stmts.add(util.graph_successors(frame.cfg, stmt_id))
             else:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
-        elif self.phase_name == ANALYSIS_PHASE_NAME.GlobalAnalysis:
+        elif self.phase_id == ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
     def rerun_analyze_reaching_symbols(self, stmt_id, frame: ComputeFrame, result_flag: P2ResultFlag):
@@ -620,7 +620,7 @@ class StaticSemanticAnalysis:
         dynamic_call_stmt: set = method_summary.dynamic_call_stmt
         change_flag = False
         if (
-            self.phase_name in [ANALYSIS_PHASE_NAME.SemanticSummaryGeneration, ANALYSIS_PHASE_NAME.GlobalAnalysis] and
+            self.phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS] and
             frame.stmt_counters[stmt_id] == config.FIRST_ROUND
         ):
             change_flag = True

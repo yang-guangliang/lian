@@ -216,18 +216,18 @@ BUILTIN_OR_CUSTOM_DATA_TYPE = util.SimpleEnum({
     "CUSTOM"                : 1,
 })
 
-ANALYSIS_PHASE_NAME = util.SimpleEnum({
-    "ScopeHierarchy"            : "scope_hierarchy",
-    "TypeHierarchy"             : "type_hierarchy",
-    "ControlFlowGraph"          : "control_flow",
-    "SymbolFlowGraph"           : "symbol_flow",
-    "StateFlowGraph"            : "state_flow",
-    "MethodSummary"             : "method_summary",
-    "AbstractCompute"           : "abstract_compute",
-    "CallGraph"                 : "call_graph",
-    "StaticSemantics"           : "static_semantics",
-    "DynamicSemantics"          : "dynamic_semantics",
-})
+# ANALYSIS_PHASE_NAME = util.SimpleEnum({
+#     "ScopeHierarchy"            : "scope_hierarchy",
+#     "TypeHierarchy"             : "type_hierarchy",
+#     "ControlFlowGraph"          : "control_flow",
+#     "SymbolFlowGraph"           : "symbol_flow",
+#     "StateFlowGraph"            : "state_flow",
+#     "MethodSummary"             : "method_summary",
+#     "AbstractCompute"           : "abstract_compute",
+#     "CallGraph"                 : "call_graph",
+#     "StaticSemantics"           : "static_semantics",
+#     "DynamicSemantics"          : "dynamic_semantics",
+# })
 
 ANALYSIS_PHASE_ID = util.SimpleEnum({
     "NO_PHASE"            : 0,
