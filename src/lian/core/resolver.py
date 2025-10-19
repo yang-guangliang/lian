@@ -131,7 +131,8 @@ class Resolver:
                 return SourceSymbolScopeInfo(
                     imported_unit_id,
                     import_info.symbol_id,
-                    self.loader.convert_stmt_id_to_scope_id(import_info.symbol_id)
+                    self.loader.convert_stmt_id_to_scope_id(import_info.symbol_id),
+                    symbol_id
                 )
         return SourceSymbolScopeInfo(-1, symbol_id, scope_id)
 
