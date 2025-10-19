@@ -18,7 +18,8 @@ from lian.config.constants import (
     LIAN_SYMBOL_KIND,
     ANALYSIS_PHASE_ID,
     RETURN_STMT_OPERATION,
-    SUMMARY_GENERAL_SYMBOL_ID
+    SUMMARY_GENERAL_SYMBOL_ID,
+    LOOP_OPERATIONS
 )
 import lian.events.event_return as er
 from lian.events.handler_template import EventData
@@ -44,7 +45,7 @@ from lian.common_structs import (
 )
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
-from lian.core.stmt_state_analysis import StmtStateAnalysis
+from lian.core.static_stmt_states import StaticStmtStates
 
 # from lian.config.type_table import get_lang_init_script_name
 
@@ -67,8 +68,7 @@ class StaticSemanticAnalysis:
         self.call_graph = CallGraph()
         self.analyzed_method_list = set()
         self.inited_unit_list = set()
-        self.phase_id = ANALYSIS_PHASE_ID.STATIC_SEMANTICS
-        self.LOOP_OPERATIONS = set(["for_stmt", "forin_stmt", "for_value_stmt", "while_stmt", "dowhile_stmt"])
+        self.analysis_phase_id = ANALYSIS_PHASE_ID.STATIC_SEMANTICS
 
     def get_stmt_id_to_callee_info(self, callees):
         results = {}
@@ -76,18 +76,18 @@ class StaticSemanticAnalysis:
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_symbol_to_define_and_init_bit_vector(self, frame: ComputeFrame, method_id):
+    def adjust_defined_symbols_and_init_bit_vector(self, frame: ComputeFrame, method_id):
         """
         调整符号的定义位向量，初始化符号状态空间。
         处理旧符号定义，构建新的符号到定义节点的映射关系。
         """
-        old_symbol_to_define = self.loader.get_method_symbol_to_define(method_id)
-        if not old_symbol_to_define:
+        old_defined_symbols = self.loader.get_method_defined_symbols(method_id)
+        if not old_defined_symbols:
             return
 
         all_symbol_defs = set()
         result = {}
-        for symbol_id, defined_set in old_symbol_to_define.items():
+        for symbol_id, defined_set in old_defined_symbols.items():
             for defined_stmt_id in defined_set:
                 status = frame.stmt_id_to_status[defined_stmt_id]
                 all_defined_indexes = [status.defined_symbol] + status.implicitly_defined_symbols
@@ -104,18 +104,18 @@ class StaticSemanticAnalysis:
                             all_symbol_defs.add(symbol_node)
                             break
 
-        frame.symbol_to_define = result
+        frame.defined_symbols = result
         frame.symbol_bit_vector_manager.init(all_symbol_defs)
         frame.all_symbol_defs = all_symbol_defs
 
-    def adjust_state_to_define_and_init_bit_vector(self, frame: ComputeFrame, method_id):
+    def adjust_defined_states_and_init_bit_vector(self, frame: ComputeFrame, method_id):
         """
         调整状态的定义位向量，初始化状态状态空间。
         处理旧状态定义，构建状态到定义节点的映射关系。
         """
-        frame.state_to_define = self.loader.get_method_state_to_define_p1(method_id)
+        frame.defined_states = self.loader.get_method_defined_states_p1(method_id)
         all_state_defs = set()
-        for state_id, defined_set in frame.state_to_define.items():
+        for state_id, defined_set in frame.defined_states.items():
             for state_def_node in defined_set:
                 all_state_defs.add(state_def_node)
 
@@ -141,7 +141,8 @@ class StaticSemanticAnalysis:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
-        frame.stmt_state_analysis = StmtStateAnalysis(
+        frame.stmt_state_analysis = StaticStmtStates(
+            analysis_phase_id = self.analysis_phase_id,
             event_manager = self.event_manager,
             loader = self.loader,
             resolver = self.resolver,
@@ -156,7 +157,7 @@ class StaticSemanticAnalysis:
 
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
-        frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
+        frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
 
         # avoid changing the content of the loader
         frame.stmt_id_to_status = copy.deepcopy(self.loader.get_stmt_status_p1(method_id))
@@ -171,8 +172,8 @@ class StaticSemanticAnalysis:
         frame.all_local_symbol_ids = frame.method_def_use_summary.local_symbol_ids
         #print(frame.method_def_use_summary)
 
-        self.adjust_symbol_to_define_and_init_bit_vector(frame, method_id)
-        self.adjust_state_to_define_and_init_bit_vector(frame, method_id)
+        self.adjust_defined_symbols_and_init_bit_vector(frame, method_id)
+        self.adjust_defined_states_and_init_bit_vector(frame, method_id)
 
         return frame
 
@@ -185,11 +186,11 @@ class StaticSemanticAnalysis:
         symbol_id = bit_id.symbol_id
         if bit_id not in frame.all_symbol_defs:
             frame.all_symbol_defs.add(bit_id)
-            if symbol_id not in frame.symbol_to_define:
-                frame.symbol_to_define[symbol_id] = set()
-            frame.symbol_to_define[symbol_id].add(bit_id)
+            if symbol_id not in frame.defined_symbols:
+                frame.defined_symbols[symbol_id] = set()
+            frame.defined_symbols[symbol_id].add(bit_id)
             frame.symbol_bit_vector_manager.add_bit_id(bit_id)
-        all_def_stmts = frame.symbol_to_define[symbol_id]
+        all_def_stmts = frame.defined_symbols[symbol_id]
         current_bits = frame.symbol_bit_vector_manager.kill_bit_ids(current_bits, all_def_stmts)
         current_bits = frame.symbol_bit_vector_manager.gen_bit_ids(current_bits, [bit_id])
 
@@ -204,11 +205,11 @@ class StaticSemanticAnalysis:
         state_id = bit_id.state_id
         if bit_id not in frame.all_state_defs:
             frame.all_state_defs.add(bit_id)
-            util.add_to_dict_with_default_set(frame.state_to_define, state_id, bit_id)
+            util.add_to_dict_with_default_set(frame.defined_states, state_id, bit_id)
             frame.state_bit_vector_manager.add_bit_id(bit_id)
         # 由于一条指令可能同时新定义多个state id相同的state，因此不能将同stmt id的state kill掉
         # 每一轮需要将同一语句前面几轮中相同state id的state都kill掉
-        all_def_states = frame.state_to_define[state_id]
+        all_def_states = frame.defined_states[state_id]
         all_def_stmt_except_current_stmt = set()
         for each_def_state in all_def_states:
             # 不是本轮产生的state
@@ -229,7 +230,7 @@ class StaticSemanticAnalysis:
         # 这条语句新产生的状态
         new_defined_state_set = set()
         for index in status.defined_states:
-            if index >= old_index_ceiling or phase == 3: # newly generated states
+            if index >= old_index_ceiling or self.analysis_phase_id == ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS: # newly generated states
                 new_defined_state_set.add(index)
 
         if old_status_defined_states:
@@ -279,9 +280,9 @@ class StaticSemanticAnalysis:
             self.update_used_symbols_to_symbol_graph(stmt_id, frame)
 
         if status.out_symbol_bits != old_out_symbol_bits or def_changed:
-            frame.symbol_changed_stmts.add(util.graph_successors(frame.cfg, stmt_id))
+            frame.stmts_with_symbol_update.add(util.graph_successors(frame.cfg, stmt_id))
 
-    def analyze_reaching_symbols(self, stmt_id, stmt, frame: ComputeFrame):
+    def analyze_reachable_symbols(self, stmt_id, stmt, frame: ComputeFrame):
         """
         分析符号的可达性，计算输入符号位向量。
         处理循环控制流，更新符号状态传播。
@@ -293,7 +294,7 @@ class StaticSemanticAnalysis:
 
         # collect parent stmts
         parent_stmt_ids = util.graph_predecessors(frame.cfg, stmt_id)
-        if stmt.operation in self.LOOP_OPERATIONS:
+        if stmt.operation in LOOP_OPERATIONS:
             new_parent_stmt_ids = []
             for each_parent_stmt_id in parent_stmt_ids:
                 edge_weight = util.get_graph_edge_weight(frame.cfg, each_parent_stmt_id, stmt_id)
@@ -308,7 +309,7 @@ class StaticSemanticAnalysis:
             if each_parent_stmt_id in frame.stmt_id_to_status:
                 status.in_symbol_bits |= frame.stmt_id_to_status[each_parent_stmt_id].out_symbol_bits
 
-        if self.phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS]:
+        if self.analysis_phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS]:
             if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
@@ -331,17 +332,17 @@ class StaticSemanticAnalysis:
         status.out_symbol_bits = current_bits
 
         # check if the out bits are changed
-        if self.phase_id == ANALYSIS_PHASE_ID.STATIC_SEMANTICS:
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.STATIC_SEMANTICS:
             if frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
                 self.update_used_symbols_to_symbol_graph(stmt_id, frame)
-                frame.symbol_changed_stmts.add(util.graph_successors(frame.cfg, stmt_id))
+                frame.stmts_with_symbol_update.add(util.graph_successors(frame.cfg, stmt_id))
             else:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
-        elif self.phase_id == ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS:
+        elif self.analysis_phase_id == ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
-    def rerun_analyze_reaching_symbols(self, stmt_id, frame: ComputeFrame, result_flag: P2ResultFlag):
+    def rerun_analyze_reachable_symbols(self, stmt_id, frame: ComputeFrame, result_flag: P2ResultFlag):
         """
         重新分析符号可达性（当结果发生变化时）。
         处理隐式使用符号的变化传播。
@@ -373,18 +374,18 @@ class StaticSemanticAnalysis:
         used_symbol_id = used_symbol.symbol_id
         # print(f"stmt_id: {stmt_id}, used_symbol: {used_symbol.name}")
         reachable_symbol_defs = set()
-        # print(f"in check reachable: {frame.symbol_to_define}")
-        if used_symbol_id in frame.symbol_to_define:
-            # print(f"used_symbol: {frame.symbol_to_define[used_symbol_id]}")
+        # print(f"in check reachable: {frame.defined_symbols}")
+        if used_symbol_id in frame.defined_symbols:
+            # print(f"used_symbol: {frame.defined_symbols[used_symbol_id]}")
             # print(f"available_symbol_defs: {available_symbol_defs}")
             available_symbol_defs_list = list(available_symbol_defs)
-            used_define_list = list(frame.symbol_to_define[used_symbol_id])
+            used_define_list = list(frame.defined_symbols[used_symbol_id])
             if len(available_symbol_defs_list) != 0 and len(used_define_list) != 0:
                 for node1 in available_symbol_defs_list:
                     for node2 in used_define_list:
                         if node1 == node2:
                             reachable_symbol_defs.add(node1)
-            # reachable_symbol_defs = available_symbol_defs & frame.symbol_to_define[used_symbol_id]
+            # reachable_symbol_defs = available_symbol_defs & frame.defined_symbols[used_symbol_id]
             # print(reachable_symbol_defs)
         else:
             if used_symbol_id not in frame.all_local_symbol_ids:
@@ -429,7 +430,7 @@ class StaticSemanticAnalysis:
         """
         in_state_bits = 0
         parent_stmt_ids = util.graph_predecessors(frame.cfg, stmt_id)
-        if stmt.operation in self.LOOP_OPERATIONS:
+        if stmt.operation in LOOP_OPERATIONS:
             new_parent_stmt_ids = []
             for each_parent_stmt_id in parent_stmt_ids:
                 edge_weight = util.get_graph_edge_weight(frame.cfg, each_parent_stmt_id, stmt_id)
@@ -575,7 +576,7 @@ class StaticSemanticAnalysis:
 
         status = frame.stmt_id_to_status[stmt_id]
         util.add_to_dict_with_default_set(
-            frame.state_to_define,
+            frame.defined_states,
             new_state.state_id,
             StateDefNode(index=index, state_id=new_state.state_id, stmt_id=stmt_id)
         )
@@ -608,7 +609,7 @@ class StaticSemanticAnalysis:
             return True
 
         # TODO：暂时注释。global阶段如果一条call语句在这return了，会导致其找不到callee。
-        # if stmt_id not in frame.symbol_changed_stmts:
+        # if stmt_id not in frame.stmts_with_symbol_update:
         #     return False
 
         if (
@@ -620,7 +621,7 @@ class StaticSemanticAnalysis:
         dynamic_call_stmt: set = method_summary.dynamic_call_stmt
         change_flag = False
         if (
-            self.phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS] and
+            self.analysis_phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS] and
             frame.stmt_counters[stmt_id] == config.FIRST_ROUND
         ):
             change_flag = True
@@ -662,7 +663,7 @@ class StaticSemanticAnalysis:
                 # print(f"{symbol_id} not in method_summary.used_external_symbols")
                 if(
                     symbol_id in frame.method_def_use_summary.used_external_symbol_ids or
-                    symbol_id in frame.method_def_use_summary.used_this_symbol_id or
+                    symbol_id == frame.method_def_use_summary.this_symbol_id or
                     stmt_id in dynamic_call_stmt
                 ):
                     # print(f"{symbol_id} goes into generate_external_symbol_states")
@@ -719,12 +720,6 @@ class StaticSemanticAnalysis:
                 results.add(tmp_stmt)
 
         return results
-
-    def unset_states_of_status(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
-        """
-        重置状态定义相关的状态集合。
-        """
-        status.defined_states = set()
 
     def unset_states_of_defined_symbol(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
         """
@@ -787,7 +782,7 @@ class StaticSemanticAnalysis:
         #     print(f"adjusted_states: {adjusted_states}")
         status.defined_states = adjusted_states
 
-    def compute_states(self, stmt_id, stmt, frame: ComputeFrame):
+    def compute_stmt_states(self, stmt_id, stmt, frame: ComputeFrame):
         """
         执行状态计算的核心逻辑：
         1. 收集输入状态
@@ -805,16 +800,17 @@ class StaticSemanticAnalysis:
         # 收集输入状态位
         # collect in state bits
         old_defined_symbol_states = set()
-        if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
-            if isinstance(defined_symbol, Symbol):
-                old_defined_symbol_states = defined_symbol.states
+        defined_symbol = frame.symbol_state_space[status.defined_symbol]
+        if isinstance(defined_symbol, Symbol):
+            old_defined_symbol_states = defined_symbol.states
         old_status_defined_states = status.defined_states
         old_in_state_bits = status.in_state_bits
         old_index_ceiling = frame.symbol_state_space.get_length()
         old_implicitly_defined_symbols = status.implicitly_defined_symbols.copy()
         old_implicitly_used_symbols = status.implicitly_used_symbols.copy()
         status.in_state_bits = self.collect_in_state_bits(stmt_id, stmt, frame)
-        self.unset_states_of_status(stmt_id, frame, status)
+        # reset defined_states
+        status.defined_states = set()
         # 收集输入状态
         # collect in state
 
@@ -857,7 +853,7 @@ class StaticSemanticAnalysis:
             change_flag.use_changed = True
 
         if change_flag.states_changed:
-            frame.symbol_changed_stmts.add(
+            frame.stmts_with_symbol_update.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
         # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
@@ -925,7 +921,7 @@ class StaticSemanticAnalysis:
         basic_target_symbol_ids = set()
         for each_id_set in (
             {pair[0] for pair in def_use_summary.parameter_symbol_ids}, # 只取每个二元组的前一个元素
-            def_use_summary.defined_this_symbol_id,
+            [def_use_summary.this_symbol_id],
             # def_use_summary.used_external_symbol_ids,
             def_use_summary.defined_external_symbol_ids,
         ):
@@ -1007,7 +1003,7 @@ class StaticSemanticAnalysis:
                 # (def_use_summary.return_symbol_ids,             method_summary.return_symbols),
                 # (returned_symbol_id,                            method_summary.return_symbols),
                 (set(),                                         method_summary.key_dynamic_content),
-                (def_use_summary.defined_this_symbol_id,        method_summary.this_symbols),
+                ([def_use_summary.this_symbol_id],        method_summary.this_symbols),
             )
             # 逐条语句添加
             for summary_ids, content_record in lines_to_be_updated:
@@ -1064,7 +1060,7 @@ class StaticSemanticAnalysis:
         return method_summary, compact_space
         # print(f"dynamic_call_stmt: {frame.method_summary_template.dynamic_call_stmt}")
 
-    def analyze_stmts(self, frame: ComputeFrame):
+    def analyze_method_stmts(self, frame: ComputeFrame):
         """
         执行语句级别的分析循环：
         1. 处理工作列表中的语句
@@ -1082,11 +1078,17 @@ class StaticSemanticAnalysis:
             if stmt_id in frame.loop_total_rounds:
                 if frame.stmt_counters[stmt_id] <= frame.loop_total_rounds[stmt_id]:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
-                    frame.symbol_changed_stmts.add(stmt_id)
+                    frame.stmts_with_symbol_update.add(stmt_id)
+                else:
+                    frame.stmt_worklist.pop()
+                    continue
             else:
                 if frame.stmt_counters[stmt_id] < config.MAX_STMT_STATE_ANALYSIS_ROUND:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
                     # print("添加cfg后继",list(util.graph_successors(frame.cfg, stmt_id)))
+                else:
+                    frame.stmt_worklist.pop()
+                    continue
 
             if config.DEBUG_FLAG:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
@@ -1096,11 +1098,11 @@ class StaticSemanticAnalysis:
                 frame.interruption_flag = False
             else:
                 # compute in/out bits
-                self.analyze_reaching_symbols(stmt_id, stmt, frame)
+                self.analyze_reachable_symbols(stmt_id, stmt, frame)
 
             # according to symbol_graph, compute the state flow of current statement
-            result_flag = self.compute_states(stmt_id, stmt, frame)
-            frame.symbol_changed_stmts.remove(stmt_id)
+            result_flag = self.compute_stmt_states(stmt_id, stmt, frame)
+            frame.stmts_with_symbol_update.remove(stmt_id)
             # check if interruption is enabled
             if result_flag.interruption_flag:
                 return result_flag
@@ -1108,11 +1110,10 @@ class StaticSemanticAnalysis:
             # re-analyze def/use
             if result_flag.def_changed or result_flag.use_changed:
                 # change out_bit to reflect implicitly_defined_symbols
-                self.rerun_analyze_reaching_symbols(stmt_id, frame, result_flag)
+                self.rerun_analyze_reachable_symbols(stmt_id, frame, result_flag)
                 # update method def/use
                 self.update_method_def_use_summary(stmt_id, frame)
 
-            # move to the next statement
             frame.stmt_counters[stmt_id] += 1
 
             # global stmt_counts
@@ -1131,7 +1132,7 @@ class StaticSemanticAnalysis:
         3. 保存分析结果
         4. 处理方法调用中断
         """
-        current_frame = ComputeFrame(method_id=method_id, loader = self.loader)
+        current_frame = ComputeFrame(method_id=method_id, loader=self.loader)
         frame_stack = ComputeFrameStack().add(current_frame)
         while len(frame_stack) != 0:
             frame = frame_stack.peek()
@@ -1143,16 +1144,17 @@ class StaticSemanticAnalysis:
                     self.analyzed_method_list.add(frame.method_id)
                     frame_stack.pop()
                     continue
-            result: P2ResultFlag = self.analyze_stmts(frame)
+
+            result: P2ResultFlag = self.analyze_method_stmts(frame)
             if result is not None and result.interruption_flag and result.interruption_data:
                 # here an interruption is faced
                 # create a new frame and add it to the stack
                 frame.interruption_flag = True
                 data:InterruptionData = result.interruption_data
                 if config.DEBUG_FLAG:
-                    util.debug(f"Interruption unsolved_callee_ids: {data.callee_ids}")
+                    util.debug(f"Interrupt! Now handle unsolved_callee_ids: {data.callee_ids}")
                 if len(data.callee_ids) != 0:
-                    frame.symbol_changed_stmts.add(data.call_stmt_id)
+                    frame.stmts_with_symbol_update.add(data.call_stmt_id)
                     for callee_id in data.callee_ids:
                         if callee_id not in self.analyzed_method_list:
                             new_frame = ComputeFrame(
@@ -1176,9 +1178,10 @@ class StaticSemanticAnalysis:
             self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
             self.loader.save_symbol_state_space_p2(frame.method_id, frame.symbol_state_space)
             self.loader.save_method_symbol_graph_p2(frame.method_id, frame.symbol_graph.graph)
-            self.loader.save_method_symbol_to_define_p2(frame.method_id, frame.symbol_to_define)
-            self.loader.save_method_state_to_define_p2(frame.method_id, frame.state_to_define)
+            self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
+            self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
+            self.loader.save_method_state_flow_graph_p2(frame.method_id, frame.state_flow_graph.graph)
             frame_stack.pop()
 
     def sort_methods_by_unit_id(self, methods):

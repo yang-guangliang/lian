@@ -185,6 +185,14 @@ CONTROL_FLOW_KIND = util.SimpleEnum({
     "YIELD"                 : 16,
 })
 
+LOOP_OPERATIONS = set([
+    "for_stmt",
+    "forin_stmt",
+    "for_value_stmt",
+    "while_stmt",
+    "dowhile_stmt"
+])
+
 SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND = util.SimpleEnum({
     "REGULAR"               : 0,
     "EXPLICITLY_DEFINED"    : 1,
@@ -230,9 +238,9 @@ BUILTIN_OR_CUSTOM_DATA_TYPE = util.SimpleEnum({
 # })
 
 ANALYSIS_PHASE_ID = util.SimpleEnum({
-    "NO_PHASE"            : 0,
-    "STATIC_SEMANTICS"    : 1,
-    "DYNAMIC_SEMANTICS"   : 2,
+    "NO_PHASE"            : 1,
+    "STATIC_SEMANTICS"    : 2,
+    "DYNAMIC_SEMANTICS"   : 3,
 })
 
 BASIC_CALL_GRAPH_NODE_KIND = util.SimpleEnum({
@@ -251,6 +259,13 @@ SYMBOL_OR_STATE = util.SimpleEnum({
     "STATE"                 : 1,
     "EXTERNAL_KEY_STATE"    : 2,
     "UNKNOWN"               : 3,
+})
+
+STATE_FLOW_GRAPH_EDGE_KIND = util.SimpleEnum({
+    "REGULAR"               : 0,
+    "SYMBOL_TO_SYMBOL"      : 1,
+    "SYMBOL_TO_STATE"       : 2,
+    "STATE_TO_STATE"        : 3,
 })
 
 ACCESS_POINT_KIND = util.SimpleEnum({

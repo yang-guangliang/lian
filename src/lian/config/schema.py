@@ -116,11 +116,24 @@ basic_call_graph_schema = [
 
 symbol_graph_schema_p2 = [
     "method_id",
-	"used",
+	"used_symbol_stmt_id",
+	"used_symbol_index",
+	"used_symbol_id",
 	"stmt_id",
-	"defined",
+	"defined_symbol_stmt_id",
+	"defined_symbol_index",
+	"defined_symbol_id",
     "edge_type"
 ]
+
+state_flow_graph_schema_p2 = [
+    "method_id",
+    "source_id",
+    "edge_type",
+    "edge_stmt_id",
+    "dest_id"
+]
+
 
 
 call_graph_schema = {

@@ -263,6 +263,8 @@ class SimpleWorkList:
                     entry_node = first_nodes[0]
 
             if entry_node:
+                # 这是为了防止晚执行节点被重复加入
+                # 例如这种情况：if () {1; } else {2; 3;} 4
                 cfg_order = list(reversed(list(
                     nx.dfs_postorder_nodes(self.graph, source = entry_node)
                 )))
@@ -533,7 +535,6 @@ class State(BasicElement):
     source_symbol_id: int = -1
     source_state_id: int = -1
     access_path: list[AccessPoint] = dataclasses.field(default_factory=list)
-    call_site: tuple[int, int, int] = (0, 0, 0)
 
     unique_id: int = -1
     analysis_round_number: int = -1
@@ -565,7 +566,6 @@ class State(BasicElement):
             "stmt_id"               : self.stmt_id,
             "state_id"              : self.state_id,
             "name"                  : None,
-            "call_site"             : str(self.call_site),
             "default_data_type"     : None,
             "states"                : None,
             "state_type"            : self.state_type,
@@ -611,7 +611,6 @@ class State(BasicElement):
         return State(
             stmt_id = stmt_id,
             state_id = self.state_id,
-            call_site = copy.deepcopy(self.call_site),
             symbol_or_state = self.symbol_or_state,
             state_type = self.state_type,
             data_type = self.data_type,
@@ -658,7 +657,6 @@ class Symbol(BasicElement):
     symbol_or_state: SYMBOL_OR_STATE = SYMBOL_OR_STATE.SYMBOL
     symbol_id: int = -1
     source_unit_id: int = -1
-    call_site: tuple[int, int, int] = (0, 0, 0)
 
     unique_id: int = -1
 
@@ -679,7 +677,6 @@ class Symbol(BasicElement):
             symbol_or_state = self.symbol_or_state,
             symbol_id = self.symbol_id,
             source_unit_id = self.source_unit_id,
-            call_site = copy.deepcopy(self.call_site),
         )
 
     def to_dict(self, counter, _id):
@@ -690,7 +687,6 @@ class Symbol(BasicElement):
             "source_unit_id": self.source_unit_id,
             "symbol_id": self.symbol_id,
             "name": self.name,
-            "call_site": str(self.call_site),
             "default_data_type": self.default_data_type,
             "states": list(self.states),
             "state_id": -1,
@@ -1058,6 +1054,13 @@ class SymbolDefNode:
     def to_tuple(self):
         return (self.index, self.symbol_id, self.stmt_id,)
 
+    def to_dict_with_prefix(self, prefix):
+        return {
+            f"{prefix}_index": self.index,
+            f"{prefix}_symbol_id": self.symbol_id,
+            f"{prefix}_stmt_id": self.stmt_id
+        }
+
 @dataclasses.dataclass
 class LastSymbolDefNode:
     index: int = -1
@@ -1252,8 +1255,7 @@ class MethodDefUseSummary:
     defined_external_symbol_ids: set[int] = dataclasses.field(default_factory=set)
     used_external_symbol_ids: set[int] = dataclasses.field(default_factory=set)
     return_symbol_ids: set[int] = dataclasses.field(default_factory=set)
-    defined_this_symbol_id : set[int] = dataclasses.field(default_factory=set)
-    used_this_symbol_id : set[int] = dataclasses.field(default_factory=set)
+    this_symbol_id : int = -1
 
     def to_dict(self):
         return {
@@ -1263,8 +1265,7 @@ class MethodDefUseSummary:
             "defined_external_symbol_ids": self.defined_external_symbol_ids,
             "used_external_symbol_ids": self.used_external_symbol_ids,
             "return_symbol_ids": self.return_symbol_ids,
-            "defined_this_symbol_id":self.defined_this_symbol_id,
-            "used_this_symbol_id":self.used_this_symbol_id
+            "this_symbol_id":self.this_symbol_id,
         }
 
     def __str__(self):
@@ -1274,8 +1275,7 @@ class MethodDefUseSummary:
                 f"defined_external_symbol_ids={self.defined_external_symbol_ids}, " \
                 f"used_external_symbol_ids={self.used_external_symbol_ids}, " \
                 f"return_symbol_ids={self.return_symbol_ids}, "\
-                f"defined_this_symbol_id={self.defined_this_symbol_id}, "\
-                f"used_this_symbol_id={self.used_this_symbol_id}"\
+                f"this_symbol_id={self.this_symbol_id}"
 
 
     def copy(self):
@@ -1286,8 +1286,7 @@ class MethodDefUseSummary:
             defined_external_symbol_ids = self.defined_external_symbol_ids.copy(),
             used_external_symbol_ids = self.used_external_symbol_ids.copy(),
             return_symbol_ids = self.return_symbol_ids.copy(),
-            defined_this_symbol_id = self.defined_this_symbol_id.copy(),
-            used_this_symbol_id = self.used_this_symbol_id.copy()
+            this_symbol_id = self.this_symbol_id
         )
 
 @dataclasses.dataclass
@@ -1396,7 +1395,7 @@ class MethodSummaryTemplate:
         # self.return_symbols = new_index_tuple_set
 
 @dataclasses.dataclass
-class DefferedIndexUpdate:
+class DeferedIndexUpdate:
     state_index : int
     state_symbol_id : int
     stmt_id : int
@@ -1406,7 +1405,7 @@ class DefferedIndexUpdate:
 
 
     def __eq__(self, other):
-        if not isinstance(other, DefferedIndexUpdate):
+        if not isinstance(other, DeferedIndexUpdate):
             return False
         return (
             self.state_index == other.state_index and
@@ -1616,7 +1615,7 @@ class ComputeFrame(MetaComputeFrame):
         self.interruption_data: InterruptionData = None
 
         self.stmt_worklist = None
-        self.symbol_changed_stmts = SimpleSet()
+        self.stmts_with_symbol_update = SimpleSet()
         self.stmt_id_to_stmt = {}
         self.stmt_id_to_status: dict[int, StmtStatus] = {}
         self.symbol_state_space: SymbolStateSpace = space
@@ -1625,9 +1624,9 @@ class ComputeFrame(MetaComputeFrame):
         self.space_summary: SymbolStateSpace = SymbolStateSpace()
         self.all_symbol_defs = set()
         self.all_state_defs = set()
-        self.symbol_to_define = {}
-        self.state_to_define = {}
-        self.symbol_to_use = {}
+        self.defined_symbols = {}
+        self.defined_states = {}
+        self.used_symbols = {}
         self.method_def_use_summary: MethodDefUseSummary = MethodDefUseSummary(self.method_id)
         self.stmt_id_to_callee_info = {}
 
@@ -1636,7 +1635,6 @@ class ComputeFrame(MetaComputeFrame):
         self.symbol_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.state_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.symbol_graph = SymbolGraph(self.method_id)
-        self.state_graph = StateGraph(self.method_id)
         self.state_flow_graph = StateFlowGraph(self.method_id)
         self.method_summary_template: MethodSummaryTemplate = MethodSummaryTemplate(self.method_id)
         self.method_summary_instance: MethodSummaryInstance = MethodSummaryInstance(self.call_site)

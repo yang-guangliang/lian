@@ -27,7 +27,7 @@ for i in range(length):
 ```
 
 
-## No Tab. 
+## No Tab.
 
 Only space is allowed.
 
@@ -36,7 +36,7 @@ Only space is allowed.
 Tuple is hard to read. For example
 
 ```
-symbol_to_define.add((each_state, stmt_id, stmt_id))
+defined_symbols.add((each_state, stmt_id, stmt_id))
 ```
 
 Use class instead.
@@ -46,7 +46,7 @@ class SymbolDefNode:
     symbol_id:int = -1
     stmt_id: int = -1
 
-symbol_to_define.add(
+defined_symbols.add(
     SymbolDefNode(index = each_state, symbol_id = stmt_id, stmt_id = stmt_id)
 )
 ```
@@ -61,5 +61,5 @@ VS
 new_array_state = self.create_state_copy(array_state)
 ```
 
-The second one "new_array_state" is preferred. 
+The second one "new_array_state" is preferred.
 

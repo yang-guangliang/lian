@@ -183,9 +183,9 @@ class StmtDefUseAnalysis:
                 defined_symbol.source_unit_id = self.unit_id
                 defined_symbol.symbol_id = stmt_id
 
-                if stmt_id not in frame.symbol_to_define:
-                    frame.symbol_to_define[stmt_id] = set()
-                frame.symbol_to_define[stmt_id].add(stmt_id)
+                if stmt_id not in frame.defined_symbols:
+                    frame.defined_symbols[stmt_id] = set()
+                frame.defined_symbols[stmt_id].add(stmt_id)
 
             elif is_decl_stmt:
                 defined_symbol.source_unit_id = self.unit_id
@@ -194,8 +194,11 @@ class StmtDefUseAnalysis:
 
             elif defined_symbol_name == LIAN_INTERNAL.THIS:
                 defined_symbol.source_unit_id = self.unit_id
-                defined_symbol.symbol_id = config.BUILTIN_THIS_SYMBOL_ID
-                self.frame.method_def_use_summary.defined_this_symbol_id.add(defined_symbol.symbol_id)
+                this_symbol_id = self.frame.method_def_use_summary.this_symbol_id
+                if this_symbol_id == -1:
+                    this_symbol_id = self.loader.assign_new_unique_negative_id()
+                    self.frame.method_def_use_summary.this_symbol_id = this_symbol_id
+                defined_symbol.symbol_id = this_symbol_id
 
             elif defined_symbol_name == LIAN_INTERNAL.OBJECT:
                 defined_symbol.source_unit_id = self.unit_id
@@ -233,11 +236,11 @@ class StmtDefUseAnalysis:
                             symbol_id = self.external_symbol_id_collection[defined_symbol.name]
                         else:
                             symbol_id = self.loader.assign_new_unique_negative_id()
-                        self.external_symbol_id_collection[defined_symbol.name] = symbol_id
+                            self.external_symbol_id_collection[defined_symbol.name] = symbol_id
                     defined_symbol.symbol_id = symbol_id
-                    if symbol_id not in frame.symbol_to_define:
-                        frame.symbol_to_define[symbol_id] = set()
-                    frame.symbol_to_define[symbol_id].add(stmt_id)
+                    if symbol_id not in frame.defined_symbols:
+                        frame.defined_symbols[symbol_id] = set()
+                    frame.defined_symbols[symbol_id].add(stmt_id)
                     if symbol_id not in self.frame.method_def_use_summary.local_symbol_ids:
                         self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
                 source_info = None
@@ -248,8 +251,11 @@ class StmtDefUseAnalysis:
                 continue
             if used_symbol.name == LIAN_INTERNAL.THIS:
                 used_symbol.source_unit_id = self.unit_id
-                used_symbol.symbol_id = config.BUILTIN_THIS_SYMBOL_ID
-                self.frame.method_def_use_summary.used_this_symbol_id.add(used_symbol.symbol_id)
+                this_symbol_id = self.frame.method_def_use_summary.this_symbol_id
+                if this_symbol_id == -1:
+                    this_symbol_id = self.loader.assign_new_unique_negative_id()
+                    self.frame.method_def_use_summary.this_symbol_id = this_symbol_id
+                used_symbol.symbol_id = this_symbol_id
                 continue
             if used_symbol.name == LIAN_INTERNAL.OBJECT:
                 used_symbol.source_unit_id = self.unit_id
@@ -275,9 +281,9 @@ class StmtDefUseAnalysis:
                 used_symbol.source_unit_id = source_info.source_unit_id
                 symbol_id = source_info.source_symbol_id
                 used_symbol.symbol_id = symbol_id
-                if symbol_id not in frame.symbol_to_use:
-                    frame.symbol_to_use[symbol_id] = set()
-                frame.symbol_to_use[symbol_id].add(stmt_id)
+                if symbol_id not in frame.used_symbols:
+                    frame.used_symbols[symbol_id] = set()
+                frame.used_symbols[symbol_id].add(stmt_id)
                 if symbol_id not in self.frame.method_def_use_summary.local_symbol_ids:
                     self.frame.method_def_use_summary.used_external_symbol_ids.add(symbol_id)
             source_info = None
@@ -318,7 +324,7 @@ class StmtDefUseAnalysis:
         item = State(stmt_id = stmt_id, value = value, data_type = data_type, state_type = state_type)
         index = self.symbol_state_space.add(item)
         util.add_to_dict_with_default_set(
-            self.frame.state_to_define,
+            self.frame.defined_states,
             item.state_id,
             StateDefNode(index=index, state_id=item.state_id, stmt_id=stmt_id)
         )

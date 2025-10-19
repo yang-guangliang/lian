@@ -9,8 +9,6 @@ STRING_MAX_LEN                              = 2000000
 MAX_PRIORITY                                = 100
 MIN_ID_INTERVAL                             = 10
 BUILTIN_SYMBOL_START_ID                     = -101
-BUILTIN_THIS_SYMBOL_ID                      = -9
-BUILTIN_OBJECT_SYMBOL_ID                    = -8
 
 RULE_START_ID                               = 10
 
@@ -116,12 +114,12 @@ SYMBOL_STATE_SPACE_BUNDLE_PATH_P2           = "s2space_p2"
 SYMBOL_STATE_SPACE_BUNDLE_PATH_P3           = "s2space_p3"
 SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P2   = "space_summary_p2"
 SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P3   = "space_summary_p3"
-SYMBOL_TO_DEFINE_PATH                       = "symbol_to_define"
-SYMBOL_TO_DEFINE_PATH_P2                    = "symbol_to_define_p2"
-SYMBOL_TO_DEFINE_PATH_P3                    = "symbol_to_define_p3"
-STATE_TO_DEFINE_PATH_P1                     = "state_to_define_p1"
-STATE_TO_DEFINE_PATH_P2                     = "state_to_define_p2"
-SYMBOL_TO_USE_PATH                          = "symbol_to_use"
+DEFINED_SYMBOLS_PATH                        = "defined_symbols"
+DEFINED_SYMBOLS_PATH_P2                     = "defined_symbols_p2"
+DEFINED_SYMBOLS_PATH_P3                     = "defined_symbols_p3"
+DEFINED_STATES_PATH_P1                      = "defined_states_p1"
+DEFINED_STATES_PATH_P2                      = "defined_states_p2"
+USED_SYMBOLS_PATH                           = "used_symbols"
 GROUPED_METHODS_PATH                        = "grouped_methods"
 
 UNIT_EXPORT_PATH                            = "unit_export_symbols"
@@ -131,6 +129,8 @@ TYPE_GRAPH_PATH                             = "type_graph"
 
 SYMBOL_GRAPH_BUNDLE_PATH                    = "symbol_graph"
 SYMBOL_GRAPH_BUNDLE_PATH_P3                 = "symbol_graph_p3"
+STATE_FLOW_GRAPH_BUNDLE_PATH_P2             = "state_flow_graph_p2"
+STATE_FLOW_GRAPH_BUNDLE_PATH_P3             = "state_flow_graph_p3"
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2     = "callee_parameter_mapping_p2"
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3     = "callee_parameter_mapping_p3"
 

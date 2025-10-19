@@ -38,7 +38,7 @@ from lian.util.loader import Loader
 from lian.lang.lang_analysis import LangAnalysis
 from lian.basics.basic_analysis import BasicSemanticAnalysis
 from lian.core.static_semantics import StaticSemanticAnalysis
-from lian.core.dynamic_semantics import GlobalAnalysis
+from lian.core.dynamic_semantics import DynamicSemanticAnalysis
 from lian.core.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.externs.extern_system import ExternSystem
@@ -159,7 +159,7 @@ class Lian:
         summary_generation = StaticSemanticAnalysis(self)
         summary_generation.run()
         print(summary_generation.analyzed_method_list)
-        GlobalAnalysis(self, summary_generation.analyzed_method_list).run()
+        DynamicSemanticAnalysis(self, summary_generation.analyzed_method_list).run()
         self.loader.export()
         return self
 

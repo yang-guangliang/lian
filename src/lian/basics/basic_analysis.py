@@ -118,9 +118,9 @@ class BasicSemanticAnalysis:
         # print("frame.method_def_use_summary", frame.method_def_use_summary)
         self.loader.save_stmt_status_p1(method_id, frame.stmt_id_to_status)
         self.loader.save_symbol_state_space_p1(method_id, frame.symbol_state_space)
-        self.loader.save_method_symbol_to_define(method_id, frame.symbol_to_define)
-        self.loader.save_method_symbol_to_use(method_id, frame.symbol_to_use)
-        self.loader.save_method_state_to_define_p1(frame.method_id, frame.state_to_define)
+        self.loader.save_method_defined_symbols(method_id, frame.defined_symbols)
+        self.loader.save_method_used_symbols(method_id, frame.used_symbols)
+        self.loader.save_method_defined_states_p1(frame.method_id, frame.defined_states)
         self.loader.save_method_internal_callees(method_id, frame.basic_callees)
         self.loader.save_method_def_use_summary(method_id, frame.method_def_use_summary)
 

@@ -71,7 +71,7 @@ class TaintAnalysis:
 
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
-        # frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
+        # frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
         if call_graph:
             callee_ids = util.graph_successors(call_graph, method_id)
             # print(list(callee_ids))

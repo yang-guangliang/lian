@@ -7,7 +7,7 @@ import pprint
 from pandas.core import frame
 
 from lian.core.resolver import Resolver
-from lian.core.stmt_state_analysis import StmtStateAnalysis
+from lian.core.static_stmt_states import StaticStmtStates
 from lian.util import util
 from lian.config import config
 from lian.util.loader import Loader
@@ -45,7 +45,7 @@ from lian.common_structs import (
     MethodDefUseSummary
 )
 
-class GlobalStmtStateAnalysis(StmtStateAnalysis):
+class GlobalStmtStates(StaticStmtStates):
     def __init__(
         self, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
         path_manager: PathManager, analyzed_method_list: list
@@ -74,6 +74,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
             path_str += f"-@-{path[i-2]}->-{path[i-1]}"
 
         print(f"current path: {path_str}")
+
     def create_state_and_add_space(
             self, status: StmtStatus, stmt_id, source_symbol_id = -1, source_state_id = -1, value = "", data_type = "",
             state_type = STATE_TYPE_KIND.REGULAR, access_path = [], overwritten_flag = False
@@ -101,7 +102,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         index = self.frame.symbol_state_space.add(item)
         state_def_node = StateDefNode(index=index, state_id=item.state_id, stmt_id=stmt_id)
         util.add_to_dict_with_default_set(
-            self.frame.state_to_define,
+            self.frame.defined_states,
             item.state_id,
             state_def_node
         )
@@ -114,9 +115,7 @@ class GlobalStmtStateAnalysis(StmtStateAnalysis):
         # 如果新建的state是基于我们在generate_external_state里手动给的state，说明该symbol也被我们define了，需添加到define集合中
         if overwritten_flag and source_state_id in self.frame.initial_state_to_external_symbol:
             symbol_id = self.frame.initial_state_to_external_symbol[source_state_id]
-            if symbol_id in self.frame.method_def_use_summary.used_this_symbol_id:
-                self.frame.method_def_use_summary.defined_this_symbol_id.add(symbol_id)
-            else:
+            if symbol_id != self.frame.method_def_use_summary.this_symbol_id:
                 self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 

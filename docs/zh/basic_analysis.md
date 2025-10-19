@@ -14,15 +14,15 @@
 
 ##             4.**指令级def/use 分析**
 
-&emsp;语句定义/使用分析(def/use analysis)用于追踪程序中每个语句的符号（即标识符）定义与引用关系，这一阶段的def/use仅针对单条语句进行流不敏感的分析。根据控制流图的顺序逐条语句进行def/use分析。每分析完一条语句，产生该语句的语义信息(status)，并将def/use的信息存储到symbol_to_defined和symbol_to_used两个表中。两个表作用如下：
+&emsp;语句定义/使用分析(def/use analysis)用于追踪程序中每个语句的符号（即标识符）定义与引用关系，这一阶段的def/use仅针对单条语句进行流不敏感的分析。根据控制流图的顺序逐条语句进行def/use分析。每分析完一条语句，产生该语句的语义信息(status)，并将def/use的信息存储到defined_symbolsd和used_symbolsd两个表中。两个表作用如下：
 
-1 symbol_to_defined映射表：
+1 defined_symbolsd映射表：
 
 结构：(method_id, symbol_id, set[stmt_id])
 
 功能：在指定方法作用域内，快速定位定义特定符号的所有语句
 
-2 symbol_to_used映射表：
+2 used_symbolsd映射表：
 
 结构：(method_id, symbol_id, set[stmt_id])
 

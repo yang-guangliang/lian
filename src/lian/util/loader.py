@@ -44,7 +44,8 @@ from lian.common_structs import (
     MethodInClass,
     APath,
     SymbolNodeInImportGraph,
-    TypeNode
+    TypeNode,
+    StateFlowGraph
 )
 
 class ModuleSymbolsLoader:
@@ -1125,8 +1126,7 @@ class MethodDefUseSummaryLoader:
                 row.defined_external_symbol_ids,
                 row.used_external_symbol_ids,
                 row.return_symbol_ids,
-                row.defined_this_symbol_id,
-                row.used_this_symbol_id
+                row.this_symbol_id
             )
 
     def export(self):
@@ -1506,25 +1506,25 @@ class TypeGraphLoader:
 
 class MethodSymbolToDefinedLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, method_id, flattened_item):
-        symbol_to_define = {}
+        defined_symbols = {}
         for row in flattened_item:
-            if row.symbol_id not in symbol_to_define:
-                symbol_to_define[row.symbol_id] = set()
+            if row.symbol_id not in defined_symbols:
+                defined_symbols[row.symbol_id] = set()
 
             defined = row.defined
             for each_defined in defined:
                 if isinstance(each_defined, (tuple, numpy.ndarray)):
-                    symbol_to_define[row.symbol_id].add(
+                    defined_symbols[row.symbol_id].add(
                         SymbolDefNode(index = int(each_defined[0]), symbol_id = int(row.symbol_id), stmt_id = int(each_defined[1])))
 
                 else:
-                    symbol_to_define[row.symbol_id].add(each_defined)
+                    defined_symbols[row.symbol_id].add(each_defined)
 
-        return symbol_to_define
+        return defined_symbols
 
-    def flatten_item_when_saving(self, method_id, symbol_to_define):
+    def flatten_item_when_saving(self, method_id, defined_symbols):
         all_defined = []
-        for symbol_id, defined_set in symbol_to_define.items():
+        for symbol_id, defined_set in defined_symbols.items():
             defined = []
             for each_defined in defined_set:
                 if isinstance(each_defined, SymbolDefNode):
@@ -1542,20 +1542,20 @@ class MethodSymbolToDefinedLoader(MethodLevelAnalysisResultLoader):
 
 class MethodStateToDefinedLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, method_id, flattened_item):
-        state_to_define = {}
+        defined_states = {}
         for row in flattened_item:
-            if row.state_id not in state_to_define:
-                state_to_define[row.state_id] = set()
+            if row.state_id not in defined_states:
+                defined_states[row.state_id] = set()
 
             for each_defined in row.defined:
                 if isinstance(each_defined, tuple):
-                    state_to_define[row.state_id].add(
+                    defined_states[row.state_id].add(
                         StateDefNode(index = int(each_defined[0]), state_id = int(row.state_id), stmt_id = int(each_defined[1])))
-        return state_to_define
+        return defined_states
 
-    def flatten_item_when_saving(self, method_id, state_to_define):
+    def flatten_item_when_saving(self, method_id, defined_states):
         all_defined = []
-        for state_id, defined_set in state_to_define.items():
+        for state_id, defined_set in defined_states.items():
             defined = []
             for each_defined in defined_set:
                 if isinstance(each_defined, StateDefNode):
@@ -1578,9 +1578,9 @@ class MethodSymbolToUsedLoader(MethodLevelAnalysisResultLoader):
             stmt_to_use[row.symbol_id] = set(row.used)
         return stmt_to_use
 
-    def flatten_item_when_saving(self, method_id, symbol_to_use):
+    def flatten_item_when_saving(self, method_id, used_symbols):
         all_used = []
-        for symbol_id, used in symbol_to_use.items():
+        for symbol_id, used in used_symbols.items():
             all_used.append({
                 "method_id": method_id,
                 "symbol_id": symbol_id,
@@ -1624,13 +1624,19 @@ class SymbolGraphLoader(MethodLevelAnalysisResultLoader):
         method_id = _id
         symbol_graph = SymbolGraph(method_id)
         for row in item_df:
-            if not util.isna(row.defined):
-                defined_tuple = row.defined
-                key = SymbolDefNode(defined_tuple[0], defined_tuple[1], defined_tuple[2])
+            if util.is_available(row.defined_symbol_stmt_id):
+                key = SymbolDefNode(
+                    index = int(row.defined_symbol_index),
+                    symbol_id = int(row.defined_symbol_id),
+                    stmt_id = int(row.defined_symbol_stmt_id)
+                )
                 symbol_graph.add_edge(row.stmt_id, key, row.edge_type)
             else:
-                used_tuple = row.used
-                key = SymbolDefNode(used_tuple[0], used_tuple[1], used_tuple[2])
+                key = SymbolDefNode(
+                    index = int(row.used_symbol_index),
+                    symbol_id = int(row.used_symbol_id),
+                    stmt_id = int(row.used_symbol_stmt_id)
+                )
                 symbol_graph.add_edge(key, row.stmt_id, row.edge_type)
         return symbol_graph.graph
 
@@ -1643,18 +1649,53 @@ class SymbolGraphLoader(MethodLevelAnalysisResultLoader):
             dst_node = e[1]
             edge_type = 0 if util.is_empty(e[2]) else e[2]
             if isinstance(src_node, (int, numpy.int64)):
+                # defined node
                 edges.append({
                     "method_id": method_id,
                     "stmt_id": int(src_node),
-                    "defined": dst_node.to_tuple(),
+                    "defined_symbol_stmt_id": int(dst_node.stmt_id),
+                    "defined_symbol_index": int(dst_node.index),
+                    "defined_symbol_id": int(dst_node.symbol_id),
                     "edge_type": edge_type
                 })
             else:
+                # used node
                 edges.append({
                     "method_id": method_id,
-                    "used": src_node.to_tuple(),
+                    "used_symbol_stmt_id": int(src_node.stmt_id),
+                    "used_symbol_index": int(src_node.index),
+                    "used_symbol_id": int(src_node.symbol_id),
                     "stmt_id": int(dst_node),
                     "edge_type": edge_type
+                })
+        # print(edges)
+        return edges
+
+class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
+    def unflatten_item_dataframe_when_loading(self, method_id, item_df):
+        symbol_graph = StateFlowGraph(method_id)
+        for row in item_df:
+            key = SymbolDefNode(
+                index = int(row.defined_symbol_index),
+                symbol_id = int(row.defined_symbol_id),
+                stmt_id = int(row.defined_symbol_stmt_id)
+            )
+            symbol_graph.add_edge(row.source_node_id, row.dest_node_id, (row.edge_type, row.edge_stmt_id))
+        return symbol_graph.graph
+
+    def flatten_item_when_saving(self, method_id, state_flow_graph: nx.DiGraph):
+        edges = []
+        old_edges = state_flow_graph.edges(data='weight', default = (-1, -1))
+        for source_id, dest_id, edge_weight in old_edges:
+            edge_type = edge_weight[0]
+            edge_stmt_id = edge_weight[1]
+            if edge_type > 0 and edge_stmt_id > 0:
+                edges.append({
+                    "method_id": method_id,
+                    "source_node_id": source_id,
+                    "edge_type": edge_type,
+                    "edge_stmt_id": edge_stmt_id,
+                    "dest_node_id": dest_id,
                 })
         # print(edges)
         return edges
@@ -1993,50 +2034,50 @@ class Loader:
             os.path.join(self.semantic_path_p3, config.DYNAMIC_CALL_TREE_BUNDLE_PATH),
         )
 
-        self._symbol_to_define_loader = MethodSymbolToDefinedLoader(
+        self._defined_symbols_loader = MethodSymbolToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_TO_DEFINE_PATH),
+            os.path.join(self.semantic_path_p1, config.DEFINED_SYMBOLS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._symbol_to_define_p2_loader = MethodSymbolToDefinedLoader(
+        self._defined_symbols_p2_loader = MethodSymbolToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.SYMBOL_TO_DEFINE_PATH_P2),
+            os.path.join(self.semantic_path_p2, config.DEFINED_SYMBOLS_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._symbol_to_define_p3_loader = MethodSymbolToDefinedLoader(
+        self._defined_symbols_p3_loader = MethodSymbolToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p3, config.SYMBOL_TO_DEFINE_PATH_P3),
+            os.path.join(self.semantic_path_p3, config.DEFINED_SYMBOLS_PATH_P3),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._state_to_define_p1_loader = MethodStateToDefinedLoader(
+        self._defined_states_p1_loader = MethodStateToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.STATE_TO_DEFINE_PATH_P1),
+            os.path.join(self.semantic_path_p1, config.DEFINED_STATES_PATH_P1),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._state_to_define_p2_loader = MethodStateToDefinedLoader(
+        self._defined_states_p2_loader = MethodStateToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.STATE_TO_DEFINE_PATH_P2),
+            os.path.join(self.semantic_path_p2, config.DEFINED_STATES_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
-        self._symbol_to_use_loader = MethodSymbolToUsedLoader(
+        self._used_symbols_loader = MethodSymbolToUsedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_TO_USE_PATH),
+            os.path.join(self.semantic_path_p1, config.USED_SYMBOLS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2057,6 +2098,22 @@ class Loader:
             options,
             schema.symbol_graph_schema_p2,
             os.path.join(self.semantic_path_p2, config.SYMBOL_GRAPH_BUNDLE_PATH_P3),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
+        self._state_flow_graph_p2_loader: StateFlowGraphLoader = StateFlowGraphLoader(
+            options,
+            schema.state_flow_graph_schema_p2,
+            os.path.join(self.semantic_path_p2, config.STATE_FLOW_GRAPH_BUNDLE_PATH_P2),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
+        self._state_flow_graph_p3_loader: StateFlowGraphLoader = StateFlowGraphLoader(
+            options,
+            schema.state_flow_graph_schema_p2,
+            os.path.join(self.semantic_path_p2, config.STATE_FLOW_GRAPH_BUNDLE_PATH_P3),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2640,35 +2697,35 @@ class Loader:
     def get_dynamic_call_tree(self):
         return self._dynamic_call_tree_loader.get()
 
-    def get_method_symbol_to_define(self, method_id):
-        return self._symbol_to_define_loader.get(method_id)
-    def save_method_symbol_to_define(self, method_id, symbols):
-        return self._symbol_to_define_loader.save(method_id, symbols)
+    def get_method_defined_symbols(self, method_id):
+        return self._defined_symbols_loader.get(method_id)
+    def save_method_defined_symbols(self, method_id, symbols):
+        return self._defined_symbols_loader.save(method_id, symbols)
 
-    def get_method_symbol_to_define_p2(self, method_id):
-        return self._symbol_to_define_p2_loader.get(method_id)
-    def save_method_symbol_to_define_p2(self, method_id, symbols):
-        return self._symbol_to_define_p2_loader.save(method_id, symbols)
+    def get_method_defined_symbols_p2(self, method_id):
+        return self._defined_symbols_p2_loader.get(method_id)
+    def save_method_defined_symbols_p2(self, method_id, symbols):
+        return self._defined_symbols_p2_loader.save(method_id, symbols)
 
-    def get_method_symbol_to_define_p3(self, method_id):
-        return self._symbol_to_define_p3_loader.get(method_id)
-    def save_method_symbol_to_define_p3(self, method_id, symbols):
-        return self._symbol_to_define_p3_loader.save(method_id, symbols)
+    def get_method_defined_symbols_p3(self, method_id):
+        return self._defined_symbols_p3_loader.get(method_id)
+    def save_method_defined_symbols_p3(self, method_id, symbols):
+        return self._defined_symbols_p3_loader.save(method_id, symbols)
 
-    def get_method_state_to_define_p1(self, method_id):
-        return self._state_to_define_p1_loader.get(method_id)
-    def save_method_state_to_define_p1(self, method_id, states):
-        return self._state_to_define_p1_loader.save(method_id, states)
+    def get_method_defined_states_p1(self, method_id):
+        return self._defined_states_p1_loader.get(method_id)
+    def save_method_defined_states_p1(self, method_id, states):
+        return self._defined_states_p1_loader.save(method_id, states)
 
-    def get_method_state_to_define_p2(self, method_id):
-        return self._state_to_define_p2_loader.get(method_id)
-    def save_method_state_to_define_p2(self, method_id, states):
-        return self._state_to_define_p2_loader.save(method_id, states)
+    def get_method_defined_states_p2(self, method_id):
+        return self._defined_states_p2_loader.get(method_id)
+    def save_method_defined_states_p2(self, method_id, states):
+        return self._defined_states_p2_loader.save(method_id, states)
 
-    def get_method_symbol_to_use(self, method_id):
-        return self._symbol_to_use_loader.get(method_id)
-    def save_method_symbol_to_use(self, method_id, symbols):
-        return self._symbol_to_use_loader.save(method_id, symbols)
+    def get_method_used_symbols(self, method_id):
+        return self._used_symbols_loader.get(method_id)
+    def save_method_used_symbols(self, method_id, symbols):
+        return self._used_symbols_loader.save(method_id, symbols)
 
     def get_method_symbol_graph_p2(self, method_id):
         return self._symbol_graph_p2_loader.get(method_id)
@@ -2676,6 +2733,15 @@ class Loader:
         return self._symbol_graph_p2_loader.save(method_id, graph)
     def save_method_symbol_graph_p3(self, method_id, graph):
         return self._symbol_graph_p3_loader.save(method_id, graph)
+
+    def save_method_state_flow_graph_p2(self, method_id, graph):
+        return self._state_flow_graph_p2_loader.save(method_id, graph)
+    def get_method_state_flow_graph_p2(self, method_id):
+        return self._state_flow_graph_p2_loader.get(method_id)
+    def get_method_state_flow_graph_p3(self, method_id):
+        return self._state_flow_graph_p3_loader.get(method_id)
+    def save_method_state_flow_graph_p3(self, method_id, graph):
+        return self._state_flow_graph_p3_loader.save(method_id, graph)
 
     def get_method_def_use_summary(self, method_id):
         return self._method_def_use_summary_loader.get(method_id)

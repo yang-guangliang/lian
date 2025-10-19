@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import copy
 from lian.common_structs import AccessPoint, State, ComputeFrame, Symbol
-from lian.core.stmt_state_analysis import StmtStateAnalysis
+from lian.core.static_stmt_states import StaticStmtStates
 from lian.events.handler_template import EventData
 from lian.config.constants import (
     EVENT_KIND,

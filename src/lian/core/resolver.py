@@ -16,7 +16,7 @@ from lian.common_structs import (
     StateDefNode,
     SymbolStateSpace,
     MetaComputeFrame,
-    DefferedIndexUpdate
+    DeferedIndexUpdate
 )
 from lian.config.constants import (
     EXPORT_NODE_TYPE,
@@ -213,7 +213,7 @@ class Resolver:
         """
         给定一组state_index的集合。收集其中所有states的最新状态。states可以分为两种情况。
         ①如果state_index超过原来state_space的长度(old_index_ceiling)，意味着它是本句语句新创建出的state，加入到newest_remaining集合，直接返回。
-        ②如果state_index在原来state_space的长度内，则收集其所有的state_id。最后遍历state_id，从frame.state_to_define和available_state_defs共同取出该state_id在这一句时的最新state(**如果没找到就返回自己**)。
+        ②如果state_index在原来state_space的长度内，则收集其所有的state_id。最后遍历state_id，从frame.defined_states和available_state_defs共同取出该state_id在这一句时的最新state(**如果没找到就返回自己**)。
         最后将①和②都返回。
         """
         newest_remaining = set()
@@ -240,11 +240,11 @@ class Resolver:
         result = set()
         # if frame.method_id == 20:
         #     print(f"available_state_defs: {available_state_defs}")
-        #     print("frame.state_to_define[12]",frame.state_to_define[12])
+        #     print("frame.defined_states[12]",frame.defined_states[12])
         for state_index in state_index_to_id:
             state_id = state_index_to_id[state_index]
-            if state_id in frame.state_to_define:
-                state_defs = available_state_defs & frame.state_to_define[state_id]
+            if state_id in frame.defined_states:
+                state_defs = available_state_defs & frame.defined_states[state_id]
                 if state_defs:
                     for each_def in state_defs:
                         if each_def.index != -1:
@@ -252,7 +252,7 @@ class Resolver:
                 else:
                     result.add(state_index)
 
-            # 如果不在frame.state_to_define中，就返回自身
+            # 如果不在frame.defined_states中，就返回自身
             else:
                 result.add(state_index)
         # print(f"result: {result}")
@@ -272,8 +272,8 @@ class Resolver:
         available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
         def collect_single_state_id(state_id):
             reachable_state_defs: set[StateDefNode] = set()
-            if state_id in frame.state_to_define:
-                reachable_state_defs = available_state_defs & frame.state_to_define[state_id]
+            if state_id in frame.defined_states:
+                reachable_state_defs = available_state_defs & frame.defined_states[state_id]
 
             for each_reachable_state_def in reachable_state_defs:
                 if each_reachable_state_def.index != -1:
@@ -309,7 +309,7 @@ class Resolver:
         #     available_state_defs.add(bit_id)
         #     if bit_id not in frame.all_state_defs:
         #         frame.all_state_defs.add(bit_id)
-        #         util.add_to_dict_with_default_set(frame.state_to_define, state_id, bit_id)
+        #         util.add_to_dict_with_default_set(frame.defined_states, state_id, bit_id)
         #         frame.state_bit_vector_manager.add_bit_id(bit_id)
 
         # print(f"available_state_defs: {available_state_defs}")
@@ -417,7 +417,7 @@ class Resolver:
                 continue
 
             # print(f"arg_source_symbol_id: {arg_source_symbol_id}")
-            if arg_source_symbol_id not in caller_frame.symbol_to_define:
+            if arg_source_symbol_id not in caller_frame.defined_symbols:
                 return (arg_source_symbol_id, None)
 
             if each_mapping.parameter_type in (
@@ -480,7 +480,7 @@ class Resolver:
         current_status = current_frame.stmt_id_to_status[current_stmt_id]
 
         available_symbol_defs: set = current_frame.symbol_bit_vector_manager.explain(current_status.in_symbol_bits)
-        reachable_symbol_defs: set = available_symbol_defs & current_frame.symbol_to_define[state_symbol_id]
+        reachable_symbol_defs: set = available_symbol_defs & current_frame.defined_symbols[state_symbol_id]
         available_state_defs = current_frame.state_bit_vector_manager.explain(current_status.in_state_bits)
         # print(f"available_symbol_defs: {available_symbol_defs}")
         # print(f"reachable_symbol_defs: {reachable_symbol_defs}")
@@ -679,7 +679,7 @@ class Resolver:
             if len(current_frame.stmt_worklist) == 0:
                 continue
 
-            if data_type == LIAN_INTERNAL.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
+            if data_type == LIAN_INTERNAL.THIS or state_symbol_id == frame.method_def_use_summary.this_symbol_id:
                 # if config.DEBUG_FLAG:
                 #     print("resolve_symbol_states 在找this")
                 caller_frame = frame_stack[current_frame_index - 1]
@@ -714,9 +714,9 @@ class Resolver:
                     )
                     return {frame_stack[-1].symbol_state_space.add(new_state)}
 
-                if state_symbol_id not in current_frame.symbol_to_define:
+                if state_symbol_id not in current_frame.defined_symbols:
                     # if config.DEBUG_FLAG:
-                    #     print("state_symbol_id not in current_frame.symbol_to_define")
+                    #     print("state_symbol_id not in current_frame.defined_symbols")
                     continue
 
                 if self.loader.is_parameter_decl_of_method(state_symbol_id, current_frame.method_id):
@@ -800,7 +800,7 @@ class Resolver:
         if self.loader.is_class_decl(state_symbol_id) or self.loader.is_method_decl(state_symbol_id):
             return
 
-        if data_type == LIAN_INTERNAL.THIS or state_symbol_id == config.BUILTIN_THIS_SYMBOL_ID:
+        if data_type == LIAN_INTERNAL.THIS or state_symbol_id == caller_frame.method_def_use_summary.this_symbol_id:
             # print("resolve_anything_in_summary_generation@ 要找this")
             pass
             # if isinstance(caller_frame, ComputeFrame):
@@ -820,7 +820,7 @@ class Resolver:
                 if each_mapping.parameter_symbol_id == state_symbol_id:
                     arg_state_indexes.add(each_mapping.arg_index_in_space)
             # 需要记录对应的集合索引、access_path、arg_state_indexes、set_to_update(要将真正的state更新到哪个集合去)，最后从old_to_new_arg_state里去找就行
-            deferred_index_update = DefferedIndexUpdate(
+            deferred_index_update = DeferedIndexUpdate(
                 state_index = state_index, state_symbol_id = state_symbol_id, stmt_id = stmt_id,
                 arg_state_indexes = arg_state_indexes, access_path = access_path, set_to_update = set_to_update
                 )
@@ -843,7 +843,7 @@ class Resolver:
                     set_to_update.discard(state_index)
                 return
 
-        if state_symbol_id in caller_frame.symbol_to_define:
+        if state_symbol_id in caller_frame.defined_symbols:
             source_state_indexes = self.get_latest_source_state_indexes(caller_frame, state_symbol_id)
 
         accessed_states = self.get_state_from_path(caller_symbol_state_space, access_path, source_state_indexes)
@@ -880,7 +880,7 @@ class Resolver:
             #     else:
             #         print("出现循环依赖 延迟更新 ")
             if util.is_available(set_to_update):
-                deferred_index_update = DefferedIndexUpdate(
+                deferred_index_update = DeferedIndexUpdate(
                     state_index = state_index, state_symbol_id = parameter_symbol_id, stmt_id = stmt_id,
                     arg_state_indexes = arg_state_indexes, access_path = access_path, set_to_update = set_to_update
                     )
@@ -946,7 +946,7 @@ class Resolver:
         e.g. p1.f=p2.g，先记录相应信息在deferred_index_updates中。当所有parameter都被callee_summary更新后，再去更新过的p2中找到p2.g的真正state,更新set_to_update,即p1.f = p2.g。
         """
         for deferred_index_update in deferred_index_updates:
-            deferred_index_update:DefferedIndexUpdate # 类型提示
+            deferred_index_update:DeferedIndexUpdate # 类型提示
             old_arg_indexes = deferred_index_update.arg_state_indexes
             access_path = deferred_index_update.access_path
             set_to_update = deferred_index_update.set_to_update
@@ -1056,7 +1056,7 @@ class Resolver:
 
         # 当前方法中所有该symbol_name的def
         for symbol_id in symbol_ids:
-            frame_symbol_to_def:set[SymbolDefNode] = frame.symbol_to_define.get(symbol_id, set())
+            frame_symbol_to_def:set[SymbolDefNode] = frame.defined_symbols.get(symbol_id, set())
             all_def_stmt_ids_of_symbol_id = {def_node.stmt_id for def_node in frame_symbol_to_def}
             def_stmt_ids[ALL].update(all_def_stmt_ids_of_symbol_id)
         return def_stmt_ids
@@ -1127,7 +1127,7 @@ class Resolver:
 
         def access_path_formatter(state_access_path):
             key_list = []
-            
+
             for item in state_access_path:
                 key = item.key
                 key = key if isinstance(key, str) else str(key)
@@ -1137,51 +1137,30 @@ class Resolver:
                 # 处理以%vv开头且kind为13(call)的情况，添加()后缀
                 elif key.startswith("%vv") and item.kind == 13 and key_list:
                     key_list[-1] = key_list[-1] + "()"
-            
+
             return '.'.join(key_list)
 
-        status = None
-        s2space = None
-        
-        if frame.stmt_state_analysis.phase == 2:
-            status = frame.stmt_id_to_status.get(stmt_id)
-            s2space = frame.symbol_state_space
-            
-            if not status:
-                return "None"
-                
-        elif frame.stmt_state_analysis.phase == 3:
-            method_id = frame.method_id
-            loader = frame.loader
-            
-            method_status = loader.get_stmt_status_p2(method_id)
-            if method_status is None:
-                return ""
-                
-            s2space = loader.get_symbol_state_space_p2(method_id)
-            status = method_status.get(stmt_id)
-            
-            if status is None:
-                return ""
-        else:
-            return ""
+
+        status = frame.stmt_id_to_status.get(stmt_id)
+        s2space = frame.symbol_state_space
+
 
         if not status.used_symbols:
             return "None"
-            
+
         name_index = status.used_symbols[0]
         name_symbol = s2space[name_index]
 
         if name_symbol.name.startswith("%vv"):
             access_path = "None"
-            
+
             for index in name_symbol.states:
                 name_state = s2space[index]
-                
+
                 if name_state.access_path and len(name_state.access_path) > 0:
                     access_path = access_path_formatter(name_state.access_path)
-                    break 
-                    
+                    break
+
             return access_path
         else:
             return name_symbol.name

@@ -19,6 +19,7 @@ from lian.config.constants import (
     EVENT_KIND,
     SYMBOL_OR_STATE,
     ACCESS_POINT_KIND,
+    ANALYSIS_PHASE_ID
 )
 import lian.events.event_return as er
 from lian.common_structs import (
@@ -50,10 +51,10 @@ from lian.common_structs import (
 )
 from lian.core.resolver import Resolver
 
-class StmtStateAnalysis:
+class StaticStmtStates:
     def __init__(
-            self, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
-            call_graph: CallGraph, analyzed_method_list = []
+            self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver,
+            compute_frame: ComputeFrame, call_graph: CallGraph, analyzed_method_list = []
     ):
         """
         初始化语句状态分析上下文：
@@ -70,7 +71,8 @@ class StmtStateAnalysis:
         self.analyzed_method_list = analyzed_method_list
         self.unit_id = self.frame.unit_id
         self.lang = self.frame.lang
-        self.phase = 2
+        self.analysis_phase_id = analysis_phase_id
+        self.sfg = self.frame.state_flow_graph
 
         self.state_analysis_handlers = {
             "comment_stmt"                          : self.regular_stmt_state,
@@ -245,7 +247,7 @@ class StmtStateAnalysis:
         index = self.frame.symbol_state_space.add(item)
         state_def_node = StateDefNode(index=index, state_id=item.state_id, stmt_id=stmt_id)
         util.add_to_dict_with_default_set(
-            self.frame.state_to_define,
+            self.frame.defined_states,
             item.state_id,
             state_def_node
         )
@@ -258,9 +260,7 @@ class StmtStateAnalysis:
         # 如果新建的state是基于我们在generate_external_state里手动给的state，说明该symbol也被我们define了，需添加到define集合中
         if overwritten_flag and source_state_id in self.frame.initial_state_to_external_symbol:
             symbol_id = self.frame.initial_state_to_external_symbol[source_state_id]
-            if symbol_id in self.frame.method_def_use_summary.used_this_symbol_id:
-                self.frame.method_def_use_summary.defined_this_symbol_id.add(symbol_id)
-            else:
+            if symbol_id != self.frame.method_def_use_summary.this_symbol_id:
                 self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
@@ -275,7 +275,7 @@ class StmtStateAnalysis:
         if state_id != -1:
             state_def_node = StateDefNode(index=index, state_id=state_id, stmt_id=stmt_id)
             util.add_to_dict_with_default_set(
-                self.frame.state_to_define,
+                self.frame.defined_states,
                 state_id,
                 state_def_node
             )
@@ -288,9 +288,7 @@ class StmtStateAnalysis:
 
         if overwritten_flag and state.source_state_id in self.frame.initial_state_to_external_symbol:
             symbol_id = self.frame.initial_state_to_external_symbol[state.source_state_id]
-            if symbol_id in self.frame.method_def_use_summary.used_this_symbol_id:
-                self.frame.method_def_use_summary.defined_this_symbol_id.add(symbol_id)
-            else:
+            if symbol_id != self.frame.method_def_use_summary.this_symbol_id:
                 self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
@@ -300,7 +298,7 @@ class StmtStateAnalysis:
         new_symbol_index = self.frame.symbol_state_space.add(new_symbol)
 
         util.add_to_dict_with_default_set(
-            self.frame.symbol_to_define,
+            self.frame.defined_symbols,
             new_symbol.symbol_id,
             SymbolDefNode(
                 index=new_symbol_index, symbol_id=new_symbol.symbol_id, stmt_id=stmt_id
@@ -1257,9 +1255,9 @@ class StmtStateAnalysis:
                             is_default_value = True
                         )
                     )
-        if phase == 2:
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.STATIC_SEMANTICS:
             self.loader.save_parameter_mapping_p2(call_site, parameter_mapping_list)
-        elif phase == 3:
+        elif self.analysis_phase_id == ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS:
             self.loader.save_parameter_mapping_p3(call_site, parameter_mapping_list)
 
     def fuse_states_to_one_state(self, state_indexes:set, stmt_id, status: StmtStatus):
@@ -1563,19 +1561,20 @@ class StmtStateAnalysis:
             return
         # print("apply_this_symbol_semantic_summary@new_this_states",new_this_states)
 
+        this_symbol_id = self.frame.method_def_use_summary.this_symbol_id
         index_to_add = self.frame.symbol_state_space.add(
             Symbol(
                 stmt_id = stmt_id,
                 name = LIAN_INTERNAL.THIS,
-                symbol_id = config.BUILTIN_THIS_SYMBOL_ID,
+                symbol_id = this_symbol_id,
                 states = new_this_states
             )
         )
         index_pair_set = set()
         for index in new_this_states:
             index_pair_set.add(IndexMapInSummary(index, -1))
-        util.add_to_dict_with_default_set(self.frame.method_summary_template.this_symbols, config.BUILTIN_THIS_SYMBOL_ID, index_pair_set)
-        util.add_to_dict_with_default_set(self.frame.method_summary_instance.this_symbols, config.BUILTIN_THIS_SYMBOL_ID, index_pair_set)
+        util.add_to_dict_with_default_set(self.frame.method_summary_template.this_symbols, this_symbol_id, index_pair_set)
+        util.add_to_dict_with_default_set(self.frame.method_summary_instance.this_symbols, this_symbol_id, index_pair_set)
         status.implicitly_defined_symbols.append(index_to_add)
 
     def apply_parameter_semantic_summary(
@@ -1784,7 +1783,7 @@ class StmtStateAnalysis:
         caller_id = self.frame.method_id
         call_stmt_id = stmt_id
         # print(f"load_parameter_mapping: {callee_id, caller_id, call_stmt_id}")
-        if self.phase == 2:
+        if self.analysis_phase_id == 2:
             parameter_mapping_list = self.loader.get_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
         else:
             parameter_mapping_list = self.loader.get_parameter_mapping_p3((caller_id, call_stmt_id, callee_id))
@@ -1985,7 +1984,7 @@ class StmtStateAnalysis:
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site, 2)
 
         if len(callee_ids_to_be_analyzed) != 0:
-            self.frame.symbol_changed_stmts.add(stmt_id)
+            self.frame.stmts_with_symbol_update.add(stmt_id)
             if config.DEBUG_FLAG:
                 util.debug(f"callee need to be analyzed: {callee_ids_to_be_analyzed}")
 
@@ -2524,13 +2523,13 @@ class StmtStateAnalysis:
         print("address_id_list:", address_id_list)
 
         target_states = set()
-        reaching_symbol_defs = self.frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        reachable_symbol_defs = self.frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         for symbol_id_index in address_id_list:
             symbol_id_state = self.frame.symbol_state_space[symbol_id_index]
             if not isinstance(symbol_id_state, State):
                 continue
 
-            if symbol_id_state.value in self.frame.symbol_to_define:
+            if symbol_id_state.value in self.frame.defined_symbols:
                 index = self.create_state_and_add_space(
                     status, stmt_id, source_symbol_id=stmt_id, state_type = STATE_TYPE_KIND.UNSOLVED
                 )
@@ -2552,18 +2551,18 @@ class StmtStateAnalysis:
                 continue
 
             symbol_id = symbol_id_state.value
-            all_defs = self.frame.symbol_to_define[symbol_id]
-            all_defs &= reaching_symbol_defs
+            all_defs = self.frame.defined_symbols[symbol_id]
+            all_defs &= reachable_symbol_defs
             for def_stmt_id, def_source in all_defs:
-                reaching_status = self.frame.stmt_id_to_status[def_stmt_id]
-                defined_symbol = self.frame.symbol_state_space[reaching_status.defined_symbol]
+                reachable_status = self.frame.stmt_id_to_status[def_stmt_id]
+                defined_symbol = self.frame.symbol_state_space[reachable_status.defined_symbol]
                 flag = True
                 if util.is_available(defined_symbol) and defined_symbol.symbol_id == def_source:
                     target_states.update(defined_symbol.states)
                     flag = False
                 if flag:
-                    if def_source in reaching_status.implicitly_defined_symbols:
-                        index = reaching_status.implicitly_defined_symbols[def_source]
+                    if def_source in reachable_status.implicitly_defined_symbols:
+                        index = reachable_status.implicitly_defined_symbols[def_source]
                         defined_symbol = self.frame.symbol_state_space[index]
                         if util.is_available(defined_symbol):
                             target_states.update(defined_symbol.states)
@@ -2589,17 +2588,17 @@ class StmtStateAnalysis:
 
         implicitly_defined_symbols = []
 
-        reaching_defs = self.frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        reachable_defs = self.frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         for state_index in address_states:
             state = self.frame.symbol_state_space[state_index]
             if util.is_empty(state):
                 continue
             symbol_id = state.value
-            if symbol_id not in self.frame.symbol_to_define:
+            if symbol_id not in self.frame.defined_symbols:
                 #TODO: need to deal with such a case
                 continue
-            all_defs = self.frame.symbol_to_define[symbol_id]
-            all_defs &= reaching_defs
+            all_defs = self.frame.defined_symbols[symbol_id]
+            all_defs &= reachable_defs
 
             for def_stmt_id, def_source in all_defs:
                 target_status = self.frame.stmt_id_to_status[def_stmt_id]

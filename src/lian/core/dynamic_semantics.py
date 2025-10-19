@@ -4,7 +4,6 @@ import os,sys
 import pprint
 import copy
 
-from lian.core.dynamic_state_analysis import GlobalStmtStateAnalysis
 from lian.core.static_semantics import StaticSemanticAnalysis
 from lian.util import util
 from lian.config import config
@@ -43,22 +42,17 @@ from lian.common_structs import (
 from lian.basics.entry_points import EntryPointGenerator
 from lian.basics.control_flow import ControlFlowAnalysis
 from lian.basics.stmt_def_use_analysis import StmtDefUseAnalysis
-from lian.core.stmt_state_analysis import StmtStateAnalysis
+from lian.core.static_stmt_states import StaticStmtStates
+from lian.core.static_semantics import StaticSemanticAnalysis
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
 
-class GlobalAnalysis(StaticSemanticAnalysis):
+class DynamicSemanticAnalysis(StaticSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
-        """
-        初始化全局分析上下文：
-        1. 定义敏感操作类型集合（调用语句、数组读取等）
-        2. 初始化分析方法列表、路径管理器
-        3. 调用父类初始化方法设置符号状态基础结构
-        """
-        self.path_manager = PathManager()
         super().__init__(lian)
+        self.path_manager = PathManager()
         self.analyzed_method_list = analyzed_method_list
-        self.phase_id = ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS
+        self.analysis_phase_id = ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS
 
     def get_stmt_id_to_callee_info(self, callees):
         """
@@ -71,13 +65,13 @@ class GlobalAnalysis(StaticSemanticAnalysis):
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_index_of_status_space(self, baseline_index, status, frame, space, symbol_to_define, symbol_bit_vector, state_bit_vector):
+    def adjust_index_of_status_space(self, baseline_index, status, frame, space, defined_symbols, symbol_bit_vector, state_bit_vector):
 
         for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
             symbol_def_nodes.index += baseline_index
         for state_def_nodes in state_bit_vector.bit_pos_to_id.values():
             state_def_nodes.index += baseline_index
-        for symbol_def_nodes in symbol_to_define.values():
+        for symbol_def_nodes in defined_symbols.values():
             for node in symbol_def_nodes:
                 node.index += baseline_index
         for stmtstatus in status.values():
@@ -140,16 +134,16 @@ class GlobalAnalysis(StaticSemanticAnalysis):
             analyzed_method_list = self.analyzed_method_list
         )
 
-        # frame.symbol_to_define = self.loader.load_method_symbol_to_define_p2(method_id).copy()
+        # frame.defined_symbols = self.loader.load_method_defined_symbols_p2(method_id).copy()
         all_defs = set()
-        for stmt_id in frame.symbol_to_define:
-            symbol_def_set = frame.symbol_to_define[stmt_id]
+        for stmt_id in frame.defined_symbols:
+            symbol_def_set = frame.defined_symbols[stmt_id]
             for symbol_def in symbol_def_set:
                 all_defs.add(symbol_def)
 
         frame.all_defs = all_defs
 
-        frame.state_to_define = self.loader.get_method_state_to_define_p2(method_id).copy()
+        frame.defined_states = self.loader.get_method_defined_states_p2(method_id).copy()
 
         frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
@@ -157,7 +151,7 @@ class GlobalAnalysis(StaticSemanticAnalysis):
 
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
-        frame.symbol_changed_stmts.add(util.find_cfg_first_nodes(frame.cfg))
+        frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
 
         if len(frame_stack) > 2:
             frame.path = frame_stack[-2].path + (frame.call_stmt_id, frame.method_id)
@@ -167,12 +161,12 @@ class GlobalAnalysis(StaticSemanticAnalysis):
         # avoid changing the content of the loader
         status = copy.deepcopy(self.loader.get_stmt_status_p2(method_id))
         symbol_state_space = self.loader.get_symbol_state_space_p2(method_id).copy()
-        symbol_to_define = self.loader.get_method_symbol_to_define_p2(method_id).copy()
+        defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
         symbol_bit_vector = copy.deepcopy(self.loader.get_symbol_bit_vector_p2(method_id))
         state_bit_vector = self.loader.get_state_bit_vector_p2(method_id).copy()
-        self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, symbol_to_define, symbol_bit_vector, state_bit_vector)
+        self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, defined_symbols, symbol_bit_vector, state_bit_vector)
         frame.stmt_id_to_status = status
-        frame.symbol_to_define = symbol_to_define
+        frame.defined_symbols = defined_symbols
         for item in symbol_state_space:
             global_space.add(item)
 
@@ -191,7 +185,7 @@ class GlobalAnalysis(StaticSemanticAnalysis):
         frame.symbol_graph.graph = symbol_graph
 
         frame.method_summary_instance.copy_template_to_instance(frame.method_summary_template)
-        self.adjust_symbol_to_define_and_init_bit_vector(frame, method_id)
+        self.adjust_defined_symbols_and_init_bit_vector(frame, method_id)
         return frame
 
     def collect_external_symbol_states(self, frame: ComputeFrame, stmt_id, stmt, symbol_id, summary: MethodSummaryTemplate, old_key_state_indexes: set):
@@ -328,7 +322,7 @@ class GlobalAnalysis(StaticSemanticAnalysis):
             change_flag.use_changed = True
 
         if change_flag.states_changed:
-            frame.symbol_changed_stmts.add(
+            frame.stmts_with_symbol_update.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
         # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
@@ -366,7 +360,7 @@ class GlobalAnalysis(StaticSemanticAnalysis):
             if stmt_id in frame.loop_total_rounds:
                 if frame.stmt_counters[stmt_id] <= frame.loop_total_rounds[stmt_id]:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
-                    frame.symbol_changed_stmts.add(stmt_id)
+                    frame.stmts_with_symbol_update.add(stmt_id)
             else:
                 if frame.stmt_counters[stmt_id] < config.MAX_STMT_STATE_ANALYSIS_ROUND:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
@@ -376,22 +370,22 @@ class GlobalAnalysis(StaticSemanticAnalysis):
                 frame.interruption_flag = False
             else:
                 # compute in/out bitsz
-                self.analyze_reaching_symbols(stmt_id, stmt, frame)
+                self.analyze_reachable_symbols(stmt_id, stmt, frame)
 
             # according to symbol_graph, compute the state flow of current statement
             result_flag = self.compute_states(stmt_id, stmt, frame)
-            frame.symbol_changed_stmts.remove(stmt_id)
+            frame.stmts_with_symbol_update.remove(stmt_id)
 
             # re-analyze def/use
             if result_flag.def_changed or result_flag.use_changed:
                 # change out_bit to reflect implicitly_defined_symbols
-                self.rerun_analyze_reaching_symbols(stmt_id, frame, result_flag)
+                self.rerun_analyze_reachable_symbols(stmt_id, frame, result_flag)
                 # update method def/use
                 self.update_method_def_use_summary(stmt_id, frame)
 
             # check if interruption is enabled
             if result_flag.interruption_flag:
-                frame.symbol_changed_stmts.add(stmt_id)
+                frame.stmts_with_symbol_update.add(stmt_id)
                 return result_flag
 
             # move to the next statement
@@ -537,7 +531,7 @@ class GlobalAnalysis(StaticSemanticAnalysis):
             summary, space = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
             self.save_analysis_summary_and_space(frame, summary, space, caller_frame)
             self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
-            self.loader.save_method_symbol_to_define_p3(frame.call_site, frame.symbol_to_define)
+            self.loader.save_method_defined_symbols_p3(frame.call_site, frame.defined_symbols)
             # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
             # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)
