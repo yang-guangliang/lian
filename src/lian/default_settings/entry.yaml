@@ -1,4 +1,4 @@
-- method_list: ["%unit_init", start]
+- method_list: ["%unit_init"]
 
 - lang: java
   method_list: [main]
