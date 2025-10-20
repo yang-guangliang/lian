@@ -161,8 +161,10 @@ class ModuleSymbolsLoader:
         return all_units
 
     def convert_unit_path_to_unit_id(self, unit_path):
+        if not unit_path:
+            return -1
         for path in  self.unit_path_to_id:
-            if path.endswith(unit_path):
+            if path and path.endswith(unit_path):
                 return self.unit_path_to_id[path]
         return -1
 
