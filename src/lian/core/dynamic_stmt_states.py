@@ -50,7 +50,14 @@ class GlobalStmtStates(StaticStmtStates):
         self, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
         path_manager: PathManager, analyzed_method_list: list
     ):
-        super().__init__(event_manager, loader, resolver, compute_frame, None, analyzed_method_list)
+        super().__init__(
+            event_manager=event_manager,
+            loader=loader,
+            resolver=resolver,
+            compute_frame=compute_frame,
+            call_graph=None,
+            analyzed_method_list=analyzed_method_list
+        )
         self.path_manager = path_manager
         self.analyzed_method_list = analyzed_method_list
         self.phase = 3
