@@ -1411,9 +1411,17 @@ class ImportGraphLoader:
         return self.get_successor_nodes_from_ids(successor_ids)
 
     def get_edges_and_nodes_with_edge_attrs(self, node_id, attr_dict: dict):
+        """attr可以是：realName, weight(edge_kind), site(import_stmt_id), symbol_type(该节点类型)"""
         EdgeNodePair = namedtuple("EdgeNodePair", ["edge", "node"])
         edge_node_list = util.graph_successors_with_edge_attrs(self.import_graph, node_id, attr_dict)
         return [EdgeNodePair(edge, self.get_successor_nodes_from_ids(node_index)) for edge, node_index in edge_node_list]
+
+    def get_import_node_with_name(self, unit_id, import_name):
+        """在unit中给定import_name，找到被import的节点，没有则返回None"""
+        edge_node_list = self.get_edges_and_nodes_with_edge_attrs(unit_id, {"realName":import_name})
+        if util.is_empty(edge_node_list):
+            return None
+        return edge_node_list[0].node[0]
 
     def restore(self):
         df = DataModel().load(self.path)
@@ -2673,6 +2681,8 @@ class Loader:
         return self._import_graph_loader.get_external_successor_nodes(node_id)
     def get_edges_and_nodes_with_edge_attrs_in_import_graph(self, node_id, attr_dict):
         return self._import_graph_loader.get_edges_and_nodes_with_edge_attrs(node_id, attr_dict)
+    def get_import_node_with_name(self, unit_id, import_name):
+        return self._import_graph_loader.get_import_node_with_name(unit_id, import_name)
 
     def save_type_graph(self, graph):
         return self._type_graph_loader.save(graph)

@@ -120,18 +120,16 @@ class Resolver:
             return SourceSymbolScopeInfo(unit_id, symbol_id, scope_id)
 
         # since this is an import stmt, we need to read import information to find the real symbol_id
-        export_symbols = self.loader.get_unit_export_symbols(unit_id)
-        #print("export symbols:", unit_id, export_symbols)
-        if util.is_empty(export_symbols):
+        import_node = self.loader.get_import_node_with_name(unit_id, symbol_name)
+        if util.is_empty(import_node):
             return default_return
-        import_info = export_symbols.query_first(export_symbols.symbol_name == symbol_name)
-        if import_info and import_info.symbol_id != -1:
-            imported_unit_id = self.loader.convert_stmt_id_to_unit_id(import_info.symbol_id)
+        if import_node.symbol_id != -1:
+            imported_unit_id = import_node.unit_id
             if imported_unit_id != -1:
                 return SourceSymbolScopeInfo(
                     imported_unit_id,
-                    import_info.symbol_id,
-                    self.loader.convert_stmt_id_to_scope_id(import_info.symbol_id),
+                    import_node.symbol_id,
+                    self.loader.convert_stmt_id_to_scope_id(import_node.symbol_id),
                     symbol_id
                 )
         return SourceSymbolScopeInfo(-1, symbol_id, scope_id)
