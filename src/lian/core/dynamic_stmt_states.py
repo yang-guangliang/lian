@@ -103,7 +103,6 @@ class GlobalStmtStates(StaticStmtStates):
             access_path = access_path,
             fields = {},
             array = [],
-            call_site = self.frame.path[-3:]
         )
 
         index = self.frame.symbol_state_space.add(item)
