@@ -46,6 +46,7 @@ from lian.core.static_stmt_states import StaticStmtStates
 from lian.core.static_semantics import StaticSemanticAnalysis
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
+from lian.core.dynamic_stmt_states import GlobalStmtStates
 
 class DynamicSemanticAnalysis(StaticSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
@@ -125,7 +126,7 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
-        frame.stmt_state_analysis = GlobalStmtStateAnalysis(
+        frame.stmt_state_analysis = GlobalStmtStates(
             event_manager = self.event_manager,
             loader = self.loader,
             resolver = self.resolver,
