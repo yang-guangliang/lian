@@ -127,6 +127,7 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
         frame.stmt_state_analysis = GlobalStmtStates(
+            analysis_phase_id = self.analysis_phase_id,
             event_manager = self.event_manager,
             loader = self.loader,
             resolver = self.resolver,
@@ -282,7 +283,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         old_implicitly_defined_symbols = status.implicitly_defined_symbols.copy()
         old_implicitly_used_symbols = status.implicitly_used_symbols.copy()
         status.in_state_bits = self.collect_in_state_bits(stmt_id, stmt, frame)
-        self.unset_states_of_status(stmt_id, frame, status)
 
         # collect in state
 

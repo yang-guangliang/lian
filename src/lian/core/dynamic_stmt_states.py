@@ -47,10 +47,11 @@ from lian.common_structs import (
 
 class GlobalStmtStates(StaticStmtStates):
     def __init__(
-        self, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
+        self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
         path_manager: PathManager, analyzed_method_list: list
     ):
         super().__init__(
+            analysis_phase_id=analysis_phase_id,
             event_manager=event_manager,
             loader=loader,
             resolver=resolver,
@@ -60,7 +61,6 @@ class GlobalStmtStates(StaticStmtStates):
         )
         self.path_manager = path_manager
         self.analyzed_method_list = analyzed_method_list
-        self.phase = 3
 
     def get_method_summary(self, method_id):
         pass
