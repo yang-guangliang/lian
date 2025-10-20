@@ -80,6 +80,7 @@ class ImportHierarchy:
                 symbol_id=module_item.module_id,
                 symbol_name=module_item.symbol_name,
                 parent_node_id=module_item.parent_module_id,
+                unit_id=module_item.module_id
             )
 
     def is_private_attr(self, attrs):
@@ -356,7 +357,7 @@ class ImportHierarchy:
                 self.add_import_graph_edge(
                     unit_id, each_node.symbol_id, each_node.symbol_name,
                     edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL,
-                    import_stmt_id = stmt.stmt_id, alias = alias
+                    import_stmt_id = stmt.stmt_id, alias = alias, symbol_type = each_node.symbol_type
                 )
                 self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
@@ -378,7 +379,7 @@ class ImportHierarchy:
                 self.add_import_graph_edge(
                     unit_id, each_node.symbol_id, each_node.symbol_name,
                     edge_kind = IMPORT_GRAPH_EDGE_KIND.EXTERNAL_SYMBOL,
-                    import_stmt_id = stmt.stmt_id, alias = alias
+                    import_stmt_id = stmt.stmt_id, alias = alias, symbol_type = each_node.symbol_type
                 )
                 self.add_import_deps(unit_id, each_node.symbol_id)
                 external_symbols.append(
@@ -403,7 +404,7 @@ class ImportHierarchy:
         self.add_import_graph_edge(
             unit_id, fake_node_id, alias,
             edge_kind = IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL,
-            import_stmt_id = stmt.stmt_id
+            import_stmt_id = stmt.stmt_id, symbol_type = fake_node.symbol_type
         )
         external_symbols.append(fake_node)
 

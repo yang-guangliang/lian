@@ -65,7 +65,7 @@ class StaticStmtStates:
         self.event_manager = event_manager
         self.loader = loader
         self.resolver: Resolver = resolver
-        self.frame = compute_frame
+        self.frame: ComputeFrame = compute_frame
         self.frame_stack: ComputeFrameStack = compute_frame.frame_stack
         self.call_graph = call_graph
         self.analyzed_method_list = analyzed_method_list
