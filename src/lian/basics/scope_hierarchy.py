@@ -256,13 +256,18 @@ class UnitScopeHierarchyAnalysis:
                 self.class_stmt_ids.add(stmt_id)
                 scope_id = self.determine_scope(row.parent_stmt_id)
                 #print("scope_id:", scope_id, "row", row)
+                name = ""
+                if row.operation == "implement_decl":
+                    name = row.struct_name
+                else:
+                    name = row.name
                 class_decl_scope = Scope(
                     unit_id = self.unit_id,
                     stmt_id = stmt_id,
                     scope_id = scope_id,
                     parent_stmt_id= row.parent_stmt_id,
                     scope_kind = LIAN_SYMBOL_KIND.CLASS_KIND,
-                    name = util.read_stmt_field(row.name),
+                    name = util.read_stmt_field(name),
                     attrs = util.read_stmt_field(row.attrs),
                     supers = util.read_stmt_field(row.supers)
                 )

@@ -2891,7 +2891,8 @@ class Loader:
             method_start_line = util.determine_comment_line(lang_name, method_start_line, lines)
         else:
             method_start_line = 0
-
+        if method_start_line > int(current_stmt.decorators):
+            method_start_line = int(current_stmt.decorators)
         code_with_comment = []
         if method_end_line > 0 and method_end_line < len(lines):
             code_with_comment = lines[method_start_line: method_end_line]

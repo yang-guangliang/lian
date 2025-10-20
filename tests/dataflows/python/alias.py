@@ -209,25 +209,33 @@
 #     pass
 
 
-def func1():
-    if hh:
-        a = b.c
-        return a
-    else:
-        t = n.d
-        return t
+# def func1():
+#     if hh:
+#         a = b.c
+#         return a
+#     else:
+#         t = n.d
+#         return t
+#
+# class B:
+#     def func3():
+#         pass
+#
+# class A:
+#     def __init__(self):
+#         self.a = func1()
+#         self.vm = B
+#
+#     def func2(self):
+#         self.a()
+#         self.vm.func3()
+#
+# A.func2()
 
-class B:
-    def func3():
-        pass
+def bbb():
+    pass
 
-class A:
-    def __init__(self):
-        self.a = func1()
-        self.vm = B
 
-    def func2(self):
-        self.a()
-        self.vm.func3()
-
-A.func2()
+@decora
+def aaa():
+    pass
