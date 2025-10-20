@@ -314,15 +314,15 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
             new_defined_symbol_states = defined_symbol.states
 
         if new_out_states or new_defined_symbol_states != old_defined_symbol_states:
-            change_flag.states_changed = True
+            change_flag.state_changed = True
 
         if status.implicitly_defined_symbols != old_implicitly_defined_symbols:
-            change_flag.def_changed = True
+            change_flag.symbol_def_changed = True
 
         if status.implicitly_used_symbols != old_implicitly_used_symbols:
-            change_flag.use_changed = True
+            change_flag.symbol_use_changed = True
 
-        if change_flag.states_changed:
+        if change_flag.state_changed:
             frame.stmts_with_symbol_update.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
@@ -378,7 +378,7 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
             frame.stmts_with_symbol_update.remove(stmt_id)
 
             # re-analyze def/use
-            if result_flag.def_changed or result_flag.use_changed:
+            if result_flag.symbol_def_changed or result_flag.symbol_use_changed:
                 # change out_bit to reflect implicitly_defined_symbols
                 self.rerun_analyze_reachable_symbols(stmt_id, frame, result_flag)
                 # update method def/use
@@ -498,7 +498,7 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                 summary_template: MethodSummaryTemplate = p2_summary_template.copy()
                 summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(frame.method_id)
 
-                # if not summary_template.dynamic_call_stmt:
+                # if not summary_template.dynamic_call_stmts:
                 #     if config.DEBUG_FLAG:
                 #         util.debug(f"\t<method {frame.method_id}> does not need to be processed")
 

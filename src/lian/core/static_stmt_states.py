@@ -341,7 +341,7 @@ class StaticStmtStates:
             return s.states
         return set()
 
-    def compute_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+    def run_stmt_state_analysis(self, stmt_id, stmt, status: StmtStatus, in_states):
         """根据语句类型分发到对应的状态处理函数进行分析"""
         # print("status.operation:", status.operation)
         handler = self.state_analysis_handlers.get(stmt.operation, None)
@@ -371,7 +371,7 @@ class StaticStmtStates:
                 values.discard(IndexMapInSummary(raw_index = state_index, new_index = -1))
 
         if stmt_id > 0:
-            self.frame.method_summary_template.dynamic_call_stmt.discard(stmt_id)
+            self.frame.method_summary_template.dynamic_call_stmts.discard(stmt_id)
 
     def tag_key_state(self, stmt_id, symbol_id, state_index):
         """将状态标记为关键状态，并记录相关动态调用信息"""
@@ -385,7 +385,7 @@ class StaticStmtStates:
         util.add_to_dict_with_default_set(
             key_dynamic_content, symbol_id, IndexMapInSummary(raw_index = state_index, new_index = -1)
         )
-        self.frame.method_summary_template.dynamic_call_stmt.add(stmt_id)
+        self.frame.method_summary_template.dynamic_call_stmts.add(stmt_id)
 
     def regular_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         return P2ResultFlag()
@@ -1802,8 +1802,8 @@ class StaticStmtStates:
             stmt_id, callee_id, status, callee_summary, callee_compact_space, this_state_set
         )
 
-        if callee_summary.dynamic_call_stmt:
-            self.frame.method_summary_template.dynamic_call_stmt.add(stmt_id)
+        if callee_summary.dynamic_call_stmts:
+            self.frame.method_summary_template.dynamic_call_stmts.add(stmt_id)
 
     def trigger_extern_callee(
         self, stmt_id, stmt, status: StmtStatus, in_states, unsolved_callee_states, name_symbol, defined_symbol, args

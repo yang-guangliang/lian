@@ -1187,7 +1187,7 @@ class MethodSummaryLoader:
                     used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids),
                     return_symbols = self.convert_list_to_dict(row.return_symbols),
                     key_dynamic_content = self.convert_list_to_dict(row.key_dynamic_content),
-                    dynamic_call_stmt = row.dynamic_call_stmt,
+                    dynamic_call_stmts = row.dynamic_call_stmts,
                     this_symbols = self.convert_list_to_dict(row.this_symbols)
                 )
             else:
@@ -1198,7 +1198,7 @@ class MethodSummaryLoader:
                     used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids),
                     return_symbols = self.convert_list_to_dict(row.return_symbols),
                     key_dynamic_content = self.convert_list_to_dict(row.key_dynamic_content),
-                    dynamic_call_stmt = row.dynamic_call_stmt,
+                    dynamic_call_stmts = row.dynamic_call_stmts,
                     this_symbols = self.convert_list_to_dict(row.this_symbols)
                 )
 

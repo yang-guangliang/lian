@@ -1303,7 +1303,7 @@ class MethodSummaryTemplate:
     used_external_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
     return_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
     key_dynamic_content: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
-    dynamic_call_stmt: set[int] = dataclasses.field(default_factory=set)
+    dynamic_call_stmts: set[int] = dataclasses.field(default_factory=set)
     this_symbols : dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
     external_symbol_to_state : dict[int, int] = dataclasses.field(default_factory=dict)
 
@@ -1315,7 +1315,7 @@ class MethodSummaryTemplate:
             used_external_symbols = copy.deepcopy(self.used_external_symbols),
             return_symbols = copy.deepcopy(self.return_symbols),
             key_dynamic_content = copy.deepcopy(self.key_dynamic_content),
-            dynamic_call_stmt = self.dynamic_call_stmt.copy(),
+            dynamic_call_stmts = self.dynamic_call_stmts.copy(),
             this_symbols = copy.deepcopy(self.this_symbols),
             external_symbol_to_state = self.external_symbol_to_state.copy()
         )
@@ -1357,7 +1357,7 @@ class MethodSummaryTemplate:
             "used_external_symbols": self.convert_dict_to_list(self.used_external_symbols),
             "return_symbols": self.convert_dict_to_list(self.return_symbols),
             "key_dynamic_content": self.convert_dict_to_list(self.key_dynamic_content),
-            "dynamic_call_stmt": self.dynamic_call_stmt,
+            "dynamic_call_stmts": self.dynamic_call_stmts,
             "this_symbols": self.convert_dict_to_list(self.this_symbols),
             "external_symbol_to_state":self.convert_dict_to_list(self.external_symbol_to_state)
         }
@@ -1369,7 +1369,7 @@ class MethodSummaryTemplate:
                 f"key_dynamic_content={self.key_dynamic_content}, " \
                 f"used_external_symbols={self.used_external_symbols}, " \
                 f"return_symbols={self.return_symbols}, "\
-                f"dynamic_call_stmt={self.dynamic_call_stmt}, " \
+                f"dynamic_call_stmts={self.dynamic_call_stmts}, " \
                 f"this_symbols={self.this_symbols}, "\
                 f"external_symbol_to_state={self.external_symbol_to_state}"
 
@@ -1440,7 +1440,7 @@ class MethodSummaryInstance(MethodSummaryTemplate):
         self.used_external_symbols = copy.deepcopy(summary_template.used_external_symbols)
         # self.return_symbols = copy.deepcopy(summary_template.return_symbols)
         self.key_dynamic_content = copy.deepcopy(summary_template.key_dynamic_content)
-        self.dynamic_call_stmt = summary_template.dynamic_call_stmt.copy()
+        self.dynamic_call_stmts = summary_template.dynamic_call_stmts.copy()
         self.resolver_result = {}
         # self.this_symbols = copy.deepcopy(summary_template.this_symbols)
 
@@ -1452,7 +1452,7 @@ class MethodSummaryInstance(MethodSummaryTemplate):
             copy.deepcopy(self.used_external_symbols),
             copy.deepcopy(self.return_symbols),
             copy.deepcopy(self.key_dynamic_content),
-            self.dynamic_call_stmt.copy(),
+            self.dynamic_call_stmts.copy(),
             copy.deepcopy(self.this_symbols)
         )
         return summary
@@ -1467,7 +1467,7 @@ class MethodSummaryInstance(MethodSummaryTemplate):
             "used_external_symbols": self.convert_dict_to_list(self.used_external_symbols),
             "return_symbols": self.convert_dict_to_list(self.return_symbols),
             "key_dynamic_content": self.convert_dict_to_list(self.key_dynamic_content),
-            "dynamic_call_stmt": self.dynamic_call_stmt,
+            "dynamic_call_stmts": self.dynamic_call_stmts,
             "this_symbols": self.convert_dict_to_list(self.this_symbols),
             "external_symbol_to_state":self.convert_dict_to_list(self.external_symbol_to_state)
         }
@@ -1718,9 +1718,9 @@ class InterruptionData:
 
 @dataclasses.dataclass
 class P2ResultFlag:
-    states_changed: bool = False
-    def_changed: bool = False
-    use_changed: bool = False
+    state_changed: bool = False
+    symbol_def_changed: bool = False
+    symbol_use_changed: bool = False
     interruption_flag: bool = False
     interruption_data: InterruptionData = None
     condition_path_flag: int = CONDITION_STMT_PATH_FLAG.NO_PATH
