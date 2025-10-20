@@ -2825,7 +2825,9 @@ class Loader:
             return []
         unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
         stmt = self.convert_stmt_id_to_stmt(stmt_id)
-        return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row-1, end = stmt.end_row)
+        if stmt.operation == 'method_decl':
+            return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row-1, end = stmt.end_row)
+        return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
 
     def convert_stmt_id_to_stmt(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
