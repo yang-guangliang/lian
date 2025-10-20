@@ -34,6 +34,9 @@ FOR_STMT_OPERATION = {
     "for_stmt",
     "forin_stmt"
 }
+WITH_STMT_OPERATION = {
+    "with_stmt",
+}
 
 VARIABLE_DECL_OPERATION = {
     "variable_decl",
@@ -144,7 +147,8 @@ LIAN_SYMBOL_KIND = util.SimpleEnum({
     "UNIT_KIND"                     : 13,
     "BUILTIN_KIND"                  : 14,
     "FOR_KIND"                      : 15,
-    "UNKNOWN_KIND"                  : 16,
+    "WITH_KIND"                     : 16,
+    "UNKNOWN_KIND"                  : 17,
 })
 
 IMPORT_GRAPH_EDGE_KIND = util.SimpleEnum({

@@ -782,6 +782,8 @@ class Parser(common_parser.Parser):
         shadow_expr = self.parse(expr, statements)
 
         alias = self.find_child_by_field(node, "alias")
+        alias_name = self.read_node_text(alias)
+        self.append_stmts(statements, node, {"variable_decl": {"name": alias_name}})
         shadow_alias = self.parse(alias, statements)
 
         self.append_stmts(statements, node, {"assign_stmt": {"target": shadow_alias, "operand": shadow_expr}})
@@ -1524,7 +1526,7 @@ class Parser(common_parser.Parser):
         for stmt in body.named_children:
             self.parse(stmt, new_body)
 
-        self.append_stmts(statements, node, {"with_stmt": {"attrs": modifiers, "with_init": with_init, "body": new_body}})
+        self.append_stmts(statements, node, {"with_stmt": {"attrs": modifiers, "init_body": with_init, "update_body": new_body}})
 
     def match_statement(self, node: Node, statements: list):
         switch_ret = self.tmp_variable()

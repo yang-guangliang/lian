@@ -16,6 +16,7 @@ from lian.config.constants import (
     PARAMETER_DECL_OPERATION,
     EXPORT_STMT_OPERATION,
     FOR_STMT_OPERATION,
+    WITH_STMT_OPERATION,
     LIAN_SYMBOL_KIND,
 )
 
@@ -42,6 +43,7 @@ class UnitScopeHierarchyAnalysis:
         self.namespace_stmt_ids = set()
         self.method_stmt_ids = set()
         self.for_stmt_ids = set()
+        self.with_stmt_ids = set()
         self.method_id_to_parameter_ids = {}
         self.class_id_to_class_name = {}
         self.method_id_to_method_name = {}
@@ -252,6 +254,19 @@ class UnitScopeHierarchyAnalysis:
                 self.scope_space.add(for_stmt_scope)
                 self.all_scope_ids.add(stmt_id)
 
+            elif row.operation in WITH_STMT_OPERATION:
+                self.with_stmt_ids.add(stmt_id)
+                scope_id = self.determine_scope(row.parent_stmt_id)
+                with_stmt_scope = Scope(
+                    unit_id = self.unit_id,
+                    stmt_id = stmt_id,
+                    scope_id = scope_id,
+                    parent_stmt_id= row.parent_stmt_id,
+                    scope_kind = LIAN_SYMBOL_KIND.WITH_KIND
+                )
+                self.scope_space.add(with_stmt_scope)
+                self.all_scope_ids.add(stmt_id)
+
             elif row.operation in CLASS_DECL_OPERATION:
                 self.class_stmt_ids.add(stmt_id)
                 scope_id = self.determine_scope(row.parent_stmt_id)
@@ -377,6 +392,19 @@ class UnitScopeHierarchyAnalysis:
             self.method_id_to_parameter_ids[stmt_id] = parameter_ids
 
         for stmt_id in self.for_stmt_ids:
+            stmt = self.access_by_stmt_id(stmt_id)
+            init_body = stmt.init_body
+            if util.is_available(init_body):
+                init_body_block = self.read_block(init_body)
+                variable_decl_stmts = init_body_block.query(
+                    init_body_block.operation == "variable_decl"
+                )
+                for variable_decl in variable_decl_stmts:
+                    item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
+                    item.scope_id = stmt_id
+                    self.stmt_id_to_scope_id_cache[variable_decl.stmt_id] = stmt_id
+        
+        for stmt_id in self.with_stmt_ids:
             stmt = self.access_by_stmt_id(stmt_id)
             init_body = stmt.init_body
             if util.is_available(init_body):
