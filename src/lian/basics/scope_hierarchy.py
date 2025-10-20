@@ -336,9 +336,11 @@ class UnitScopeHierarchyAnalysis:
                 methods_block = self.read_block(stmt.methods)
                 method_decl_stmts = methods_block.query(methods_block.operation == "method_decl")
                 for method_decl in method_decl_stmts:
-                    item = self.scope_space.find_first_by_id(method_decl.stmt_id)
-                    item.scope_id = stmt_id
-                    self.stmt_id_to_scope_id_cache[method_decl.stmt_id] = stmt_id
+                    if method_decl.parent_stmt_id == stmt.methods:
+                        # 只处理直接属于class的methods，不处理嵌套在其他method内部的闭包methods
+                        item = self.scope_space.find_first_by_id(method_decl.stmt_id)
+                        item.scope_id = stmt_id
+                        self.stmt_id_to_scope_id_cache[method_decl.stmt_id] = stmt_id
 
                     util.add_to_dict_with_default_set(
                         self.class_id_to_class_method_ids, stmt_id, method_decl.stmt_id
@@ -439,6 +441,7 @@ class UnitScopeHierarchyAnalysis:
                     scope_id_to_available_scope_ids[row.stmt_id] = set()
                 scope_id_to_available_scope_ids[row.stmt_id].add(row.scope_id)
 
+        # 递归处理所有可访问的scope：如果A可以访问B，B可以访问C，那么A也可以访问C
         visited_set = set()
         for scope_id in scope_id_to_available_scope_ids:
             wl = SimpleWorkList().add(scope_id_to_available_scope_ids[scope_id])

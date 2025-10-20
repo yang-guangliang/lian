@@ -131,7 +131,8 @@ class Resolver:
                 return SourceSymbolScopeInfo(
                     imported_unit_id,
                     import_info.symbol_id,
-                    self.loader.convert_stmt_id_to_scope_id(import_info.symbol_id)
+                    self.loader.convert_stmt_id_to_scope_id(import_info.symbol_id),
+                    symbol_id
                 )
         return SourceSymbolScopeInfo(-1, symbol_id, scope_id)
 
@@ -1114,13 +1115,19 @@ class Resolver:
             caller_method_decl = self.loader.get_method_decl_source_code(caller_method_id)
             call_stmt_src_code = self.loader.get_stmt_source_code_with_comment(call_stmt_id)
             callee_method_decl = self.loader.get_method_decl_source_code(callee_method_id)
+            caller_frame = None
+            if len(call_stack) > previous_frame_index + 1:
+                caller_frame:ComputeFrame = call_stack[-(previous_frame_index + 1)]
+                if not isinstance(caller_frame, ComputeFrame):
+                    caller_frame = None
+
             return {
                 "caller_method_decl"     :  caller_method_decl,
                 "caller_method_id"       :  caller_method_id,
                 "call_stmt_source_code"  :  call_stmt_src_code,
                 "callee_method_decl"     :  callee_method_decl,
                 "callee_method_id"       :  callee_method_id,
-                "caller_frame"           :  previous_frame
+                "caller_frame"           :  caller_frame
             }
 
     def recover_callee_name(self, stmt_id, frame: ComputeFrame):
