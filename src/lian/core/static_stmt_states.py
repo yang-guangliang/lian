@@ -1957,7 +1957,8 @@ class StaticStmtStates:
     def is_abstract_method(self, callee_method_ids):
         for stmt_id in callee_method_ids:
             stmt = self.loader.get_stmt_gir(stmt_id)
-            if stmt.attrs and 'abstractmethod' in stmt.attrs:
+            # why stmt.attrs is nan
+            if isinstance(stmt.attrs, list) and 'abstractmethod' in stmt.attrs:
                 return True
         return False
 
