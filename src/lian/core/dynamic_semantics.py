@@ -301,7 +301,7 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         #     self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
         #     return P2ResultFlag()
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        change_flag: P2ResultFlag = frame.stmt_state_analysis.compute_stmt_state(stmt_id, stmt, status, in_states)
+        change_flag: P2ResultFlag = frame.stmt_state_analysis.run_stmt_state_analysis(stmt_id, stmt, status, in_states)
         if change_flag is None:
             if config.DEBUG_FLAG:
                 print(f"  NO CHANGE")
