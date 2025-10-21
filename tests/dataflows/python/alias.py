@@ -238,4 +238,10 @@ class Shape(ABC):
     def area(self):
         """形状的面积，子类必须实现此属性"""
         a = 3
+        print(9999)
         pass
+
+@a.func()
+def func1():
+    Shape.area()
+func1()

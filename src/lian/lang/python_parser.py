@@ -470,11 +470,11 @@ class Parser(common_parser.Parser):
     def decorated_definition(self, node: Node, statements: list):
         definition = self.find_child_by_field(node, "definition")
         name = self.parse(definition, statements)
+        #
+        # decorator = self.find_child_by_type(node, "decorator")
+        # shadow_decorator = self.parse(decorator, statements)
 
-        decorator = self.find_child_by_type(node, "decorator")
-        shadow_decorator = self.parse(decorator, statements)
-
-        target = self.tmp_variable()
+        # target = self.tmp_variable()
         # self.append_stmts(statements,
         #     node, {"call_stmt": {"target": target, "name": shadow_decorator, "positional_args": [name]}}
         # )
