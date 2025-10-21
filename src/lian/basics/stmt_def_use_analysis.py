@@ -259,7 +259,6 @@ class StmtDefUseAnalysis:
                 continue
             if used_symbol.name == LIAN_INTERNAL.OBJECT:
                 used_symbol.source_unit_id = self.unit_id
-                used_symbol.symbol_id = config.BUILTIN_OBJECT_SYMBOL_ID
                 continue
             if used_symbol.name.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF):
                 used_symbol.source_unit_id = self.unit_id
