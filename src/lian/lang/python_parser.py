@@ -183,6 +183,7 @@ class Parser(common_parser.Parser):
         return handler(node, statements, replacement)
 
     def function_definition(self, node: Node, statements: list):
+        modifiers = []
         parent = node.parent
 
         decorator_point, start_col = node.start_point
@@ -190,7 +191,12 @@ class Parser(common_parser.Parser):
             decorator_nodes = self.find_children_by_type(parent, "decorator")
             first_decorator = decorator_nodes[0]
             decorator_point, start_col = first_decorator.start_point
-        modifiers = []
+            for decorator_node in decorator_nodes:
+                identifier_node = self.find_child_by_type(decorator_node, "identifier")
+                identifier = self.read_node_text(identifier_node)
+                if identifier == "abstractmethod":
+                    modifiers.append("abstractmethod")
+
         if node.named_child_count > 0 and self.read_node_text(node.children[0]) == "async":
             modifiers.append("async")
 

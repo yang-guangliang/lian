@@ -232,10 +232,10 @@
 #
 # A.func2()
 
-def bbb():
-    pass
+class Shape(ABC):
 
-
-@decora
-def aaa():
-    pass
+    @abstractmethod
+    def area(self):
+        """形状的面积，子类必须实现此属性"""
+        a = 3
+        pass

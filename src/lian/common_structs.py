@@ -1509,7 +1509,13 @@ class CallGraph(BasicGraph):
         if not self.graph.has_edge(caller_id, callee_id):
             #print(f"add edge {caller_id} {call_stmt_id}")
             super().add_edge(caller_id, callee_id, weight=call_stmt_id)
-
+        else:
+            has_weight = False
+            for w in self.graph[caller_id][callee_id].values():
+                if w.get('weight') == call_stmt_id:
+                    has_weight = True
+            if not has_weight:
+                super().add_edge(caller_id, callee_id, weight=call_stmt_id)
 
 
     def has_specific_weight(self, caller_id, callee_id, call_stmt_id):
