@@ -2115,7 +2115,7 @@ class Loader:
         self._state_flow_graph_p2_loader: StateFlowGraphLoader = StateFlowGraphLoader(
             options,
             schema.state_flow_graph_schema_p2,
-            os.path.join(self.semantic_path_p2, config.STATE_FLOW_GRAPH_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_path_p2, config.SFG_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2123,7 +2123,7 @@ class Loader:
         self._state_flow_graph_p3_loader: StateFlowGraphLoader = StateFlowGraphLoader(
             options,
             schema.state_flow_graph_schema_p2,
-            os.path.join(self.semantic_path_p2, config.STATE_FLOW_GRAPH_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_path_p2, config.SFG_BUNDLE_PATH_P3),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )

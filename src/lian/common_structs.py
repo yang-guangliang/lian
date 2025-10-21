@@ -23,7 +23,8 @@ from lian.config.constants import (
     LIAN_INTERNAL,
     EXTERNAL_KEY_STATE_TYPE,
     EXPORT_NODE_TYPE,
-    ACCESS_POINT_KIND
+    ACCESS_POINT_KIND,
+    SFG_NODE_KIND
 )
 from lian.config import config
 
@@ -506,7 +507,7 @@ class AccessPoint:
 #             self.access_path,
 #         )
 
-global_unique_id = config.START_INDEX
+#global_unique_id = config.START_INDEX
 global_state_id = config.START_INDEX
 
 @dataclasses.dataclass
@@ -536,9 +537,9 @@ class State(BasicElement):
     source_state_id: int = -1
     access_path: list[AccessPoint] = dataclasses.field(default_factory=list)
 
-    unique_id: int = -1
-    analysis_round_number: int = -1
-    analysis_phase_id: int = -1
+    # unique_id: int = -1
+    # analysis_round_number: int = -1
+    # analysis_phase_id: int = -1
 
     def __post_init__(self):
         if self.state_id == -1:
@@ -549,9 +550,9 @@ class State(BasicElement):
         if self.source_state_id == -1:
             self.source_state_id = self.state_id
 
-        global global_unique_id
-        global_unique_id += 1
-        self.unique_id = global_unique_id
+        # global global_unique_id
+        # global_unique_id += 1
+        # self.unique_id = global_unique_id
 
     def get_id(self):
         return self.state_id
@@ -578,9 +579,9 @@ class State(BasicElement):
             "source_symbol_id"      : self.source_symbol_id,
             "source_state_id"       : self.source_state_id,
             "access_path"           : [p.to_dict_str() for p in self.access_path],
-            "unique_id"              : self.unique_id,
-            "analysis_round_number"  : self.analysis_round_number,
-            "analysis_phase_id"      : self.analysis_phase_id,
+            # "unique_id"              : self.unique_id,
+            # "analysis_round_number"  : self.analysis_round_number,
+            # "analysis_phase_id"      : self.analysis_phase_id,
         }
 
         # if isinstance(_id, tuple):
@@ -658,12 +659,12 @@ class Symbol(BasicElement):
     symbol_id: int = -1
     source_unit_id: int = -1
 
-    unique_id: int = -1
+    # unique_id: int = -1
 
-    def __post_init__(self):
-        global global_unique_id
-        global_unique_id += 1
-        self.unique_id = global_unique_id
+    # def __post_init__(self):
+    #     global global_unique_id
+    #     global_unique_id += 1
+    #     self.unique_id = global_unique_id
 
     def copy(self, stmt_id = None):
         if stmt_id is None:
@@ -999,15 +1000,15 @@ class SymbolGraph(BasicGraphWithSelfCircle):
         self.method_id = method_id
         super().__init__()
 
-    def add_edge(self, src_stmt, dst_stmt, weight = None):
-        if util.is_empty(src_stmt) or util.is_empty(dst_stmt) :
+    def add_edge(self, src_node, dst_node, weight = None):
+        if util.is_empty(src_node) or util.is_empty(dst_node) :
             return
 
-        if isinstance(src_stmt, list):
-            for src in src_stmt:
-                self._add_one_edge(src, dst_stmt, weight)
+        if isinstance(src_node, list):
+            for src in src_node:
+                self._add_one_edge(src, dst_node, weight)
         else:
-            self._add_one_edge(src_stmt, dst_stmt, weight)
+            self._add_one_edge(src_node, dst_node, weight)
 
 class StateGraph(SymbolGraph):
     pass
@@ -1017,9 +1018,91 @@ class StateFlowGraph(SymbolGraph):
 
 @dataclasses.dataclass
 class SFGNode:
-    unique_id: int = -1
-    method_id: int = -1
+    # 节点类型
+    node_type: int = -1
+    # 这个节点被def的stmt_id
+    stmt_id: int = -1
+    # 这个节点在symbol state space中的索引
     index: int = -1
+    # 这个节点的具体的id，一般是symbol_id或者state_id（根据node_type来判断）
+    internal_id: int = -1
+    # 这个节点在所有节点序列中的位置
+    # pos: int = -1
+
+    def __hash__(self) -> int:
+        return hash((self.node_type, self.stmt_id, self.index, self.internal_id))
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.stmt_id == other.stmt_id and self.index == other.index and self.internal_id == other.internal_id
+
+    def __repr__(self) -> str:
+        return f"SFGNode(node_type={self.node_type}, stmt_id={self.stmt_id}, index={self.index}, internal_id={self.internal_id})"
+
+    def to_dict(self):
+        if self.node_type == SFG_NODE_KIND.STMT:
+            return {
+                "node_type"             : self.node_type,
+                "stmt_id"               : self.stmt_id,
+            }
+
+        return {
+            "node_type"             : self.node_type,
+            "stmt_id"               : self.stmt_id,
+            "index"                 : self.index,
+            "internal_id"           : self.internal_id,
+        }
+
+    def copy(self):
+        return SFGNode(
+            node_type = self.node_type,
+            stmt_id = self.stmt_id,
+            index = self.index,
+            internal_id = self.internal_id,
+        )
+
+@dataclasses.dataclass
+class SFGEdge:
+    # 边类型
+    edge_type: int = -1
+    # 这条边是在哪里被定义的
+    stmt_id: int = -1
+    # 在第几个round被定义的
+    round: int = 1
+    # 哪个阶段产生的这个边
+    #phase: int = -1
+
+    def __hash__(self) -> int:
+        return hash((self.edge_type, self.stmt_id, self.round))
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, SFGEdge) and self.edge_type == other.edge_type and self.stmt_id == other.stmt_id and self.round == other.round
+
+    def __repr__(self) -> str:
+        return f"SFGEdge(edge_type={self.edge_type}, stmt_id={self.stmt_id}, round={self.round})"
+
+    def copy(self):
+        return SFGEdge(
+            edge_type = self.edge_type,
+            stmt_id = self.stmt_id,
+            round = self.round,
+            #phase = self.phase,
+        )
+
+    def to_dict_with_prefix(self, prefix):
+        return {
+            f"{prefix}_edge_type"    : self.edge_type,
+            f"{prefix}_stmt_id"      : self.stmt_id,
+            f"{prefix}_round"        : self.round,
+            #f"{prefix}_phase"        : self.phase,
+        }
+
+    def to_dict(self):
+        return {
+            "edge_type"             : self.edge_type,
+            "stmt_id"               : self.stmt_id,
+            "round"                 : self.round,
+            #"phase"                 : self.phase,
+        }
 
 @dataclasses.dataclass
 class SourceSymbolScopeInfo:

@@ -17,6 +17,7 @@ MAX_BENCHMARK_TARGET                        = 10_000
 MAX_STMT_STATE_ANALYSIS_ROUND               = 4
 
 FIRST_ROUND                                 = 0
+SECOND_ROUND                                = 1
 FIRST_GLOBAL_ROUND                          = 1
 
 ANY_LANG                                    = "%"
@@ -129,8 +130,8 @@ TYPE_GRAPH_PATH                             = "type_graph"
 
 SYMBOL_GRAPH_BUNDLE_PATH                    = "symbol_graph"
 SYMBOL_GRAPH_BUNDLE_PATH_P3                 = "symbol_graph_p3"
-STATE_FLOW_GRAPH_BUNDLE_PATH_P2             = "state_flow_graph_p2"
-STATE_FLOW_GRAPH_BUNDLE_PATH_P3             = "state_flow_graph_p3"
+SFG_BUNDLE_PATH_P2             = "state_flow_graph_p2"
+SFG_BUNDLE_PATH_P3             = "state_flow_graph_p3"
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2     = "callee_parameter_mapping_p2"
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3     = "callee_parameter_mapping_p3"
 

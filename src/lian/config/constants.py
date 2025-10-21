@@ -265,11 +265,19 @@ SYMBOL_OR_STATE = util.SimpleEnum({
     "UNKNOWN"               : 3,
 })
 
-STATE_FLOW_GRAPH_EDGE_KIND = util.SimpleEnum({
+SFG_EDGE_KIND = util.SimpleEnum({
     "REGULAR"               : 0,
-    "SYMBOL_TO_SYMBOL"      : 1,
-    "SYMBOL_TO_STATE"       : 2,
-    "STATE_TO_STATE"        : 3,
+    "SYMBOL_FLOW"           : 1,
+    "SYMBOL_STATE"          : 2,
+    "STATE_INCLUSION"       : 3,
+    "CALL_RETURN"           : 4,
+})
+
+SFG_NODE_KIND = util.SimpleEnum({
+    "REGULAR"               : 0,
+    "STMT"                  : 1,
+    "SYMBOL"                : 1,
+    "STATE"                 : 2,
 })
 
 ACCESS_POINT_KIND = util.SimpleEnum({

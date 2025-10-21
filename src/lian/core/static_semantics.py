@@ -19,7 +19,9 @@ from lian.config.constants import (
     ANALYSIS_PHASE_ID,
     RETURN_STMT_OPERATION,
     SUMMARY_GENERAL_SYMBOL_ID,
-    LOOP_OPERATIONS
+    LOOP_OPERATIONS,
+    SFG_NODE_KIND,
+    SFG_EDGE_KIND
 )
 import lian.events.event_return as er
 from lian.events.handler_template import EventData
@@ -41,7 +43,9 @@ from lian.common_structs import (
     IndexMapInSummary,
     SymbolStateSpace,
     LastSymbolDefNode,
-    CountStmtDefStateNode
+    CountStmtDefStateNode,
+    SFGNode,
+    SFGEdge
 )
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
@@ -324,6 +328,12 @@ class StaticSemanticAnalysis:
                 edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
+
+            frame.state_flow_graph.add_edge(
+                SFGNode(node_type=SFG_NODE_KIND.STMT, stmt_id = stmt_id),
+                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, stmt_id=key.stmt_id, internal_id=key.symbol_id),
+                SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_FLOW, stmt_id=stmt_id)
+            )
         status.out_symbol_bits = current_bits
 
         # check if the out bits are changed
@@ -417,6 +427,20 @@ class StaticSemanticAnalysis:
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
 
+    def adjust_used_symbols(self, used_symbols, frame):
+        in_symbols = []
+        for node in used_symbols:
+            if not isinstance(node, SymbolDefNode):
+                continue
+
+            if node.stmt_id <= 0:
+                continue
+
+            symbol = frame.symbol_state_space[node.index]
+            in_symbols.append(symbol)
+
+        return in_symbols
+
     def collect_in_state_bits(self, stmt_id, stmt, frame: ComputeFrame):
         """
         收集语句的输入状态位，处理控制流合并。
@@ -439,42 +463,6 @@ class StaticSemanticAnalysis:
                 in_state_bits |= frame.stmt_id_to_status[each_parent_stmt_id].out_state_bits
 
         return in_state_bits
-
-    def get_used_symbols(self, stmt_id, frame: ComputeFrame, status: StmtStatus, symbol_graph):
-        """
-        生成输入符号列表，基于使用符号和可用定义。
-        返回符号对象列表。
-        """
-        available_defs = list(frame.symbol_bit_vector_manager.explain(status.in_symbol_bits))
-        # print(f"available_defs: {available_defs}")
-        all_used_symbols = status.used_symbols + status.implicitly_used_symbols
-        all_reachable_defs = set()
-        for used_symbol_index in all_used_symbols:
-            used_symbol = frame.symbol_state_space[used_symbol_index]
-            if not isinstance(used_symbol, Symbol):
-                continue
-            all_reachable_defs.update(
-                self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs)
-            )
-
-        # print(f"all_reachable_defs: {all_reachable_defs}")
-
-        return all_reachable_defs
-
-    def adjust_used_symbols(self, used_symbols, frame):
-        in_symbols = []
-        for node in used_symbols:
-            if not isinstance(node, SymbolDefNode):
-                continue
-
-            if node.stmt_id <= 0:
-                continue
-
-            symbol = frame.symbol_state_space[node.index]
-            in_symbols.append(symbol)
-
-        return in_symbols
-
 
     #def group_in_states_and_obtain_newest_states(self, stmt_id, in_symbols, frame: ComputeFrame):
     def group_in_states(self, stmt_id, in_symbols, frame: ComputeFrame, status):
@@ -814,7 +802,7 @@ class StaticSemanticAnalysis:
         # 收集输入状态
         # collect in state
 
-        used_symbols = self.get_used_symbols(stmt_id, frame, status, symbol_graph)
+        used_symbols = util.graph_predecessors(symbol_graph, stmt_id)
         in_symbols = self.adjust_used_symbols(used_symbols, frame)
         # print(f"in_symbols: {in_symbols}")
         in_states = self.group_in_states(stmt_id, in_symbols, frame, status)
