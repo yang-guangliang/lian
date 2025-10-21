@@ -204,6 +204,11 @@ class UnitScopeHierarchyAnalysis:
                     attrs = util.read_stmt_field(row.attrs)
                 )
                 self.scope_space.add(parameter_decl_scope)
+                util.add_to_dict_with_default_set(
+                    self.symbol_name_to_decl_stmts,
+                    row.name,
+                    stmt_id
+                )
                 # self.variable_ids.add(stmt_id)
 
             elif row.operation in EXPORT_STMT_OPERATION:
