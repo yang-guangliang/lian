@@ -1941,7 +1941,7 @@ class StaticStmtStates:
 
         # call plugin to deal with undefined_callee_error
         # if len(unsolved_callee_states) != 0:
-        if len(callee_method_ids) == 0 or self.have_abstract_method(callee_method_ids):
+        if len(callee_method_ids) == 0 or self.is_abstract_method(callee_method_ids):
             out_data = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
             )
@@ -1954,10 +1954,10 @@ class StaticStmtStates:
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )
 
-    def have_abstract_method(self, callee_method_ids):
+    def is_abstract_method(self, callee_method_ids):
         for stmt_id in callee_method_ids:
             stmt = self.loader.get_stmt_gir(stmt_id)
-            if 'abstractmethod' in stmt.attrs:
+            if stmt.attrs and 'abstractmethod' in stmt.attrs:
                 return True
         return False
 
