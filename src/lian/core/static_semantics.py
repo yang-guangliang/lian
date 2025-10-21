@@ -416,8 +416,6 @@ class StaticSemanticAnalysis:
                 if used_symbol_index < len(status.used_symbols):
                     edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.EXPLICITLY_USED
             for tmp_key in reachable_defs:
-                if tmp_key.used_symbol_index == -1:
-                    print("found -1 in symbol graph", tmp_key)
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
 
     def collect_in_state_bits(self, stmt_id, stmt, frame: ComputeFrame):
