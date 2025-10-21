@@ -216,7 +216,7 @@ class StaticSemanticAnalysis:
 
         return current_bits
 
-    def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set(), phase = 2):
+    def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set()):
         """
         为每个defined_states创建一个StateDefNode，并更新out_state_bits，(kill/gen也在这个过程中进行)。
         如果该语句有defined_symbol且defined_symbol没有任何state，说明没解析出来，人为创建一个UNSOLVED的state给defined_symbol。
@@ -373,10 +373,9 @@ class StaticSemanticAnalysis:
         if used_symbol_id in frame.defined_symbols:
             # print(f"used_symbol: {frame.defined_symbols[used_symbol_id]}")
             # print(f"available_symbol_defs: {available_symbol_defs}")
-            available_symbol_defs_list = list(available_symbol_defs)
             used_define_list = list(frame.defined_symbols[used_symbol_id])
-            if len(available_symbol_defs_list) != 0 and len(used_define_list) != 0:
-                for node1 in available_symbol_defs_list:
+            if len(available_symbol_defs) != 0 and len(used_define_list) != 0:
+                for node1 in available_symbol_defs:
                     for node2 in used_define_list:
                         if node1 == node2:
                             reachable_symbol_defs.add(node1)
@@ -441,14 +440,12 @@ class StaticSemanticAnalysis:
 
         return in_state_bits
 
-    def generate_in_symbols(self, stmt_id, frame: ComputeFrame, status: StmtStatus, symbol_graph):
+    def get_used_symbols(self, stmt_id, frame: ComputeFrame, status: StmtStatus, symbol_graph):
         """
         生成输入符号列表，基于使用符号和可用定义。
         返回符号对象列表。
         """
-        in_symbols = []
-
-        available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        available_defs = list(frame.symbol_bit_vector_manager.explain(status.in_symbol_bits))
         # print(f"available_defs: {available_defs}")
         all_used_symbols = status.used_symbols + status.implicitly_used_symbols
         all_reachable_defs = set()
@@ -456,10 +453,17 @@ class StaticSemanticAnalysis:
             used_symbol = frame.symbol_state_space[used_symbol_index]
             if not isinstance(used_symbol, Symbol):
                 continue
+            all_reachable_defs.update(
+                self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs)
+            )
 
-            all_reachable_defs.update(self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs))
-        # print(f"all_reachable_defs{all_reachable_defs}")
-        for node in all_reachable_defs:
+        # print(f"all_reachable_defs: {all_reachable_defs}")
+
+        return all_reachable_defs
+
+    def adjust_used_symbols(self, used_symbols, frame):
+        in_symbols = []
+        for node in used_symbols:
             if not isinstance(node, SymbolDefNode):
                 continue
 
@@ -471,8 +475,9 @@ class StaticSemanticAnalysis:
 
         return in_symbols
 
-    #def group_used_states_and_obtain_newest_states(self, stmt_id, in_symbols, frame: ComputeFrame):
-    def group_used_states(self, stmt_id, in_symbols, frame: ComputeFrame, status):
+
+    #def group_in_states_and_obtain_newest_states(self, stmt_id, in_symbols, frame: ComputeFrame):
+    def group_in_states(self, stmt_id, in_symbols, frame: ComputeFrame, status):
         """
         准备in_states, 返回一个集合 {symbol_id: {newest_states} }
         """
@@ -485,16 +490,16 @@ class StaticSemanticAnalysis:
 
             symbol_id = each_in_symbol.symbol_id
             available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
-            # print("group_used_states@ available_state_defs",available_state_defs)
-            # print(f"group_used_states@ in_symbol {symbol_id}.states", each_in_symbol.states)
+            # print("group_in_states@ available_state_defs",available_state_defs)
+            # print(f"group_in_states@ in_symbol {symbol_id}.states", each_in_symbol.states)
             latest_state_index_set = self.resolver.collect_newest_states_by_state_indexes(
                 frame, stmt_id, each_in_symbol.states, available_state_defs
             )
-            # print("group_used_states@ latest_state_index_set",latest_state_index_set)
+            # print("group_in_states@ latest_state_index_set",latest_state_index_set)
             if latest_state_index_set:
                 util.add_to_dict_with_default_set(symbol_id_to_state_index, symbol_id, latest_state_index_set)
 
-        # print("group_used_states@ symbol_id_to_state_index before fusion",symbol_id_to_state_index)
+        # print("group_in_states@ symbol_id_to_state_index before fusion",symbol_id_to_state_index)
         for symbol_id, each_symbol_in_states in symbol_id_to_state_index.items():
             # 对每个symbol的in_states按state_id合并一次，并将fusion_state添加到status.defined_states中
             state_id_to_indexes = self.group_states_with_state_ids(frame, each_symbol_in_states)
@@ -502,7 +507,7 @@ class StaticSemanticAnalysis:
                 fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, status)
                 each_symbol_in_states -= states_with_same_id
                 each_symbol_in_states |= fusion_state
-        # print("group_used_states@ symbol_id_to_state_index after fusion",symbol_id_to_state_index)
+        # print("group_in_states@ symbol_id_to_state_index after fusion",symbol_id_to_state_index)
         return symbol_id_to_state_index
 
     def generate_external_symbol_states(self, frame: ComputeFrame, stmt_id, symbol_id, used_symbol, method_summary):
@@ -784,7 +789,6 @@ class StaticSemanticAnalysis:
         1. 收集输入状态
         2. 完成状态传播
         3. 执行具体语句的状态计算
-        返回结果标志（状态变化/中断等）
         """
         status = frame.stmt_id_to_status[stmt_id]
         in_states = {}
@@ -810,9 +814,10 @@ class StaticSemanticAnalysis:
         # 收集输入状态
         # collect in state
 
-        in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
+        used_symbols = self.get_used_symbols(stmt_id, frame, status, symbol_graph)
+        in_symbols = self.adjust_used_symbols(used_symbols, frame)
         # print(f"in_symbols: {in_symbols}")
-        in_states = self.group_used_states(stmt_id, in_symbols, frame, status)
+        in_states = self.group_in_states(stmt_id, in_symbols, frame, status)
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
@@ -1110,8 +1115,6 @@ class StaticSemanticAnalysis:
                 # update method def/use
                 self.update_method_def_use_summary(stmt_id, frame)
 
-            frame.stmt_counters[stmt_id] += 1
-
             # global stmt_counts
             # stmt_counts += 1
             # if stmt_counts % 2000 == 0:
@@ -1119,6 +1122,7 @@ class StaticSemanticAnalysis:
                 # self.print_count_stmt_def_states()
 
             frame.stmt_worklist.pop()
+            frame.stmt_counters[stmt_id] += 1
 
     def analyze_method(self, method_id):
         """

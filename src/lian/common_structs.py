@@ -1016,6 +1016,12 @@ class StateFlowGraph(SymbolGraph):
     pass
 
 @dataclasses.dataclass
+class SFGNode:
+    unique_id: int = -1
+    method_id: int = -1
+    index: int = -1
+
+@dataclasses.dataclass
 class SourceSymbolScopeInfo:
     source_unit_id:int = -1
     source_symbol_id:int = -1 # 也是source_decl_stmt_id

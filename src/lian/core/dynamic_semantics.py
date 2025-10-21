@@ -67,7 +67,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         return results
 
     def adjust_index_of_status_space(self, baseline_index, status, frame, space, defined_symbols, symbol_bit_vector, state_bit_vector):
-
         for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
             symbol_def_nodes.index += baseline_index
         for state_def_nodes in state_bit_vector.bit_pos_to_id.values():
@@ -75,14 +74,14 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         for symbol_def_nodes in defined_symbols.values():
             for node in symbol_def_nodes:
                 node.index += baseline_index
-        for stmtstatus in status.values():
-            for each_id, value in enumerate(stmtstatus.used_symbols):
-                stmtstatus.used_symbols[each_id] = value + baseline_index
-            for each_id, value in enumerate(stmtstatus.implicitly_used_symbols):
-                stmtstatus.implicitly_used_states[each_id] = value + baseline_index
-            for each_id, value in enumerate(stmtstatus.implicitly_defined_symbols):
-                stmtstatus.implicitly_defined_symbols[each_id] = value + baseline_index
-            stmtstatus.defined_symbol += baseline_index
+        for stmt_status in status.values():
+            for each_id, value in enumerate(stmt_status.used_symbols):
+                stmt_status.used_symbols[each_id] = value + baseline_index
+            for each_id, value in enumerate(stmt_status.implicitly_used_symbols):
+                stmt_status.implicitly_used_states[each_id] = value + baseline_index
+            for each_id, value in enumerate(stmt_status.implicitly_defined_symbols):
+                stmt_status.implicitly_defined_symbols[each_id] = value + baseline_index
+            stmt_status.defined_symbol += baseline_index
         for each_space in space:
             # each_space.index += baseline_index
             if isinstance(each_space, Symbol):
@@ -91,9 +90,9 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                     new_set.add(each_id + baseline_index)
                 each_space.states = new_set
             else:
-                for each_id, stmtstatus in enumerate(each_space.array):
+                for each_id, each_status in enumerate(each_space.array):
                     new_set = set()
-                    for index in stmtstatus:
+                    for index in each_status:
                         new_set.add(index + baseline_index)
                     each_space.array[each_id] = new_set
                 for each_field, value_set in each_space.fields.items():
@@ -256,81 +255,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         #         print(f"finally collect_external_symbol_states: stmt_id {stmt_id}, symbol_id {symbol_id}, {frame.symbol_state_space[index]}")
         return new_state_indexes
 
-    def compute_states(self, stmt_id, stmt, frame: ComputeFrame):
-        """
-        执行符号状态计算：
-        1. 收集输入符号状态位
-        2. 生成输入符号列表
-        3. 完成状态传播并检查持续分析条件
-        4. 执行动态内容分析器计算具体状态
-        5. 返回状态变化标志（符号/使用变化）
-        """
-        status = frame.stmt_id_to_status[stmt_id]
-        in_states = {}
-        symbol_graph = frame.symbol_graph.graph
-
-        if not symbol_graph.has_node(stmt_id) or stmt.operation == "goto_stmt":
-            return P2ResultFlag()
-
-        # collect in state bits
-        old_defined_symbol_states = set()
-        if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
-            if isinstance(defined_symbol, Symbol):
-                old_defined_symbol_states = defined_symbol.states
-        old_status_defined_states = status.defined_states
-        old_in_state_bits = status.in_state_bits
-        old_index_ceiling = frame.symbol_state_space.get_length()
-        old_implicitly_defined_symbols = status.implicitly_defined_symbols.copy()
-        old_implicitly_used_symbols = status.implicitly_used_symbols.copy()
-        status.in_state_bits = self.collect_in_state_bits(stmt_id, stmt, frame)
-
-        # collect in state
-
-        in_symbols = self.generate_in_symbols(stmt_id, frame, status, symbol_graph)
-        # print(f"in_symbols: {in_symbols}")
-        in_states = self.group_used_states(stmt_id, in_symbols, frame, status)
-        # print(f"in_states@before complete_in_states: {in_states}")
-        method_summary = frame.method_summary_template
-        continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        # if not continue_flag:
-        # if not continue_flag and stmt.operation != "call_stmt":
-        #     if config.DEBUG_FLAG:
-        #         print(f"  CONTINUE")
-        #     if status.in_state_bits != old_in_state_bits:
-        #         self.update_out_states(stmt_id, frame, status, old_index_ceiling, old_status_defined_states)
-        #     self.restore_states_of_defined_symbol_and_status(stmt_id, frame, status, old_defined_symbol_states, old_implicitly_used_symbols, old_status_defined_states)
-        #     return P2ResultFlag()
-        self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        change_flag: P2ResultFlag = frame.stmt_state_analysis.run_stmt_state_analysis(stmt_id, stmt, status, in_states)
-        if change_flag is None:
-            if config.DEBUG_FLAG:
-                print(f"  NO CHANGE")
-            change_flag = P2ResultFlag()
-
-        self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling, set(), 3)
-        new_defined_symbol_states = set()
-        if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
-            new_defined_symbol_states = defined_symbol.states
-
-        if new_out_states or new_defined_symbol_states != old_defined_symbol_states:
-            change_flag.state_changed = True
-
-        if status.implicitly_defined_symbols != old_implicitly_defined_symbols:
-            change_flag.symbol_def_changed = True
-
-        if status.implicitly_used_symbols != old_implicitly_used_symbols:
-            change_flag.symbol_use_changed = True
-
-        if change_flag.state_changed:
-            frame.stmts_with_symbol_update.add(
-                self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
-            )
-        # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
-
-
-        return change_flag
-
     def generate_analysis_summary_and_s2space(self, frame: ComputeFrame):
         """
         生成分析摘要和压缩状态空间：
@@ -338,60 +262,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         """
         summary_data = SummaryData()
         return summary_data
-
-    def analyze_stmts(self, frame: ComputeFrame):
-        """
-        执行语句级分析循环：
-        1. 管理工作列表中的待分析语句
-        2. 处理控制流回边和循环分析
-        3. 触发符号状态计算和中断处理
-        4. 更新符号使用信息并推进分析轮次
-        """
-        while len(frame.stmt_worklist) != 0:
-            stmt_id = frame.stmt_worklist.peek()
-            if config.DEBUG_FLAG:
-                util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
-                # print("gir3: ",self.loader.load_stmt_gir(stmt_id))
-            if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
-                frame.stmt_worklist.pop()
-                continue
-            # print(f"counter: {frame.stmt_counters[stmt_id]}")
-
-            stmt = frame.stmt_id_to_stmt.get(stmt_id)
-            if stmt_id in frame.loop_total_rounds:
-                if frame.stmt_counters[stmt_id] <= frame.loop_total_rounds[stmt_id]:
-                    frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
-                    frame.stmts_with_symbol_update.add(stmt_id)
-            else:
-                if frame.stmt_counters[stmt_id] < config.MAX_STMT_STATE_ANALYSIS_ROUND:
-                    frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
-
-            if frame.interruption_flag:
-                # 关键指令？ 会中断
-                frame.interruption_flag = False
-            else:
-                # compute in/out bitsz
-                self.analyze_reachable_symbols(stmt_id, stmt, frame)
-
-            # according to symbol_graph, compute the state flow of current statement
-            result_flag = self.compute_states(stmt_id, stmt, frame)
-            frame.stmts_with_symbol_update.remove(stmt_id)
-
-            # re-analyze def/use
-            if result_flag.symbol_def_changed or result_flag.symbol_use_changed:
-                # change out_bit to reflect implicitly_defined_symbols
-                self.rerun_analyze_reachable_symbols(stmt_id, frame, result_flag)
-                # update method def/use
-                self.update_method_def_use_summary(stmt_id, frame)
-
-            # check if interruption is enabled
-            if result_flag.interruption_flag:
-                frame.stmts_with_symbol_update.add(stmt_id)
-                return result_flag
-
-            # move to the next statement
-            frame.stmt_worklist.pop()
-            frame.stmt_counters[stmt_id] += 1
 
     def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryInstance, compact_space: SymbolStateSpace, caller_frame: ComputeFrame = None):
         """
