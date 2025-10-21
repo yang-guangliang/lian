@@ -123,15 +123,17 @@ class Resolver:
         import_node = self.loader.get_import_node_with_name(unit_id, symbol_name)
         if util.is_empty(import_node):
             return default_return
-        if import_node.symbol_id != -1:
+        if import_node.symbol_id > 0 and import_node.symbol_type != LIAN_SYMBOL_KIND.UNKNOWN_KIND:
             imported_unit_id = import_node.unit_id
-            if imported_unit_id != -1:
+            if imported_unit_id != -1 and imported_unit_id != unit_id:
+                # 明确解析出了导入的symbol来源是什么
                 return SourceSymbolScopeInfo(
                     imported_unit_id,
                     import_node.symbol_id,
                     self.loader.convert_stmt_id_to_scope_id(import_node.symbol_id),
                     symbol_id
                 )
+        # 否则，返回import语句
         return SourceSymbolScopeInfo(-1, symbol_id, scope_id)
 
     def resolve_implicit_root_scopes(self, unit_id):
