@@ -10,7 +10,7 @@ from lian.config import config, type_table
 from lian.util.loader import Loader
 # from lian.events.handler_template import AppTemplate
 from lian.config.constants import (
-    CONDITION_STMT_PATH_FLAG,
+    CONDITION_FLAG,
     LIAN_SYMBOL_KIND,
     LIAN_INTERNAL,
     STATE_TYPE_KIND,
@@ -19,7 +19,9 @@ from lian.config.constants import (
     EVENT_KIND,
     SYMBOL_OR_STATE,
     ACCESS_POINT_KIND,
-    ANALYSIS_PHASE_ID
+    ANALYSIS_PHASE_ID,
+    SFG_NODE_KIND,
+    SFG_EDGE_KIND,
 )
 import lian.events.event_return as er
 from lian.common_structs import (
@@ -47,7 +49,9 @@ from lian.common_structs import (
     ParameterMapping,
     PathManager,
     UnionFind,
-    IndexMapInSummary
+    IndexMapInSummary,
+    SFGNode,
+    SFGEdge,
 )
 from lian.core.resolver import Resolver
 
@@ -109,7 +113,7 @@ class StaticStmtStates:
             "block_start"                           : self.control_flow_stmt_state,
 
             "forin_stmt"                            : self.forin_stmt_state,
-            "for_value_stmt"                        : self.for_value_stmt_state,
+            "for_value_stmt"                        : self.forin_stmt_state,
 
             "import_stmt"                           : self.import_stmt_state,
             "from_import_stmt"                      : self.from_import_stmt_state,
@@ -189,6 +193,16 @@ class StaticStmtStates:
             new_state.tangping_elements.update(each_field)
         new_state.array = []
         new_state.fields = {}
+
+    def make_symbol_or_state_sfg_node(self, node, node_index, stmt_id):
+        if isinstance(node, Symbol):
+            return SFGNode(node_type=SFG_NODE_KIND.SYMBOL, stmt_id=stmt_id, index=node_index, internal_id=node.symbol_id)
+        elif isinstance(node, State):
+            return SFGNode(node_type=SFG_NODE_KIND.STATE, stmt_id=stmt_id, index=node_index, internal_id=node.state_id)
+        return None
+
+    def make_stmt_sfg_edge(self, stmt_id, edge_type = SFG_EDGE_KIND.SYMBOL_FLOW, round = -1, name = ""):
+        return SFGEdge(edge_type=edge_type, stmt_id=stmt_id, round=round, name=name)
 
     def is_state_a_class_decl(self, state):
         """
@@ -341,7 +355,7 @@ class StaticStmtStates:
             return s.states
         return set()
 
-    def run_stmt_state_analysis(self, stmt_id, stmt, status: StmtStatus, in_states):
+    def run(self, stmt_id, stmt, status: StmtStatus, in_states):
         """根据语句类型分发到对应的状态处理函数进行分析"""
         # print("status.operation:", status.operation)
         handler = self.state_analysis_handlers.get(stmt.operation, None)
@@ -357,7 +371,7 @@ class StaticStmtStates:
 
         return defined_symbol.states
 
-    def cancel_key_state(self, symbol_id, state_index, stmt_id = -1):
+    def unset_key_state_flag(self, symbol_id, state_index, stmt_id = -1):
         """取消关键状态标记，并清理相关动态调用信息"""
         key_state = self.frame.symbol_state_space[state_index]
         if not(key_state and isinstance(key_state, State)):
@@ -373,7 +387,7 @@ class StaticStmtStates:
         if stmt_id > 0:
             self.frame.method_summary_template.dynamic_call_stmts.discard(stmt_id)
 
-    def tag_key_state(self, stmt_id, symbol_id, state_index):
+    def tag_key_state_flag(self, stmt_id, symbol_id, state_index):
         """将状态标记为关键状态，并记录相关动态调用信息"""
         key_state = self.frame.symbol_state_space[state_index]
         if not(key_state and isinstance(key_state, State)):
@@ -381,37 +395,38 @@ class StaticStmtStates:
 
         key_state.symbol_or_state = SYMBOL_OR_STATE.EXTERNAL_KEY_STATE
         key_dynamic_content = self.frame.method_summary_template.key_dynamic_content
-        # print("tag_key_state@add_state_index",state_index)
+        # print("tag_key_state_flag@add_state_index",state_index)
         util.add_to_dict_with_default_set(
             key_dynamic_content, symbol_id, IndexMapInSummary(raw_index = state_index, new_index = -1)
         )
         self.frame.method_summary_template.dynamic_call_stmts.add(stmt_id)
 
     def regular_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+        """do not need to do anything at this moment"""
         return P2ResultFlag()
 
     def control_flow_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """处理控制流语句，分析条件路径（真/假路径）"""
+        """deal with control flow statement"""
         condition_index = status.used_symbols[0]
         condition_states = self.read_used_states(condition_index, in_states)
 
-        condition_flag = CONDITION_STMT_PATH_FLAG.NO_PATH
+        condition_flag = CONDITION_FLAG.NO_PATH
         for each_state_index in condition_states:
             each_state = self.frame.symbol_state_space[each_state_index]
-            if not each_state:
+            if not isinstance(each_state, State):
                 continue
             #print("each_state:", each_state)
             if len(each_state.fields) != 0 or len(each_state.array) != 0 or len(each_state.tangping_elements) != 0:
-                condition_flag |= CONDITION_STMT_PATH_FLAG.TRUE_PATH
+                condition_flag |= CONDITION_FLAG.TRUE_PATH
             else:
                 if each_state.value == LIAN_INTERNAL.FALSE:
-                    condition_flag |= CONDITION_STMT_PATH_FLAG.FALSE_PATH
-                elif each_state.value == 0:
-                    condition_flag |= CONDITION_STMT_PATH_FLAG.FALSE_PATH
+                    condition_flag |= CONDITION_FLAG.FALSE_PATH
+                elif isinstance(each_state.value, int) and each_state.value == 0:
+                    condition_flag |= CONDITION_FLAG.FALSE_PATH
                 else:
-                    condition_flag |= CONDITION_STMT_PATH_FLAG.TRUE_PATH
+                    condition_flag |= CONDITION_FLAG.TRUE_PATH
 
-            if condition_flag == CONDITION_STMT_PATH_FLAG.ANY_PATH:
+            if condition_flag == CONDITION_FLAG.ANY_PATH:
                 break
 
         return P2ResultFlag(condition_path_flag = condition_flag)
@@ -436,12 +451,24 @@ class StaticStmtStates:
         receiver_symbol = self.frame.symbol_state_space[receiver_index]
         receiver_states = self.read_used_states(receiver_index, in_states)
 
-        new_receiver_symbol_index = None
-        new_receiver_symbol = None
-
+        defined_symbol_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         defined_symbol_states = set()
-        current_round = self.frame.stmt_counters[stmt_id]
-        loop_total_rounds = 0
+
+        # print(f"loop_total_rounds: {self.frame.loop_total_rounds[stmt_id]}")
+        if not isinstance(defined_symbol, Symbol):
+            return P2ResultFlag()
+
+        if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
+            edge_type = SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW
+            if stmt.operation == "for_value_stmt":
+                edge_type = SFG_EDGE_KIND.SYMBOL_FLOW
+            # flows from receiver to defined symbol
+            self.sfg.add_edge(
+                self.make_symbol_or_state_sfg_node(receiver_symbol, receiver_index, stmt_id),
+                self.make_symbol_or_state_sfg_node(defined_symbol, defined_symbol_index, stmt_id),
+                self.make_stmt_sfg_edge(stmt_id, edge_type)
+            )
 
         for receiver_state_index in receiver_states:
             receiver_state = self.frame.symbol_state_space[receiver_state_index]
@@ -454,207 +481,28 @@ class StaticStmtStates:
             # 根据receiver类型进行分发. array / dict
             # 处理array
             elif receiver_state.array:
-                # for cur_elem_states in receiver_state.array:
-                #     for cur_elem_states_index in cur_elem_states:
-                #         defined_symbol_states.add(cur_elem_states_index)
-
                 receiver_array = receiver_state.array
-                receiver_array_length = len(receiver_array)
-                if current_round >= receiver_array_length:
-                    continue
-                defined_symbol_states.update(receiver_state.array[current_round])
-                loop_total_rounds = min(receiver_array_length, config.MAX_STMT_STATE_ANALYSIS_ROUND)
-                # current_key_index = self.create_state_and_add_space(
-                #     status, stmt_id=stmt_id, value=current_round, data_type=LianInternal.INT,
-                #     source_state_id = receiver_state.source_state_id,
-                #     source_symbol_id = receiver_state.source_symbol_id,
-                #     access_path= self.copy_and_extend_access_path(
-                #         receiver_state.access_path,
-                #         AccessPoint(
-                #             kind = AccessPointKind.ARRAY_INDEX,
-                #             key = current_round
-                #         )
-                #     )
-                # )
-                # self.update_access_path(current_key_index)
-                # defined_symbol_states.add(current_key_index)
-
-            # 处理dict
-            elif receiver_state.fields:
-                # print(f"current_round: {current_round}")
-                all_sorted_keys = sorted(receiver_state.fields.keys())
-                real_sorted_keys = []
-                if receiver_state.data_type == LIAN_INTERNAL.ARRAY:
-                    for key in all_sorted_keys:
-                        if key.isdigit():
-                            real_sorted_keys.append(key)
-                else:
-                    real_sorted_keys = all_sorted_keys
-
-                keys_length = len(real_sorted_keys)
-                if current_round >= keys_length:
-                    continue
-                loop_total_rounds = min(keys_length, config.MAX_STMT_STATE_ANALYSIS_ROUND)
-                current_key = real_sorted_keys[current_round]
-                # print(f"current_key: {current_key}")
-                current_key_index = self.create_state_and_add_space(
-                    status, stmt_id=stmt_id, value=f'{current_key}', data_type=LIAN_INTERNAL.STRING,
-                    source_state_id= receiver_state.source_state_id,
-                    source_symbol_id=receiver_state.source_symbol_id,
-                    access_path=self.copy_and_extend_access_path(
-                        receiver_state.access_path,
-                        AccessPoint(
-                            kind = ACCESS_POINT_KIND.FIELD_NAME,
-                            key = current_key
-                        )
-                    )
-                )
-                self.update_access_path_state_id(current_key_index)
-
-                defined_symbol_states.add(current_key_index)
-
-            elif receiver_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                self.tag_key_state(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
-
-                if util.is_empty(new_receiver_symbol_index):
-                    new_receiver_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, receiver_symbol)
-                    new_receiver_symbol: Symbol = self.frame.symbol_state_space[new_receiver_symbol_index]
-
-                new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
-                new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
+                defined_symbol_states.update(receiver_array)
+            else:
+                if stmt.operation == "for_value_stmt":
+                    if receiver_state.fields:
+                        defined_symbol_states.update(receiver_state.fields.values())
+                        continue
 
                 source_index = self.create_state_and_add_space(
                     status = status,
                     stmt_id = stmt_id,
-                    source_symbol_id=receiver_state.source_symbol_id,
-                    source_state_id=receiver_state.source_state_id,
+                    data_type=receiver_state.data_type,
+                    source_symbol_id=defined_symbol.symbol_id,
                     state_type = STATE_TYPE_KIND.ANYTHING,
-                    access_path = self.copy_and_extend_access_path(
-                        new_receiver_state.access_path,
-                        AccessPoint(
-                            kind = ACCESS_POINT_KIND.FORIN_ELEMENT
-                        )
-                    )
                 )
-                self.update_access_path_state_id(source_index)
-
-                self.make_state_tangping(new_receiver_state)
-                new_receiver_state.tangping_elements.add(source_index)
-                new_receiver_symbol.states.discard(receiver_state_index)
-                new_receiver_symbol.states.add(new_receiver_state_index)
-
-                # print("new_receiver_symbol", new_receiver_symbol.states)
-
-                defined_symbol_states.add(source_index)
-
-        if stmt_id not in self.frame.loop_total_rounds:
-            self.frame.loop_total_rounds[stmt_id] = loop_total_rounds
-
-        # print(f"loop_total_rounds: {self.frame.loop_total_rounds[stmt_id]}")
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
-        if not isinstance(defined_symbol, Symbol):
-            return P2ResultFlag()
-
-        defined_symbol.states = defined_symbol_states
-        # print(f"defined_symbol.states: {defined_symbol.states}")
-        return P2ResultFlag()
-
-    def for_value_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        处理for-value循环语句状态：
-        1. 获取接收器符号状态
-        2. 分析值类型结构
-        3. 生成循环轮次状态
-        4. 更新定义符号集合
-        <for_value_stmt defined_symbol: name, used_symbol: [receiver]>
-        """
-        receiver_index = status.used_symbols[0]
-        receiver_symbol = self.frame.symbol_state_space[receiver_index]
-        receiver_states = self.read_used_states(receiver_index, in_states)
-
-        new_receiver_symbol_index = None
-        new_receiver_symbol = None
-
-        defined_symbol_states = set()
-        current_round = self.frame.stmt_counters[stmt_id]
-        loop_total_rounds = 0
-
-        for receiver_state_index in receiver_states:
-            receiver_state = self.frame.symbol_state_space[receiver_state_index]
-            if not (receiver_state and isinstance(receiver_state, State)):
-                continue
-
-            if receiver_state.tangping_elements:
-                defined_symbol_states.update(receiver_state.tangping_elements)
-
-            # 根据receiver类型进行分发. array / dict
-            # 处理array
-            elif receiver_state.array:
-                # for cur_elem_states in receiver_state.array:
-                #     for cur_elem_states_index in cur_elem_states:
-                #         defined_symbol_states.add(cur_elem_states_index)
-
-                receiver_array = receiver_state.array
-                receiver_array_length = len(receiver_array)
-                if current_round >= receiver_array_length:
-                    continue
-                loop_total_rounds = min(receiver_array_length, config.MAX_STMT_STATE_ANALYSIS_ROUND)
-                defined_symbol_states.update(receiver_array[current_round])
-
-            # 处理dict
-            elif receiver_state.fields:
-                all_sorted_keys = sorted(receiver_state.fields.keys())
-                keys_length = len(all_sorted_keys)
-                if current_round >= keys_length:
-                    continue
-                loop_total_rounds = min(keys_length, config.MAX_STMT_STATE_ANALYSIS_ROUND)
-                current_key = all_sorted_keys[current_round]
-                defined_symbol_states.update(receiver_state.fields[current_key])
-
-            elif receiver_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                self.tag_key_state(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
-
-                if util.is_empty(new_receiver_symbol_index):
-                    new_receiver_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, receiver_symbol)
-                    new_receiver_symbol: Symbol = self.frame.symbol_state_space[new_receiver_symbol_index]
-
-                new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
-                new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
-                source_index = self.create_state_and_add_space(
-                    status = status,
-                    stmt_id = stmt_id,
-                    source_symbol_id=receiver_state.source_symbol_id,
-                    source_state_id=receiver_state.source_state_id,
-                    state_type = STATE_TYPE_KIND.ANYTHING,
-                    access_path = self.copy_and_extend_access_path(
-                        receiver_state.access_path,
-                        AccessPoint(
-                            kind = ACCESS_POINT_KIND.FORIN_ELEMENT
-                        )
-                    )
-                )
-                self.update_access_path_state_id(source_index)
-
-                self.make_state_tangping(new_receiver_state)
-                new_receiver_state.tangping_elements.add(source_index)
-                new_receiver_symbol.states.discard(receiver_state_index)
-                new_receiver_symbol.states.add(new_receiver_state_index)
-
-                # print("new_receiver_symbol", new_receiver_symbol.states)
-
-                defined_symbol_states.add(source_index)
-
-        self.frame.loop_total_rounds[stmt_id] = loop_total_rounds
-        # print(f"self.frame.loop_total_rounds[stmt_id]: {self.frame.loop_total_rounds[stmt_id]}")
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
-        if not isinstance(defined_symbol, Symbol):
-            return P2ResultFlag()
+                defined_symbol_states = {source_index}
+                break
 
         defined_symbol.states = defined_symbol_states
         return P2ResultFlag()
 
     def import_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        # The imported symbol should be anything and is provided by complete_in_states before calling this function
         return P2ResultFlag()
 
     def from_import_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -677,24 +525,27 @@ class StaticStmtStates:
             return P2ResultFlag()
 
         result = set()
+        require_values = set()
         for each_index in name_state_indexes:
             each_name_state = self.frame.symbol_state_space[each_index]
             if each_name_state.value:
-                state_index = self.create_state_and_add_space(
-                    status, stmt_id,
-                    source_symbol_id = defined_symbol.symbol_id,
-                    data_type = LIAN_INTERNAL.REQUIRED_MODULE,
-                    value = each_name_state.value,
-                    access_path = [AccessPoint(
-                        kind = ACCESS_POINT_KIND.REQUIRED_MODULE,
-                        key = util.read_stmt_field(each_name_state.value),
-                    )]
-                )
-                self.update_access_path_state_id(state_index)
-                result.add(state_index)
+                require_values.add(each_name_state.value)
+
+        for each_value in require_values:
+            state_index = self.create_state_and_add_space(
+                status,
+                stmt_id,
+                source_symbol_id = defined_symbol.symbol_id,
+                data_type = LIAN_INTERNAL.REQUIRED_MODULE,
+                value = each_value,
+                access_path = [AccessPoint(
+                    kind = ACCESS_POINT_KIND.REQUIRED_MODULE
+                )]
+            )
+            self.update_access_path_state_id(state_index)
+            result.add(state_index)
 
         defined_symbol.states = result
-
         return P2ResultFlag()
 
     def compute_two_states(self, stmt, state1, state2, defined_symbol: Symbol):
@@ -832,71 +683,58 @@ class StaticStmtStates:
         if isinstance(operand_symbol, Symbol):
             source_symbol_id = operand_symbol.symbol_id
         new_states = set()
+
+        if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
+            src_sfg_node = None
+            if isinstance(operand_symbol, Symbol):
+                src_sfg_node = SFGNode(
+                    node_type=SFG_NODE_KIND.SYMBOL,
+                    stmt_id=stmt_id,
+                    index=operand_index,
+                    internal_id=operand_symbol.symbol_id,
+                )
+            else:
+                src_sfg_node = SFGNode(
+                    node_type=SFG_NODE_KIND.STATE,
+                    stmt_id=stmt_id,
+                    index=operand_index,
+                    internal_id=operand_symbol.state_id,
+                )
+            self.sfg.add_edge(
+                src_sfg_node,
+                SFGNode(
+                    node_type=SFG_NODE_KIND.SYMBOL,
+                    stmt_id=stmt_id,
+                    index=operand_index,
+                    internal_id=operand_symbol.symbol_id,
+                ),
+                SFGEdge(
+                    edge_type=SFG_EDGE_KIND.SYMBOL_FLOW,
+                    stmt_id=stmt_id
+                )
+            )
+
         # only one operand
         if util.isna(stmt.operand2):
             # compute unary operation
             # 形如 a = b
+
+
+
             if util.isna(stmt.operator):
                 # print(">>>>>", stmt_id, stmt)
                 # print(operand_states)
                 defined_symbol.states = operand_states
                 return P2ResultFlag()
 
-            # 形如 a = -b
-            for operand_state_index in operand_states:
-                operand_state = self.frame.symbol_state_space[operand_state_index]
-                if not isinstance(operand_state, State):
-                    continue
-
-                if not util.is_empty(operand_state.value):
-                    try:
-                        value = util.strict_eval(f"{stmt.operator}{operand_state.value}")
-                        data_type = operand_state.data_type
-                    except:
-                        # value = None
-                        # data_type = ""
-                        continue
-
-                    # state_index = self.create_state_and_add_space(
-                    #     status, stmt.stmt_id,
-                    #     source_symbol_id=source_symbol_id,
-                    #     source_state_id=operand_state.source_state_id,
-                    #     value=value,
-                    #     data_type = data_type,
-                    #     access_path=self.copy_and_extend_access_path(
-                    #         operand_state.access_path,
-                    #         AccessPoint(
-                    #             kind = AccessPointKind.BINARY_ASSIGN,
-                    #             key=defined_symbol.name
-                    #         )
-                    #     )
-                    # )
-                    # self.update_access_path_state_id(state_index)
-                    # new_states.add(state_index)
-
-                    new_operand_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, operand_state_index)
-                    new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
-                    new_operand_state.value = value
-                    # new_operand_state.access_path.append(
-                    #     AccessPoint(
-                    #         kind = AccessPointKind.BINARY_ASSIGN,
-                    #         key=defined_symbol.name
-                    #     )
-                    # )
-                    #self.update_access_path_state_id(new_operand_state_index)
-                    new_states.add(new_operand_state_index)
-            # 保证defined_symbol.states中有东西
-
-            if len(new_states) == 0:
-                tmp_index = self.create_state_and_add_space(
-                        status, stmt.stmt_id,
-                        value = None,
-                        data_type = "",
-                        source_symbol_id = source_symbol_id,
-                        state_type =  STATE_TYPE_KIND.ANYTHING
-                    )
-                new_states = {tmp_index}
-            defined_symbol.states = new_states
+            tmp_index = self.create_state_and_add_space(
+                status, stmt.stmt_id,
+                value = None,
+                data_type = "",
+                source_symbol_id = source_symbol_id,
+                state_type =  STATE_TYPE_KIND.ANYTHING
+            )
+            defined_symbol.states = {tmp_index}
             return P2ResultFlag()
 
         # two operands
@@ -1001,7 +839,7 @@ class StaticStmtStates:
                             if not(each_state and isinstance(each_state, State)):
                                 continue
                             if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                                self.tag_key_state(stmt_id, each_arg.symbol_id, each_state_index)
+                                self.tag_key_state_flag(stmt_id, each_arg.symbol_id, each_state_index)
                         named_args[each_key] = each_arg.states
                     elif isinstance(each_arg, State):
                         named_args[each_key] = {indexes[tmp_counter]}
@@ -1037,7 +875,7 @@ class StaticStmtStates:
                         if not(each_state and isinstance(each_state, State)):
                             continue
                         if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                            self.tag_key_state(stmt_id, each_arg.symbol_id, each_state_index)
+                            self.tag_key_state_flag(stmt_id, each_arg.symbol_id, each_state_index)
                     positional_args.append(each_arg.states)
                 elif isinstance(each_arg, State):
                     positional_args.append({status.used_symbols[index]})
@@ -1919,7 +1757,7 @@ class StaticStmtStates:
                 continue
 
             if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                self.tag_key_state(stmt_id, name_symbol.symbol_id, each_state_index)
+                self.tag_key_state_flag(stmt_id, name_symbol.symbol_id, each_state_index)
 
             if self.is_state_a_method_decl(each_state):
                 if each_state.value:
@@ -2273,7 +2111,7 @@ class StaticStmtStates:
                 if isinstance(default_value, Symbol):
                     value_state_indexes = self.read_used_states(default_value_index, in_states)
                     for default_value_state_index in value_state_indexes:
-                        # self.tag_key_state(stmt_id, default_value.symbol_id, default_value_state_index)
+                        # self.tag_key_state_flag(stmt_id, default_value.symbol_id, default_value_state_index)
                         util.add_to_dict_with_default_set(
                             self.frame.method_summary_template.used_external_symbols,
                             default_value.symbol_id,
@@ -2714,7 +2552,7 @@ class StaticStmtStates:
             if not isinstance(array_state, State):
                 continue
             if isinstance(used_array_symbol, Symbol):
-                self.tag_key_state(stmt_id, used_array_symbol.symbol_id, each_array_state_index)
+                self.tag_key_state_flag(stmt_id, used_array_symbol.symbol_id, each_array_state_index)
             # 躺平，返回整个数组
             if array_state.tangping_flag:
                 defined_states.update(array_state.tangping_elements)
@@ -3251,7 +3089,7 @@ class StaticStmtStates:
             if not isinstance(each_receiver_state, State):
                 continue
             if isinstance(receiver_symbol, Symbol):
-                self.tag_key_state(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
+                self.tag_key_state_flag(stmt_id, receiver_symbol.symbol_id, receiver_state_index)
             for each_field_state_index in field_states:
                 each_field_state = self.frame.symbol_state_space[each_field_state_index]
                 if not isinstance(each_field_state, State):
@@ -3264,7 +3102,7 @@ class StaticStmtStates:
 
                 elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     if isinstance(field_symbol, Symbol):
-                        self.tag_key_state(stmt_id, field_symbol.symbol_id, each_field_state_index)
+                        self.tag_key_state_flag(stmt_id, field_symbol.symbol_id, each_field_state_index)
                         # 不准躺平
                     else:
                         new_receiver_symbol_index = self.assert_field_read_new_receiver_symbol(

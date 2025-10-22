@@ -15,7 +15,7 @@ from collections import defaultdict
 from lian.util import util
 from lian.config.constants import (
     BUILTIN_OR_CUSTOM_DATA_TYPE,
-    CONDITION_STMT_PATH_FLAG,
+    CONDITION_FLAG,
     LIAN_SYMBOL_KIND,
     STATE_TYPE_KIND,
     SYMBOL_OR_STATE,
@@ -1026,17 +1026,17 @@ class SFGNode:
     index: int = -1
     # 这个节点的具体的id，一般是symbol_id或者state_id（根据node_type来判断）
     internal_id: int = -1
-    # 这个节点在所有节点序列中的位置
-    # pos: int = -1
+    # 这个节点在所有兄弟节点序列中的位置，例如参数列表中的第几个参数
+    pos: int = -1
 
     def __hash__(self) -> int:
-        return hash((self.node_type, self.stmt_id, self.index, self.internal_id))
+        return hash((self.node_type, self.stmt_id, self.index, self.internal_id, self.pos))
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.stmt_id == other.stmt_id and self.index == other.index and self.internal_id == other.internal_id
+        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.stmt_id == other.stmt_id and self.index == other.index and self.internal_id == other.internal_id and self.pos == other.pos
 
     def __repr__(self) -> str:
-        return f"SFGNode(node_type={self.node_type}, stmt_id={self.stmt_id}, index={self.index}, internal_id={self.internal_id})"
+        return f"SFGNode(node_type={self.node_type}, stmt_id={self.stmt_id}, index={self.index}, internal_id={self.internal_id}, pos={self.pos})"
 
     def to_dict(self):
         if self.node_type == SFG_NODE_KIND.STMT:
@@ -1050,6 +1050,7 @@ class SFGNode:
             "stmt_id"               : self.stmt_id,
             "index"                 : self.index,
             "internal_id"           : self.internal_id,
+            "pos"                   : self.pos,
         }
 
     def copy(self):
@@ -1058,6 +1059,16 @@ class SFGNode:
             stmt_id = self.stmt_id,
             index = self.index,
             internal_id = self.internal_id,
+            pos = self.pos,
+        )
+
+    def to_tuple(self):
+        return (
+            self.node_type,
+            self.stmt_id,
+            self.index,
+            self.internal_id,
+            self.pos,
         )
 
 @dataclasses.dataclass
@@ -1067,18 +1078,20 @@ class SFGEdge:
     # 这条边是在哪里被定义的
     stmt_id: int = -1
     # 在第几个round被定义的
-    round: int = 1
+    round: int = -1
     # 哪个阶段产生的这个边
     #phase: int = -1
+    # 连接的时候边的名字
+    name: str = ""
 
     def __hash__(self) -> int:
-        return hash((self.edge_type, self.stmt_id, self.round))
+        return hash((self.edge_type, self.stmt_id, self.round, self.name))
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, SFGEdge) and self.edge_type == other.edge_type and self.stmt_id == other.stmt_id and self.round == other.round
+        return isinstance(other, SFGEdge) and self.edge_type == other.edge_type and self.stmt_id == other.stmt_id and self.round == other.round and self.name == other.name
 
     def __repr__(self) -> str:
-        return f"SFGEdge(edge_type={self.edge_type}, stmt_id={self.stmt_id}, round={self.round})"
+        return f"SFGEdge(edge_type={self.edge_type}, stmt_id={self.stmt_id}, round={self.round}, name={self.name})"
 
     def copy(self):
         return SFGEdge(
@@ -1086,23 +1099,34 @@ class SFGEdge:
             stmt_id = self.stmt_id,
             round = self.round,
             #phase = self.phase,
+            name = self.name,
         )
 
     def to_dict_with_prefix(self, prefix):
         return {
-            f"{prefix}_edge_type"    : self.edge_type,
-            f"{prefix}_stmt_id"      : self.stmt_id,
-            f"{prefix}_round"        : self.round,
-            #f"{prefix}_phase"        : self.phase,
+            f"{prefix}_edge_type"                       : self.edge_type,
+            f"{prefix}_stmt_id"                         : self.stmt_id,
+            f"{prefix}_round"                           : self.round,
+            #f"{prefix}_phase"                        : self.phase,
+            f"{prefix}_name"      : self.name,
         }
 
     def to_dict(self):
         return {
-            "edge_type"             : self.edge_type,
-            "stmt_id"               : self.stmt_id,
-            "round"                 : self.round,
-            #"phase"                 : self.phase,
+            "edge_type"                                 : self.edge_type,
+            "stmt_id"                                   : self.stmt_id,
+            "round"                                     : self.round,
+            #"phase"                                    : self.phase,
+            "name"                : self.name,
         }
+
+    def to_tuple(self):
+        return (
+            self.edge_type,
+            self.stmt_id,
+            self.round,
+            self.name
+        )
 
 @dataclasses.dataclass
 class SourceSymbolScopeInfo:
@@ -1818,7 +1842,7 @@ class P2ResultFlag:
     symbol_use_changed: bool = False
     interruption_flag: bool = False
     interruption_data: InterruptionData = None
-    condition_path_flag: int = CONDITION_STMT_PATH_FLAG.NO_PATH
+    condition_path_flag: int = CONDITION_FLAG.NO_PATH
 
 @dataclasses.dataclass
 class MethodCallArguments:

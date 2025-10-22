@@ -259,25 +259,30 @@ DATA_TYPE_CORRELATION_KIND = util.SimpleEnum({
 })
 
 SYMBOL_OR_STATE = util.SimpleEnum({
-    "SYMBOL"                : 0,
-    "STATE"                 : 1,
-    "EXTERNAL_KEY_STATE"    : 2,
-    "UNKNOWN"               : 3,
+    "SYMBOL"                    : 0,
+    "STATE"                     : 1,
+    "EXTERNAL_KEY_STATE"        : 2,
+    "UNKNOWN"                   : 3,
 })
 
 SFG_EDGE_KIND = util.SimpleEnum({
-    "REGULAR"               : 0,
-    "SYMBOL_FLOW"           : 1,
-    "SYMBOL_STATE"          : 2,
-    "STATE_INCLUSION"       : 3,
-    "CALL_RETURN"           : 4,
+    "REGULAR"                   : 0,
+    "SYMBOL_IS_DEFINED"         : 1,
+    "SYMBOL_IS_USED"            : 2,
+    "SYMBOL_FLOW"               : 3,
+    "INDIRECT_SYMBOL_FLOW"      : 4,
+    "SYMBOL_STATE"              : 5,
+    "INDIRECT_SYMBOL_STATE"     : 6,
+    "STATE_INCLUSION"           : 7,
+    "INDIRECT_STATE_INCLUSION"  : 8,
+    "CALL_RETURN"               : 9,
 })
 
 SFG_NODE_KIND = util.SimpleEnum({
-    "REGULAR"               : 0,
-    "STMT"                  : 1,
-    "SYMBOL"                : 1,
-    "STATE"                 : 2,
+    "REGULAR"                   : 0,
+    "STMT"                      : 1,
+    "SYMBOL"                    : 1,
+    "STATE"                     : 2,
 })
 
 ACCESS_POINT_KIND = util.SimpleEnum({
@@ -305,7 +310,7 @@ RULE_KIND = util.SimpleEnum({
     "MODEL"                      : 2,
 })
 
-CONDITION_STMT_PATH_FLAG = util.SimpleEnum({
+CONDITION_FLAG = util.SimpleEnum({
     "NO_PATH"                       : 0,  # 00
     "TRUE_PATH"                     : 1,  # 01
     "FALSE_PATH"                    : 2,  # 10

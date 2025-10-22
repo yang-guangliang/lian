@@ -116,7 +116,7 @@ def resolve_this_field_method(data: EventData):
             receiver_states.discard(each_receiver_state_index)
             receiver_states.add(new_receiver_state_index)
             # 新创了this_state副本之后，要把之前summary中的key_dynamic_content中原来的this_state去掉。否则之后取this_state的时候会状态爆炸
-            state_analysis.cancel_key_state(receiver_symbol.symbol_id, each_receiver_state_index)
+            state_analysis.unset_key_state_flag(receiver_symbol.symbol_id, each_receiver_state_index)
             # print("copy_on_change 产生的新state是",new_receiver_state_index,"原来是",each_receiver_state_index)
             # pprint.pprint(new_receiver_state)
 

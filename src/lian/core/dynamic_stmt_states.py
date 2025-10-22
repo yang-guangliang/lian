@@ -301,7 +301,7 @@ class GlobalStmtStates(StaticStmtStates):
                 if isinstance(default_value, Symbol):
                     value_state_indexes = self.read_used_states(default_value_index, in_states)
                     for default_value_state_index in value_state_indexes:
-                        # self.tag_key_state(stmt_id, default_value.symbol_id, default_value_state_index)
+                        # self.tag_key_state_flag(stmt_id, default_value.symbol_id, default_value_state_index)
                         util.add_to_dict_with_default_set(
                             self.frame.method_summary_template.used_external_symbols,
                             default_value.symbol_id,

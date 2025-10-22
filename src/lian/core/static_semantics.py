@@ -328,12 +328,12 @@ class StaticSemanticAnalysis:
                 edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
-
             frame.state_flow_graph.add_edge(
                 SFGNode(node_type=SFG_NODE_KIND.STMT, stmt_id = stmt_id),
                 SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, stmt_id=key.stmt_id, internal_id=key.symbol_id),
-                SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_FLOW, stmt_id=stmt_id)
+                SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
             )
+
         status.out_symbol_bits = current_bits
 
         # check if the out bits are changed
@@ -364,6 +364,11 @@ class StaticSemanticAnalysis:
             key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id)
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
             frame.symbol_graph.add_edge(stmt_id, key, SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED)
+            frame.state_flow_graph.add_edge(
+                SFGNode(node_type=SFG_NODE_KIND.STMT, stmt_id = stmt_id),
+                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, stmt_id=key.stmt_id, internal_id=key.symbol_id),
+                SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
+            )
         status.out_symbol_bits = current_bits
         # print("rerun_new_out_bits")
         # print(frame.symbol_bit_vector_manager.explain(current_bits))
@@ -414,7 +419,7 @@ class StaticSemanticAnalysis:
         else:
             all_used_symbols = status.used_symbols + status.implicitly_used_symbols
 
-        for used_symbol_index in all_used_symbols:
+        for pos, used_symbol_index in enumerate(all_used_symbols):
             used_symbol = frame.symbol_state_space[used_symbol_index]
             if not isinstance(used_symbol, Symbol):
                 continue
@@ -426,6 +431,11 @@ class StaticSemanticAnalysis:
                     edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.EXPLICITLY_USED
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
+                frame.state_flow_graph.add_edge(
+                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, stmt_id=tmp_key.stmt_id, internal_id=tmp_key.symbol_id, pos=pos),
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, stmt_id = stmt_id),
+                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id)
+                )
 
     def adjust_used_symbols(self, used_symbols, frame):
         in_symbols = []
@@ -669,7 +679,7 @@ class StaticSemanticAnalysis:
             current_states = set()
             if util.is_empty(old_key_state_indexes):
                 # 如果第二阶段碰到一个来自外部的symbol，并且进行了一些关键操作，比如field_read a.f，其中a是external_symbol。那就会把a加入到key_dynamic_content中
-                # method_summary.key_dynamic_content是在tag_key_state方法中添加的
+                # method_summary.key_dynamic_content是在tag_key_state_flag方法中添加的
                 if symbol_id in method_summary.key_dynamic_content and from_external:
                     # print(f"symbol_id {symbol_id} in method_summary.key_dynamic_content and from_external")
                     for index_pair in method_summary.key_dynamic_content[symbol_id]:

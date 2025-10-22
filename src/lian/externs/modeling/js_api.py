@@ -32,7 +32,7 @@ def js_call(data: EventData):
         parent_id = resolver.obtain_parent_states(stmt_id, frame, status, callee_state)
         if not parent_id:
             continue
-        state_analysis.cancel_key_state(name_symbol.symbol_id, callee_state, stmt_id)
+        state_analysis.unset_key_state_flag(name_symbol.symbol_id, callee_state, stmt_id)
         real_method_ids.update(parent_id)
 
     callee_method_ids = set()
