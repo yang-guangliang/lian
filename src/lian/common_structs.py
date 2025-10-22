@@ -623,8 +623,6 @@ class State(BasicElement):
             source_symbol_id = self.source_symbol_id,
             source_state_id= self.source_state_id,
             access_path = self.access_path.copy(),
-            analysis_round_number = self.analysis_round_number,
-            analysis_phase_id = self.analysis_phase_id,
         )
 
     def __hash__(self):
@@ -655,7 +653,7 @@ class Symbol(BasicElement):
     name: str = ""
     default_data_type: str = ""
     states: set[int] = dataclasses.field(default_factory=set)
-    symbol_or_state: SYMBOL_OR_STATE = SYMBOL_OR_STATE.SYMBOL
+    symbol_or_state: int = SYMBOL_OR_STATE.SYMBOL
     symbol_id: int = -1
     source_unit_id: int = -1
 

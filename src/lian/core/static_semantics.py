@@ -827,7 +827,7 @@ class StaticSemanticAnalysis:
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        change_flag: P2ResultFlag = frame.stmt_state_analysis.run_stmt_state_analysis(stmt_id, stmt, status, in_states)
+        change_flag: P2ResultFlag = frame.stmt_state_analysis.run(stmt_id, stmt, status, in_states)
         if change_flag is None:
             # print(f"  NO CHANGE")
             change_flag = P2ResultFlag()

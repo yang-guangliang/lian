@@ -1697,8 +1697,8 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
         edges = []
         old_edges = state_flow_graph.edges(data='weight', default = (-1, -1))
         for source_id, dest_id, edge_weight in old_edges:
-            edge_type = edge_weight[0]
-            edge_stmt_id = edge_weight[1]
+            edge_type = edge_weight.edge_type
+            edge_stmt_id = edge_weight.stmt_id
             if edge_type > 0 and edge_stmt_id > 0:
                 edges.append({
                     "method_id": method_id,
