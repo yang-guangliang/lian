@@ -588,13 +588,12 @@ class StaticSemanticAnalysis:
         收集外部符号的状态索引。
         返回状态索引集合。
         """
-        return_indexes = set()
         if symbol_id in summary_template.key_dynamic_content:
             return old_key_state_indexes
 
+        return_indexes = set()
         for index_pair in summary_template.used_external_symbols[symbol_id]:
-            each_state_index = index_pair.raw_index
-            return_indexes.add(each_state_index)
+            return_indexes.add(index_pair.raw_index)
         return return_indexes
 
     def complete_in_states_and_check_continue_flag(self, stmt_id, frame: ComputeFrame, stmt, status, in_states, method_summary: MethodSummaryTemplate):
@@ -611,96 +610,41 @@ class StaticSemanticAnalysis:
         #     return False
 
         # 如果已经达到最大轮数，则不继续分析
-        if (
-            frame.stmt_counters[stmt_id] >= config.MAX_STMT_STATE_ANALYSIS_ROUND or
-            stmt_id in frame.loop_total_rounds and frame.stmt_counters[stmt_id] >= frame.loop_total_rounds[stmt_id]
-        ):
+        if frame.stmt_counters[stmt_id] >= config.MAX_STMT_STATE_ANALYSIS_ROUND :
             return False
 
-        dynamic_call_stmts: set = method_summary.dynamic_call_stmts
         change_flag = False
-        if (
-            self.analysis_phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS] and
-            frame.stmt_counters[stmt_id] == config.FIRST_ROUND
-        ):
-            change_flag = True
-
-        if stmt_id in frame.loop_total_rounds and frame.stmt_counters[stmt_id] < frame.loop_total_rounds[stmt_id]:
-            change_flag = True
-
-        if stmt_id in dynamic_call_stmts and frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
+        if frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             change_flag = True
 
         for used_symbol_index in status.used_symbols + status.implicitly_used_symbols:
-            from_external = True
             used_symbol = frame.symbol_state_space[used_symbol_index]
             if not isinstance(used_symbol, Symbol):
                 continue
 
             symbol_id = used_symbol.symbol_id
             # This symbol is from locals
+            need_update = False
             if symbol_id in in_states:
-                from_external = False
-                if not change_flag:
-                    if used_symbol.states != in_states[symbol_id]:
-                        change_flag = True
-
-                used_symbol.states = in_states[symbol_id]
-                # from parameters/loacls & key_dynamic_content
-                # only when symbol_id in in_states is key_dynamic and is in dynamic_call and is FIRST_ROUND
-                if(
-                    symbol_id not in method_summary.key_dynamic_content or
-                    frame.stmt_counters[stmt_id] > config.FIRST_ROUND or
-                    stmt_id not in dynamic_call_stmts
-                ):
-                    continue
-
-            # holds symbol_id in frame.method_def_use_summary.used_external_symbol_ids:
-            # externals
-            # first encounter
-            elif symbol_id not in method_summary.used_external_symbols:
-                # print(f"{symbol_id} not in method_summary.used_external_symbols")
-                if(
-                    symbol_id in frame.method_def_use_summary.used_external_symbol_ids or
-                    symbol_id == frame.method_def_use_summary.this_symbol_id or
-                    stmt_id in dynamic_call_stmts
-                ):
-                    # print(f"{symbol_id} goes into generate_external_symbol_states")
-                    new_state_indexes = self.generate_external_symbol_states(frame, stmt_id, symbol_id, used_symbol, method_summary)
-                    method_summary.used_external_symbols[symbol_id] = new_state_indexes
-
+                if len(in_states[symbol_id]) == 0:
+                    need_update = True
                 else:
-                    continue
+                    if not change_flag:
+                        if used_symbol.states != in_states[symbol_id]:
+                            change_flag = True
+                            used_symbol.states = in_states[symbol_id]
 
-            # from externals & key_dynamic_content
-            old_key_state_indexes = used_symbol.states
-            # print(f"{symbol_id} symbol中的states:",used_symbol.states)
-            # print("\n打印method_summary",method_summary.key_dynamic_content)
-            current_states = set()
-            if util.is_empty(old_key_state_indexes):
-                # 如果第二阶段碰到一个来自外部的symbol，并且进行了一些关键操作，比如field_read a.f，其中a是external_symbol。那就会把a加入到key_dynamic_content中
-                # method_summary.key_dynamic_content是在tag_key_state_flag方法中添加的
-                if symbol_id in method_summary.key_dynamic_content and from_external:
-                    # print(f"symbol_id {symbol_id} in method_summary.key_dynamic_content and from_external")
-                    for index_pair in method_summary.key_dynamic_content[symbol_id]:
-                        old_key_state_indexes.add(index_pair.raw_index)
+            if need_update or symbol_id not in in_states:
+                if symbol_id not in method_summary.used_external_symbols:
+                    change_flag = True
+                    state_indexes = self.generate_external_symbol_states(frame, stmt_id, symbol_id, used_symbol, method_summary)
+                    method_summary.used_external_symbols[symbol_id] = state_indexes
 
-                # print("收集到的old_key_state_indexes是", old_key_state_indexes)
-            # else:
-            #     # 如果能直接从in_symbol中获取，就直接用
-            #     current_states = old_key_state_indexes
-            current_states = self.collect_external_symbol_states(
-                frame, stmt_id, stmt, symbol_id, method_summary, old_key_state_indexes
-            )
-
-            # print("收集到的current_States是", current_states)
-            if util.is_empty(current_states):
-                continue
-
-            if used_symbol.states != current_states:
-                used_symbol.states = current_states
-                change_flag = True
-            in_states[symbol_id] = current_states
+                new_state_indexes = set()
+                for index_pair in method_summary.used_external_symbols[symbol_id]:
+                    new_state_indexes.add(index_pair.raw_index)
+                in_states[symbol_id] = new_state_indexes
+                used_symbol.states = new_state_indexes
 
         # print("@in_states before", in_states)
         return change_flag
@@ -1239,7 +1183,7 @@ class StaticSemanticAnalysis:
 
         # analyze all methods
         grouped_methods:SimplyGroupedMethodTypes = self.loader.get_grouped_methods()
-        for method_id in grouped_methods.get_all_method_list():
+        for method_id in grouped_methods.get_methods_with_direct_call():
             if method_id not in self.analyzed_method_list:
                 self.analyze_method(method_id)
 

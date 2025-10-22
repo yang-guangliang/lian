@@ -115,15 +115,9 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
-        _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
-        if util.is_available(parameter_decls):
-            for row in parameter_decls:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
-                frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
-        if util.is_available(method_body):
-            for row in method_body:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
-                frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
+        frame.cfg = self.loader.get_method_cfg(method_id)
+        if util.is_empty(frame.cfg):
+            return
 
         frame.stmt_state_analysis = GlobalStmtStates(
             analysis_phase_id = self.analysis_phase_id,
@@ -135,20 +129,28 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
             analyzed_method_list = self.analyzed_method_list
         )
 
-        # frame.defined_symbols = self.loader.load_method_defined_symbols_p2(method_id).copy()
+        round_number = config.FIRST_ROUND
+        if method_id in self.analyzed_method_list:
+            round_number = config.SECOND_ROUND
+        _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
+        if util.is_available(parameter_decls):
+            for row in parameter_decls:
+                frame.stmt_id_to_stmt[row.stmt_id] = row
+                frame.stmt_counters[row.stmt_id] = round_number
+        if util.is_available(method_body):
+            for row in method_body:
+                frame.stmt_id_to_stmt[row.stmt_id] = row
+                frame.stmt_counters[row.stmt_id] = round_number
+
+        frame.defined_symbols = self.loader.load_method_defined_symbols_p2(method_id).copy()
         all_defs = set()
         for stmt_id in frame.defined_symbols:
             symbol_def_set = frame.defined_symbols[stmt_id]
             for symbol_def in symbol_def_set:
                 all_defs.add(symbol_def)
-
         frame.all_defs = all_defs
 
         frame.defined_states = self.loader.get_method_defined_states_p2(method_id).copy()
-
-        frame.cfg = self.loader.get_method_cfg(method_id)
-        if util.is_empty(frame.cfg):
-            return
 
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
@@ -156,15 +158,15 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
 
         if len(frame_stack) > 2:
             frame.path = frame_stack[-2].path + (frame.call_stmt_id, frame.method_id)
-
             frame_path = APath(frame.path)
             self.path_manager.add_path(frame_path)
+
         # avoid changing the content of the loader
         status = copy.deepcopy(self.loader.get_stmt_status_p2(method_id))
         symbol_state_space = self.loader.get_symbol_state_space_p2(method_id).copy()
         defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
-        symbol_bit_vector = copy.deepcopy(self.loader.get_symbol_bit_vector_p2(method_id))
         state_bit_vector = self.loader.get_state_bit_vector_p2(method_id).copy()
+        frame.symbol_bit_vector_manager = copy.deepcopy(self.loader.get_symbol_bit_vector_p2(method_id))
         self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, defined_symbols, symbol_bit_vector, state_bit_vector)
         frame.stmt_id_to_status = status
         frame.defined_symbols = defined_symbols
@@ -172,46 +174,26 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
             global_space.add(item)
 
         frame.symbol_state_space = global_space
-
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(self.loader.get_method_internal_callees(method_id))
 
-        frame.symbol_bit_vector_manager = symbol_bit_vector
         frame.state_bit_vector_manager = self.loader.get_state_bit_vector_p2(method_id).copy()
         frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id).copy()
         frame.method_summary_template = self.loader.get_method_summary_template(method_id).copy()
         frame.external_symbol_id_to_initial_state_index = frame.method_summary_template.external_symbol_to_state
-
         frame.space_summary = self.loader.get_symbol_state_space_summary_p2(method_id).copy()
-        symbol_graph = self.loader.get_method_symbol_graph_p2(method_id).copy()
-        frame.symbol_graph.graph = symbol_graph
-
+        frame.symbol_graph.graph = self.loader.get_method_symbol_graph_p2(method_id).copy()
         frame.method_summary_instance.copy_template_to_instance(frame.method_summary_template)
         self.adjust_defined_symbols_and_init_bit_vector(frame, method_id)
         return frame
 
     def collect_external_symbol_states(self, frame: ComputeFrame, stmt_id, stmt, symbol_id, summary: MethodSummaryTemplate, old_key_state_indexes: set):
-        """
-        收集外部符号状态：
-        1. 处理首次全局分析轮次的符号状态
-        2. 解析动态调用相关状态（方法/类声明）
-        3. 合并解析后的状态索引到当前作用域
-        返回：更新后的状态索引集合
-        """
         # key_dynamic_content = summary.key_dynamic_content
         # if config.DEBUG_FLAG:
         #     print(f"进入collect_external_symbol_states: symbol_id {symbol_id}, old_key_states {old_key_state_indexes}")
-        if frame.stmt_counters[stmt_id] is not config.FIRST_ROUND:
+        if frame.stmt_counters[stmt_id] != config.FIRST_ROUND:
             return old_key_state_indexes
 
         new_state_indexes = set()
-        # if stmt.operation not in SENSITIVE_OPERATIONS:
-        #     if symbol_id in summary.used_external_symbols:
-        #         for index_pair in summary.used_external_symbols[symbol_id]:
-        #             each_state_index = index_pair.raw_index
-        #             new_state_indexes.add(each_state_index)
-        #     if not new_state_indexes:
-        #         return None
-        #     return new_state_indexes
 
         status = frame.stmt_id_to_status[stmt_id]
         old_length = len(frame.symbol_state_space)
@@ -233,6 +215,7 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
 
             if old_key_state.state_type != STATE_TYPE_KIND.ANYTHING:
                 continue
+
             resolved_state_indexes = self.resolver.resolve_symbol_states(old_key_state, frame.frame_stack, frame, stmt_id, stmt, status)
             util.add_to_dict_with_default_set(frame.method_summary_instance.resolver_result, old_key_state_index, resolved_state_indexes)
             for each_resolved_state_index in resolved_state_indexes:
@@ -256,10 +239,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         return new_state_indexes
 
     def generate_analysis_summary_and_s2space(self, frame: ComputeFrame):
-        """
-        生成分析摘要和压缩状态空间：
-        创建包含方法摘要实例和压缩状态空间的汇总数据对象
-        """
         summary_data = SummaryData()
         return summary_data
 
@@ -309,7 +288,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         """
         frame_path = None
         while len(frame_stack) >= 2:
-
             # get current compute frame
             # print(f"\frame_stack: {frame_stack._stack}")
             frame: ComputeFrame = frame_stack.peek()
@@ -324,7 +302,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                 util.debug(f"\n\tPhase III Analysis is in progress <method {frame.method_id} name: {method_name}> \n")
 
             if frame.content_to_be_analyzed:
-
                 if config.DEBUG_FLAG:
                     util.debug(f"\t<method {frame.method_id}> has content to be analyzed: {frame.content_to_be_analyzed}")
                 # check if all children have been analyzed
@@ -358,16 +335,17 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                     frame_stack.pop()
                     continue
 
+                # gl:这都什么意思
+
                 # check if there is an available method summary
-                p2_summary_template = self.loader.get_method_summary_template(frame.method_id)
+                # p2_summary_template = self.loader.get_method_summary_template(frame.method_id)
                 # 如果没有summary->函数体为空->跳过
-                if util.is_empty(p2_summary_template):
-                    frame_stack.pop()
-                    continue
+                # if util.is_empty(p2_summary_template):
+                #     frame_stack.pop()
+                #     continue
 
-                summary_template: MethodSummaryTemplate = p2_summary_template.copy()
-                summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(frame.method_id)
-
+                #summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(frame.method_id)
+                #summary_template: MethodSummaryTemplate = p2_summary_template.copy()
                 # if not summary_template.dynamic_call_stmts:
                 #     if config.DEBUG_FLAG:
                 #         util.debug(f"\t<method {frame.method_id}> does not need to be processed")
@@ -376,7 +354,6 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                 #     frame_stack.pop()
                 #     continue
 
-                # Need to deal with dynamic callees
                 if not frame.has_been_inited:
                     self.init_compute_frame(frame, frame_stack, global_space)
 
@@ -397,6 +374,7 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                 if new_callee:
                     continue
 
+            # gl：为什么有的保存，有的不保存
             summary_data = self.generate_analysis_summary_and_s2space(frame)
             self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
             summary, space = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
@@ -438,6 +416,24 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
         frame_stack.add(entry_frame)
         return frame_stack
 
+    def save_call_tree(self):
+        dynamic_call_tree = CallGraph()
+        for call_path in self.path_manager.paths:
+            path = call_path.path
+            index = 0
+            while index <= len(path) - 3:
+                print(path)
+                if len(path) <= 1:
+                    break
+                caller_id = path[index]
+                call_stmt_id = path[index + 1]
+                callee_id = path[index + 2]
+                dynamic_call_tree.add_edge(caller_id, callee_id, call_stmt_id)
+                index += 2
+
+        self.loader.save_dynamic_call_tree(dynamic_call_tree)
+        self.loader.save_dynamic_call_path(self.path_manager.paths)
+
     def run(self):
         """
         执行全局分析主流程：
@@ -456,27 +452,11 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
             frame_stack = self.init_frame_stack(entry_point, global_space)
-            unit_id = self.loader.convert_method_id_to_unit_id(entry_point)
-            unit_path = self.loader.convert_unit_id_to_unit_path(unit_id)
-            result = self.analyze_frame_stack(frame_stack, global_space)
+            self.analyze_frame_stack(frame_stack, global_space)
+        # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
+        self.save_call_tree()
 
-        self.loader.save_dynamic_call_path(self.path_manager.paths)
-        dynamic_call_tree = CallGraph()
-        for call_path in self.path_manager.paths:
-            path = call_path.path
-            index = 0
-            while index <= len(path) - 3:
-                print(path)
-                if len(path) <= 1:
-                    break
-                caller_id = path[index]
-                call_stmt_id = path[index + 1]
-                callee_id = path[index + 2]
-                dynamic_call_tree.add_edge(caller_id, callee_id, call_stmt_id)
-                index += 2
-
-        self.loader.save_dynamic_call_tree(dynamic_call_tree)
 
         self.loader.export()
         all_APaths = self.loader.get_dynamic_call_path()

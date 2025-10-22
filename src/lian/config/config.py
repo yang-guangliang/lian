@@ -18,7 +18,6 @@ MAX_STMT_STATE_ANALYSIS_ROUND               = 4
 
 FIRST_ROUND                                 = 0
 SECOND_ROUND                                = 1
-FIRST_GLOBAL_ROUND                          = 1
 
 ANY_LANG                                    = "%"
 
@@ -142,4 +141,8 @@ METHOD_SUMMARY_INSTANCE_PATH                = "method_summary_instance"
 UNSOLVED_SYMBOL_NAME                        = "%%%%unsolved_symbols"
 POSITIVE_GIR_INTERVAL                       = 10000
 DEFAULT_MAX_GIR_ID                          = 100000000
+
+
+MAX_TYPE_CAST_SOURCE_STATES                 = 4
+MAX_ARRAY_ELEMENT_STATES                    = 4
 

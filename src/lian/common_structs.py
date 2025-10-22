@@ -455,7 +455,7 @@ class ControlFlowGraph(BasicGraph):
 @dataclasses.dataclass
 class AccessPoint:
     kind: int = ACCESS_POINT_KIND.TOP_LEVEL
-    key: str = ""
+    key: object = ""
     state_id: int = -1
 
     def to_dict(self):
@@ -520,13 +520,13 @@ class State(BasicElement):
     """
     stmt_id: int = -1
     state_id: int = -1
-    symbol_or_state: SYMBOL_OR_STATE = SYMBOL_OR_STATE.STATE
-    state_type: STATE_TYPE_KIND = STATE_TYPE_KIND.REGULAR
+    symbol_or_state: int = SYMBOL_OR_STATE.STATE
+    state_type: int = STATE_TYPE_KIND.REGULAR
 
     data_type: str = ""
     data_type_ids: set[int] = dataclasses.field(default_factory=set)
 
-    value: any = ""
+    value: object = ""
     fields: dict = dataclasses.field(default_factory=lambda: {})
     array: list[set] = dataclasses.field(default_factory=list)
 
@@ -1355,13 +1355,13 @@ class SimplyGroupedMethodTypes:
             f"containing_dynamic_callees: {self.containing_dynamic_callees}\n" \
             f"containing_error_callees: {self.containing_error_callees}"
 
-    def get_all_method_list(self):
+    def get_methods_with_direct_call(self):
         return [
             *self.no_callees,
             *self.only_direct_callees,
-            *self.mixed_direct_callees,
-            *self.only_dynamic_callees,
-            *self.containing_error_callees
+            # *self.mixed_direct_callees,
+            # *self.only_dynamic_callees,
+            # *self.containing_error_callees
         ]
 
 @dataclasses.dataclass

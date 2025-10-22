@@ -194,10 +194,23 @@ class StaticStmtStates:
         new_state.array = []
         new_state.fields = {}
 
-    def make_symbol_or_state_sfg_node(self, node, node_index, stmt_id):
+    def make_symbol_or_state_sfg_node(self, stmt_id, node_index):
+        node = self.frame.symbol_state_space[node_index]
         if isinstance(node, Symbol):
             return SFGNode(node_type=SFG_NODE_KIND.SYMBOL, stmt_id=stmt_id, index=node_index, internal_id=node.symbol_id)
         elif isinstance(node, State):
+            return SFGNode(node_type=SFG_NODE_KIND.STATE, stmt_id=stmt_id, index=node_index, internal_id=node.state_id)
+        return None
+
+    def make_symbol_sfg_node(self, stmt_id, node_index):
+        node = self.frame.symbol_state_space[node_index]
+        if isinstance(node, Symbol):
+            return SFGNode(node_type=SFG_NODE_KIND.SYMBOL, stmt_id=stmt_id, index=node_index, internal_id=node.symbol_id)
+        return None
+
+    def make_state_sfg_node(self, stmt_id, node_index):
+        node = self.frame.symbol_state_space[node_index]
+        if isinstance(node, State):
             return SFGNode(node_type=SFG_NODE_KIND.STATE, stmt_id=stmt_id, index=node_index, internal_id=node.state_id)
         return None
 
@@ -272,10 +285,10 @@ class StaticStmtStates:
         # status.defined_states.add(index)
 
         # 如果新建的state是基于我们在generate_external_state里手动给的state，说明该symbol也被我们define了，需添加到define集合中
-        if overwritten_flag and source_state_id in self.frame.initial_state_to_external_symbol:
-            symbol_id = self.frame.initial_state_to_external_symbol[source_state_id]
-            if symbol_id != self.frame.method_def_use_summary.this_symbol_id:
-                self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
+        # if overwritten_flag and source_state_id in self.frame.initial_state_to_external_symbol:
+        #     symbol_id = self.frame.initial_state_to_external_symbol[source_state_id]
+        #     if symbol_id != self.frame.method_def_use_summary.this_symbol_id:
+        #         self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
     def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index, overwritten_flag = False):
@@ -300,10 +313,10 @@ class StaticStmtStates:
         status.defined_states.discard(state_index)
         status.defined_states.add(index)
 
-        if overwritten_flag and state.source_state_id in self.frame.initial_state_to_external_symbol:
-            symbol_id = self.frame.initial_state_to_external_symbol[state.source_state_id]
-            if symbol_id != self.frame.method_def_use_summary.this_symbol_id:
-                self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
+        # if overwritten_flag and state.source_state_id in self.frame.initial_state_to_external_symbol:
+        #     symbol_id = self.frame.initial_state_to_external_symbol[state.source_state_id]
+        #     if symbol_id != self.frame.method_def_use_summary.this_symbol_id:
+        #         self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
     def create_copy_of_symbol_and_add_space(self, status:StmtStatus, stmt_id, symbol: Symbol):
@@ -465,8 +478,8 @@ class StaticStmtStates:
                 edge_type = SFG_EDGE_KIND.SYMBOL_FLOW
             # flows from receiver to defined symbol
             self.sfg.add_edge(
-                self.make_symbol_or_state_sfg_node(receiver_symbol, receiver_index, stmt_id),
-                self.make_symbol_or_state_sfg_node(defined_symbol, defined_symbol_index, stmt_id),
+                self.make_symbol_sfg_node(stmt_id, receiver_index),
+                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
                 self.make_stmt_sfg_edge(stmt_id, edge_type)
             )
 
@@ -543,6 +556,12 @@ class StaticStmtStates:
                 )]
             )
             self.update_access_path_state_id(state_index)
+
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, defined_index),
+                self.make_state_sfg_node(stmt_id, state_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
+            )
             result.add(state_index)
 
         defined_symbol.states = result
@@ -635,35 +654,6 @@ class StaticStmtStates:
 
             return {result_state_index}
 
-        # state_type = StateTypeKind.ANYTHING
-        # if StateTypeKind.UNSOLVED in (state_type1, state_type2):
-        #     state_type = StateTypeKind.UNSOLVED
-
-        # state_index1 = self.create_state_and_add_space(
-        #     status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-        #     data_type = f"{data_type1}/{data_type2}", state_type = state_type,
-        #     access_path=self.copy_and_extend_access_path(
-        #         state1.access_path,
-        #         AccessPoint(
-        #             kind = AccessPointKind.BINARY_ASSIGN,
-        #             key=defined_symbol.name
-        #         )
-        #     )
-        # )
-        # self.update_access_path_state_id(state_index1)
-        # # state_index2 = self.create_state_and_add_space(
-        # #     status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id,
-        # #     data_type = data_type2, state_type = state_type,
-        # #     access_path=self.copy_and_extend_access_path(
-        # #         state2.access_path,
-        # #         AccessPoint(
-        # #             kind = AccessPointKind.BINARY_ASSIGN,
-        # #             key=defined_symbol.name
-        # #         )
-        # #     )
-        # # )
-        # # self.update_access_path_state_id(state_index2)
-        # return {state_index1}
         return set()
 
     def assign_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -682,44 +672,25 @@ class StaticStmtStates:
         source_symbol_id = -1
         if isinstance(operand_symbol, Symbol):
             source_symbol_id = operand_symbol.symbol_id
-        new_states = set()
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
-            src_sfg_node = None
-            if isinstance(operand_symbol, Symbol):
-                src_sfg_node = SFGNode(
-                    node_type=SFG_NODE_KIND.SYMBOL,
-                    stmt_id=stmt_id,
-                    index=operand_index,
-                    internal_id=operand_symbol.symbol_id,
+            if not isinstance(operand_symbol, Symbol):
+                self.sfg.add_edge(
+                    self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+                    self.make_state_sfg_node(stmt_id, operand_index),
+                    self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
                 )
             else:
-                src_sfg_node = SFGNode(
-                    node_type=SFG_NODE_KIND.STATE,
-                    stmt_id=stmt_id,
-                    index=operand_index,
-                    internal_id=operand_symbol.state_id,
+                self.sfg.add_edge(
+                    self.make_symbol_or_state_sfg_node(stmt_id, operand_index),
+                    self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+                    self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
                 )
-            self.sfg.add_edge(
-                src_sfg_node,
-                SFGNode(
-                    node_type=SFG_NODE_KIND.SYMBOL,
-                    stmt_id=stmt_id,
-                    index=operand_index,
-                    internal_id=operand_symbol.symbol_id,
-                ),
-                SFGEdge(
-                    edge_type=SFG_EDGE_KIND.SYMBOL_FLOW,
-                    stmt_id=stmt_id
-                )
-            )
 
         # only one operand
         if util.isna(stmt.operand2):
             # compute unary operation
             # 形如 a = b
-
-
 
             if util.isna(stmt.operator):
                 # print(">>>>>", stmt_id, stmt)
@@ -728,19 +699,27 @@ class StaticStmtStates:
                 return P2ResultFlag()
 
             tmp_index = self.create_state_and_add_space(
-                status, stmt.stmt_id,
+                status,
+                stmt.stmt_id,
                 value = None,
                 data_type = "",
                 source_symbol_id = source_symbol_id,
                 state_type =  STATE_TYPE_KIND.ANYTHING
             )
             defined_symbol.states = {tmp_index}
+
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+                self.make_state_sfg_node(stmt_id, tmp_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
+            )
+
             return P2ResultFlag()
 
         # two operands
         operand2_index = status.used_symbols[1]
         operand2_states = self.read_used_states(operand2_index, in_states)
-
+        new_states = set()
         for operand_state_index in operand_states:
             operand_state = self.frame.symbol_state_space[operand_state_index]
             if not isinstance(operand_state, State):
@@ -754,25 +733,13 @@ class StaticStmtStates:
                 if operand2_state.state_type != STATE_TYPE_KIND.REGULAR:
                     continue
 
-                # if operand_state.state_type == StateTypeKind.ANYTHING or operand2_state.state_type == StateTypeKind.ANYTHING:
-                #     new_operand_state_index = self.create_state_and_add_space(status, stmt_id)
-                #     new_operand_state = self.frame.symbol_state_space[new_operand_state_index]
-                #     new_operand_state.access_path.append(
-                #         AccessPoint(
-                #             kind = AccessPointKind.BINARY_ASSIGN,
-                #             key=defined_symbol.name
-                #         )
-                #     )
-                #     self.update_access_path_state_id(new_operand_state_index)
-                #     defined_symbol.states = {new_operand_state_index}
-                #     return P2ResultFlag()
-
                 new_states.update(
                     self.compute_two_states(
                         stmt, operand_state, operand2_state, defined_symbol
                     )
                 )
-        # 保证defined_symbol.states不为空
+
+        # if new_states is empty
         if not new_states:
             state_index = self.create_state_and_add_space(
                     status, stmt.stmt_id,
@@ -782,6 +749,13 @@ class StaticStmtStates:
                     state_type =  STATE_TYPE_KIND.ANYTHING
                 )
             new_states = {state_index}
+
+        for each_state_index in new_states:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+                self.make_state_sfg_node(stmt_id, each_state_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
+            )
         defined_symbol.states = new_states
         return P2ResultFlag()
 
@@ -937,17 +911,17 @@ class StaticStmtStates:
             if row.operation != "parameter_decl":
                 continue
 
-            p = Parameter(
+            param = Parameter(
                 method_id = callee_id, position = counter, name = row.name, symbol_id = row.stmt_id
             )
             is_attr = not util.isna(row.attrs)
-            result.all_parameters.add(p)
+            result.all_parameters.add(param)
             if is_attr and LIAN_INTERNAL.PACKED_NAMED_PARAMETER in row.attrs:
-                result.packed_named_parameter = p
+                result.packed_named_parameter = param
             elif is_attr and LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER in row.attrs:
-                result.packed_positional_parameter = p
+                result.packed_positional_parameter = param
             else:
-                result.positional_parameters.append(p)
+                result.positional_parameters.append(param)
 
             counter += 1
 
@@ -955,7 +929,7 @@ class StaticStmtStates:
 
     def map_arguments(
         self, args: MethodCallArguments, parameters: MethodDeclParameters,
-        parameter_mapping_list: list[ParameterMapping], call_site, phase
+        parameter_mapping_list: list[ParameterMapping], call_site
     ):
         """
         Mapping arguments and parameters in terms of symbol_ids
@@ -1488,8 +1462,8 @@ class StaticStmtStates:
                 elif each_mapping.parameter_type == LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER:
                     parameter_access_path = each_mapping.parameter_access_path
                     parameter_index_in_array = parameter_access_path.key
-                    if len(each_parameter_last_state.array) > parameter_index_in_array:
-                        last_state_index_set = each_parameter_last_state.array[parameter_index_in_array]
+                    if len(each_parameter_last_state.array) > int(parameter_index_in_array):
+                        last_state_index_set = each_parameter_last_state.array[int(parameter_index_in_array)]
                         for last_state_index in last_state_index_set:
                             last_states.add(self.frame.symbol_state_space[last_state_index])
                             last_state_indexes.add(last_state_index)
@@ -1621,7 +1595,7 @@ class StaticStmtStates:
         caller_id = self.frame.method_id
         call_stmt_id = stmt_id
         # print(f"load_parameter_mapping: {callee_id, caller_id, call_stmt_id}")
-        if self.analysis_phase_id == 2:
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.STATIC_SEMANTICS:
             parameter_mapping_list = self.loader.get_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
         else:
             parameter_mapping_list = self.loader.get_parameter_mapping_p3((caller_id, call_stmt_id, callee_id))
@@ -1686,8 +1660,6 @@ class StaticStmtStates:
 
         return None
 
-
-
     def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         """
         call_stmt   target  name    return_type prototype   args
@@ -1711,9 +1683,7 @@ class StaticStmtStates:
             return P2ResultFlag()
 
         name_states = self.read_used_states(name_index, in_states)
-
         unsolved_callee_states = set()
-
         args = self.prepare_args(stmt_id, stmt, status, in_states)
         callee_info = self.frame.stmt_id_to_callee_info.get(stmt_id)
 
@@ -1825,9 +1795,10 @@ class StaticStmtStates:
             new_call_site = (caller_id, stmt_id, each_callee_id)
             callee_method_def_use_summary:MethodDefUseSummary = self.loader.get_method_def_use_summary(each_callee_id)
             parameter_mapping_list = self.loader.get_parameter_mapping_p2(new_call_site)
+            # gl:为什么要判断是否为空
             if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
-                self.map_arguments(args, parameters, parameter_mapping_list, new_call_site, 2)
+                self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
 
         if len(callee_ids_to_be_analyzed) != 0:
             self.frame.stmts_with_symbol_update.add(stmt_id)
@@ -1876,6 +1847,12 @@ class StaticStmtStates:
             )
             self.update_access_path_state_id(unsolved_state_index)
             defined_symbol.states = {unsolved_state_index}
+
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+                self.make_state_sfg_node(stmt_id, unsolved_state_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+            )
 
             return P2ResultFlag()
 
@@ -1933,6 +1910,12 @@ class StaticStmtStates:
         self.update_access_path_state_id(state_index)
         global_symbol.states = {state_index}
 
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+            self.make_state_sfg_node(stmt_id, state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
+
         return P2ResultFlag()
 
     def nonlocal_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -1957,6 +1940,12 @@ class StaticStmtStates:
         self.update_access_path_state_id(state_index)
         defined_symbol.states = {state_index}
 
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+            self.make_state_sfg_node(stmt_id, state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
+
         return P2ResultFlag()
 
     # TODO:
@@ -1968,6 +1957,7 @@ class StaticStmtStates:
         target = (data_type)source
         """
         source_symbol_index = status.used_symbols[0]
+        source_symbol = self.frame.symbol_state_space[source_symbol_index]
         source_states = self.read_used_states(source_symbol_index, in_states)
 
         defined_index = status.defined_symbol
@@ -1976,19 +1966,44 @@ class StaticStmtStates:
             return P2ResultFlag()
 
         data_type = util.read_stmt_field(stmt.data_type)
+        if len(source_states) < config.MAX_TYPE_CAST_SOURCE_STATES:
+            defined_states = set()
+            for source_state_index in source_states:
+                source_state = self.frame.symbol_state_space[source_state_index]
+                if not isinstance(source_state, State):
+                    continue
 
-        defined_states = set()
-        for source_state_index in source_states:
-            source_state = self.frame.symbol_state_space[source_state_index]
-            if not isinstance(source_state, State):
-                continue
+                if source_state.data_type == str(data_type):
+                    defined_states.add(source_state_index)
+                    continue
 
-            new_source_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, source_state_index)
-            new_source_state: State = self.frame.symbol_state_space[new_source_state_index]
-            new_source_state.data_type = str(data_type)
-            defined_states.add(new_source_state_index)
+                new_source_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, source_state_index)
+                new_source_state: State = self.frame.symbol_state_space[new_source_state_index]
+                new_source_state.data_type = str(data_type)
+                defined_states.add(new_source_state_index)
 
-        defined_symbol.states = defined_states
+            for each_state_index in defined_states:
+                self.sfg.add_edge(
+                    self.make_symbol_sfg_node(stmt_id, defined_index),
+                    self.make_state_sfg_node(stmt_id, each_state_index),
+                    self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+                )
+
+            defined_symbol.states = defined_states
+        else:
+            new_state = self.create_state_and_add_space(
+                status, stmt_id, source_symbol_id=source_symbol.symbol_id,
+                data_type = str(data_type),
+                state_type = STATE_TYPE_KIND.ANYTHING,
+            )
+            defined_states = {new_state}
+
+        for each_state_index in defined_states:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, defined_index),
+                self.make_state_sfg_node(stmt_id, each_state_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+            )
         return P2ResultFlag()
 
     # TODO:
@@ -2008,12 +2023,17 @@ class StaticStmtStates:
             return P2ResultFlag()
 
         data_type = util.read_stmt_field(stmt.data_type)
-        defined_symbol.states = {
-            self.create_state_and_add_space(
+        state_index = self.create_state_and_add_space(
                 status, stmt_id, source_symbol_id=source_symbol.symbol_id,
                 data_type = str(data_type)
             )
-        }
+        defined_symbol.states = {state_index}
+
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, defined_index),
+            self.make_state_sfg_node(stmt_id, state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
         return P2ResultFlag()
 
     def phi_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2033,6 +2053,13 @@ class StaticStmtStates:
             states = self.read_used_states(each_index, in_states)
             defined_symbol.states.update(states)
 
+        for each_state_index in defined_symbol.states:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, defined_index),
+                self.make_state_sfg_node(stmt_id, each_state_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+            )
+
         return P2ResultFlag()
 
     def namespace_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2041,11 +2068,12 @@ class StaticStmtStates:
         def: name
         use:
         """
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_index]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
 
-        index = self.create_state_and_add_space(
+        state_index = self.create_state_and_add_space(
             status, stmt_id,
             source_symbol_id=defined_symbol.symbol_id,
             data_type = LIAN_INTERNAL.NAMESPACE_DECL,
@@ -2054,8 +2082,14 @@ class StaticStmtStates:
                 key = util.read_stmt_field(stmt.name),
             )]
         )
-        self.update_access_path_state_id(index)
-        defined_symbol.states = {index}
+        self.update_access_path_state_id(state_index)
+        defined_symbol.states = {state_index}
+
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, defined_index),
+            self.make_state_sfg_node(stmt_id, state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
         return P2ResultFlag()
 
     def class_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2071,7 +2105,7 @@ class StaticStmtStates:
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
 
-        index = self.create_state_and_add_space(
+        state_index = self.create_state_and_add_space(
             status, stmt_id,
             source_symbol_id=defined_symbol.symbol_id,
             data_type = LIAN_INTERNAL.CLASS_DECL,
@@ -2080,8 +2114,14 @@ class StaticStmtStates:
                 key = util.read_stmt_field(stmt.name),
             )]
         )
-        self.update_access_path_state_id(index)
-        defined_symbol.states = {index}
+        self.update_access_path_state_id(state_index)
+        defined_symbol.states = {state_index}
+
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+            self.make_state_sfg_node(stmt_id, state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
 
         return P2ResultFlag()
 
@@ -2091,7 +2131,8 @@ class StaticStmtStates:
         def: name
         use: default_value
         """
-        parameter_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        parameter_name_symbol = self.frame.symbol_state_space[defined_index]
         if isinstance(parameter_name_symbol, Symbol):
             parameter_state_index = self.create_state_and_add_space(
                 status, stmt_id,
@@ -2117,9 +2158,16 @@ class StaticStmtStates:
                             default_value.symbol_id,
                             IndexMapInSummary(default_value_state_index, -1)
                         )
-
                 else:
                     parameter_name_symbol.states.add(default_value_index)
+
+        for each_state_index in parameter_name_symbol.states:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, defined_index),
+                self.make_state_sfg_node(stmt_id, each_state_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+            )
+
         return P2ResultFlag()
 
     def variable_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2164,6 +2212,12 @@ class StaticStmtStates:
             self.update_access_path_state_id(method_state_index)
             method_name_symbol.states = {method_state_index}
 
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+                self.make_state_sfg_node(stmt_id, method_state_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+            )
+
         return P2ResultFlag()
 
     def new_object_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2172,7 +2226,8 @@ class StaticStmtStates:
         def: type
         use:
         """
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_index]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
         type_index = status.used_symbols[0]
@@ -2245,6 +2300,14 @@ class StaticStmtStates:
             }
         )
         self.event_manager.notify(event)
+
+        for each_state_index in defined_symbol.states:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, defined_index),
+                self.make_state_sfg_node(stmt_id, each_state_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+            )
+
         return p2result_flag
 
     def new_array_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2253,7 +2316,8 @@ class StaticStmtStates:
         def: target
         use:
         """
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_index]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
         init_state_index = self.create_state_and_add_space(
@@ -2265,6 +2329,12 @@ class StaticStmtStates:
         self.update_access_path_state_id(init_state_index)
         defined_symbol.states = {init_state_index}
 
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, defined_index),
+            self.make_state_sfg_node(stmt_id, init_state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
+
         return P2ResultFlag()
 
     def new_record_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2273,7 +2343,8 @@ class StaticStmtStates:
         def: target
         use:
         """
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_index]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
 
@@ -2285,6 +2356,13 @@ class StaticStmtStates:
         )
         self.update_access_path_state_id(init_state_index)
         defined_symbol.states = {init_state_index}
+
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, defined_index),
+            self.make_state_sfg_node(stmt_id, init_state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
+
         return P2ResultFlag()
 
     def new_set_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2293,7 +2371,8 @@ class StaticStmtStates:
         def: target
         use:
         """
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_index]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
 
@@ -2305,6 +2384,12 @@ class StaticStmtStates:
         )
         self.update_access_path_state_id(init_state_index)
         defined_symbol.states = {init_state_index}
+
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, defined_index),
+            self.make_state_sfg_node(stmt_id, init_state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
 
         return P2ResultFlag()
 
@@ -2333,7 +2418,8 @@ class StaticStmtStates:
         """
         source_symbol_index = status.used_symbols[0]
         source_symbol: Symbol = self.frame.symbol_state_space[source_symbol_index]
-        defined_symbol: Symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        defined_symbol: Symbol = self.frame.symbol_state_space[defined_index]
         state_index = self.create_state_and_add_space(
             status, stmt_id, source_symbol_id=stmt_id, value=source_symbol.symbol_id,
             access_path = self.copy_and_extend_access_path(
@@ -2343,6 +2429,13 @@ class StaticStmtStates:
         )
         self.update_access_path_state_id(state_index)
         defined_symbol.states = {state_index}
+
+        self.sfg.add_edge(
+            self.make_symbol_sfg_node(stmt_id, defined_index),
+            self.make_state_sfg_node(stmt_id, state_index),
+            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
+        )
+
         return P2ResultFlag()
 
     def mem_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2535,14 +2628,20 @@ class StaticStmtStates:
         use: array index
         target = array[index]
         """
+        defined_index = status.defined_symbol
+        defined_symbol: Symbol = self.frame.symbol_state_space[defined_index]
+        defined_sfg_node = self.make_symbol_sfg_node(stmt_id, defined_index)
+        if not isinstance(defined_symbol, Symbol):
+            return P2ResultFlag()
+
         defined_states = set()
-        new_array_symbol = None
-        new_array_symbol_index = None
+        # new_array_symbol = None
+        # new_array_symbol_index = None
 
         array_symbol_index = status.used_symbols[0]
         index_symbol_index = status.used_symbols[1]
-        used_array_symbol: Symbol = self.frame.symbol_state_space[array_symbol_index]
-        if not isinstance(used_array_symbol, Symbol):
+        array_symbol: Symbol = self.frame.symbol_state_space[array_symbol_index]
+        if not isinstance(array_symbol, Symbol):
             return P2ResultFlag()
 
         array_state_indexes = self.read_used_states(array_symbol_index, in_states)
@@ -2551,8 +2650,8 @@ class StaticStmtStates:
             array_state = self.frame.symbol_state_space[each_array_state_index]
             if not isinstance(array_state, State):
                 continue
-            if isinstance(used_array_symbol, Symbol):
-                self.tag_key_state_flag(stmt_id, used_array_symbol.symbol_id, each_array_state_index)
+            if isinstance(array_symbol, Symbol):
+                self.tag_key_state_flag(stmt_id, array_symbol.symbol_id, each_array_state_index)
             # 躺平，返回整个数组
             if array_state.tangping_flag:
                 defined_states.update(array_state.tangping_elements)
@@ -2582,48 +2681,70 @@ class StaticStmtStates:
                         array_state.array[real_index_value]
                     ):
                         array_index_set: set = array_state.array[real_index_value]
-                        for array_symbol_index in array_index_set:
-                            defined_states.add(array_symbol_index)
+                        for element_symbol_index in array_index_set:
+                            defined_states.add(element_symbol_index)
+                            self.sfg.add_edge(
+                                defined_sfg_node,
+                                self.make_symbol_sfg_node(stmt_id, element_symbol_index),
+                                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
+                            )
                     else:
                         is_reading_success = False
                         break
+                else:
+                    is_reading_success = False
+                    break
 
             if is_reading_success:
                 continue
 
-            if util.is_empty(new_array_symbol_index):
-                new_array_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, used_array_symbol)
-                new_array_symbol: Symbol = self.frame.symbol_state_space[new_array_symbol_index]
+            # if util.is_empty(new_array_symbol_index):
+            #     new_array_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, array_symbol)
+            #     new_array_symbol: Symbol = self.frame.symbol_state_space[new_array_symbol_index]
 
-            new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
-            new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
-            new_path: list = array_state.access_path.copy()
-            new_path.append(AccessPoint(
-                kind = ACCESS_POINT_KIND.ARRAY_ELEMENT,
-                key = real_index_value
-            ))
-            source_index = self.create_state_and_add_space(
-                status, stmt_id,
-                source_symbol_id=array_state.source_symbol_id,
-                source_state_id=array_state.source_state_id,
-                state_type = STATE_TYPE_KIND.ANYTHING,
-                access_path = new_path
-            )
-            self.update_access_path_state_id(source_index)
+            # new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
+            # new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
+            # new_path: list = array_state.access_path.copy()
+            # new_path.append(AccessPoint(
+            #     kind = ACCESS_POINT_KIND.ARRAY_ELEMENT,
+            #     key = real_index_value
+            # ))
+            # source_index = self.create_state_and_add_space(
+            #     status, stmt_id,
+            #     source_symbol_id=array_state.source_symbol_id,
+            #     source_state_id=array_state.source_state_id,
+            #     state_type = STATE_TYPE_KIND.ANYTHING,
+            #     access_path = new_path
+            # )
+            # self.update_access_path_state_id(source_index)
 
-            self.make_state_tangping(new_array_state)
-            new_array_state.tangping_elements.add(source_index)
-            defined_states.update(new_array_state.tangping_elements)
+            # self.make_state_tangping(new_array_state)
+            # new_array_state.tangping_elements.add(source_index)
+            # defined_states.update(new_array_state.tangping_elements)
 
-            new_array_symbol.states.discard(each_array_state_index)
-            new_array_symbol.states.add(new_array_state_index)
+            # new_array_symbol.states.discard(each_array_state_index)
+            # new_array_symbol.states.add(new_array_state_index)
 
-        target_symbol: Symbol = self.frame.symbol_state_space[status.defined_symbol]
-        if not isinstance(target_symbol, Symbol):
-            return P2ResultFlag()
+            self.make_state_tangping(array_state)
+            if len(array_state.tangping_elements) == 0:
+                source_index = self.create_state_and_add_space(
+                    status, stmt_id,
+                    source_symbol_id=array_state.source_symbol_id,
+                    source_state_id=array_state.source_state_id,
+                    state_type = STATE_TYPE_KIND.ANYTHING,
+                )
+                array_state.tangping_elements.add(source_index)
+            defined_states.update(array_state.tangping_elements)
 
-        if target_symbol:
-            target_symbol.states = defined_states
+            for each_element_index in array_state.tangping_elements:
+                self.sfg.add_edge(
+                    defined_sfg_node,
+                    self.make_symbol_sfg_node(stmt_id, each_element_index),
+                    self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
+                )
+
+        if defined_symbol:
+            defined_symbol.states = defined_states
 
         return P2ResultFlag()
 
@@ -2642,7 +2763,8 @@ class StaticStmtStates:
         index_states = self.read_used_states(index_index, in_states)
         source_states = self.read_used_states(source_index, in_states)
 
-        defined_array_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_index = status.defined_symbol
+        defined_array_symbol = self.frame.symbol_state_space[defined_index]
         if not isinstance(defined_array_symbol, Symbol):
             return P2ResultFlag()
 
@@ -2667,8 +2789,12 @@ class StaticStmtStates:
                         if not re.match(r'^-?\d+$', (str(index_value))):
                             tangping_flag = True
                             break
-                        else:
-                            index_value = int(index_value)
+
+                    try:
+                        index_value = int(index_value)
+                    except ValueError:
+                        tangping_flag = True
+                        break
 
                     array_length = len(tmp_array)
                     # 处理下标是负数时的情况
