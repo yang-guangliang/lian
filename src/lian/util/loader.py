@@ -2750,8 +2750,8 @@ class Loader:
         return self._state_flow_graph_p2_loader.get(method_id)
     def get_global_sfg_by_entry_point(self, method_id):
         return self._state_flow_graph_p3_loader.get(method_id)
-    def save_global_sfg_by_entry_point(self, method_id, graph):
-        return self._state_flow_graph_p3_loader.save(method_id, graph)
+    def save_global_sfg_by_entry_point(self, method_id, graph: StateFlowGraph):
+        return self._state_flow_graph_p3_loader.save(method_id, graph.graph)
 
     def get_method_def_use_summary(self, method_id):
         return self._method_def_use_summary_loader.get(method_id)
