@@ -330,8 +330,8 @@ class PrelimSemanticAnalysis:
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
             frame.state_flow_graph.add_edge(
-                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id),
-                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id),
+                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id, name=stmt.operation),
+                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id, name=defined_symbol.name),
                 SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
             )
 
@@ -366,8 +366,8 @@ class PrelimSemanticAnalysis:
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
             frame.symbol_graph.add_edge(stmt_id, key, SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED)
             frame.state_flow_graph.add_edge(
-                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id),
-                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id),
+                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
+                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id, name=defined_symbol.name),
                 SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
             )
         status.out_symbol_bits = current_bits
@@ -422,7 +422,14 @@ class PrelimSemanticAnalysis:
 
         for pos, used_symbol_index in enumerate(all_used_symbols):
             used_symbol = frame.symbol_state_space[used_symbol_index]
-            if not isinstance(used_symbol, Symbol):
+            if isinstance(used_symbol, State):
+                frame.state_flow_graph.add_edge(
+                    SFGNode(node_type=SFG_NODE_KIND.STATE, index=used_symbol_index, def_stmt_id=used_symbol.stmt_id, node_id=used_symbol.state_id),
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
+                    SFGEdge(edge_type=SFG_EDGE_KIND.STATE_IS_USED, stmt_id=stmt_id, pos=pos)
+                )
+                continue
+            elif not isinstance(used_symbol, Symbol):
                 continue
 
             reachable_defs = self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs)
@@ -433,17 +440,15 @@ class PrelimSemanticAnalysis:
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
                 frame.state_flow_graph.add_edge(
-                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id, node_id=tmp_key.symbol_id, pos=pos),
-                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id),
-                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id)
+                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id, node_id=tmp_key.symbol_id, name=used_symbol.name),
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
+                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id, pos=pos)
                 )
 
-    def get_used_symbols(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
+    def get_used_symbol_indexes(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
         """
         Here we need to collect the symbols to be used. Please note that the used symbols should not be collected from symbol graph, as the symbol graph is the final result rather than the current result.
         """
-        in_symbols = []
-
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         # print(f"available_defs: {available_defs}")
         all_used_symbols = status.used_symbols + status.implicitly_used_symbols
@@ -455,12 +460,33 @@ class PrelimSemanticAnalysis:
             all_reachable_defs.update(self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs))
         # print(f"all_reachable_defs{all_reachable_defs}")
 
+        available_indexes = set()
         for node in all_reachable_defs:
             if not isinstance(node, SymbolDefNode):
                 continue
             if node.stmt_id <= 0:
                 continue
-            symbol = frame.symbol_state_space[node.index]
+            available_indexes.add(node.index)
+
+        return available_indexes
+
+    def group_used_symbol_id_to_indexes(self, available_indexes, frame: ComputeFrame):
+        result = {}
+        for index in available_indexes:
+            used_symbol = frame.symbol_state_space[index]
+            if not isinstance(used_symbol, Symbol):
+                continue
+            if used_symbol.symbol_id not in result:
+                result[used_symbol.symbol_id] = set()
+            result[used_symbol.symbol_id].add(index)
+        return result
+
+    def get_used_symbols(self, available_indexes, frame: ComputeFrame):
+        in_symbols = []
+        for index in available_indexes:
+            symbol = frame.symbol_state_space[index]
+            if not isinstance(symbol, Symbol):
+                continue
             in_symbols.append(symbol)
 
         return in_symbols
@@ -753,13 +779,14 @@ class PrelimSemanticAnalysis:
                 frame.state_flow_graph.add_edge(
                     SFGNode(
                         node_type=SFG_NODE_KIND.SYMBOL,
-                        def_stmt_id=stmt_id,
+                        def_stmt_id=defined_symbol.stmt_id,
                         index=each_symbol_index,
-                        node_id=defined_symbol.symbol_id
+                        node_id=defined_symbol.symbol_id,
+                        name=defined_symbol.name
                     ),
                     SFGNode(
                         node_type=SFG_NODE_KIND.STATE,
-                        def_stmt_id=stmt_id,
+                        def_stmt_id=state.stmt_id,
                         index=each_state_index,
                         node_id=state.state_id
                     ),
@@ -800,8 +827,10 @@ class PrelimSemanticAnalysis:
         # 收集输入状态
         # collect in state
 
-        in_symbols = self.get_used_symbols(stmt_id, frame, status)
-        # print(f"in_symbols: {in_symbols}")
+        in_symbol_indexes = self.get_used_symbol_indexes(stmt_id, frame, status)
+        used_symbol_id_to_indexes = self.group_used_symbol_id_to_indexes(in_symbol_indexes, frame)
+        in_symbols = self.get_used_symbols(in_symbol_indexes, frame)
+        print(f"in_symbols: {in_symbols}")
         in_states = self.group_in_states(stmt_id, in_symbols, frame, status)
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
@@ -814,7 +843,7 @@ class PrelimSemanticAnalysis:
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        change_flag: P2ResultFlag = frame.stmt_state_analysis.run(stmt_id, stmt, status, in_states)
+        change_flag: P2ResultFlag = frame.stmt_state_analysis.run(stmt_id, stmt, status, in_states, used_symbol_id_to_indexes)
         if change_flag is None:
             # print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
@@ -1173,6 +1202,10 @@ class PrelimSemanticAnalysis:
             self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
             self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
+            util.write_graph_to_dot(
+                frame.state_flow_graph.graph,
+                f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{frame.method_id}.dot"
+            )
             frame_stack.pop()
 
     def sort_methods_by_unit_id(self, methods):

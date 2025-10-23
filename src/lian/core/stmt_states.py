@@ -77,6 +77,7 @@ class StmtStates:
         self.lang = self.frame.lang
         self.analysis_phase_id = analysis_phase_id
         self.sfg = self.frame.state_flow_graph
+        self.used_symbol_id_to_indexes = {}
 
         self.state_analysis_handlers = {
             "comment_stmt"                          : self.regular_stmt_state,
@@ -211,39 +212,54 @@ class StmtStates:
         )
         new_state.tangping_elements.add(tmp_state_index)
         self.sfg.add_edge(
-            self.make_state_sfg_node(stmt_id, new_state_index),
-            self.make_state_sfg_node(stmt_id, tmp_state_index),
-            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION)
+            self.make_state_sfg_node(new_state_index),
+            self.make_state_sfg_node(tmp_state_index),
+            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION, name=stmt.operation)
         )
 
-    def make_symbol_or_state_sfg_node(self, stmt_id, node_index):
+    def make_symbol_or_state_sfg_node(self, node_index):
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, Symbol):
             return SFGNode(
-                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=stmt_id, index=node_index, node_id=node.symbol_id,
-                context_id=self.frame.call_stmt_id
+                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index, node_id=node.symbol_id,
+                context_id=self.frame.call_stmt_id, name=node.name
             )
         elif isinstance(node, State):
             return SFGNode(
-                node_type=SFG_NODE_KIND.STATE, def_stmt_id=stmt_id, index=node_index, node_id=node.state_id,
+                node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
                 context_id=self.frame.call_stmt_id
             )
         return None
 
-    def make_symbol_sfg_node(self, stmt_id, node_index):
+    def make_symbol_sfg_node(self, node_index):
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, Symbol):
             return SFGNode(
-                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=stmt_id, index=node_index,
-                node_id=node.symbol_id, context_id=self.frame.call_stmt_id
+                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index,
+                node_id=node.symbol_id, context_id=self.frame.call_stmt_id, name=node.name
             )
         return None
 
-    def make_state_sfg_node(self, stmt_id, node_index):
+    def make_used_symbol_sfg_node(self, node_index):
+        node = self.frame.symbol_state_space[node_index]
+        if isinstance(node, Symbol):
+            symbol_id = node.symbol_id
+            if node.symbol_id not in self.used_symbol_id_to_indexes:
+                return SFGNode(
+                    node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index,
+                    node_id=node.symbol_id, context_id=self.frame.call_stmt_id, name=node.name
+                )
+            result = []
+            for real_index in self.used_symbol_id_to_indexes[symbol_id]:
+                result.append(self.make_symbol_sfg_node(real_index))
+            return result
+        return None
+
+    def make_state_sfg_node(self, node_index):
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, State):
             return SFGNode(
-                node_type=SFG_NODE_KIND.STATE, def_stmt_id=stmt_id, index=node_index, node_id=node.state_id,
+                node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
                 context_id=self.frame.call_stmt_id
             )
         return None
@@ -345,9 +361,9 @@ class StmtStates:
                 self.frame.all_state_defs.add(state_def_node)
 
         self.sfg.add_edge(
-            self.make_state_sfg_node(stmt_id, state_index),
-            self.make_state_sfg_node(stmt_id, index),
-            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_COPY)
+            self.make_state_sfg_node(state_index),
+            self.make_state_sfg_node(index),
+            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_COPY, name=self.frame.stmt_id_to_stmt[stmt_id].operation)
         )
 
         status.defined_states.discard(state_index)
@@ -403,13 +419,18 @@ class StmtStates:
             return s.states
         return set()
 
-    def run(self, stmt_id, stmt, status: StmtStatus, in_states):
+    def run(self, stmt_id, stmt, status: StmtStatus, in_states, used_symbol_id_to_indexes):
         """根据语句类型分发到对应的状态处理函数进行分析"""
         # print("status.operation:", status.operation)
+        self.used_symbol_id_to_indexes = used_symbol_id_to_indexes
         handler = self.state_analysis_handlers.get(stmt.operation, None)
+        result = None
         if handler is None:
-            return self.regular_stmt_state(stmt_id, stmt, status, in_states)
-        return handler(stmt_id, stmt, status, in_states)
+            result = self.regular_stmt_state(stmt_id, stmt, status, in_states)
+        else:
+            result = handler(stmt_id, stmt, status, in_states)
+        self.used_symbol_id_to_indexes = {}
+        return result
 
     def read_defined_symbol_states(self, status: StmtStatus):
         """读取已定义符号的状态集合"""
@@ -513,9 +534,9 @@ class StmtStates:
                 edge_type = SFG_EDGE_KIND.SYMBOL_FLOW
             # flows from receiver to defined symbol
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, receiver_index),
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type)
+                self.make_used_symbol_sfg_node(receiver_index),
+                self.make_symbol_sfg_node(defined_symbol_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type, name=stmt.operation)
             )
 
         for receiver_state_index in receiver_states:
@@ -706,9 +727,9 @@ class StmtStates:
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             if isinstance(operand_symbol, Symbol):
                 self.sfg.add_edge(
-                    self.make_symbol_or_state_sfg_node(stmt_id, operand_index),
-                    self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-                    self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                    self.make_used_symbol_sfg_node(operand_index),
+                    self.make_symbol_sfg_node(status.defined_symbol),
+                    self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
                 )
 
         # only one operand
@@ -1822,7 +1843,7 @@ class StmtStates:
                 interruption_data = InterruptionData(
                     caller_id = self.frame.method_id,
                     call_stmt_id = stmt_id,
-                    callee_ids = callee_ids_to_be_analyzed
+                    callee_ids = callee_ids_to_be_analyzed,
                 )
             )
 
@@ -1972,9 +1993,9 @@ class StmtStates:
 
         if len(defined_states) == 0:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, source_symbol_index),
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_symbol_index),
+                self.make_symbol_sfg_node(defined_symbol_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
 
             new_state = self.create_state_and_add_space(
@@ -2551,7 +2572,6 @@ class StmtStates:
         """
         defined_symbol_index = status.defined_symbol
         defined_symbol: Symbol = self.frame.symbol_state_space[defined_symbol_index]
-        defined_sfg_node = self.make_symbol_sfg_node(stmt_id, defined_symbol_index)
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
 
@@ -2642,14 +2662,14 @@ class StmtStates:
             defined_symbol.states = defined_states
         else:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, array_symbol_index),
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(array_symbol_index),
+                self.make_symbol_sfg_node(defined_symbol_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, index_symbol_index),
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(index_symbol_index),
+                self.make_symbol_sfg_node(defined_symbol_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
         return P2ResultFlag()
 
@@ -2737,9 +2757,9 @@ class StmtStates:
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND and len(defined_states) == 0:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, source_index),
-                self.make_symbol_sfg_node(stmt_id, array_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_index),
+                self.make_symbol_sfg_node(array_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
 
         return P2ResultFlag()
@@ -2817,9 +2837,9 @@ class StmtStates:
         defined_array_symbol.states = defined_symbol_states
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, source_index),
-                self.make_symbol_sfg_node(stmt_id, array_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_index),
+                self.make_symbol_sfg_node(array_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
         return P2ResultFlag()
 
@@ -2858,9 +2878,9 @@ class StmtStates:
         defined_array_symbol.states = defined_symbol_states
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, source_index),
-                self.make_symbol_sfg_node(stmt_id, used_array_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_index),
+                self.make_symbol_sfg_node(used_array_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
 
         return P2ResultFlag()
@@ -2914,9 +2934,9 @@ class StmtStates:
         defined_array_symbol.states = defined_symbol_states
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, source_index),
-                self.make_symbol_sfg_node(stmt_id, used_array_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_index),
+                self.make_symbol_sfg_node(used_array_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
         return P2ResultFlag()
 
@@ -2970,9 +2990,9 @@ class StmtStates:
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, source_index),
-                self.make_symbol_sfg_node(stmt_id, receiver_state_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_index),
+                self.make_symbol_sfg_node(receiver_state_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
         return P2ResultFlag()
 
@@ -3288,9 +3308,9 @@ class StmtStates:
 
         if len(receiver_states) == 0 or len(source_states) == 0:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, source_index),
-                self.make_symbol_sfg_node(stmt_id, receiver_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_index),
+                self.make_symbol_sfg_node(receiver_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
             return P2ResultFlag()
 
@@ -3426,9 +3446,9 @@ class StmtStates:
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, array_symbol_index),
-                self.make_symbol_sfg_node(stmt_id, source_symbol_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(source_symbol_index),
+                self.make_symbol_sfg_node(array_symbol_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
 
         used_array_symbol = self.frame.symbol_state_space[array_symbol_index]
@@ -3558,9 +3578,9 @@ class StmtStates:
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
             self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, array_symbol_index),
-                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+                self.make_used_symbol_sfg_node(array_symbol_index),
+                self.make_symbol_sfg_node(status.defined_symbol),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
 
         used_array_symbol = self.frame.symbol_state_space[array_symbol_index]

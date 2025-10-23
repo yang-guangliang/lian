@@ -277,13 +277,14 @@ SFG_EDGE_KIND = util.SimpleEnum({
     "INDIRECT_STATE_INCLUSION"  : 8,
     "CALL_RETURN"               : 9,
     "STATE_COPY"                : 10,
+    "STATE_IS_USED"             : 11,
 })
 
 SFG_NODE_KIND = util.SimpleEnum({
     "REGULAR"                   : 0,
     "STMT"                      : 1,
-    "SYMBOL"                    : 1,
-    "STATE"                     : 2,
+    "SYMBOL"                    : 2,
+    "STATE"                     : 3,
 })
 
 ACCESS_POINT_KIND = util.SimpleEnum({

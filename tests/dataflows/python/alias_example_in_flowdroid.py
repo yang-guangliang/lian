@@ -8,3 +8,5 @@ def foo(z):
     x = z.g
     w = source()
     x.f = w
+
+#main()

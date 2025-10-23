@@ -24,7 +24,8 @@ from lian.config.constants import (
     EXTERNAL_KEY_STATE_TYPE,
     EXPORT_NODE_TYPE,
     ACCESS_POINT_KIND,
-    SFG_NODE_KIND
+    SFG_NODE_KIND,
+    SFG_EDGE_KIND
 )
 from lian.config import config
 
@@ -162,9 +163,9 @@ class BasicGraph:
         if not self.graph.has_edge(src_stmt_id, dst_stmt_id):
             self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
 
-    def add_node(self, node):
-        if node:
-            self.graph.add_node(node)
+    # def add_node(self, node):
+    #     if node:
+    #         self.graph.add_node(node)
 
     def add_edge(self, src_stmt, dst_stmt, weight = None):
         src_stmt_id = -1
@@ -1012,7 +1013,12 @@ class StateGraph(SymbolGraph):
     pass
 
 class StateFlowGraph(SymbolGraph):
-    pass
+    def add_edge(self, src_node, dst_node, weight = None):
+        # import inspect
+        # caller_frame = inspect.currentframe().f_back
+        # info = inspect.getframeinfo(caller_frame)
+        # print(f"{info.filename}:{info.lineno} add_edge: {src_node} -> {dst_node} @ weight={weight}")
+        super().add_edge(src_node, dst_node, weight)
 
 @dataclasses.dataclass
 class SFGNode:
@@ -1021,8 +1027,9 @@ class SFGNode:
     def_stmt_id: which stmt defines current node
     index: the indexing position of current node in symbol state space
     node_id: symbol or state ID
-    pos: the position of current node in all sibling nodes
     context_id: the context ID of current node, i.e., 1-call ID, the ID of call_stmt that calls current method (being tested)
+    name: the name of symbol node
+    value: the value of state node
     """
     # 节点类型
     node_type: int = -1
@@ -1032,20 +1039,43 @@ class SFGNode:
     index: int = -1
     # 这个节点的具体的id，一般是symbol_id或者state_id（根据node_type来判断）
     node_id: int = -1
-    # 这个节点在所有兄弟节点序列中的位置，例如参数列表中的第几个参数
-    pos: int = -1
     # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
     # Hence it is call_stmt_id
     context_id: int = -1
+    name: str = ""
+    #value: str = ""
 
     def __hash__(self) -> int:
-        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.pos, self.context_id))
+        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id, self.name))
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.def_stmt_id == other.def_stmt_id and self.index == other.index and self.node_id == other.node_id and self.pos == other.pos and self.context_id == other.context_id
+        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.def_stmt_id == other.def_stmt_id and self.index == other.index and self.node_id == other.node_id and self.context_id == other.context_id and self.name == other.name
 
     def __repr__(self) -> str:
-        return f"SFGNode(node_type={self.node_type}, stmt_id={self.def_stmt_id}, index={self.index}, internal_id={self.node_id}, pos={self.pos}, context_id={self.context_id})"
+        result = []
+        result.append(f"{SFG_NODE_KIND[self.node_type].lower()}(")
+        attrs = []
+        if self.def_stmt_id >= 0:
+            attrs.append(f"stmt_id={self.def_stmt_id}")
+        if self.context_id >= 0:
+            attrs.append(f"context_id={self.context_id}")
+
+        if self.node_type == SFG_NODE_KIND.STMT:
+             if self.name:
+                attrs.append(f"name={self.name}")
+        else:
+            if self.index >= 0:
+                attrs.append(f"index={self.index}")
+            if self.node_type == SFG_NODE_KIND.SYMBOL:
+                attrs.append(f"symbol_id={self.node_id}")
+                if self.name:
+                    attrs.append(f"name={self.name}")
+            else:
+                attrs.append(f"state_id={self.node_id}")
+        result.append(",".join(attrs))
+        result.append(")")
+
+        return "".join(result)
 
     def to_dict(self):
         if self.node_type == SFG_NODE_KIND.STMT:
@@ -1060,7 +1090,6 @@ class SFGNode:
             "stmt_id"               : self.def_stmt_id,
             "index"                 : self.index,
             "internal_id"           : self.node_id,
-            "pos"                   : self.pos,
             "context_id"            : self.context_id,
         }
 
@@ -1070,7 +1099,6 @@ class SFGNode:
             def_stmt_id = self.def_stmt_id,
             index = self.index,
             node_id = self.node_id,
-            pos = self.pos,
             context_id = self.context_id,
         )
 
@@ -1080,12 +1108,11 @@ class SFGNode:
             self.def_stmt_id,
             self.index,
             self.node_id,
-            self.pos,
             self.context_id,
         )
 
     def from_tuple(self, tup):
-        self.node_type, self.def_stmt_id, self.index, self.node_id, self.pos, self.context_id = tup
+        self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id = tup
         return self
 
 @dataclasses.dataclass
@@ -1104,17 +1131,31 @@ class SFGEdge:
     round: int = -1
     # 哪个阶段产生的这个边
     #phase: int = -1
+    # 这个节点在所有兄弟节点序列中的位置，例如参数列表中的第几个参数
+    pos: int = -1
     # 连接的时候边的名字
     name: str = ""
 
     def __hash__(self) -> int:
-        return hash((self.edge_type, self.stmt_id, self.round, self.name))
+        return hash((self.edge_type, self.stmt_id, self.round, self.pos, self.name))
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, SFGEdge) and self.edge_type == other.edge_type and self.stmt_id == other.stmt_id and self.round == other.round and self.name == other.name
+        return isinstance(other, SFGEdge) and self.edge_type == other.edge_type and self.stmt_id == other.stmt_id and self.round == other.round and self.pos == other.pos and self.name == other.name
 
     def __repr__(self) -> str:
-        return f"SFGEdge(edge_type={self.edge_type}, stmt_id={self.stmt_id}, round={self.round}, name={self.name})"
+        result = []
+        result.append(f"{SFG_EDGE_KIND[self.edge_type].lower()}(")
+        attrs = []
+        attrs.append(f"stmt_id={self.stmt_id}")
+        if self.round >= 0:
+            attrs.append(f"round={self.round}")
+        if self.pos >= 0:
+            attrs.append(f"pos={self.pos}")
+        if self.name:
+            attrs.append(f"name={self.name}")
+        result.append(",".join(attrs))
+        result.append(")")
+        return "".join(result)
 
     def copy(self):
         return SFGEdge(

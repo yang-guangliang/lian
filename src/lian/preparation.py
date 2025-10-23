@@ -22,7 +22,8 @@ class WorkspaceBuilder:
         self.c_like_extensions = LANG_EXTENSIONS.get('c', []) + LANG_EXTENSIONS.get('cpp', [])
         self.required_subdirs = [
             config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.BASIC_DIR,
-            config.SEMANTIC_DIR_P1, config.SEMANTIC_DIR_P2, config.SEMANTIC_DIR_P3
+            config.SEMANTIC_DIR_P1, config.SEMANTIC_DIR_P2, config.SEMANTIC_DIR_P3,
+            config.STATE_FLOW_GRAPH_DIR, config.CALL_TREE_DIR
         ]
         self.header_keywords = [
             "stdio.h", "stdlib.h", "string.h", "math.h", "ctype.h", "time.h",
@@ -189,7 +190,7 @@ class WorkspaceBuilder:
         if not os.path.exists(workspace_path):
             return
         bak_subdir = os.path.join(workspace_path, config.BACKUP_DIR)
-        
+
         self.cleanup_directory(bak_subdir)
         os.makedirs(bak_subdir, exist_ok = True)
         for subdir in self.required_subdirs:
@@ -201,7 +202,7 @@ class WorkspaceBuilder:
         module_symbol_path = os.path.join(workspace_path, config.MODULE_SYMBOLS_PATH)
         module_symbol_bak_path = os.path.join(bak_subdir, config.MODULE_SYMBOLS_PATH)
         if os.path.exists(module_symbol_path):
-            shutil.copy2(module_symbol_path, module_symbol_bak_path)    
+            shutil.copy2(module_symbol_path, module_symbol_bak_path)
 
     def run(self):
         workspace_path = self.options.workspace
@@ -288,7 +289,7 @@ class ModuleSymbolsBuilder:
                 exported_name = entry.path.replace(prefix_path, "")
                 exported_name = os.path.splitext(exported_name)[0]
                 exported_name = exported_name.replace(os.path.sep, ".")
-                
+
                 unit_hash = self.file_hash(entry.path)
 
                 self.module_symbol_results.append({
