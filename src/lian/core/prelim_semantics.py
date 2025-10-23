@@ -739,6 +739,32 @@ class PrelimSemanticAnalysis:
         #     print(f"adjusted_states: {adjusted_states}")
         status.defined_states = adjusted_states
 
+    def update_state_flow_graph(self, stmt_id, stmt, status, frame:ComputeFrame):
+        for each_symbol_index in [status.defined_symbol, *status.implicitly_defined_symbols]:
+            defined_symbol = frame.symbol_state_space[each_symbol_index]
+            if not isinstance(defined_symbol, Symbol):
+                continue
+            for each_state_index in defined_symbol.states:
+                state = frame.symbol_state_space[each_state_index]
+                frame.state_flow_graph.add_edge(
+                    SFGNode(
+                        node_type=SFG_NODE_KIND.SYMBOL,
+                        def_stmt_id=stmt_id,
+                        index=each_symbol_index,
+                        node_id=defined_symbol.symbol_id
+                    ),
+                    SFGNode(
+                        node_type=SFG_NODE_KIND.STATE,
+                        def_stmt_id=stmt_id,
+                        index=each_state_index,
+                        node_id=state.state_id
+                    ),
+                    SFGEdge(
+                        edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
+                        stmt_id=stmt_id
+                    )
+                )
+
     def compute_stmt_states(self, stmt_id, stmt, frame: ComputeFrame):
         """
         执行状态计算的核心逻辑：
@@ -800,7 +826,10 @@ class PrelimSemanticAnalysis:
         if defined_symbol := frame.symbol_state_space[status.defined_symbol]:
             new_defined_symbol_states = defined_symbol.states
 
-        if new_out_states or new_defined_symbol_states != old_defined_symbol_states:
+        if new_out_states:
+            change_flag.state_changed = True
+
+        if new_defined_symbol_states != old_defined_symbol_states:
             change_flag.state_changed = True
 
         if status.implicitly_defined_symbols != old_implicitly_defined_symbols:
@@ -814,6 +843,9 @@ class PrelimSemanticAnalysis:
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
         # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
+
+        if change_flag.state_changed or change_flag.symbol_def_changed:
+            self.update_state_flow_graph(stmt_id, stmt, status, frame)
 
         return change_flag
 

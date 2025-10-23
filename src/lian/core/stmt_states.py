@@ -219,21 +219,33 @@ class StmtStates:
     def make_symbol_or_state_sfg_node(self, stmt_id, node_index):
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, Symbol):
-            return SFGNode(node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=stmt_id, index=node_index, node_id=node.symbol_id)
+            return SFGNode(
+                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=stmt_id, index=node_index, node_id=node.symbol_id,
+                context_id=self.frame.call_stmt_id
+            )
         elif isinstance(node, State):
-            return SFGNode(node_type=SFG_NODE_KIND.STATE, def_stmt_id=stmt_id, index=node_index, node_id=node.state_id)
+            return SFGNode(
+                node_type=SFG_NODE_KIND.STATE, def_stmt_id=stmt_id, index=node_index, node_id=node.state_id,
+                context_id=self.frame.call_stmt_id
+            )
         return None
 
     def make_symbol_sfg_node(self, stmt_id, node_index):
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, Symbol):
-            return SFGNode(node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=stmt_id, index=node_index, node_id=node.symbol_id)
+            return SFGNode(
+                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=stmt_id, index=node_index,
+                node_id=node.symbol_id, context_id=self.frame.call_stmt_id
+            )
         return None
 
     def make_state_sfg_node(self, stmt_id, node_index):
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, State):
-            return SFGNode(node_type=SFG_NODE_KIND.STATE, def_stmt_id=stmt_id, index=node_index, node_id=node.state_id)
+            return SFGNode(
+                node_type=SFG_NODE_KIND.STATE, def_stmt_id=stmt_id, index=node_index, node_id=node.state_id,
+                context_id=self.frame.call_stmt_id
+            )
         return None
 
     def make_stmt_sfg_edge(self, stmt_id, edge_type = SFG_EDGE_KIND.SYMBOL_FLOW, round = -1, name = ""):
@@ -331,6 +343,12 @@ class StmtStates:
             if state_def_node not in self.frame.all_state_defs:
                 self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
                 self.frame.all_state_defs.add(state_def_node)
+
+        self.sfg.add_edge(
+            self.make_state_sfg_node(stmt_id, state_index),
+            self.make_state_sfg_node(stmt_id, index),
+            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_COPY)
+        )
 
         status.defined_states.discard(state_index)
         status.defined_states.add(index)
@@ -574,11 +592,6 @@ class StmtStates:
             )
             self.update_access_path_state_id(state_index)
 
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, state_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
-            )
             result.add(state_index)
 
         defined_symbol.states = result
@@ -691,13 +704,7 @@ class StmtStates:
             source_symbol_id = operand_symbol.symbol_id
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
-            if not isinstance(operand_symbol, Symbol):
-                self.sfg.add_edge(
-                    self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-                    self.make_state_sfg_node(stmt_id, operand_index),
-                    self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
-                )
-            else:
+            if isinstance(operand_symbol, Symbol):
                 self.sfg.add_edge(
                     self.make_symbol_or_state_sfg_node(stmt_id, operand_index),
                     self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
@@ -724,12 +731,6 @@ class StmtStates:
                 state_type =  STATE_TYPE_KIND.ANYTHING
             )
             defined_symbol.states = {tmp_index}
-
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-                self.make_state_sfg_node(stmt_id, tmp_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
-            )
 
             return P2ResultFlag()
 
@@ -767,12 +768,6 @@ class StmtStates:
                 )
             new_states = {state_index}
 
-        for each_state_index in new_states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-                self.make_state_sfg_node(stmt_id, each_state_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
-            )
         defined_symbol.states = new_states
         return P2ResultFlag()
 
@@ -1865,12 +1860,6 @@ class StmtStates:
             self.update_access_path_state_id(unsolved_state_index)
             defined_symbol.states = {unsolved_state_index}
 
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-                self.make_state_sfg_node(stmt_id, unsolved_state_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-            )
-
             return P2ResultFlag()
 
         # args = self.prepare_args(stmt_id, stmt, status, in_states, args_state_set)
@@ -1927,12 +1916,6 @@ class StmtStates:
         self.update_access_path_state_id(state_index)
         global_symbol.states = {state_index}
 
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-            self.make_state_sfg_node(stmt_id, state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
-
         return P2ResultFlag()
 
     def nonlocal_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -1956,12 +1939,6 @@ class StmtStates:
         )
         self.update_access_path_state_id(state_index)
         defined_symbol.states = {state_index}
-
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-            self.make_state_sfg_node(stmt_id, state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
 
         return P2ResultFlag()
 
@@ -2008,12 +1985,6 @@ class StmtStates:
             defined_states = {new_state}
 
         defined_symbol.states = defined_states
-        for each_state_index in defined_states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, each_state_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-            )
         return P2ResultFlag()
 
     # TODO:
@@ -2038,12 +2009,6 @@ class StmtStates:
                 data_type = str(data_type)
             )
         defined_symbol.states = {state_index}
-
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-            self.make_state_sfg_node(stmt_id, state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
         return P2ResultFlag()
 
     def phi_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2062,13 +2027,6 @@ class StmtStates:
         for each_index in used_symbol_indexes:
             states = self.read_used_states(each_index, in_states)
             defined_symbol.states.update(states)
-
-        for each_state_index in defined_symbol.states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, each_state_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-            )
 
         return P2ResultFlag()
 
@@ -2095,11 +2053,6 @@ class StmtStates:
         self.update_access_path_state_id(state_index)
         defined_symbol.states = {state_index}
 
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-            self.make_state_sfg_node(stmt_id, state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
         return P2ResultFlag()
 
     def class_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2126,12 +2079,6 @@ class StmtStates:
         )
         self.update_access_path_state_id(state_index)
         defined_symbol.states = {state_index}
-
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-            self.make_state_sfg_node(stmt_id, state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
 
         return P2ResultFlag()
 
@@ -2170,13 +2117,6 @@ class StmtStates:
                         )
                 else:
                     parameter_name_symbol.states.add(default_value_index)
-
-        for each_state_index in parameter_name_symbol.states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, each_state_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-            )
 
         return P2ResultFlag()
 
@@ -2221,12 +2161,6 @@ class StmtStates:
             )
             self.update_access_path_state_id(method_state_index)
             method_name_symbol.states = {method_state_index}
-
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
-                self.make_state_sfg_node(stmt_id, method_state_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-            )
 
         return P2ResultFlag()
 
@@ -2311,13 +2245,6 @@ class StmtStates:
         )
         self.event_manager.notify(event)
 
-        for each_state_index in defined_symbol.states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, each_state_index),
-                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-            )
-
         return p2result_flag
 
     def new_array_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2338,12 +2265,6 @@ class StmtStates:
         )
         self.update_access_path_state_id(init_state_index)
         defined_symbol.states = {init_state_index}
-
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-            self.make_state_sfg_node(stmt_id, init_state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
 
         return P2ResultFlag()
 
@@ -2367,12 +2288,6 @@ class StmtStates:
         self.update_access_path_state_id(init_state_index)
         defined_symbol.states = {init_state_index}
 
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-            self.make_state_sfg_node(stmt_id, init_state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
-
         return P2ResultFlag()
 
     def new_set_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
@@ -2394,12 +2309,6 @@ class StmtStates:
         )
         self.update_access_path_state_id(init_state_index)
         defined_symbol.states = {init_state_index}
-
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-            self.make_state_sfg_node(stmt_id, init_state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
 
         return P2ResultFlag()
 
@@ -2439,12 +2348,6 @@ class StmtStates:
         )
         self.update_access_path_state_id(state_index)
         defined_symbol.states = {state_index}
-
-        self.sfg.add_edge(
-            self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-            self.make_state_sfg_node(stmt_id, state_index),
-            self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-        )
 
         return P2ResultFlag()
 
@@ -2737,12 +2640,6 @@ class StmtStates:
 
         if defined_states:
             defined_symbol.states = defined_states
-            for each_array_state_index in defined_states:
-                self.sfg.add_edge(
-                    self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                    self.make_state_sfg_node(stmt_id, each_array_state_index),
-                    self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
-                )
         else:
             self.sfg.add_edge(
                 self.make_symbol_sfg_node(stmt_id, array_symbol_index),
@@ -2843,13 +2740,6 @@ class StmtStates:
                 self.make_symbol_sfg_node(stmt_id, source_index),
                 self.make_symbol_sfg_node(stmt_id, array_index),
                 self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
-            )
-
-        for each_state_index in defined_states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, each_state_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
             )
 
         return P2ResultFlag()
@@ -3363,13 +3253,6 @@ class StmtStates:
             }
         )
         app_return = self.event_manager.notify(event)
-
-        for each_state_index in defined_states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, each_state_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
-            )
         return P2ResultFlag()
 
 
@@ -3491,13 +3374,6 @@ class StmtStates:
         )
         self.event_manager.notify(event)
 
-        for each_defined_state_index in defined_symbol_states:
-            self.sfg.add_edge(
-                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                self.make_state_sfg_node(stmt_id, each_defined_state_index),
-                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
-            )
-
         return P2ResultFlag()
 
     # TODO:
@@ -3549,7 +3425,7 @@ class StmtStates:
         step_symbol_index = status.used_symbols[4]
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
-            self.sfg.add_node(
+            self.sfg.add_edge(
                 self.make_symbol_sfg_node(stmt_id, array_symbol_index),
                 self.make_symbol_sfg_node(stmt_id, source_symbol_index),
                 self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
@@ -3591,6 +3467,7 @@ class StmtStates:
             if not isinstance(array_state, State):
                 continue
 
+            tmp_array = set()
             tangping_flag = array_state.tangping_flag
             if not tangping_flag:
                 tmp_array = array_state.array.copy()
@@ -3651,7 +3528,7 @@ class StmtStates:
                 new_array_state.tangping_elements.update(source_state_indexes)
                 defined_symbol_states.add(new_array_state_index)
 
-            elif tmp_array != array_state.array:
+            elif len(tmp_array) > 0 and tmp_array != array_state.array:
                 new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                 new_array_state.array = tmp_array
@@ -3680,7 +3557,7 @@ class StmtStates:
         step_symbol_index = status.used_symbols[3]
 
         if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
-            self.sfg.add_node(
+            self.sfg.add_edge(
                 self.make_symbol_sfg_node(stmt_id, array_symbol_index),
                 self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
                 self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
@@ -3783,8 +3660,7 @@ class StmtStates:
 
             # tangping
             if util.is_empty(new_array_symbol_index):
-                new_array_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, used_array_symbol)
-                new_array_symbol: Symbol = self.frame.symbol_state_space[new_array_symbol_index]
+                new_array_symbol: Symbol = used_array_symbol
 
             #new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
             new_array_state_index = each_array_state_index
