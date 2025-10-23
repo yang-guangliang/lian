@@ -397,7 +397,7 @@ LIAN_INTERNAL = util.SimpleEnum({
     # Builtin Methods
     "UNIT_INIT"                     : "%unit_init",
     "CLASS_INIT"                    : "%class_init",
-    "CLASS_PRELIM_INIT"             : "%class_sinit",
+    "CLASS_STATIC_INIT"             : "%class_sinit",
 
     # Builtin Parameters and Args Types
     "PACKED_POSITIONAL_PARAMETER"   : "%packed_pos_pmt",

@@ -1570,7 +1570,7 @@ class Parser(common_parser.Parser):
             gir_node["methods"].insert(0,
                 {
                     "method_decl":{
-                        "name": LIAN_INTERNAL.CLASS_STATIC_INIT,
+                        "name": LIAN_INTERNAL.CLASS_PRELIM_INIT,
                         "body": static_init_class_method_body
                     }
                 }
