@@ -469,6 +469,7 @@ class UnitScopeHierarchyAnalysis:
                     LIAN_SYMBOL_KIND.BLOCK_KIND,
                     LIAN_SYMBOL_KIND.NAMESPACE_KIND,
                     LIAN_SYMBOL_KIND.FOR_KIND,
+                    LIAN_SYMBOL_KIND.WITH_KIND,
             ]:
                 if row.stmt_id not in scope_id_to_available_scope_ids:
                     scope_id_to_available_scope_ids[row.stmt_id] = set()
