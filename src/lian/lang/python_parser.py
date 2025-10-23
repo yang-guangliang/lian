@@ -1237,6 +1237,7 @@ class Parser(common_parser.Parser):
         module_name = ""
         import_name = ""
         if node.type == "import_from_statement":
+            # 形如import a.b.c.d，在gir中会被翻译成from a.b.c.d import a_b_c_D
             module_name = self.read_node_text(self.find_child_by_field(node, "module_name"))
             import_name = node.named_children[1:]
         elif node.type == "future_import_statement":
