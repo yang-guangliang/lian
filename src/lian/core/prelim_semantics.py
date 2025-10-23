@@ -1172,7 +1172,7 @@ class PrelimSemanticAnalysis:
             self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
             self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
-            self.loader.save_method_state_flow_graph_p2(frame.method_id, frame.state_flow_graph.graph)
+            self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
             frame_stack.pop()
 
     def sort_methods_by_unit_id(self, methods):

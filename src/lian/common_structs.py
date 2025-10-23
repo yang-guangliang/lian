@@ -1071,6 +1071,7 @@ class SFGNode:
             index = self.index,
             node_id = self.node_id,
             pos = self.pos,
+            context_id = self.context_id,
         )
 
     def to_tuple(self):
@@ -1080,7 +1081,12 @@ class SFGNode:
             self.index,
             self.node_id,
             self.pos,
+            self.context_id,
         )
+
+    def from_tuple(self, tup):
+        self.node_type, self.def_stmt_id, self.index, self.node_id, self.pos, self.context_id = tup
+        return self
 
 @dataclasses.dataclass
 class SFGEdge:
@@ -1142,8 +1148,12 @@ class SFGEdge:
             self.edge_type,
             self.stmt_id,
             self.round,
-            self.name
         )
+
+    def from_tuple(self, tup, name):
+        self.edge_type, self.stmt_id, self.round = tup
+        self.name = name
+        return self
 
 @dataclasses.dataclass
 class SourceSymbolScopeInfo:
@@ -1737,7 +1747,7 @@ class MetaComputeFrame:
     content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)
 
 class ComputeFrame(MetaComputeFrame):
-    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = []):
+    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = [], state_flow_graph = None):
         super().__init__(method_id)
         self.has_been_inited = False
         self.method_id = method_id
@@ -1784,7 +1794,9 @@ class ComputeFrame(MetaComputeFrame):
         self.symbol_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.state_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.symbol_graph = SymbolGraph(self.method_id)
-        self.state_flow_graph = StateFlowGraph(self.method_id)
+        self.state_flow_graph = state_flow_graph
+        if self.state_flow_graph is None:
+            self.state_flow_graph = StateFlowGraph(self.method_id)
         self.method_summary_template: MethodSummaryTemplate = MethodSummaryTemplate(self.method_id)
         self.method_summary_instance: MethodSummaryInstance = MethodSummaryInstance(self.call_site)
 

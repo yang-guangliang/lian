@@ -45,7 +45,9 @@ from lian.common_structs import (
     APath,
     SymbolNodeInImportGraph,
     TypeNode,
-    StateFlowGraph
+    StateFlowGraph,
+    SFGNode,
+    SFGEdge,
 )
 
 class ModuleSymbolsLoader:
@@ -1685,28 +1687,24 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, method_id, item_df):
         symbol_graph = StateFlowGraph(method_id)
         for row in item_df:
-            key = SymbolDefNode(
-                index = int(row.defined_symbol_index),
-                symbol_id = int(row.defined_symbol_id),
-                stmt_id = int(row.defined_symbol_stmt_id)
+            symbol_graph.add_edge(
+                SFGNode().from_tuple(row.source_node),
+                SFGNode().from_tuple(row.dest_node),
+                SFGEdge().from_tuple(row.edge_type, row.edge_name)
             )
-            symbol_graph.add_edge(row.source_node_id, row.dest_node_id, (row.edge_type, row.edge_stmt_id))
         return symbol_graph.graph
 
     def flatten_item_when_saving(self, method_id, state_flow_graph: nx.DiGraph):
         edges = []
-        old_edges = state_flow_graph.edges(data='weight', default = (-1, -1))
-        for source_id, dest_id, edge_weight in old_edges:
-            edge_type = edge_weight.edge_type
-            edge_stmt_id = edge_weight.stmt_id
-            if edge_type > 0 and edge_stmt_id > 0:
-                edges.append({
-                    "method_id": method_id,
-                    "source_node_id": source_id,
-                    "edge_type": edge_type,
-                    "edge_stmt_id": edge_stmt_id,
-                    "dest_node_id": dest_id,
-                })
+        all_edges = state_flow_graph.edges(data='weight', default=None)
+        for src_node, dst_node, edge_type in all_edges:
+            edges.append({
+                "method_id": method_id,
+                "source_node": src_node.to_tuple(),
+                "edge_type": edge_type.to_tuple(),
+                "edge_name": edge_type.name,
+                "dest_node": dst_node.to_tuple(),
+            })
         # print(edges)
         return edges
 
@@ -2746,13 +2744,13 @@ class Loader:
     def save_method_symbol_graph_p3(self, method_id, graph):
         return self._symbol_graph_p3_loader.save(method_id, graph)
 
-    def save_method_state_flow_graph_p2(self, method_id, graph):
+    def save_method_sfg(self, method_id, graph):
         return self._state_flow_graph_p2_loader.save(method_id, graph)
-    def get_method_state_flow_graph_p2(self, method_id):
+    def get_method_sfg(self, method_id):
         return self._state_flow_graph_p2_loader.get(method_id)
-    def get_method_state_flow_graph_p3(self, method_id):
+    def get_global_sfg_by_entry_point(self, method_id):
         return self._state_flow_graph_p3_loader.get(method_id)
-    def save_method_state_flow_graph_p3(self, method_id, graph):
+    def save_global_sfg_by_entry_point(self, method_id, graph):
         return self._state_flow_graph_p3_loader.save(method_id, graph)
 
     def get_method_def_use_summary(self, method_id):

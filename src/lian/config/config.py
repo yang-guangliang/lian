@@ -32,6 +32,9 @@ BASIC_DIR                                   = "basic"
 SEMANTIC_DIR_P1                             = "semantic_p1"
 SEMANTIC_DIR_P2                             = "semantic_p2"
 SEMANTIC_DIR_P3                             = "semantic_p3"
+STATE_FLOW_GRAPH_DIR                        = "state_flow_graph"
+CALL_TREE_DIR                               = "call_tree"
+
 
 ROOT_DIR                                    = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 

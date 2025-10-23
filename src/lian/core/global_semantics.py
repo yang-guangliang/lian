@@ -37,7 +37,8 @@ from lian.common_structs import (
     StateDefNode,
     MethodSummaryInstance,
     APath,
-    StmtStatus
+    StmtStatus,
+    StateFlowGraph
 )
 from lian.basics.entry_points import EntryPointGenerator
 from lian.basics.control_flow import ControlFlowAnalysis
@@ -279,7 +280,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         key = (current_frame.caller_id, current_frame.call_stmt_id)
         last_frame.summary_collection[key] = summary_data
 
-    def analyze_frame_stack(self, frame_stack: ComputeFrameStack, global_space):
+    def analyze_frame_stack(self, frame_stack: ComputeFrameStack, global_space, sfg: StateFlowGraph):
         """
         执行调用栈级分析流程：
         1. 处理动态调用分析需求
@@ -320,6 +321,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                             space = global_space,
                             params_list = frame.args_list,
                             classes_of_method = frame.callee_classes_of_method,
+                            state_flow_graph = sfg,
                         )
                         frame_stack.add(new_frame)
                         children_done_flag = False
@@ -399,7 +401,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         meta_frame: MetaComputeFrame = frame_stack[0]
         return meta_frame.summary_collection
 
-    def init_frame_stack(self, entry_method_id, global_space):
+    def init_frame_stack(self, entry_method_id, global_space, sfg):
         """
         初始化调用栈框架：
         1. 创建元帧用于结果收集
@@ -409,7 +411,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         """
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
-        entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space)
+        entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph=sfg)
         # entry_frame.path = tuple([entry_method_id])
         entry_frame.path = (entry_method_id,)
         entry_frame_path = APath(entry_frame.path)
@@ -452,11 +454,15 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # for path in self.call_graph.find_paths(entry_point):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
-            frame_stack = self.init_frame_stack(entry_point, global_space)
-            self.analyze_frame_stack(frame_stack, global_space)
+            sfg = StateFlowGraph(entry_point)
+            frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
+            self.analyze_frame_stack(frame_stack, global_space, sfg)
+            self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
+
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.save_call_tree()
+
 
 
         self.loader.export()
