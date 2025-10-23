@@ -748,6 +748,8 @@ class PrelimSemanticAnalysis:
                 if each_state_index == -1:
                     continue
                 state = frame.symbol_state_space[each_state_index]
+                if not isinstance(state, State):
+                    continue
                 frame.state_flow_graph.add_edge(
                     SFGNode(
                         node_type=SFG_NODE_KIND.SYMBOL,
