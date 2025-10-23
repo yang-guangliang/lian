@@ -237,14 +237,14 @@ BUILTIN_OR_CUSTOM_DATA_TYPE = util.SimpleEnum({
 #     "MethodSummary"             : "method_summary",
 #     "AbstractCompute"           : "abstract_compute",
 #     "CallGraph"                 : "call_graph",
-#     "StaticSemantics"           : "static_semantics",
-#     "DynamicSemantics"          : "dynamic_semantics",
+#     "PrelimSemantics"           : "prelim_semantics",
+#     "GlobalSemantics"          : "global_semantics",
 # })
 
 ANALYSIS_PHASE_ID = util.SimpleEnum({
     "NO_PHASE"            : 1,
-    "STATIC_SEMANTICS"    : 2,
-    "DYNAMIC_SEMANTICS"   : 3,
+    "PRELIM_SEMANTICS"    : 2,
+    "GLOBAL_SEMANTICS"    : 3,
 })
 
 BASIC_CALL_GRAPH_NODE_KIND = util.SimpleEnum({
@@ -276,6 +276,7 @@ SFG_EDGE_KIND = util.SimpleEnum({
     "STATE_INCLUSION"           : 7,
     "INDIRECT_STATE_INCLUSION"  : 8,
     "CALL_RETURN"               : 9,
+    "STATE_COPY"                : 10,
 })
 
 SFG_NODE_KIND = util.SimpleEnum({
@@ -396,7 +397,7 @@ LIAN_INTERNAL = util.SimpleEnum({
     # Builtin Methods
     "UNIT_INIT"                     : "%unit_init",
     "CLASS_INIT"                    : "%class_init",
-    "CLASS_STATIC_INIT"             : "%class_sinit",
+    "CLASS_PRELIM_INIT"             : "%class_sinit",
 
     # Builtin Parameters and Args Types
     "PACKED_POSITIONAL_PARAMETER"   : "%packed_pos_pmt",

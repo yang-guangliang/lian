@@ -49,13 +49,13 @@ from lian.common_structs import (
 )
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
-from lian.core.static_stmt_states import StaticStmtStates
+from lian.core.stmt_states import StmtStates
 
 # from lian.config.type_table import get_lang_init_script_name
 
 stmt_counts = 0
 
-class StaticSemanticAnalysis:
+class PrelimSemanticAnalysis:
     def __init__(self, lian):
         self.options = lian.options
         self.event_manager = lian.event_manager
@@ -64,7 +64,8 @@ class StaticSemanticAnalysis:
         self.call_graph = CallGraph()
         self.analyzed_method_list = set()
         self.inited_unit_list = set()
-        self.analysis_phase_id = ANALYSIS_PHASE_ID.STATIC_SEMANTICS
+        self.analysis_phase_id = ANALYSIS_PHASE_ID.PRELIM_SEMANTICS
+        self.max_analysis_round = config.MAX_ANALYSIS_ROUND
 
         self.count_stmt_defined_states_for_debug = {}
         self.count_stmt_defined_states_number_for_debug = {}
@@ -89,8 +90,8 @@ class StaticSemanticAnalysis:
         for symbol_id, defined_set in old_defined_symbols.items():
             for defined_stmt_id in defined_set:
                 status = frame.stmt_id_to_status[defined_stmt_id]
-                all_defined_indexes = [status.defined_symbol] + status.implicitly_defined_symbols
-                for each_index in all_defined_indexes:
+                all_defined_symbol_indexes = [status.defined_symbol] + status.implicitly_defined_symbols
+                for each_index in all_defined_symbol_indexes:
                     content = frame.symbol_state_space[each_index]
                     if isinstance(content, Symbol):
                         if content.symbol_id == symbol_id:
@@ -140,7 +141,7 @@ class StaticSemanticAnalysis:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
 
-        frame.stmt_state_analysis = StaticStmtStates(
+        frame.stmt_state_analysis = StmtStates(
             analysis_phase_id = self.analysis_phase_id,
             event_manager = self.event_manager,
             loader = self.loader,
@@ -229,7 +230,7 @@ class StaticSemanticAnalysis:
         # 这条语句新产生的状态
         new_defined_state_set = set()
         for index in status.defined_states:
-            if index >= old_index_ceiling or self.analysis_phase_id == ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS: # newly generated states
+            if index >= old_index_ceiling: # or self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS: # newly generated states
                 new_defined_state_set.add(index)
 
         if old_status_defined_states:
@@ -308,7 +309,7 @@ class StaticSemanticAnalysis:
             if each_parent_stmt_id in frame.stmt_id_to_status:
                 status.in_symbol_bits |= frame.stmt_id_to_status[each_parent_stmt_id].out_symbol_bits
 
-        if self.analysis_phase_id in [ANALYSIS_PHASE_ID.STATIC_SEMANTICS, ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS]:
+        if self.analysis_phase_id in [ANALYSIS_PHASE_ID.PRELIM_SEMANTICS, ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS]:
             if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
@@ -329,22 +330,22 @@ class StaticSemanticAnalysis:
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
             frame.state_flow_graph.add_edge(
-                SFGNode(node_type=SFG_NODE_KIND.STMT, stmt_id = stmt_id),
-                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, stmt_id=key.stmt_id, internal_id=key.symbol_id),
+                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id),
+                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id),
                 SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
             )
 
         status.out_symbol_bits = current_bits
 
         # check if the out bits are changed
-        if self.analysis_phase_id == ANALYSIS_PHASE_ID.STATIC_SEMANTICS:
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
             if frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
                 self.update_used_symbols_to_symbol_graph(stmt_id, frame)
                 frame.stmts_with_symbol_update.add(util.graph_successors(frame.cfg, stmt_id))
             else:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
-        elif self.analysis_phase_id == ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS:
+        elif self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
     def rerun_analyze_reachable_symbols(self, stmt_id, frame: ComputeFrame, result_flag: P2ResultFlag):
@@ -365,8 +366,8 @@ class StaticSemanticAnalysis:
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
             frame.symbol_graph.add_edge(stmt_id, key, SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED)
             frame.state_flow_graph.add_edge(
-                SFGNode(node_type=SFG_NODE_KIND.STMT, stmt_id = stmt_id),
-                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, stmt_id=key.stmt_id, internal_id=key.symbol_id),
+                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id),
+                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id),
                 SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
             )
         status.out_symbol_bits = current_bits
@@ -432,8 +433,8 @@ class StaticSemanticAnalysis:
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
                 frame.state_flow_graph.add_edge(
-                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, stmt_id=tmp_key.stmt_id, internal_id=tmp_key.symbol_id, pos=pos),
-                    SFGNode(node_type=SFG_NODE_KIND.STMT, stmt_id = stmt_id),
+                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id, node_id=tmp_key.symbol_id, pos=pos),
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id),
                     SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id)
                 )
 
@@ -610,7 +611,7 @@ class StaticSemanticAnalysis:
         #     return False
 
         # 如果已经达到最大轮数，则不继续分析
-        if frame.stmt_counters[stmt_id] >= config.MAX_STMT_STATE_ANALYSIS_ROUND :
+        if frame.stmt_counters[stmt_id] >= self.max_analysis_round:
             return False
 
         change_flag = False
@@ -1026,7 +1027,7 @@ class StaticSemanticAnalysis:
                     frame.stmt_worklist.pop()
                     continue
             else:
-                if frame.stmt_counters[stmt_id] < config.MAX_STMT_STATE_ANALYSIS_ROUND:
+                if frame.stmt_counters[stmt_id] < self.max_analysis_round:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
                     # print("添加cfg后继",list(util.graph_successors(frame.cfg, stmt_id)))
                 else:
@@ -1169,6 +1170,12 @@ class StaticSemanticAnalysis:
             counter+=1
             # print(each_op)
 
+    def reduce_max_analysis_round(self):
+        self.max_analysis_round = config.MAX_ANALYSIS_ROUND_FOR_DYNAMIC_CALL_IN_PRELIM_ANALYSIS
+
+    def reset_max_analysis_round(self):
+        self.max_analysis_round = config.MAX_ANALYSIS_ROUND
+
     def run(self):
         """
         执行语义摘要生成的主流程：
@@ -1187,8 +1194,15 @@ class StaticSemanticAnalysis:
             if method_id not in self.analyzed_method_list:
                 self.analyze_method(method_id)
 
+        self.reduce_max_analysis_round()
+        # in every round only analyze the stmts once
+        for method_id in grouped_methods.get_methods_with_dynamic_call():
+            if method_id not in self.analyzed_method_list:
+                self.analyze_method(method_id)
+        self.reset_max_analysis_round()
+
         # save all results here
-        self.loader.save_static_call_graph(self.call_graph)
+        self.loader.save_prelim_call_graph(self.call_graph)
         self.loader.export()
         # self.print_count_stmt_def_states()
 

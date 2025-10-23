@@ -4,7 +4,7 @@ import os,sys
 import pprint
 import copy
 
-from lian.core.static_semantics import StaticSemanticAnalysis
+from lian.core.prelim_semantics import PrelimSemanticAnalysis
 from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
@@ -42,18 +42,18 @@ from lian.common_structs import (
 from lian.basics.entry_points import EntryPointGenerator
 from lian.basics.control_flow import ControlFlowAnalysis
 from lian.basics.stmt_def_use_analysis import StmtDefUseAnalysis
-from lian.core.static_stmt_states import StaticStmtStates
-from lian.core.static_semantics import StaticSemanticAnalysis
+from lian.core.stmt_states import StmtStates
+from lian.core.prelim_semantics import PrelimSemanticAnalysis
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
-from lian.core.dynamic_stmt_states import GlobalStmtStates
+from lian.core.global_stmt_states import GlobalStmtStates
 
-class DynamicSemanticAnalysis(StaticSemanticAnalysis):
+class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
         super().__init__(lian)
         self.path_manager = PathManager()
         self.analyzed_method_list = analyzed_method_list
-        self.analysis_phase_id = ANALYSIS_PHASE_ID.DYNAMIC_SEMANTICS
+        self.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
 
     def get_stmt_id_to_callee_info(self, callees):
         """
@@ -431,8 +431,8 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
                 dynamic_call_tree.add_edge(caller_id, callee_id, call_stmt_id)
                 index += 2
 
-        self.loader.save_dynamic_call_tree(dynamic_call_tree)
-        self.loader.save_dynamic_call_path(self.path_manager.paths)
+        self.loader.save_global_call_tree(dynamic_call_tree)
+        self.loader.save_global_call_path(self.path_manager.paths)
 
     def run(self):
         """
@@ -459,9 +459,5 @@ class DynamicSemanticAnalysis(StaticSemanticAnalysis):
 
 
         self.loader.export()
-        all_APaths = self.loader.get_dynamic_call_path()
+        all_APaths = self.loader.get_global_call_path()
         # print("所有的APaths: ",all_APaths)
-
-
-
-

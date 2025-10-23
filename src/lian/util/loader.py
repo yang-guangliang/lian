@@ -2032,15 +2032,15 @@ class Loader:
             os.path.join(self.semantic_path_p1, config.CALL_GRAPH_BUNDLE_PATH_P1),
         )
 
-        self._static_call_graph_loader = CallGraphLoader(
+        self._prelim_call_graph_loader = CallGraphLoader(
             os.path.join(self.semantic_path_p2, config.STATIC_CALL_GRAPH_BUNDLE_PATH_P2),
         )
 
-        self._dynamic_call_path_loader = CallPathLoader(
+        self._global_call_path_loader = CallPathLoader(
             os.path.join(self.semantic_path_p3, config.DYNAMIC_CALL_PATH_BUNDLE_PATH),
         )
 
-        self._dynamic_call_tree_loader = CallGraphLoader(
+        self._global_call_tree_loader = CallGraphLoader(
             os.path.join(self.semantic_path_p3, config.DYNAMIC_CALL_TREE_BUNDLE_PATH),
         )
 
@@ -2694,20 +2694,20 @@ class Loader:
     def get_classified_method_call(self):
         return self._classified_method_call_loader.get()
 
-    def save_static_call_graph(self, graph):
-        return self._static_call_graph_loader.save(graph)
-    def get_static_call_graph(self):
-        return self._static_call_graph_loader.get()
+    def save_prelim_call_graph(self, graph):
+        return self._prelim_call_graph_loader.save(graph)
+    def get_prelim_call_graph(self):
+        return self._prelim_call_graph_loader.get()
 
-    def save_dynamic_call_path(self, paths):
-        return self._dynamic_call_path_loader.save(paths)
-    def get_dynamic_call_path(self):
-        return self._dynamic_call_path_loader.get()
+    def save_global_call_path(self, paths):
+        return self._global_call_path_loader.save(paths)
+    def get_global_call_path(self):
+        return self._global_call_path_loader.get()
 
-    def save_dynamic_call_tree(self, graph):
-        return self._dynamic_call_tree_loader.save(graph)
-    def get_dynamic_call_tree(self):
-        return self._dynamic_call_tree_loader.get()
+    def save_global_call_tree(self, graph):
+        return self._global_call_tree_loader.save(graph)
+    def get_global_call_tree(self):
+        return self._global_call_tree_loader.get()
 
     def get_method_defined_symbols(self, method_id):
         return self._defined_symbols_loader.get(method_id)

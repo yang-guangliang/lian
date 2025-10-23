@@ -3,7 +3,7 @@
 import dataclasses
 import os
 from lian.common_structs import AccessPoint, State, ComputeFrame
-from lian.core.static_stmt_states import StaticStmtStates
+from lian.core.stmt_states import StmtStates
 from lian.events.handler_template import EventData
 from lian.config.constants import (
     EVENT_KIND,
@@ -80,7 +80,7 @@ def init_new_object(data: EventData):
     status = in_data.status
     defined_symbol = in_data.defined_symbol
     stmt_id = in_data.stmt_id
-    state_analysis:StaticStmtStates = in_data.state_analysis
+    state_analysis:StmtStates = in_data.state_analysis
     type_state_to_new_index = in_data.type_state_to_new_index
     type_state_to_callee_methods = in_data.type_state_to_callee_methods
     loader:Loader = frame.loader
@@ -173,7 +173,7 @@ def apply_constructor_summary(data: EventData):
     stmt_id = in_data.stmt_id
     stmt = in_data.stmt
     in_states = in_data.in_states
-    state_analysis:StaticStmtStates = in_data.state_analysis
+    state_analysis:StmtStates = in_data.state_analysis
     type_state_to_new_index = in_data.type_state_to_new_index
     type_state_to_callee_methods = in_data.type_state_to_callee_methods
     callee_method_list = []

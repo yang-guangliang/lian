@@ -7,7 +7,7 @@ import pprint
 from pandas.core import frame
 
 from lian.core.resolver import Resolver
-from lian.core.static_stmt_states import StaticStmtStates
+from lian.core.stmt_states import StmtStates
 from lian.util import util
 from lian.config import config
 from lian.util.loader import Loader
@@ -45,7 +45,7 @@ from lian.common_structs import (
     MethodDefUseSummary
 )
 
-class GlobalStmtStates(StaticStmtStates):
+class GlobalStmtStates(StmtStates):
     def __init__(
         self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
         path_manager: PathManager, analyzed_method_list: list

@@ -479,8 +479,8 @@ class TaintPropagationInMethod:
             access_path = access_path + '.' + field_name
             taint_state_manager.add_path_to_tag(access_path, tag)
 
-        # defined_index = status.defined_symbol
-        # defined_symbol_id = space[defined_index].symbol_id
+        # defined_symbol_index = status.defined_symbol
+        # defined_symbol_id = space[defined_symbol_index].symbol_id
         # if stmt.operation == "field_write":
         #     for used_index in status.used_symbols:
         #         used_symbol = space[used_index]

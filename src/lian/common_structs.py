@@ -1016,61 +1016,80 @@ class StateFlowGraph(SymbolGraph):
 
 @dataclasses.dataclass
 class SFGNode:
+    """
+    node_type: the type of sfg node (symbol or state)
+    def_stmt_id: which stmt defines current node
+    index: the indexing position of current node in symbol state space
+    node_id: symbol or state ID
+    pos: the position of current node in all sibling nodes
+    context_id: the context ID of current node, i.e., 1-call ID, the ID of call_stmt that calls current method (being tested)
+    """
     # 节点类型
     node_type: int = -1
     # 这个节点被def的stmt_id
-    stmt_id: int = -1
+    def_stmt_id: int = -1
     # 这个节点在symbol state space中的索引
     index: int = -1
     # 这个节点的具体的id，一般是symbol_id或者state_id（根据node_type来判断）
-    internal_id: int = -1
+    node_id: int = -1
     # 这个节点在所有兄弟节点序列中的位置，例如参数列表中的第几个参数
     pos: int = -1
+    # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
+    # Hence it is call_stmt_id
+    context_id: int = -1
 
     def __hash__(self) -> int:
-        return hash((self.node_type, self.stmt_id, self.index, self.internal_id, self.pos))
+        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.pos, self.context_id))
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.stmt_id == other.stmt_id and self.index == other.index and self.internal_id == other.internal_id and self.pos == other.pos
+        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.def_stmt_id == other.def_stmt_id and self.index == other.index and self.node_id == other.node_id and self.pos == other.pos and self.context_id == other.context_id
 
     def __repr__(self) -> str:
-        return f"SFGNode(node_type={self.node_type}, stmt_id={self.stmt_id}, index={self.index}, internal_id={self.internal_id}, pos={self.pos})"
+        return f"SFGNode(node_type={self.node_type}, stmt_id={self.def_stmt_id}, index={self.index}, internal_id={self.node_id}, pos={self.pos}, context_id={self.context_id})"
 
     def to_dict(self):
         if self.node_type == SFG_NODE_KIND.STMT:
             return {
                 "node_type"             : self.node_type,
-                "stmt_id"               : self.stmt_id,
+                "stmt_id"               : self.def_stmt_id,
+                "context_id"            : self.context_id,
             }
 
         return {
             "node_type"             : self.node_type,
-            "stmt_id"               : self.stmt_id,
+            "stmt_id"               : self.def_stmt_id,
             "index"                 : self.index,
-            "internal_id"           : self.internal_id,
+            "internal_id"           : self.node_id,
             "pos"                   : self.pos,
+            "context_id"            : self.context_id,
         }
 
     def copy(self):
         return SFGNode(
             node_type = self.node_type,
-            stmt_id = self.stmt_id,
+            def_stmt_id = self.def_stmt_id,
             index = self.index,
-            internal_id = self.internal_id,
+            node_id = self.node_id,
             pos = self.pos,
         )
 
     def to_tuple(self):
         return (
             self.node_type,
-            self.stmt_id,
+            self.def_stmt_id,
             self.index,
-            self.internal_id,
+            self.node_id,
             self.pos,
         )
 
 @dataclasses.dataclass
 class SFGEdge:
+    """
+    edge_type: the type of sfg edge (SYMBOL_FLOW, STATE COPY, STATE INCLUSION etc.)
+    stmt_id: where this edge is defined
+    round: the round number the edge is defined
+    name: the edge name; it is usually used in field operations for indicating the field name
+    """
     # 边类型
     edge_type: int = -1
     # 这条边是在哪里被定义的
@@ -1362,6 +1381,13 @@ class SimplyGroupedMethodTypes:
             # *self.mixed_direct_callees,
             # *self.only_dynamic_callees,
             # *self.containing_error_callees
+        ]
+
+    def get_methods_with_dynamic_call(self):
+        return [
+            *self.mixed_direct_callees,
+            *self.only_dynamic_callees,
+            *self.containing_error_callees
         ]
 
 @dataclasses.dataclass

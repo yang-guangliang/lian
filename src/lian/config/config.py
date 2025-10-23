@@ -14,7 +14,9 @@ RULE_START_ID                               = 10
 
 MAX_ROWS                                    = 40 * 10000
 MAX_BENCHMARK_TARGET                        = 10_000
-MAX_STMT_STATE_ANALYSIS_ROUND               = 4
+MAX_ANALYSIS_ROUND                          = 4
+MAX_ANALYSIS_ROUND_FOR_DYNAMIC_CALL_IN_PRELIM_ANALYSIS       = 1
+MAX_ANALYSIS_ROUND_FOR_REGULAR              = 4
 
 FIRST_ROUND                                 = 0
 SECOND_ROUND                                = 1
