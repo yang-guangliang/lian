@@ -1113,6 +1113,11 @@ class Resolver:
             if caller_method_id == call_stmt_id == -1:
                 return None
             caller_method_decl = self.loader.get_method_decl_source_code(caller_method_id)
+            caller_method_unit_id = self.loader.convert_method_id_to_unit_id(caller_method_id)
+            caller_method_unit_path = self.loader.convert_unit_id_to_unit_path(caller_method_unit_id)
+            caller_method_unit_path = caller_method_unit_path if caller_method_unit_path else ""
+            caller_method_class_id = self.loader.convert_method_id_to_class_id(caller_method_id)
+            caller_method_class_name = self.loader.convert_class_id_to_class_name(caller_method_class_id)
             call_stmt_src_code = self.loader.get_stmt_source_code_with_comment(call_stmt_id)
             callee_method_decl = self.loader.get_method_decl_source_code(callee_method_id)
             caller_frame = None
@@ -1122,12 +1127,17 @@ class Resolver:
                     caller_frame = None
 
             return {
-                "caller_method_decl"     :  caller_method_decl,
-                "caller_method_id"       :  caller_method_id,
-                "call_stmt_source_code"  :  call_stmt_src_code,
-                "callee_method_decl"     :  callee_method_decl,
-                "callee_method_id"       :  callee_method_id,
-                "caller_frame"           :  caller_frame
+                "caller_method_decl"      :  caller_method_decl,
+                "caller_method_id"        :  caller_method_id,
+                "caller_method_unit_id"   :  caller_method_unit_id,
+                "caller_method_unit_path" :  caller_method_unit_path,
+                "caller_method_class_id"  :  caller_method_class_id,
+                "caller_method_class_name":  caller_method_class_name,
+                "call_stmt_source_code"   :  call_stmt_src_code,
+                "call_stmt_id"            :  call_stmt_id,
+                "callee_method_decl"      :  callee_method_decl,
+                "callee_method_id"        :  callee_method_id,
+                "caller_frame"            :  caller_frame
             }
 
     def recover_callee_name(self, stmt_id, frame: ComputeFrame):
