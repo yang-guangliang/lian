@@ -141,8 +141,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             for row in method_body:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = round_number
-
-        frame.defined_symbols = self.loader.load_method_defined_symbols_p2(method_id).copy()
+        frame.defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
         all_defs = set()
         for stmt_id in frame.defined_symbols:
             symbol_def_set = frame.defined_symbols[stmt_id]
@@ -166,7 +165,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         symbol_state_space = self.loader.get_symbol_state_space_p2(method_id).copy()
         defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
         state_bit_vector = self.loader.get_state_bit_vector_p2(method_id).copy()
-        frame.symbol_bit_vector_manager = copy.deepcopy(self.loader.get_symbol_bit_vector_p2(method_id))
+        symbol_bit_vector = self.loader.get_symbol_bit_vector_p2(method_id).copy()
+        frame.state_bit_vector_manager = state_bit_vector
+        frame.symbol_bit_vector_manager = symbol_bit_vector
         self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, defined_symbols, symbol_bit_vector, state_bit_vector)
         frame.stmt_id_to_status = status
         frame.defined_symbols = defined_symbols
