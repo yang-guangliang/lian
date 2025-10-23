@@ -438,15 +438,28 @@ class PrelimSemanticAnalysis:
                     SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id)
                 )
 
-    def adjust_used_symbols(self, used_symbols, frame):
+    def get_used_symbols(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
+        """
+        Here we need to collect the symbols to be used. Please note that the used symbols should not be collected from symbol graph, as the symbol graph is the final result rather than the current result.
+        """
         in_symbols = []
-        for node in used_symbols:
+
+        available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        # print(f"available_defs: {available_defs}")
+        all_used_symbols = status.used_symbols + status.implicitly_used_symbols
+        all_reachable_defs = set()
+        for used_symbol_index in all_used_symbols:
+            used_symbol = frame.symbol_state_space[used_symbol_index]
+            if not isinstance(used_symbol, Symbol):
+                continue
+            all_reachable_defs.update(self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol, available_defs))
+        # print(f"all_reachable_defs{all_reachable_defs}")
+
+        for node in all_reachable_defs:
             if not isinstance(node, SymbolDefNode):
                 continue
-
             if node.stmt_id <= 0:
                 continue
-
             symbol = frame.symbol_state_space[node.index]
             in_symbols.append(symbol)
 
@@ -757,8 +770,7 @@ class PrelimSemanticAnalysis:
         # 收集输入状态
         # collect in state
 
-        used_symbols = util.graph_predecessors(symbol_graph, stmt_id)
-        in_symbols = self.adjust_used_symbols(used_symbols, frame)
+        in_symbols = self.get_used_symbols(stmt_id, frame, status)
         # print(f"in_symbols: {in_symbols}")
         in_states = self.group_in_states(stmt_id, in_symbols, frame, status)
         # print(f"in_states@before complete_in_states: {in_states}")

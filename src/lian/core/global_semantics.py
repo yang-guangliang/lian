@@ -418,7 +418,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return frame_stack
 
     def save_call_tree(self):
-        dynamic_call_tree = CallGraph()
+        global_call_tree = CallGraph()
         for call_path in self.path_manager.paths:
             path = call_path.path
             index = 0
@@ -429,10 +429,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 caller_id = path[index]
                 call_stmt_id = path[index + 1]
                 callee_id = path[index + 2]
-                dynamic_call_tree.add_edge(caller_id, callee_id, call_stmt_id)
+                global_call_tree.add_edge(caller_id, callee_id, call_stmt_id)
                 index += 2
 
-        self.loader.save_global_call_tree(dynamic_call_tree)
+        self.loader.save_global_call_tree(global_call_tree)
         self.loader.save_global_call_path(self.path_manager.paths)
 
     def run(self):

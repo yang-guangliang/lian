@@ -60,9 +60,9 @@ class ImportHierarchy:
             parent_node_id in self.symbol_id_to_symbol_node
             and node_id in self.symbol_id_to_symbol_node
         ):
-            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name, symbol_type = symbol_type)
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, real_name = real_name, symbol_type = symbol_type)
         elif edge_kind == IMPORT_GRAPH_EDGE_KIND.UNSOLVED_SYMBOL:
-            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, realName = real_name, symbol_type = symbol_type)
+            self.import_graph.add_edge(parent_node_id, node_id, weight = edge_kind, site = import_stmt_id, real_name = real_name, symbol_type = symbol_type)
 
     def add_import_deps(self, unit_id, node_id):
         if self.loader.is_unit_id(node_id):

@@ -1983,31 +1983,23 @@ class StmtStates:
             return P2ResultFlag()
 
         data_type = util.read_stmt_field(stmt.data_type)
-        if len(source_states) < config.MAX_TYPE_CAST_SOURCE_STATES:
-            defined_states = set()
-            for source_state_index in source_states:
-                source_state = self.frame.symbol_state_space[source_state_index]
-                if not isinstance(source_state, State):
-                    continue
 
-                if source_state.data_type == str(data_type):
-                    defined_states.add(source_state_index)
-                    continue
+        defined_states = set()
+        for source_state_index in source_states:
+            source_state = self.frame.symbol_state_space[source_state_index]
+            if not isinstance(source_state, State):
+                continue
 
-                new_source_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, source_state_index)
-                new_source_state: State = self.frame.symbol_state_space[new_source_state_index]
-                new_source_state.data_type = str(data_type)
-                defined_states.add(new_source_state_index)
+            if source_state.data_type == str(data_type):
+                defined_states.add(source_state_index)
 
-            for each_state_index in defined_states:
-                self.sfg.add_edge(
-                    self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
-                    self.make_state_sfg_node(stmt_id, each_state_index),
-                    self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_STATE)
-                )
+        if len(defined_states) == 0:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, source_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
+                self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_FLOW)
+            )
 
-            defined_symbol.states = defined_states
-        else:
             new_state = self.create_state_and_add_space(
                 status, stmt_id, source_symbol_id=source_symbol.symbol_id,
                 data_type = str(data_type),
@@ -2015,6 +2007,7 @@ class StmtStates:
             )
             defined_states = {new_state}
 
+        defined_symbol.states = defined_states
         for each_state_index in defined_states:
             self.sfg.add_edge(
                 self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
@@ -2746,19 +2739,19 @@ class StmtStates:
             defined_symbol.states = defined_states
             for each_array_state_index in defined_states:
                 self.sfg.add_edge(
-                    self.make_state_sfg_node(stmt_id, defined_symbol_index),
+                    self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
                     self.make_state_sfg_node(stmt_id, each_array_state_index),
                     self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
                 )
         else:
             self.sfg.add_edge(
-                self.make_state_sfg_node(stmt_id, array_symbol_index),
-                self.make_state_sfg_node(stmt_id, defined_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, array_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
                 self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
             )
             self.sfg.add_edge(
-                self.make_state_sfg_node(stmt_id, index_symbol_index),
-                self.make_state_sfg_node(stmt_id, defined_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, index_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
                 self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
             )
         return P2ResultFlag()
@@ -2845,7 +2838,7 @@ class StmtStates:
 
         defined_array_symbol.states = defined_states
 
-        if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
+        if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND and len(defined_states) == 0:
             self.sfg.add_edge(
                 self.make_symbol_sfg_node(stmt_id, source_index),
                 self.make_symbol_sfg_node(stmt_id, array_index),
@@ -2854,7 +2847,7 @@ class StmtStates:
 
         for each_state_index in defined_states:
             self.sfg.add_edge(
-                self.make_state_sfg_node(stmt_id, defined_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
                 self.make_state_sfg_node(stmt_id, each_state_index),
                 self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
             )
@@ -3116,14 +3109,18 @@ class StmtStates:
             #self.make_state_tangping(new_receiver_state)
             self.make_state_index_tangping_and_ensure_not_empty(receiver_state_index, status, stmt_id)
 
-        if receiver_state.tangping_flag:
-            receiver_state.tangping_elements.update(defined_states)
+        if receiver_state.tangping_elements:
+            defined_states.update(receiver_state.tangping_elements)
+
+        elif defined_states:
+            if receiver_state.tangping_flag:
+                receiver_state.tangping_elements.update(defined_states)
+            else:
+                receiver_state.fields[field_name] = defined_states
+
         else:
-            receiver_state.fields[field_name] = defined_states
-
-
             # [ah]
-            if receiver_symbol.name.startswith("%vv"):
+            if receiver_symbol.name.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF):
                 source_index = self.create_state_and_add_space(
                     status, stmt_id = stmt_id,
                     source_symbol_id=receiver_state.source_symbol_id,
@@ -3172,16 +3169,17 @@ class StmtStates:
 
         通过state_bit_vector_manager拿到receiver_states的state id对应的最新的state
         """
-        receiver_index = status.used_symbols[0]
+        receiver_symbol_index = status.used_symbols[0]
         field_index = status.used_symbols[1]
-        receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_index]
+        receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_symbol_index]
         field_symbol: Symbol = self.frame.symbol_state_space[field_index]
         if not isinstance(receiver_symbol, Symbol): # TODO: 暂时未处理<string>.format的形式
             return
-        receiver_states = self.read_used_states(receiver_index, in_states)
+        receiver_states = self.read_used_states(receiver_symbol_index, in_states)
         # print("field_read经过插件之前的receiver_states",receiver_states)
         field_states = self.read_used_states(field_index, in_states)
-        defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
+        defined_symbol_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
 
@@ -3232,7 +3230,7 @@ class StmtStates:
 
                 elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     self.change_field_read_receiver_state(
-                        stmt_id, status, receiver_index, receiver_state_index, each_receiver_state,
+                        stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                         field_name, each_defined_states, is_tangping = True
                     )
                     continue
@@ -3244,14 +3242,13 @@ class StmtStates:
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_unit(each_receiver_state):
-
                     import_graph = self.loader.get_import_graph()
                     import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
                     # [ah]
                     found_in_import_graph = False
                     # 解决file.symbol的情况，从import graph里找symbol
                     for u, v, wt in import_graph.edges(data=True):
-                        real_name = wt.get("realName", None)
+                        real_name = wt.get("real_name", None)
                         if real_name == field_name:
                             symbol_type = wt.get("symbol_type", None)
                             if symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
@@ -3267,17 +3264,17 @@ class StmtStates:
                                 source_state_id=each_receiver_state.source_state_id,
                                 data_type=data_type,
                                 value=v,
-                                access_path=self.copy_and_extend_access_path(
-                                    each_receiver_state.access_path,
-                                    AccessPoint(
-                                        key=real_name,
-                                    )
-                                )
+                                # access_path=self.copy_and_extend_access_path(
+                                #     each_receiver_state.access_path,
+                                #     AccessPoint(
+                                #         key=real_name,
+                                #     )
+                                # )
+                                access_path=[AccessPoint(key=real_name)]
                             )
                             found_in_import_graph = True
                             self.update_access_path_state_id(state_index)
                             each_defined_states.add(state_index)
-
 
                     if import_symbols and not found_in_import_graph:
                         for import_symbol in import_symbols:
@@ -3295,12 +3292,13 @@ class StmtStates:
                                     source_state_id = each_receiver_state.source_state_id,
                                     data_type = data_type,
                                     value = import_symbol.import_stmt,
-                                    access_path = self.copy_and_extend_access_path(
-                                        each_receiver_state.access_path,
-                                        AccessPoint(
-                                            key=import_symbol.symbol_name,
-                                        )
-                                    )
+                                    # access_path = self.copy_and_extend_access_path(
+                                    #     each_receiver_state.access_path,
+                                    #     AccessPoint(
+                                    #         key=import_symbol.symbol_name,
+                                    #     )
+                                    # )
+                                    access_path=[AccessPoint(key=import_symbol.symbol_name)]
                                 )
                                 self.update_access_path_state_id(state_index)
                                 each_defined_states.add(state_index)
@@ -3326,19 +3324,20 @@ class StmtStates:
                                     source_state_id = each_receiver_state.source_state_id,
                                     data_type = data_type,
                                     value = method.stmt_id,
-                                    access_path = self.copy_and_extend_access_path(
-                                        each_receiver_state.access_path,
-                                        AccessPoint(
-                                            key=method.name,
-                                        )
-                                    )
+                                    access_path=[AccessPoint(key=method.name)]
+                                    # access_path = self.copy_and_extend_access_path(
+                                    #     each_receiver_state.access_path,
+                                    #     AccessPoint(
+                                    #         key=method.name,
+                                    #     )
+                                    # )
                                 )
                                 self.update_access_path_state_id(state_index)
                                 each_defined_states.add(state_index)
 
                 # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
                 self.change_field_read_receiver_state(
-                    stmt_id, status, receiver_index, receiver_state_index, each_receiver_state,
+                    stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                     field_name, each_defined_states, is_tangping = False
                 )
             defined_states |= each_defined_states
@@ -3364,6 +3363,13 @@ class StmtStates:
             }
         )
         app_return = self.event_manager.notify(event)
+
+        for each_state_index in defined_states:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
+                self.make_state_sfg_node(stmt_id, each_state_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
+            )
         return P2ResultFlag()
 
 
@@ -3387,7 +3393,6 @@ class StmtStates:
         receiver_index = status.used_symbols[0]
         field_index = status.used_symbols[1]
         source_index = status.used_symbols[2]
-        is_anonymous = False
         source_symbol = self.frame.symbol_state_space[source_index]
         if source_symbol and isinstance(source_symbol, Symbol):
             if source_symbol.name.startswith(LIAN_INTERNAL.METHOD_DECL_PREF):
@@ -3399,6 +3404,11 @@ class StmtStates:
         receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_index]
 
         if len(receiver_states) == 0 or len(source_states) == 0:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, source_index),
+                self.make_symbol_sfg_node(stmt_id, receiver_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+            )
             return P2ResultFlag()
 
         defined_symbol_index = status.defined_symbol
@@ -3481,6 +3491,13 @@ class StmtStates:
         )
         self.event_manager.notify(event)
 
+        for each_defined_state_index in defined_symbol_states:
+            self.sfg.add_edge(
+                self.make_symbol_sfg_node(stmt_id, defined_symbol_index),
+                self.make_state_sfg_node(stmt_id, each_defined_state_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_STATE)
+            )
+
         return P2ResultFlag()
 
     # TODO:
@@ -3530,6 +3547,13 @@ class StmtStates:
         start_symbol_index = status.used_symbols[2]
         end_symbol_index = status.used_symbols[3]
         step_symbol_index = status.used_symbols[4]
+
+        if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
+            self.sfg.add_node(
+                self.make_symbol_sfg_node(stmt_id, array_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, source_symbol_index),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+            )
 
         used_array_symbol = self.frame.symbol_state_space[array_symbol_index]
         used_source_symbol = self.frame.symbol_state_space[source_symbol_index]
@@ -3655,6 +3679,13 @@ class StmtStates:
         end_symbol_index = status.used_symbols[2]
         step_symbol_index = status.used_symbols[3]
 
+        if self.frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
+            self.sfg.add_node(
+                self.make_symbol_sfg_node(stmt_id, array_symbol_index),
+                self.make_symbol_sfg_node(stmt_id, status.defined_symbol),
+                self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.SYMBOL_FLOW)
+            )
+
         used_array_symbol = self.frame.symbol_state_space[array_symbol_index]
         if not isinstance(used_array_symbol, Symbol): # TODO 暂时不处理<string>[1:3]
             return P2ResultFlag()
@@ -3755,7 +3786,8 @@ class StmtStates:
                 new_array_symbol_index = self.create_copy_of_symbol_and_add_space(status, stmt_id, used_array_symbol)
                 new_array_symbol: Symbol = self.frame.symbol_state_space[new_array_symbol_index]
 
-            new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
+            #new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
+            new_array_state_index = each_array_state_index
             new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
             new_path: list = array_state.access_path.copy()
             new_path.append(AccessPoint(

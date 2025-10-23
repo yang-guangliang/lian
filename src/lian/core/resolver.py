@@ -1090,7 +1090,7 @@ class Resolver:
         """获取指定文件中，指定symbol_name的import源代码"""
         import_stmts = []
         # 获取当前文件中该symbol_name的import信息
-        edge_node_list = self.loader.get_edges_and_nodes_with_edge_attrs_in_import_graph(unit_id, {"realName": symbol_name})
+        edge_node_list = self.loader.get_edges_and_nodes_with_edge_attrs_in_import_graph(unit_id, {"real_name": symbol_name})
         for edge_node_pair in edge_node_list:
             import_stmt_id = edge_node_pair.edge.get("site")
             if import_stmt_id != -1:

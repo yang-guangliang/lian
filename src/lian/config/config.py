@@ -98,8 +98,8 @@ STMT_ID_TO_SCOPE_ID_PATH                    = "stmt_id_to_scope_id"
 
 CALL_GRAPH_BUNDLE_PATH_P1                   = "call_graph_p1"
 STATIC_CALL_GRAPH_BUNDLE_PATH_P2            = "static_call_graph"
-DYNAMIC_CALL_PATH_BUNDLE_PATH               = "dynamic_call_path"
-DYNAMIC_CALL_TREE_BUNDLE_PATH               = "dynamic_call_tree"
+GLOBAL_CALL_PATH_BUNDLE_PATH                = "global_call_path"
+GLOBAL_CALL_TREE_BUNDLE_PATH                = "global_call_tree"
 
 ENTRY_POINTS_PATH                           = "entry_points"
 SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P1    = "symbol_bit_vector_p1"
