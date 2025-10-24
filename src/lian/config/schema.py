@@ -148,6 +148,13 @@ call_path_schema = [
     "call_path"
 ]
 
+
+call_tree_schema = [
+    "caller_id",
+    "callee_id",
+    "call_stmt_id"
+]
+
 method_summary_schema = [
     'method_id',
     'parameter_symbols',

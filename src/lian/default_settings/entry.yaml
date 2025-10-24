@@ -8,4 +8,4 @@
   method_list: ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]
 
 - lang: python
-  method_list: ["func1", "func2"]
+  method_list: ["func1", "func2", "a", "a1"]

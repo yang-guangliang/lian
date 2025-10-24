@@ -1747,6 +1747,13 @@ class CallGraph(BasicGraph):
     def export(self):
         pass
 
+class CallTree(CallGraph):
+    def __init__(self, method_id):
+        self.method_id = method_id
+        super().__init__()
+
+
+
 @dataclasses.dataclass
 class CGNode:
     def __init__(self, method_id):

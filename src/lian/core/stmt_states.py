@@ -197,6 +197,7 @@ class StmtStates:
 
     def make_state_index_tangping_and_ensure_not_empty(self, new_state_index, status, stmt_id):
         new_state = self.frame.symbol_state_space[new_state_index]
+        stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
         if not isinstance(new_state, State):
             return
 

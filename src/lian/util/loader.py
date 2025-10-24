@@ -48,6 +48,7 @@ from lian.common_structs import (
     StateFlowGraph,
     SFGNode,
     SFGEdge,
+    CallTree,
 )
 
 class ModuleSymbolsLoader:
@@ -1708,6 +1709,28 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
         # print(edges)
         return edges
 
+class CallTreeLoader(MethodLevelAnalysisResultLoader):
+    def unflatten_item_dataframe_when_loading(self, method_id, item_df):
+        call_tree = CallTree(method_id)
+        for row in item_df:
+            call_tree.add_edge(
+                row.caller_id,
+                row.callee_id,
+                row.call_stmt_id
+            )
+        return call_tree.graph
+
+    def flatten_item_when_saving(self, method_id, call_tree):
+        edges = []
+        all_edges = call_tree.edges(data='weight', default=None)
+        for caller_id, callee_id, call_stmt_id in all_edges:
+            edges.append({
+                "caller_id": caller_id,
+                "callee_id": callee_id,
+                "call_stmt_id": call_stmt_id,
+            })
+        # print(edges)
+        return edges
 
 ############################################################
 
@@ -2038,10 +2061,6 @@ class Loader:
             os.path.join(self.semantic_path_p3, config.GLOBAL_CALL_PATH_BUNDLE_PATH),
         )
 
-        self._global_call_tree_loader = CallGraphLoader(
-            os.path.join(self.semantic_path_p3, config.GLOBAL_CALL_TREE_BUNDLE_PATH),
-        )
-
         self._defined_symbols_loader = MethodSymbolToDefinedLoader(
             options,
             [],
@@ -2121,7 +2140,15 @@ class Loader:
         self._state_flow_graph_p3_loader: StateFlowGraphLoader = StateFlowGraphLoader(
             options,
             schema.state_flow_graph_schema_p2,
-            os.path.join(self.semantic_path_p2, config.SFG_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_path_p3, config.SFG_BUNDLE_PATH_P3),
+            config.LRU_CACHE_CAPACITY,
+            config.BUNDLE_CACHE_CAPACITY
+        )
+
+        self._call_tree_loader: CallTreeLoader = CallTreeLoader(
+            options,
+            schema.call_tree_schema,
+            os.path.join(self.semantic_path_p3, config.CALL_TREE_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2702,10 +2729,10 @@ class Loader:
     def get_global_call_path(self):
         return self._global_call_path_loader.get()
 
-    def save_global_call_tree(self, graph):
-        return self._global_call_tree_loader.save(graph)
-    def get_global_call_tree(self):
-        return self._global_call_tree_loader.get()
+    def save_global_call_tree_by_entry_point(self,method_id,  call_tree):
+        return self._call_tree_loader.save(method_id, call_tree)
+    def get_global_call_tree_by_entry_point(self, method_id):
+        return self._call_tree_loader.get(method_id)
 
     def get_method_defined_symbols(self, method_id):
         return self._defined_symbols_loader.get(method_id)
