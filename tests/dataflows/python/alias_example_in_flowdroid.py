@@ -1,6 +1,7 @@
 def main():
     a = A()
     b = a.g
+    b()
     foo(a)
     sink(b.f)
 
