@@ -1,7 +1,10 @@
 1. 杨广亮：编写C、LLVM、PHP、JS等前端解析，设计并实现莲花系统算法
 主要做系统安全，现在在复旦大学计算机学院工作
-邮箱:yanggl at fudan.edu.cn
-主页：https://yang-guangliang.github.io/
+
+implemented several frontends, and designed and implemented the code analysis engine
+email:yanggl at fudan.edu.cn
+homepage：https://yang-guangliang.github.io/
+
 
 2. 尹之赫：编写python前端，打磨莲花系统引擎，2022级复旦研究生，现在在华为工作
 
