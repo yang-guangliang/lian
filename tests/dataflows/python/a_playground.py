@@ -9,21 +9,21 @@ def b(z):
 
 def c(z):
     print()
-    p = None
-    if n == 1:
-        p = d
-    else:
-        p = f
     z2 = tmp2()
+    p = f
+    p(z2)
+    p = d
     p(z2)
 
 def d(z):
     print()
-    x(z)
+    z2 = tmp5()
+    x(z2)
 
 def f(z):
     print()
-    x(z)
+    z3 = tmp6()
+    x(z3)
 
 def x(z):
     print()
@@ -41,9 +41,8 @@ def b1():
 
 def c1():
     print1()
-    p = None
-    if n == 1:
-        p = d
-    else:
-        p = f
+
+    p = d
+    p()
+    p = f
     p()

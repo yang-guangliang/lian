@@ -494,7 +494,7 @@ class UnitScopeHierarchyAnalysis:
 
         for scope_id in scope_id_to_available_scope_ids:
             scope_id_to_available_scope_ids[scope_id].add(scope_id)
-
+        scope_id_to_available_scope_ids[0] = {0}
         self.loader.save_unit_symbol_decl_summary(
             self.unit_id,
             UnitSymbolDeclSummary(

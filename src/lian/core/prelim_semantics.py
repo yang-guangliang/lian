@@ -672,7 +672,7 @@ class PrelimSemanticAnalysis:
                     if not change_flag:
                         if used_symbol.states != in_states[symbol_id]:
                             change_flag = True
-                            used_symbol.states = in_states[symbol_id]
+                    used_symbol.states = in_states[symbol_id]
 
             if need_update or symbol_id not in in_states:
                 if symbol_id not in method_summary.used_external_symbols:
@@ -687,6 +687,8 @@ class PrelimSemanticAnalysis:
                 used_symbol.states = new_state_indexes
 
         # print("@in_states before", in_states)
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+            return True
         return change_flag
 
     def get_next_stmts_for_state_analysis(self, stmt_id, symbol_graph):
