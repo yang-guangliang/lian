@@ -672,7 +672,7 @@ class PrelimSemanticAnalysis:
                     if not change_flag:
                         if used_symbol.states != in_states[symbol_id]:
                             change_flag = True
-                        used_symbol.states = in_states[symbol_id]
+                    used_symbol.states = in_states[symbol_id]
 
             if need_update or symbol_id not in in_states:
                 if symbol_id not in method_summary.used_external_symbols:
