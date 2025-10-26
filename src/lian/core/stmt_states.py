@@ -1137,7 +1137,6 @@ class StmtStates:
             self.make_state_tangping(new_state)
         return {new_state_index}
 
-
     def recursively_collect_children_fields(self, stmt_id, status: StmtStatus, state_set_in_summary_field: set, state_set_in_arg_field: set, source_symbol_id, access_path):
         """
         合并两个“状态集合”———— 【一个来自 summary field（state_set_in_summary_field），一个来自 arg field（state_set_in_arg_field）】所对应的所有 State 对象中的 fields（字段）信息，
@@ -1145,6 +1144,48 @@ class StmtStates:
         """
         # 闭包缓存，避免field环形依赖
         cache = {}
+
+        def _set_attributes_on_states(states, fields_to_set, state_type, source_symbol_id, access_path):
+            """设置states字段和属性"""
+            for state_index in states:
+                state: State = self.frame.symbol_state_space[state_index]
+                state.fields = fields_to_set
+                state.state_type = state_type
+                state.source_symbol_id = source_symbol_id
+                state.access_path = access_path
+            return states
+
+        def _merge_fields_for_states(summary_states_fields, arg_state_fields, access_path):
+            """
+            将summary_fields和arg_fields合并
+            
+            参数:
+                summary_states_fields: dict - summary字段
+                arg_state_fields: dict - arg字段
+                access_path: list - 访问路径
+                
+            返回值:
+                dict - 合并后的字段字典
+            """
+            current_arg_state_fields = arg_state_fields.copy()
+            
+            # 处理字段合并
+            for field_name in summary_states_fields:
+                if field_name not in current_arg_state_fields:
+                    current_arg_state_fields[field_name] = summary_states_fields[field_name]
+                # 如果已经存在，则 深入递归合并
+                else:
+                    # 生成更深一层的access_path
+                    new_access_path = self.copy_and_extend_access_path(
+                        original_access_path = access_path,
+                        access_point = AccessPoint(
+                            kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
+                            key = field_name
+                        )
+                    )
+                    current_arg_state_fields[field_name] = _recursively_collect_children_fields(stmt_id, status, summary_states_fields[field_name], current_arg_state_fields[field_name], source_symbol_id, new_access_path)
+            
+            return current_arg_state_fields
 
         def _recursively_collect_children_fields(stmt_id, status: StmtStatus, state_set_in_summary_field: set, state_set_in_arg_field: set, source_symbol_id, access_path):
             cache_key = (
@@ -1205,15 +1246,18 @@ class StmtStates:
             # 合并caller中同id的states
             states_with_diff_ids = set()
             for state_id, states in state_id_to_states.items():
-                states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, status))
+                if len(states) == 1:
+                    new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, next(iter(states)))
+                    states_with_diff_ids.add(new_state_index)
+                else:
+                    states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, status))
 
             if tangping_flag:
-                for each_diff_id_state in states_with_diff_ids:
-                    new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_diff_id_state)
-                    new_state: State = self.frame.symbol_state_space[new_state_index]
-                    new_state.tangping_flag = True
-                    new_state.tangping_elements = tangping_elements
-                    return_set.add(new_state_index)
+                for state_index in states_with_diff_ids:
+                    state: State = self.frame.symbol_state_space[state_index]
+                    state.tangping_flag = True
+                    state.tangping_elements = tangping_elements
+                return_set.update(states_with_diff_ids)
 
             # print(f"\n======\naccess_path {access_path}")
             # print(f"arg_fields: {arg_state_fields}\nsummary_fields: {summary_states_fields}" )
@@ -1221,68 +1265,30 @@ class StmtStates:
             # 只有单侧有字段时的处理
             if not arg_state_fields or not summary_states_fields:
                 if summary_states_fields:
-                    # 为每个不同的state_id创建copy
-                    for each_diff_id_state in states_with_diff_ids:
-                        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_diff_id_state)
-                        new_state: State = self.frame.symbol_state_space[new_state_index]
-                        new_state.fields = summary_states_fields
-                        new_state.state_type = state_type
-                        new_state.source_symbol_id = source_symbol_id
-                        new_state.access_path = access_path
-                        return_set.add(new_state_index)
+                    _set_attributes_on_states(states_with_diff_ids, summary_states_fields, state_type, source_symbol_id, access_path)
+                    return_set.update(states_with_diff_ids)
                 elif arg_state_fields:
-                    # 为每个不同的state_id创建copy
-                    for each_diff_id_state in states_with_diff_ids:
-                        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_diff_id_state)
-                        new_state: State = self.frame.symbol_state_space[new_state_index]
-                        new_state.fields = arg_state_fields
-                        new_state.state_type = state_type
-                        new_state.source_symbol_id = source_symbol_id
-                        new_state.access_path = access_path
-                        return_set.add(new_state_index)
+                    _set_attributes_on_states(states_with_diff_ids, arg_state_fields, state_type, source_symbol_id, access_path)
+                    return_set.update(states_with_diff_ids)
                 else:
                     if not return_set:
                         return_set.update(state_set_in_summary_field)
                 return return_set
 
             # 两侧都有字段
-            # 为每个不同的state_id创建copy并处理字段合并
-            for each_diff_id_state in states_with_diff_ids:
-                new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_diff_id_state)
-                new_state: State = self.frame.symbol_state_space[new_state_index]
-                current_arg_state_fields = arg_state_fields.copy()
-                
-                # 处理字段合并
-                for field_name in summary_states_fields:
-                    if field_name not in current_arg_state_fields:
-                        current_arg_state_fields[field_name] = summary_states_fields[field_name]
-                    # 如果已经存在，则 深入递归合并
-                    else:
-                        # 生成更深一层的access_path
-                        new_access_path = self.copy_and_extend_access_path(
-                            original_access_path = access_path,
-                            access_point = AccessPoint(
-                                kind = ACCESS_POINT_KIND.FIELD_ELEMENT,
-                                key = field_name
-                            )
-                        )
-                        current_arg_state_fields[field_name] = _recursively_collect_children_fields(stmt_id, status, summary_states_fields[field_name], current_arg_state_fields[field_name], source_symbol_id, new_access_path)
-                
-                new_state.fields = current_arg_state_fields
-                new_state.state_type = state_type
-                new_state.source_symbol_id = source_symbol_id
-                new_state.access_path = access_path
-                return_set.add(new_state_index)
+            merged_fields = _merge_fields_for_states(summary_states_fields, arg_state_fields, access_path)
+            _set_attributes_on_states(states_with_diff_ids, merged_fields, state_type, source_symbol_id, access_path)
+            return_set.update(states_with_diff_ids)
             
             cache[cache_key] = return_set
             return return_set
         return _recursively_collect_children_fields(stmt_id, status, state_set_in_summary_field, state_set_in_arg_field, source_symbol_id, access_path)
 
-    # 用形参的last_states去更新传入的实参
     def apply_parameter_summary_to_args_states(
         self, stmt_id, status: StmtStatus, last_states, old_arg_state_index, old_to_new_arg_state,
         parameter_symbol_id = -1, callee_id = -1, deferred_index_updates = None, old_to_latest_old_arg_state = None
     ):
+        """用形参的last_states去更新传入的实参"""
         if util.is_empty(old_to_latest_old_arg_state):
             old_to_latest_old_arg_state = {}
 
