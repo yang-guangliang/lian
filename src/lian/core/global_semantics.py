@@ -454,8 +454,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                     continue
                 self.convert_path_to_tree(path, commonlength - 1, method_id_to_max_node_id, current_tree )
             self.loader.save_global_call_tree_by_entry_point(entry_point, current_tree.graph)
-            current_tree.show()
-            a = 1
+
 
     def convert_prefix_to_tree(self, path, commonlength, current_tree):
         index = 0
