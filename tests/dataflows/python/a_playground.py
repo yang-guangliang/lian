@@ -4,29 +4,24 @@ def a():
     b(fff)
 
 def b(z):
-    z1 = tmp1()
+    z1 = tm1()
     c(z1)
 
 def c(z):
-    print()
-    z2 = tmp2()
-    p = f
-    p(z2)
-    p = d
-    p(z2)
+    f(z)
+
+    d(z)
+
 
 def d(z):
-    print()
-    z2 = tmp5()
+    z2 = tm5()
     x(z2)
 
 def f(z):
-    print()
-    z3 = tmp6()
+    z3 = tm6()
     x(z3)
 
 def x(z):
-    print()
     sink()
 
 
@@ -42,7 +37,5 @@ def b1():
 def c1():
     print1()
 
-    p = d
-    p()
-    p = f
-    p()
+    d(ss)
+    f(ss)
