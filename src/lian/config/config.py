@@ -134,8 +134,9 @@ TYPE_GRAPH_PATH                             = "type_graph"
 
 SYMBOL_GRAPH_BUNDLE_PATH                    = "symbol_graph"
 SYMBOL_GRAPH_BUNDLE_PATH_P3                 = "symbol_graph_p3"
-SFG_BUNDLE_PATH_P2             = "state_flow_graph_p2"
-SFG_BUNDLE_PATH_P3             = "state_flow_graph_p3"
+SFG_BUNDLE_PATH_P2                          = "state_flow_graph_p2"
+SFG_BUNDLE_PATH_P3                          = "state_flow_graph_p3"
+CALL_TREE_PATH                              = "call_tree"
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2     = "callee_parameter_mapping_p2"
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3     = "callee_parameter_mapping_p3"
 

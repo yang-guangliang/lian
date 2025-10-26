@@ -3,6 +3,7 @@
 import os,sys
 import pprint
 import copy
+from os.path import commonprefix
 
 from lian.core.prelim_semantics import PrelimSemanticAnalysis
 from lian.util import util
@@ -38,7 +39,8 @@ from lian.common_structs import (
     MethodSummaryInstance,
     APath,
     StmtStatus,
-    StateFlowGraph
+    StateFlowGraph,
+    CallTree,
 )
 from lian.basics.entry_points import EntryPointGenerator
 from lian.basics.control_flow import ControlFlowAnalysis
@@ -67,9 +69,15 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_index_of_status_space(self, baseline_index, status, frame, space, defined_symbols, symbol_bit_vector, state_bit_vector):
+    def adjust_index_of_status_space(self, baseline_index, status, frame, space, defined_symbols, symbol_bit_vector, state_bit_vector, method_summary_template):
+        for IndexMapInSummarySet in method_summary_template.used_external_symbols.values():
+            for symbol in IndexMapInSummarySet:
+                symbol.raw_index += baseline_index
+
         for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
             symbol_def_nodes.index += baseline_index
+
+        c = 3
         for state_def_nodes in state_bit_vector.bit_pos_to_id.values():
             state_def_nodes.index += baseline_index
         for symbol_def_nodes in defined_symbols.values():
@@ -85,6 +93,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             stmt_status.defined_symbol += baseline_index
         for each_space in space:
             # each_space.index += baseline_index
+            a = 1
             if isinstance(each_space, Symbol):
                 new_set = set()
                 for each_id in each_space.states:
@@ -102,6 +111,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         new_set.add(index + baseline_index)
                     each_space.fields[each_field] = new_set
             each_space.call_site = frame.path[-3:]
+        a = 1
         # print(space)
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
@@ -169,7 +179,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         symbol_bit_vector = self.loader.get_symbol_bit_vector_p2(method_id).copy()
         frame.state_bit_vector_manager = state_bit_vector
         frame.symbol_bit_vector_manager = symbol_bit_vector
-        self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, defined_symbols, symbol_bit_vector, state_bit_vector)
+        method_summary_template = self.loader.get_method_summary_template(method_id).copy()
+        frame.method_summary_template = method_summary_template
+        self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, defined_symbols, symbol_bit_vector, state_bit_vector, method_summary_template)
         frame.stmt_id_to_status = status
         frame.defined_symbols = defined_symbols
         for item in symbol_state_space:
@@ -180,7 +192,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
         frame.state_bit_vector_manager = self.loader.get_state_bit_vector_p2(method_id).copy()
         frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id).copy()
-        frame.method_summary_template = self.loader.get_method_summary_template(method_id).copy()
+
         frame.external_symbol_id_to_initial_state_index = frame.method_summary_template.external_symbol_to_state
         frame.space_summary = self.loader.get_symbol_state_space_summary_p2(method_id).copy()
         frame.symbol_graph.graph = self.loader.get_method_symbol_graph_p2(method_id).copy()
@@ -388,11 +400,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
             # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)
 
-            #pop之前，把parameter的states存到callerframe里去
-            # for param in frame.params_list:
-            #     param.
-            #     caller_frame.symbol_state_space[param_id] = param_states
-            # caller_frame.callee_param =
 
             frame_stack.pop()
             if config.DEBUG_FLAG:
@@ -420,22 +427,69 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return frame_stack
 
     def save_call_tree(self):
-        global_call_tree = CallGraph()
+        entry_points_to_path = {}
         for call_path in self.path_manager.paths:
-            path = call_path.path
-            index = 0
-            while index <= len(path) - 3:
-                print(path)
-                if len(path) <= 1:
-                    break
-                caller_id = path[index]
-                call_stmt_id = path[index + 1]
-                callee_id = path[index + 2]
-                global_call_tree.add_edge(caller_id, callee_id, call_stmt_id)
-                index += 2
+            if call_path[0] not in entry_points_to_path:
+                entry_points_to_path[call_path[0]] = []
+            entry_points_to_path[call_path[0]].append((call_path.path))
 
-        self.loader.save_global_call_tree(global_call_tree)
-        self.loader.save_global_call_path(self.path_manager.paths)
+
+        for entry_point, call_paths in entry_points_to_path.items():
+            if len(call_paths) == 0:
+                continue
+            current_tree = CallTree(entry_point)
+
+            method_id_to_max_node_id = {}
+            # 同一entry_point的callpaths从长到短排序，取最大前缀长度
+            call_paths = sorted(call_paths, key=len, reverse=True)
+            commonlength = len(commonprefix(call_paths))
+            if commonlength % 2 == 0 and commonlength != 0:
+                commonlength -= 1
+
+            # 先建前缀
+            self.convert_prefix_to_tree(call_paths[0], commonlength, current_tree)
+
+            for path in call_paths:
+                if len(path) <= commonlength:
+                    continue
+                self.convert_path_to_tree(path, commonlength - 1, method_id_to_max_node_id, current_tree )
+            self.loader.save_global_call_tree_by_entry_point(entry_point, current_tree.graph)
+            current_tree.show()
+            a = 1
+
+    def convert_prefix_to_tree(self, path, commonlength, current_tree):
+        index = 0
+        while index <= commonlength-3:
+            if len(path) <= 1:
+                break
+            caller_id = path[index]
+            call_stmt_id = path[index + 1]
+            callee_id = path[index + 2]
+            current_tree.add_edge(str(caller_id), str(callee_id), str(call_stmt_id))
+            index += 2
+
+    def convert_path_to_tree(self, path, common_index, method_id_to_max_node_id, current_tree):
+
+        index = common_index
+        while index <= len(path) - 3:
+            print(path)
+            if len(path) <= 1:
+                break
+
+            caller_id = path[index]
+            call_stmt_id = path[index + 1]
+            callee_id = path[index + 2]
+            if method_id_to_max_node_id.get(caller_id, 0) != 0 :
+                caller_node_id = str(method_id_to_max_node_id.get(caller_id, 0)-1) + '#' + str(caller_id)
+            # method_id_to_max_node_id[caller_id] = method_id_to_max_node_id.get(caller_id, 0) + 1
+            callee_node_id = str(method_id_to_max_node_id.get(callee_id, 0)) + '#' + str(callee_id)
+            method_id_to_max_node_id[callee_id] = method_id_to_max_node_id.get(callee_id, 0) + 1
+            if index == common_index:
+                current_tree.add_edge(str(caller_id), callee_node_id, str(call_stmt_id))
+            else:
+                current_tree.add_edge(caller_node_id, callee_node_id, str(call_stmt_id))
+            index += 2
+
 
     def run(self):
         """
@@ -457,12 +511,16 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
+            # util.write_graph_to_dot(
+            #     sfg.graph,
+            #     f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point + 3}.dot"
+            # )
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
 
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.save_call_tree()
-
+        self.loader.save_global_call_path(self.path_manager.paths)
 
 
         self.loader.export()

@@ -672,7 +672,7 @@ class PrelimSemanticAnalysis:
                     if not change_flag:
                         if used_symbol.states != in_states[symbol_id]:
                             change_flag = True
-                            used_symbol.states = in_states[symbol_id]
+                        used_symbol.states = in_states[symbol_id]
 
             if need_update or symbol_id not in in_states:
                 if symbol_id not in method_summary.used_external_symbols:
@@ -687,6 +687,8 @@ class PrelimSemanticAnalysis:
                 used_symbol.states = new_state_indexes
 
         # print("@in_states before", in_states)
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+            return True
         return change_flag
 
     def get_next_stmts_for_state_analysis(self, stmt_id, symbol_graph):
@@ -875,7 +877,7 @@ class PrelimSemanticAnalysis:
             frame.stmts_with_symbol_update.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
-        # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
+        print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
 
         if change_flag.state_changed or change_flag.symbol_def_changed:
             self.update_state_flow_graph(stmt_id, stmt, status, frame)

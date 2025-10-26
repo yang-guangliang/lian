@@ -173,7 +173,7 @@ class BasicGraph:
         if util.is_empty(src_stmt) or util.is_empty(dst_stmt) :
             return
 
-        if type(src_stmt) in (int, numpy.int64):
+        if type(src_stmt) in (int, numpy.int64, str):
             src_stmt_id = src_stmt
         elif isinstance(src_stmt, list):
             for src in src_stmt:
@@ -182,7 +182,7 @@ class BasicGraph:
         else:
             src_stmt_id = src_stmt.stmt_id
 
-        if type(dst_stmt) in (int, numpy.int64):
+        if type(dst_stmt) in (int, numpy.int64, str):
             dst_stmt_id = dst_stmt
         else:
             dst_stmt_id = dst_stmt.stmt_id
@@ -1746,6 +1746,17 @@ class CallGraph(BasicGraph):
 
     def export(self):
         pass
+
+class CallTree(CallGraph):
+    def __init__(self, method_id):
+        self.method_id = method_id
+        super().__init__()
+    def _add_one_edge(self, src_stmt_id, dst_stmt_id, weight):
+        if '-' in src_stmt_id :
+            return
+
+        self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
+
 
 @dataclasses.dataclass
 class CGNode:
