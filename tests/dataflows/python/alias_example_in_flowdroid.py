@@ -9,4 +9,4 @@ def foo(z):
     w = source()
     x.f = w
 
-# main()
+main()

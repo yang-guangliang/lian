@@ -427,6 +427,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return frame_stack
 
     def save_call_tree(self):
+        # call_path中若只有一个函数，则不建call_tree
         entry_points_to_path = {}
         for call_path in self.path_manager.paths:
             if call_path[0] not in entry_points_to_path:
@@ -445,10 +446,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             commonlength = len(commonprefix(call_paths))
             if commonlength % 2 == 0 and commonlength != 0:
                 commonlength -= 1
-
             # 先建前缀
             self.convert_prefix_to_tree(call_paths[0], commonlength, current_tree)
-
+            # 再建后续
             for path in call_paths:
                 if len(path) <= commonlength:
                     continue
