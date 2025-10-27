@@ -7,3 +7,4 @@ numpy
 line_profiler
 matplotlib
 PyYAML
+pydot
