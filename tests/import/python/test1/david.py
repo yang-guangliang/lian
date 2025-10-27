@@ -6,6 +6,9 @@ from toolbox import (
     knife
 )
 
-a = tools
+def a():
+    e = 1
+    pass
+aa = tools
 b = tool1()
 c = knife()

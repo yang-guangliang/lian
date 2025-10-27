@@ -77,7 +77,7 @@ class EntryPointGenerator:
                     continue
             else:
                 if rule.unit_name:
-                    if rule.unit_name != unit_name:
+                    if rule.unit_name not in unit_name:
                         continue
                 if rule.unit_path:
                     if rule.unit_path != unit_path:

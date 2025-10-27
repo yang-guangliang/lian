@@ -6,4 +6,5 @@ class tool1:
         self.name = "tool1"
 
 def knife():
+    a = 1
     pass
