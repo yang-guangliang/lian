@@ -1140,8 +1140,8 @@ class Resolver:
                 "caller_frame"            :  caller_frame
             }
 
-    def recover_callee_name(self, stmt_id, frame: ComputeFrame):
-
+    def recover_callee_name(self, stmt_id, loader):
+        method_id = loader.convert_stmt_id_to_method_id(stmt_id)
         def access_path_formatter(state_access_path):
             key_list = []
 
@@ -1158,8 +1158,9 @@ class Resolver:
             return '.'.join(key_list)
 
 
-        status = frame.stmt_id_to_status.get(stmt_id)
-        s2space = frame.symbol_state_space
+        method_status = loader.get_stmt_status_p2(method_id)
+        status = method_status.get(stmt_id)
+        s2space = loader.get_symbol_state_space_p2(method_id)
 
 
         if not status.used_symbols:

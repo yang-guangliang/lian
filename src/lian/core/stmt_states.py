@@ -1789,7 +1789,7 @@ class StmtStates:
             }
         )
         # 方便debug
-        callee_name = self.resolver.recover_callee_name(stmt_id, self.frame)
+        # callee_name = self.resolver.recover_callee_name(stmt_id, self.frame)
         app_return = self.event_manager.notify(event)
         if er.should_block_event_requester(app_return):
             return P2ResultFlag()

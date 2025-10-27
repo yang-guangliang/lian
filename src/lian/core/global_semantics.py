@@ -515,7 +515,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             #     f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point + 3}.dot"
             # )
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
-
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.save_call_tree()
