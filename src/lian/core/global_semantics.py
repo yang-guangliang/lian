@@ -151,7 +151,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             for row in method_body:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = round_number
-        frame.defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
+
+        if self.loader.get_method_defined_symbols_p2(method_id):
+            frame.defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
+
         all_defs = set()
         for stmt_id in frame.defined_symbols:
             symbol_def_set = frame.defined_symbols[stmt_id]
@@ -159,7 +162,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 all_defs.add(symbol_def)
         frame.all_defs = all_defs
 
-        frame.defined_states = self.loader.get_method_defined_states_p2(method_id).copy()
+        if self.loader.get_method_defined_states_p2(method_id):
+            frame.defined_states = self.loader.get_method_defined_states_p2(method_id).copy()
 
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))

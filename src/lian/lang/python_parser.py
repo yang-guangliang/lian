@@ -498,6 +498,7 @@ class Parser(common_parser.Parser):
             expr = node.named_children[0]
             shadow_expr = self.parse(expr, statements)
         self.append_stmts(statements, node, {"await_stmt": {"target": shadow_expr}})
+        return shadow_expr
 
     def expression_list(self, node: Node, statements: list):
         shadow_expr_list = []
