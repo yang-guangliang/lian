@@ -77,12 +77,11 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
             symbol_def_nodes.index += baseline_index
 
-        c = 3
         for state_def_nodes in state_bit_vector.bit_pos_to_id.values():
             state_def_nodes.index += baseline_index
-        for symbol_def_nodes in defined_symbols.values():
-            for node in symbol_def_nodes:
-                node.index += baseline_index
+        # for symbol_def_nodes in defined_symbols.values():
+        #     for node in symbol_def_nodes:
+        #         node.index += baseline_index
         for stmt_status in status.values():
             for each_id, value in enumerate(stmt_status.used_symbols):
                 stmt_status.used_symbols[each_id] = value + baseline_index

@@ -687,7 +687,7 @@ class PrelimSemanticAnalysis:
                 used_symbol.states = new_state_indexes
 
         # print("@in_states before", in_states)
-        if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS and stmt.operation == "call_stmt":
             return True
         return change_flag
 
