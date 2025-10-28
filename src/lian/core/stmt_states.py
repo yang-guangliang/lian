@@ -1825,7 +1825,7 @@ class StmtStates:
                         callee_method_ids.add(callee_id)
 
             #  what if it calls class_constructor.  e.g., o = A()
-            elif self.is_state_a_class_decl(each_state) or each_state.data_type == LIAN_INTERNAL.THIS:
+            elif self.is_state_a_class_decl(each_state) or each_state.data_type == LIAN_INTERNAL.THIS or name_symbol.name == LIAN_INTERNAL.THIS:
                 return self.new_object_stmt_state(stmt_id, stmt, status, in_states)
 
             else:

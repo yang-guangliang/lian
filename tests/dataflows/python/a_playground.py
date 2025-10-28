@@ -1,3 +1,10 @@
+class A:
+    def __init__(self):
+        self.a = 1
+
+    def b(cls):
+        cls()
+
 
 def a():
     pp = b
