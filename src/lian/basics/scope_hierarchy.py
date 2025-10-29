@@ -277,10 +277,11 @@ class UnitScopeHierarchyAnalysis:
                 scope_id = self.determine_scope(row.parent_stmt_id)
                 #print("scope_id:", scope_id, "row", row)
                 name = ""
-                if row.operation == "implement_decl":
-                    name = row.struct_name
-                else:
-                    name = row.name
+                # if row.operation == "implement_decl":
+                #     name = row.struct_name
+                # else:
+                #     name = row.name
+                name = row.name
                 class_decl_scope = Scope(
                     unit_id = self.unit_id,
                     stmt_id = stmt_id,
@@ -408,7 +409,7 @@ class UnitScopeHierarchyAnalysis:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
                     item.scope_id = stmt_id
                     self.stmt_id_to_scope_id_cache[variable_decl.stmt_id] = stmt_id
-        
+
         for stmt_id in self.with_stmt_ids:
             stmt = self.access_by_stmt_id(stmt_id)
             init_body = stmt.init_body
@@ -448,7 +449,9 @@ class UnitScopeHierarchyAnalysis:
 
                 if util.is_available(symbol_name):
                     if self.options.strict_parse_mode:
+                        print("row:", row)
                         if row.scope_id in scope_id_to_symbol_info:
+                            print("symbol_name:", symbol_name)
                             if symbol_name in scope_id_to_symbol_info[row.scope_id]:
                                 previous_decl_id = scope_id_to_symbol_info[row.scope_id][symbol_name]
                                 previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)
