@@ -1,16 +1,13 @@
 - method_list: ["%unit_init"]
 
 - lang: java
-  method_list: [main]
-  attrs: [static]
+  method_list: ["channelRead0"]
 
 - lang: abc
   method_list: ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]
 
 - lang: python
-  method_list: ["func1", "func2", "a1", "render_template"]
-
-- lang: python
-  method_list: ["a"]
-  unit_name: "bob.py"
-
+  method_list: ["from_pretrained", "file", "worker_api_generate_stream", "invoke", "init_device", "delete_images_from_list",
+                "retrieve", "start", "_create_model_version", "get_model_version_artifact_handler", "add",
+                "create_chat_completion", "queue_join", "start", "predict", "_execute_action", "run_rpc_server",
+                "execute_graph_block", "make", "__init__", "generate_prompts", "_request_handler", "unpickle_object_from_file"]
