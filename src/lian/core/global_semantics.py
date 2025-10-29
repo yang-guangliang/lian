@@ -336,6 +336,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                             space = global_space,
                             params_list = frame.args_list,
                             classes_of_method = frame.callee_classes_of_method,
+                            this_class_ids = frame.callee_this_class_ids,
                             state_flow_graph = sfg,
                         )
                         frame_stack.add(new_frame)
@@ -382,9 +383,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 new_callee = False
                 frame.args_list = data.args_list
                 frame.callee_classes_of_method = data.classes_of_method
+                frame.callee_this_class_ids = data.this_class_ids
                 for callee_id in data.callee_ids:
                     key = (data.caller_id, data.call_stmt_id, callee_id)
-                    # print(key)
                     if key not in frame.content_to_be_analyzed:
                         frame.content_to_be_analyzed[key] = False
                         new_callee = True

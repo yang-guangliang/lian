@@ -129,6 +129,28 @@ class GlobalStmtStates(StmtStates):
                 classes_of_method.append(instance_state.value)
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
+
+            this_class_ids = []
+            name_symbol_index = status.used_symbols[0]
+            name_symbol = self.frame.symbol_state_space[name_symbol_index]
+            for name_state_index in name_symbol.states:
+                name_state = self.frame.symbol_state_space[name_state_index]
+                if not isinstance(name_state, State):
+                    continue
+                access_path = name_state.access_path
+                if len(access_path) < 2:
+                    continue
+                receiver_path = access_path[-2]
+                receiver_state_id = receiver_path.state_id
+                receiver_state_indexs = self.resolver.collect_newest_states_by_state_ids(self.frame, status,{receiver_state_id})
+                for receiver_state_index in receiver_state_indexs:
+                    if receiver_state_index < 0:
+                        continue
+                    receiver_state = self.frame.symbol_state_space[receiver_state_index]
+
+                    if isinstance(receiver_state, State) and self.is_state_a_class_decl(receiver_state):
+                       this_class_ids.append(receiver_state.value)
+
             return P2ResultFlag(
                 # states_changed = True,
                 # defuse_changed = defuse_changed,
@@ -139,6 +161,7 @@ class GlobalStmtStates(StmtStates):
                     callee_ids = callee_ids_to_be_analyzed,
                     args_list = parameter_mapping_list,
                     classes_of_method = classes_of_method,
+                    this_class_ids = this_class_ids,
                 ),
             )
 

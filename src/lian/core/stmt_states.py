@@ -3288,13 +3288,13 @@ class StmtStates:
                                     source_state_id=each_receiver_state.source_state_id,
                                     data_type=data_type,
                                     value=method.stmt_id,
-                                    access_path=[AccessPoint(key=method.name)]
-                                    # access_path = self.copy_and_extend_access_path(
-                                    #     each_receiver_state.access_path,
-                                    #     AccessPoint(
-                                    #         key=method.name,
-                                    #     )
-                                    # )
+                                    # access_path=[AccessPoint(key=method.name)]
+                                    access_path = self.copy_and_extend_access_path(
+                                        each_receiver_state.access_path,
+                                        AccessPoint(
+                                            key=method.name,
+                                        )
+                                    )
                                 )
                                 self.update_access_path_state_id(state_index)
                                 each_defined_states.add(state_index)
