@@ -832,7 +832,7 @@ class PrelimSemanticAnalysis:
         in_symbol_indexes = self.get_used_symbol_indexes(stmt_id, frame, status)
         used_symbol_id_to_indexes = self.group_used_symbol_id_to_indexes(in_symbol_indexes, frame)
         in_symbols = self.get_used_symbols(in_symbol_indexes, frame)
-        print(f"in_symbols: {in_symbols}")
+        # print(f"in_symbols: {in_symbols}")
         in_states = self.group_in_states(stmt_id, in_symbols, frame, status)
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
@@ -877,7 +877,7 @@ class PrelimSemanticAnalysis:
             frame.stmts_with_symbol_update.add(
                 self.get_next_stmts_for_state_analysis(stmt_id, symbol_graph)
             )
-        print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
+        # print(f"out_symbol_bits: {frame.symbol_bit_vector_manager.explain(status.out_symbol_bits)}")
 
         if change_flag.state_changed or change_flag.symbol_def_changed:
             self.update_state_flow_graph(stmt_id, stmt, status, frame)

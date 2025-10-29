@@ -189,6 +189,10 @@ class BasicSemanticAnalysis:
                 for row in parameter_decls:
                     self.loader.save_method_parameter(method_id, row)
 
+    def is_cookiecutter_file(self, unit_path):
+        if "{{" in unit_path:
+            return True
+        return False
 
     def run(self):
         if self.options.debug:
@@ -196,6 +200,8 @@ class BasicSemanticAnalysis:
         unit_list = []
         # Analyze each unit's scope hierarchy and entry points
         for unit_info in self.loader.get_all_unit_info():
+            if self.is_cookiecutter_file(unit_info.unit_path):
+                continue
             unit_id = unit_info.module_id
             unit_list.append(unit_id)
             unit_gir = self.loader.get_unit_gir(unit_id)

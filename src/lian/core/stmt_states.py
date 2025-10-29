@@ -1915,7 +1915,7 @@ class StmtStates:
             return_access_path = []
             for index in name_symbol.states:
                 name_state = self.frame.symbol_state_space[index]
-                if len(name_state.access_path) == 0:
+                if not isinstance(name_state, State) or len(name_state.access_path) == 0:
                     continue
                 return_access_path = copy.deepcopy(name_state.access_path)
             return_access_path.append(AccessPoint(
@@ -2646,7 +2646,7 @@ class StmtStates:
                 continue
 
             this_value = index_state.value
-            if not re.match(r'^-?\d+$', (str(this_value))):
+            if len(str(this_value)) > 0 and not re.match(r'^-?\d+$', (str(this_value))):
                 index_values.add(int(this_value))
             else:
                 index_values = set()
