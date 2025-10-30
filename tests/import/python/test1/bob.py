@@ -2,6 +2,6 @@ import toolbox
 
 a = toolbox.tools
 
-def a():
+def nnn():
     r = 1
     pass

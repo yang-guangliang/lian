@@ -57,6 +57,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         self.path_manager = PathManager()
         self.analyzed_method_list = analyzed_method_list
         self.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        self.caller_unknown_callee_edge = {}
 
     def get_stmt_id_to_callee_info(self, callees):
         """
@@ -136,7 +137,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             resolver = self.resolver,
             compute_frame = frame,
             path_manager = self.path_manager,
-            analyzed_method_list = self.analyzed_method_list
+            analyzed_method_list = self.analyzed_method_list,
+            caller_unknown_callee_edge = self.caller_unknown_callee_edge
         )
 
         round_number = config.FIRST_ROUND
@@ -456,9 +458,23 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             for path in call_paths:
                 if len(path) <= commonlength:
                     continue
-                self.convert_path_to_tree(path, commonlength - 1, method_id_to_max_node_id, current_tree )
+                self.convert_path_to_tree(path, commonlength - 1, method_id_to_max_node_id, current_tree)
+            self.add_unknown_callee_edge(current_tree)
+            # current_tree.show()
             self.loader.save_global_call_tree_by_entry_point(entry_point, current_tree.graph)
 
+    def add_unknown_callee_edge(self, current_tree):
+        node_list = []
+
+        for node in current_tree.graph.nodes:
+            node_name = node.split("#")[-1]
+            if node_name  in self.caller_unknown_callee_edge:
+                node_list.append(node)
+
+        for node in node_list:
+            node_name = node.split("#")[-1]
+            for unknown_callee in self.caller_unknown_callee_edge[node_name]:
+                current_tree.add_edge(node, unknown_callee[1], unknown_callee[0])
 
     def convert_prefix_to_tree(self, path, commonlength, current_tree):
         index = 0

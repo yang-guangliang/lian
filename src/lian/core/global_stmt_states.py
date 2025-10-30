@@ -48,7 +48,7 @@ from lian.common_structs import (
 class GlobalStmtStates(StmtStates):
     def __init__(
         self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
-        path_manager: PathManager, analyzed_method_list: list
+        path_manager: PathManager, analyzed_method_list: list, caller_unknown_callee_edge: dict,
     ):
         super().__init__(
             analysis_phase_id=analysis_phase_id,
@@ -61,6 +61,7 @@ class GlobalStmtStates(StmtStates):
         )
         self.path_manager = path_manager
         self.analyzed_method_list = analyzed_method_list
+        self.caller_unknown_callee_edge = caller_unknown_callee_edge
 
     def get_method_summary(self, method_id):
         pass
@@ -95,6 +96,12 @@ class GlobalStmtStates(StmtStates):
             util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
 
         parameter_mapping_list = []
+
+        if callee_method_ids == set():
+            callee_name = self.resolver.recover_callee_name(stmt_id, self.loader)
+            unknown_callee_set = self.caller_unknown_callee_edge.get(str(caller_id), set())
+            unknown_callee_set.add((str(stmt_id), callee_name))
+            self.caller_unknown_callee_edge[str(caller_id)] = unknown_callee_set
 
         for each_callee_id in callee_method_ids:
             callee_path = self.frame.path + (stmt_id, each_callee_id)
