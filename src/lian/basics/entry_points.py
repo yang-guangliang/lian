@@ -80,7 +80,7 @@ class EntryPointGenerator:
                     if rule.unit_name not in unit_name:
                         continue
                 if rule.unit_path:
-                    if rule.unit_path != unit_path:
+                    if rule.unit_path not in unit_path:
                         continue
 
             if rule.method_id >= 0:
