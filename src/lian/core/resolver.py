@@ -296,6 +296,7 @@ class Resolver:
         # print("obtain_parent_states@ 要找的base_state是",base_state_index)
         parent_state_id = self.obtain_parent_state_id(frame, status, base_state_index)
         # print("obtain_parent_states@ 找到的parent_state_id是",parent_state_id)
+        parent_state_id = int(parent_state_id)
         if parent_state_id <= 0:
             return set()
 

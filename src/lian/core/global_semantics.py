@@ -130,6 +130,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         if util.is_empty(frame.cfg):
             return
 
+        if util.is_empty(self.loader.get_symbol_state_space_p1(method_id)):
+            return
+
         frame.stmt_state_analysis = GlobalStmtStates(
             analysis_phase_id = self.analysis_phase_id,
             event_manager = self.event_manager,
@@ -512,6 +515,22 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 current_tree.add_edge(caller_node_id, callee_node_id, str(call_stmt_id))
             index += 2
 
+    def find_method_parent(self, method1, method2, method1_class = None, method2_class = None):
+        method1_ids = self.convert_method_name_to_method_ids(method1)
+        method2_ids = self.convert_method_name_to_method_ids(method2)
+
+        if method1_class:
+            method1_class_ids = self.loader.convert_class_name_to_class_ids(method1_class)
+            for class_id in method1_class_ids:
+                methods_in_class = self.loader.convert_class_id_to_method_ids(class_id)
+                method1_ids = method1_ids & methods_in_class
+        if method2_class:
+            method2_class_ids = self.loader.convert_class_name_to_class_ids(method2_class)
+            for class_id in method2_class_ids:
+                methods_in_class = self.loader.convert_class_id_to_method_ids(class_id)
+                method2_ids = method2_ids & methods_in_class
+
+
 
     def run(self):
         """
@@ -532,7 +551,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # print(f"all paths in II: {self.path_manager.paths}")
 
             # 判断是否有@app装饰器
-            # source_code = self.loader.get_source_code(entry_point)
+            # if not self.is_decorated_by_app(entry_point):
+            #     continue
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
@@ -550,3 +570,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         self.loader.export()
         all_APaths = self.loader.get_global_call_path()
         # print("所有的APaths: ",all_APaths)
+
+    def is_decorated_by_app(self, method_id):
+        source_code = self.loader.get_stmt_parent_method_source_code(method_id)
+        if "@.app" in source_code:
+            return True
+        return False

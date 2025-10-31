@@ -2646,7 +2646,7 @@ class StmtStates:
                 continue
 
             this_value = index_state.value
-            if len(str(this_value)) > 0 and not re.match(r'^-?\d+$', (str(this_value))):
+            if this_value and len(str(this_value)) > 0 and not re.match(r'^-?\d+$', (str(this_value))):
                 index_values.add(int(this_value))
             else:
                 index_values = set()
@@ -2751,7 +2751,7 @@ class StmtStates:
                 continue
 
             this_value = index_state.value
-            if not re.match(r'^-?\d+$', (str(this_value))):
+            if this_value and not re.match(r'^-?\d+$', (str(this_value))) and this_value != '':
                 index_values.add(int(this_value))
             else:
                 index_values = set()

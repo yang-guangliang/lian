@@ -1560,7 +1560,7 @@ class Parser(common_parser.Parser):
             for case_pattern in case_patterns:
                 shadow_condition = self.parse(case_pattern, case_init)
                 if case_init != []:
-                    statements.insert(-1, case_init)
+                    statements.extend(case_init)
                 if case_pattern != case_patterns[-1]:
                     switch_stmt_list.append(self.add_col_row_info(node, {"case_stmt": {"condition": shadow_condition}}))
                 else:
