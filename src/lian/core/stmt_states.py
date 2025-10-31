@@ -2976,7 +2976,8 @@ class StmtStates:
                 new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, target_state_index)
                 new_target_state: State = self.frame.symbol_state_space[new_target_state_index]
                 if new_target_state.tangping_flag:
-                    new_target_state.tangping_elements.update(array_state_to_extend)
+                    for element in array_state_to_extend:
+                        new_target_state.tangping_elements.update(element)
                 else:
                     new_target_state.array.extend(array_state_to_extend)
                 defined_symbol_states.add(new_target_state_index)
@@ -3697,7 +3698,7 @@ class StmtStates:
                         else:
                             step_value = step_state.value
 
-                        if start_value.isdigit() and end_value.isdigit() and step_value.isdigit():
+                        if start_value.isdigit() and (isinstance(end_value, int) or end_value.isdigit()) and (isinstance(step_value, int) or step_value.isdigit()):
                             start_value = int(start_value)
                             end_value = int(end_value)
                             step_value = int(step_value)

@@ -376,7 +376,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 #     continue
 
                 if not frame.has_been_inited:
-                    self.init_compute_frame(frame, frame_stack, global_space)
+                    if self.init_compute_frame(frame, frame_stack, global_space) is None:
+                        self.analyzed_method_list.add(frame.method_id)
+                        frame_stack.pop()
+                        continue
 
             result: P2ResultFlag = self.analyze_stmts(frame)
             if util.is_available(result) and result.interruption_flag:
@@ -527,6 +530,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # for path in self.call_graph.find_paths(entry_point):
             #     self.path_manager.add_path(path)
             # print(f"all paths in II: {self.path_manager.paths}")
+
+            # 判断是否有@app装饰器
+            # source_code = self.loader.get_source_code(entry_point)
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
