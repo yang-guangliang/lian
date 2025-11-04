@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from lian.lang import common_parser
+import sys
+from . import common_parser  
 
 class Parser(common_parser.Parser):
 
@@ -18,13 +19,13 @@ class Parser(common_parser.Parser):
         else:
             print("No function_body node found")
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "function_decl": {
                 **header_info,
                 "body": body_statements
             }
         })
-
+            
         return
 
     def function_header(self, node):
@@ -78,7 +79,7 @@ class Parser(common_parser.Parser):
         }
 
     def type_expression(self, node):
-        print(f"Processing type_expression for node type: {node.type}")
+        print(f"Processing type_expression for node type: {node.type}")  
         if node.type == "primitive_type":
             return self.read_node_text(node)
         elif node.type == "tuple_type":
@@ -138,7 +139,7 @@ class Parser(common_parser.Parser):
         else:
             var_type = "unknown"
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "variable_decl": {
                 "data_type": var_type,
                 "name": var_name,
@@ -161,7 +162,7 @@ class Parser(common_parser.Parser):
         else:
             const_value = None
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "const_decl": {
                 "data_type": const_type,
                 "name": const_name,
@@ -177,18 +178,18 @@ class Parser(common_parser.Parser):
         block_statements = []
         for child in node.named_children:
             if child == label_node:
-                continue
+                continue  
             if self.is_declaration(child):
                 self.declaration(child, block_statements)
             elif self.is_statement(child):
                 self.statement(child, block_statements)
             elif child.type == "terminator":
-                terminator = self.terminator(child, block_statements)
-                block_self.append_stmts(statements, node, {"terminator": terminator})
+                terminator = self.terminator(child, block_statements)  
+                block_statements.append({"terminator": terminator})
             else:
                 print(f"Unprocessed node in basic_block: {child.type}")
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "basic_block": {
                 "label": label,
                 "body": block_statements
@@ -196,7 +197,7 @@ class Parser(common_parser.Parser):
         })
 
     def terminator(self, node, statements):
-        print(f"Processing terminator node: {node.type}")
+        print(f"Processing terminator node: {node.type}") 
 
         for child in node.named_children:
             print(f"Found terminator child: {child.type}")  # 调试语句
@@ -270,7 +271,7 @@ class Parser(common_parser.Parser):
         condition_node = self.find_child_by_field(node, "condition")
         true_target_node = self.find_child_by_field(node, "true_target")
         false_target_node = self.find_child_by_field(node, "false_target")
-
+        
         condition = self.expression(condition_node, statements) if condition_node else None
         true_target = self.read_node_text(true_target_node) if true_target_node else "unknown_true_target"
         false_target = self.read_node_text(false_target_node) if false_target_node else "unknown_false_target"
@@ -290,16 +291,16 @@ class Parser(common_parser.Parser):
         arguments_node = self.find_child_by_field(node, "arguments")
         true_target_node = self.find_child_by_field(node, "true_target")
         false_target_node = self.find_child_by_field(node, "false_target")
-
+        
         result = self.lvalue(result_node, statements) if result_node else "unknown_result"
         function_name = self.read_node_text(function_node) if function_node else "unknown_function"
-
+        
         arguments = []
         if arguments_node:
             for arg_node in arguments_node.named_children:
                 arg_expr = self.expression(arg_node, statements)
                 arguments.append(arg_expr)
-
+        
         true_target = self.read_node_text(true_target_node) if true_target_node else "unknown_true_target"
         false_target = self.read_node_text(false_target_node) if false_target_node else "unknown_false_target"
 
@@ -317,10 +318,10 @@ class Parser(common_parser.Parser):
         print("Handling drop_terminator")  # 调试语句
         value_node = self.find_child_by_field(node, "value")
         value = self.lvalue(value_node, statements) if value_node else "unknown_value"
-
+        
         jump_targets_node = self.find_child_by_field(node, "jump_targets")
         jump_targets = self.jump_targets(jump_targets_node, statements) if jump_targets_node else []
-
+        
         return {
             "drop_terminator": {
                 "value": value,
@@ -356,7 +357,7 @@ class Parser(common_parser.Parser):
                 "jump_targets": jump_targets
             }
         }
-        self.append_stmts(statements, node, switch_stmt)
+        statements.append(switch_stmt)
 
     def assignment_statement(self, node, statements):
         left_node = self.find_child_by_field(node, "left")
@@ -369,7 +370,7 @@ class Parser(common_parser.Parser):
         else:
             right_expr = None
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "assign_stmt": {
                 "target": left_expr,
                 "operand": right_expr
@@ -380,7 +381,7 @@ class Parser(common_parser.Parser):
         value_node = self.find_child_by_field(node, "value")
         value = self.expression(value_node, statements) if value_node else None
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "return_stmt": {
                 "operand": value
             }
@@ -393,7 +394,7 @@ class Parser(common_parser.Parser):
         value_node = self.find_child_by_field(node, "value")
         value = self.lvalue(value_node, statements) if value_node else "unknown_value"
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "drop_stmt": {
                 "kind": kind,
                 "value": value
@@ -415,7 +416,7 @@ class Parser(common_parser.Parser):
             else:
                 print(f"Unprocessed node in scope: {child.type}")
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "scope": {
                 "label": scope_label,
                 "body": scope_statements
@@ -427,14 +428,14 @@ class Parser(common_parser.Parser):
         variable = self.read_node_text(variable_node) if variable_node else "unknown_variable"
 
         debug_node = self.find_child_by_field(node, "debug_value")
-
+        
         if debug_node:
             value_node = self.find_child_by_field(debug_node, "value")
             value = self.debug_value(value_node, statements) if value_node else "unknown_value"
         else:
             value = "unknown_value"
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "debug_stmt": {
                 "variable": variable,
                 "value": value
@@ -449,7 +450,7 @@ class Parser(common_parser.Parser):
         else:
             print(f"Unprocessed debug_value type: {node.type}")
             return "unknown_debug_value"
-
+    
     def assert_statement(self, node, statements):
         negate = False
         condition_node = None
@@ -471,7 +472,7 @@ class Parser(common_parser.Parser):
         message = self.read_node_text(message_node) if message_node else None
         expressions = [self.expression(expr, statements) for expr in expressions_nodes]
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "assert_stmt": {
                 "negate": negate,
                 "condition": condition,
@@ -479,14 +480,14 @@ class Parser(common_parser.Parser):
                 "expressions": expressions
             }
         })
-
+    
     def unreach_statement(self, node, statements):
-        self.append_stmts(statements, node, {
+        statements.append({
             "unreach_stmt": "unreachable"
         })
-
+    
     def resume_statement(self, node, statements):
-        self.append_stmts(statements, node, {
+        statements.append({
             "resume_stmt": "resume"
         })
 
@@ -534,7 +535,7 @@ class Parser(common_parser.Parser):
             call_stmt["call_stmt"]["unwind_expression"] = unwind_expression
         if jump_targets:
             call_stmt["call_stmt"]["jump_targets"] = jump_targets
-        self.append_stmts(statements, node, call_stmt)
+        statements.append(call_stmt)
 
         return temp_var
 
@@ -557,15 +558,15 @@ class Parser(common_parser.Parser):
                 value = "terminate"
         else:
             value = self.read_node_text(value_node)
-
+        
         return value
-
+    
     def jump_targets(self, node, statements):
         targets = []
         for child in node.named_children:
             key_node = self.find_child_by_field(child, "key")
             value_node = self.find_child_by_field(child, "value")
-
+             
             key = self.read_node_text(key_node) if key_node else "unknown_key"
             if value_node:
                 if value_node.type == "basic_block_label":
@@ -584,21 +585,21 @@ class Parser(common_parser.Parser):
                     value = self.read_node_text(value_node)
             else:
                 value = "unknown_value"
-
+            
             targets.append({"key": key, "value": value})
-
+        
         return targets
 
 
     def move_expression(self, node, statements):
         value_node = self.find_child_by_field(node, "value")
         value_expr = self.expression(value_node, statements) if value_node else None
-        return value_expr
+        return value_expr 
 
     def copy_expression(self, node, statements):
         value_node = self.find_child_by_field(node, "value")
         value_expr = self.expression(value_node, statements) if value_node else None
-        return value_expr
+        return value_expr  
 
     def unary_expression(self, node, statements):
         operator_node = self.find_child_by_field(node, "operator")
@@ -609,7 +610,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "unary_expr": {
                 "target": temp_var,
                 "operator": operator,
@@ -635,7 +636,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "struct_init": {
                 "target": temp_var,
                 "struct_type": struct_type,
@@ -654,7 +655,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "as_expr": {
                 "target": temp_var,
                 "expression": expr,
@@ -683,8 +684,8 @@ class Parser(common_parser.Parser):
 
         if len(node.children) < 2 or node.children[0].type != 'const':
             print("[ERROR]: Invalid const_expression syntax")
-            return "unknown"
-
+            return "unknown"  
+        
         value_node = node.children[1]
 
         if value_node.type == 'constant_with_type':
@@ -693,13 +694,13 @@ class Parser(common_parser.Parser):
             path_type = self.path_type(value_node)
             const_expr = {
                 "type": "path_type",
-                "value": path_type
+                "value": path_type  
             }
         elif value_node.type == 'qualified_path':
             qualified_path = self.qualified_path(value_node)
             const_expr = {
                 "type": "qualified_path",
-                "value": qualified_path
+                "value": qualified_path  
             }
         else:
             print(f"[ERROR]: Unknown type in const_expression: {value_node.type}")
@@ -715,7 +716,7 @@ class Parser(common_parser.Parser):
             }
         }
 
-        self.append_stmts(statements, node, const_stmt)
+        statements.append(const_stmt)
 
         return temp_var
 
@@ -740,7 +741,7 @@ class Parser(common_parser.Parser):
             if segment_node.type == 'path_segment':
                 segment = self.path_segment(segment_node)
                 segments.append(segment)
-
+        
         path = "::".join(segments)
         print(f"Parsed path_type: {path}")  # 调试语句
         return path
@@ -751,26 +752,26 @@ class Parser(common_parser.Parser):
         type_node = self.find_child_by_field(node, "type")
         trait_node = self.find_child_by_field(node, "trait")
         method_node = self.find_child_by_field(node, "method")
-
+        
         type_str = self.type_expression(type_node, statements) if type_node else "UnknownType"
         trait_str = self.read_node_text(trait_node) if trait_node else "UnknownTrait"
         method_str = self.read_node_text(method_node) if method_node else "unknown_method"
-
+        
         return f"<{type_str} as {trait_str}>::{method_str}"
 
 
     def path_segment(self, node):
         identifier_node = self.find_child_by_field(node, "identifier")
         generic_args_node = self.find_child_by_field(node, "generic_arguments")
-
+        
         identifier = self.read_node_text(identifier_node) if identifier_node else "unknown_identifier"
-
+        
         if generic_args_node:
             generic_args = []
             for arg_node in generic_args_node.named_children:
                 arg = self.type_expression(arg_node)
                 generic_args.append(arg)
-
+            
             return f"{identifier}<{', '.join(generic_args)}>"
         else:
             return identifier
@@ -791,7 +792,7 @@ class Parser(common_parser.Parser):
         elif node.type == "parenthesized_lvalue":
             return self.parenthesized_lvalue(node, statements)
         elif node.type == "annotated_lvalue":
-            return self.annotated_lvalue(node, statements)
+            return self.annotated_lvalue(node, statements)  
         else:
             print(f"Unprocessed lvalue type: {node.type}")
             return {"unknown_lvalue": self.read_node_text(node)}
@@ -833,7 +834,7 @@ class Parser(common_parser.Parser):
 
         temp_var = self.tmp_variable(node)
 
-        self.append_stmts(statements, node, {
+        statements.append({
             "field_access_expr": {
                 "target": temp_var,
                 "obj": obj,
@@ -847,10 +848,10 @@ class Parser(common_parser.Parser):
         # 获取 'path' 和 'index' 节点
         path_node = self.find_child_by_field(node, "path")
         index_node = self.find_child_by_field(node, "index")
-
+        
         # 解析 'path'
         path = self.path_type(path_node) if path_node else "unknown_path"
-
+        
         # 解析 'index'
         if index_node.type == "int":
             index = self.read_node_text(index_node)
@@ -858,7 +859,7 @@ class Parser(common_parser.Parser):
             index = self.read_node_text(index_node)
         else:
             index = "unknown_index"
-
+        
         # 返回字符串表示，例如 "path[index]"
         complex_value_str = f"{path}[{index}]"
         print(f"Generated complex_value string: {complex_value_str}")  # 调试语句
@@ -874,7 +875,7 @@ class Parser(common_parser.Parser):
     def annotated_lvalue(self, node, statements):
         lvalue_node = self.find_child_by_field(node, "lvalue")
         lvalue = self.lvalue(lvalue_node, statements) if lvalue_node else None
-        return lvalue
+        return lvalue  
 
     def dereference_lvalue(self, node, statements):
         operand_node = self.find_child_by_field(node, "operand")
@@ -896,11 +897,11 @@ class Parser(common_parser.Parser):
     def parenthesized_expression(self, node, statements):
         expr_node = self.find_child_by_field(node, "expression")
         expr = self.expression(expr_node, statements) if expr_node else None
-
+        
         return {
             "parenthesized_expression": expr
         }
-
+    
     #rvalue
     def use_rvalue(self, node, statements):
         lvalue_node = self.find_child_by_field(node, "lvalue")
@@ -923,14 +924,14 @@ class Parser(common_parser.Parser):
                 "count": expr2
             }
         }
-
+   
     def list_rvalue(self, node, statements):
         elements = []
         for child in node.named_children:
             if child.type != ",":
                 elem = self.expression(child, statements)
                 elements.append(elem)
-
+        
         return {
             "list_rvalue": elements
         }
@@ -1011,22 +1012,22 @@ class Parser(common_parser.Parser):
         "copy_expression": self.copy_expression,
         "type_cast_lvalue": self.type_cast_lvalue,
         "parenthesized_expression": self.parenthesized_expression,
-        "expression": self.expression_wrapper,
-        "identifier": self.identifier_expression,
-        "parenthesized_lvalue": self.parenthesized_lvalue_expression,
-        "field_access_expression": self.field_access,
+        "expression": self.expression_wrapper,  
+        "identifier": self.identifier_expression,  
+        "parenthesized_lvalue": self.parenthesized_lvalue_expression,  
+        "field_access_expression": self.field_access, 
         "unary_expression": self.unary_expression,
-        "struct_initialization_expression": self.struct_initialization_expression,
-        "as_expression": self.as_expression,
-        "cast_annotation": self.cast_annotation,
-        "const_expression": self.const_expression,
-        "use_rvalue": self.use_rvalue,
-        "repeat_rvalue": self.repeat_rvalue,
-        "list_rvalue": self.list_rvalue,
-        "length_rvalue": self.length_rvalue,
-        "indexed_rvalue": self.indexed_rvalue,
-        "box_rvalue": self.box_rvalue,
-        "constant_rvalue": self.constant_rvalue,
+        "struct_initialization_expression": self.struct_initialization_expression,  
+        "as_expression": self.as_expression,                 
+        "cast_annotation": self.cast_annotation,             
+        "const_expression": self.const_expression,           
+        "use_rvalue": self.use_rvalue,              
+        "repeat_rvalue": self.repeat_rvalue,        
+        "list_rvalue": self.list_rvalue,            
+        "length_rvalue": self.length_rvalue,        
+        "indexed_rvalue": self.indexed_rvalue,      
+        "box_rvalue": self.box_rvalue,               
+        "constant_rvalue": self.constant_rvalue,     
         "complex_value" : self.complex_value,
         "tuple_expression" : self.tuple_expression,
         }
@@ -1046,12 +1047,12 @@ class Parser(common_parser.Parser):
             "assignment_statement": self.assignment_statement,
             "return_statement": self.return_statement,
             "basic_block": self.basic_block,
-            "drop_statement": self.drop_statement,
-            "scope": self.scope,
-            "debug_statement": self.debug_statement,
-            "assert_statement": self.assert_statement,
-            "unreach_statement": self.unreach_statement,
-            "resume_statement": self.resume_statement,
+            "drop_statement": self.drop_statement,         
+            "scope": self.scope,                            
+            "debug_statement": self.debug_statement,        
+            "assert_statement": self.assert_statement,      
+            "unreach_statement": self.unreach_statement,    
+            "resume_statement": self.resume_statement,      
         }
 
         return STATEMENT_HANDLER_MAP.get(node.type, None)
@@ -1105,7 +1106,7 @@ class Parser(common_parser.Parser):
         else:
             print(f"[ERROR]: Unprocessed constant type: {node.type}")
             return "unknown"
-
+    
     def has_child_with_field(self, node, field_name):
         for child in node.named_children:
             if getattr(child, 'field_name', None) == field_name:
