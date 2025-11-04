@@ -29,9 +29,7 @@ class MethodTaintFrame:
         self.callee_return = None
         self.current_call_site = None
 
-@dataclasses.dataclass
-class StmtTaintStatus:
-    def __init__(self, stmt_id):
+@dataclasses.dataclass    def __init__(self, stmt_id):
         self.stmt_id: int = stmt_id
         # {symbol_id: tag_bv}
         self.in_taint: dict = {}
@@ -40,9 +38,11 @@ class StmtTaintStatus:
     def set_out_taint_tag(self, symbol_id, tag):
         if tag != config.NO_TAINT:
             self.out_taint[symbol_id] = tag
-    
+
     def get_in_taint_tag(self, symbol_id):
         return self.in_taint.get(symbol_id, config.NO_TAINT)
+
+class StmtTaintStatus:
 
 class TaintEnv:
     def __init__(self):

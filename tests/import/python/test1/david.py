@@ -1,10 +1,12 @@
 import toolbox
 
 from toolbox import (
-    tools,
+
     tool1,
     knife
 )
+
+from toolbox import tools
 
 def nnn():
     e = 1

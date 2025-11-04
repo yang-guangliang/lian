@@ -3698,7 +3698,7 @@ class StmtStates:
                         else:
                             step_value = step_state.value
 
-                        if start_value.isdigit() and (isinstance(end_value, int) or end_value.isdigit()) and (isinstance(step_value, int) or step_value.isdigit()):
+                        if isinstance(start_value, int) or start_value.isdigit() and (isinstance(end_value, int) or end_value.isdigit()) and (isinstance(step_value, int) or step_value.isdigit()):
                             start_value = int(start_value)
                             end_value = int(end_value)
                             step_value = int(step_value)

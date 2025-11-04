@@ -385,8 +385,8 @@ class UnitGIRLoader(UnitLevelLoader):
         self.item_id_to_bundle_id[unit_id] = -1
         self.active_bundle_length += len(flattened_item)
 
-        # if self.active_bundle_length > config.MAX_ROWS:
-        self.export()
+        if self.active_bundle_length > config.MAX_ROWS:
+            self.export()
 
         return data_model
 

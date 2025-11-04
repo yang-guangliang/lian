@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import dataclasses
-from taint import (util, config1 as config)
+import util, config1 as config
 
 class MethodTaintFrame:
     def __init__(self, method_id, frame_stack, env):
