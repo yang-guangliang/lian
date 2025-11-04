@@ -110,6 +110,11 @@ class Resolver:
             #     for each_import in import_info:
             #         if self.loader.is_class_decl(each_import.symbol_id):
             #             result.append(each_import.symbol_id)
+            import_node = self.loader.get_import_node_with_name(unit_id, class_name)
+            if import_node.symbol_id > 0 and import_node.symbol_type != LIAN_SYMBOL_KIND.UNKNOWN_KIND:
+                imported_unit_id = import_node.unit_id
+                if imported_unit_id != -1 and imported_unit_id != unit_id:
+                    result.append(import_node.symbol_id)
 
         return result
 
