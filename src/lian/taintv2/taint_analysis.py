@@ -160,7 +160,7 @@ class TaintAnalysis:
             for state in method_symbol.states:
                 # 检查函数名是否符合规则
                 if self.check_method_name(rule.name, state, space):
-                    return True
+                    return self.check_tag(rule.target, used_symbols, space, self.taint_manager)
                     # 检查参数是否携带tag
 
         return False
@@ -186,6 +186,47 @@ class TaintAnalysis:
 
         return apply_flag
 
+    def check_tag(self, rule_tag, used_symbols, space, taint_state_manager):
+        # 暂时检测taint_env中的tag,且只考虑positional_args
+        if len(rule_tag) == 0:
+            return False
+        for target_arg in rule_tag:
+
+            arg_index = int(target_arg[-1])
+            if arg_index + 1 >= len(used_symbols):
+                continue
+            arg_symbol = space[used_symbols[arg_index + 1]]
+            arg_states = arg_symbol.states
+
+            for state_index in arg_states:
+                return self.check_state_tag(state_index, space, taint_state_manager)
+        return False
+
+    def check_state_tag(self, state_index, space, taint_state_manager):
+        if space[state_index].symbol_or_state == 0:
+            return False
+        state_id = space[state_index].state_id
+        access_path_tag = config.NO_TAINT
+        # if space[state_index].access_path:
+        #     access_path = self.access_path_formatter(space[state_index].access_path)
+        #     access_path_tag = taint_state_manager.get_access_path_tag_in_sink(access_path)
+
+        tag = self.taint_manager.get_state_tag(state_id)
+        if tag != config.NO_TAINT :
+            # 报告sink
+            print(space[state_index])
+            print(f"sink in {space[state_index].stmt_id}, tag: {tag}")
+            return True
+        # if access_path_tag != config.NO_TAINT:
+        #     # 报告sink
+        #     print(f"access_path sink in {space[state_index].stmt_id}, tag: {access_path_tag}")
+        #     return True
+        print(space[state_index].fields)
+        for value in space[state_index].fields.values():
+            for field_state_index in value:
+                return self.check_state_tag(field_state_index, space, taint_state_manager)
+        return False
+
     def find_flows(self, sfg, ct, sources, sinks):
         # 找到所有的taint flow
         # 这里需要应用图遍历算法对taint进行传播
@@ -193,11 +234,11 @@ class TaintAnalysis:
         flow_list = []
         for source in sources:
             for sink in sinks:
-                print(666666666666666)
-                print(self.find_path(sfg, source, sink))
+                flow_list.append(self.find_path(sfg, source, sink))
                 # if self.find_method_parent_by_id(sfg, source, sink):
                 #     print(self.find_method_parent_by_id(sfg, source, sink))
         return flow_list
+
     def find_path(self, sfg, source, sink):
         U = sfg.to_undirected()  # 1. 无向化
         paths = nx.all_simple_paths(U, source, sink)  # 2. 枚举简单路径
@@ -228,18 +269,11 @@ class TaintAnalysis:
 
 
         lca = None
-        print(path_u)
-        print(path_v)
         for p, q in zip(reversed(path_u), reversed(path_v)):
             if p == q:
                 lca = p
             else:
                 break
-        print(node1)
-        print(node2)
-        print(lca)
-        print(nx.shortest_path(reversed_tree, lca, node1))
-        print(nx.shortest_path(reversed_tree, lca, node2))
 
         return lca
 
