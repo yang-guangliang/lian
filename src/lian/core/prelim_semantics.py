@@ -309,7 +309,7 @@ class PrelimSemanticAnalysis:
             if each_parent_stmt_id in frame.stmt_id_to_status:
                 status.in_symbol_bits |= frame.stmt_id_to_status[each_parent_stmt_id].out_symbol_bits
 
-        if self.analysis_phase_id in [ANALYSIS_PHASE_ID.PRELIM_SEMANTICS, ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS]:
+        if self.analysis_phase_id in [ANALYSIS_PHASE_ID.PRELIM_SEMANTICS]:
             if frame.stmt_counters[stmt_id] != config.FIRST_ROUND and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
@@ -329,11 +329,19 @@ class PrelimSemanticAnalysis:
                 edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED
 
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
-            frame.state_flow_graph.add_edge(
-                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id, name=stmt.operation),
-                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id, name=defined_symbol.name),
-                SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
-            )
+            if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+                frame.state_flow_graph.add_edge(
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=stmt.operation, context_id=frame.call_stmt_id),
+                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id,
+                            node_id=key.symbol_id, name=defined_symbol.name, context_id=frame.call_stmt_id),
+                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
+                )
+            else:
+                frame.state_flow_graph.add_edge(
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id, name=stmt.operation),
+                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id, name=defined_symbol.name),
+                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
+                )
 
         status.out_symbol_bits = current_bits
 
@@ -365,11 +373,20 @@ class PrelimSemanticAnalysis:
             key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id)
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
             frame.symbol_graph.add_edge(stmt_id, key, SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED)
-            frame.state_flow_graph.add_edge(
-                SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
-                SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id, name=defined_symbol.name),
-                SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
-            )
+            if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+                frame.state_flow_graph.add_edge(
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
+                            name=frame.stmt_id_to_stmt[stmt_id].operation, context_id=frame.call_stmt_id),
+                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id,
+                            node_id=key.symbol_id, name=defined_symbol.name, context_id=frame.call_stmt_id),
+                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
+                )
+            else:
+                frame.state_flow_graph.add_edge(
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id = stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
+                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id, node_id=key.symbol_id, name=defined_symbol.name),
+                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
+                )
         status.out_symbol_bits = current_bits
         # print("rerun_new_out_bits")
         # print(frame.symbol_bit_vector_manager.explain(current_bits))
@@ -423,11 +440,20 @@ class PrelimSemanticAnalysis:
         for pos, used_symbol_index in enumerate(all_used_symbols):
             used_symbol = frame.symbol_state_space[used_symbol_index]
             if isinstance(used_symbol, State):
-                frame.state_flow_graph.add_edge(
-                    SFGNode(node_type=SFG_NODE_KIND.STATE, index=used_symbol_index, def_stmt_id=used_symbol.stmt_id, node_id=used_symbol.state_id),
-                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
-                    SFGEdge(edge_type=SFG_EDGE_KIND.STATE_IS_USED, stmt_id=stmt_id, pos=pos)
-                )
+                if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+                    frame.state_flow_graph.add_edge(
+                        SFGNode(node_type=SFG_NODE_KIND.STATE, index=used_symbol_index, def_stmt_id=used_symbol.stmt_id,
+                                node_id=used_symbol.state_id),
+                        SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
+                                name=frame.stmt_id_to_stmt[stmt_id].operation, context_id=frame.call_stmt_id),
+                        SFGEdge(edge_type=SFG_EDGE_KIND.STATE_IS_USED, stmt_id=stmt_id, pos=pos)
+                    )
+                else:
+                    frame.state_flow_graph.add_edge(
+                        SFGNode(node_type=SFG_NODE_KIND.STATE, index=used_symbol_index, def_stmt_id=used_symbol.stmt_id, node_id=used_symbol.state_id),
+                        SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
+                        SFGEdge(edge_type=SFG_EDGE_KIND.STATE_IS_USED, stmt_id=stmt_id, pos=pos)
+                    )
                 continue
             elif not isinstance(used_symbol, Symbol):
                 continue
@@ -439,11 +465,20 @@ class PrelimSemanticAnalysis:
                     edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.EXPLICITLY_USED
             for tmp_key in reachable_defs:
                 frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
-                frame.state_flow_graph.add_edge(
-                    SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id, node_id=tmp_key.symbol_id, name=used_symbol.name),
-                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
-                    SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id, pos=pos)
-                )
+                if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+                    frame.state_flow_graph.add_edge(
+                        SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id,
+                                node_id=tmp_key.symbol_id, name=used_symbol.name, context_id=frame.call_stmt_id),
+                        SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
+                                name=frame.stmt_id_to_stmt[stmt_id].operation, context_id=frame.call_stmt_id),
+                        SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id, pos=pos)
+                    )
+                else:
+                    frame.state_flow_graph.add_edge(
+                        SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id, node_id=tmp_key.symbol_id, name=used_symbol.name),
+                        SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=frame.stmt_id_to_stmt[stmt_id].operation),
+                        SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id, pos=pos)
+                    )
 
     def get_used_symbol_indexes(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
         """
@@ -778,25 +813,47 @@ class PrelimSemanticAnalysis:
                 state = frame.symbol_state_space[each_state_index]
                 if not isinstance(state, State):
                     continue
-                frame.state_flow_graph.add_edge(
-                    SFGNode(
-                        node_type=SFG_NODE_KIND.SYMBOL,
-                        def_stmt_id=defined_symbol.stmt_id,
-                        index=each_symbol_index,
-                        node_id=defined_symbol.symbol_id,
-                        name=defined_symbol.name
-                    ),
-                    SFGNode(
-                        node_type=SFG_NODE_KIND.STATE,
-                        def_stmt_id=state.stmt_id,
-                        index=each_state_index,
-                        node_id=state.state_id
-                    ),
-                    SFGEdge(
-                        edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
-                        stmt_id=stmt_id
+                if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+                    frame.state_flow_graph.add_edge(
+                        SFGNode(
+                            node_type=SFG_NODE_KIND.SYMBOL,
+                            def_stmt_id=defined_symbol.stmt_id,
+                            index=each_symbol_index,
+                            node_id=defined_symbol.symbol_id,
+                            name=defined_symbol.name,
+                            context_id=frame.call_stmt_id,
+                        ),
+                        SFGNode(
+                            node_type=SFG_NODE_KIND.STATE,
+                            def_stmt_id=state.stmt_id,
+                            index=each_state_index,
+                            node_id=state.state_id,
+                        ),
+                        SFGEdge(
+                            edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
+                            stmt_id=stmt_id
+                        )
                     )
-                )
+                else:
+                    frame.state_flow_graph.add_edge(
+                        SFGNode(
+                            node_type=SFG_NODE_KIND.SYMBOL,
+                            def_stmt_id=defined_symbol.stmt_id,
+                            index=each_symbol_index,
+                            node_id=defined_symbol.symbol_id,
+                            name=defined_symbol.name
+                        ),
+                        SFGNode(
+                            node_type=SFG_NODE_KIND.STATE,
+                            def_stmt_id=state.stmt_id,
+                            index=each_state_index,
+                            node_id=state.state_id
+                        ),
+                        SFGEdge(
+                            edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
+                            stmt_id=stmt_id
+                        )
+                    )
 
     def compute_stmt_states(self, stmt_id, stmt, frame: ComputeFrame):
         """

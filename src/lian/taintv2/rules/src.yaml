@@ -1,0 +1,14 @@
+rule_kind: source
+lang: python
+rules:
+  # - operation: call_stmt
+  #   name: android.telephony.TelephonyManager.getImei.
+  #   tag:
+  #     - [\%return,\%arg0,\%arg1]
+
+  # - operation: field_read
+  #   receiver: a
+  #   tag:  [\%receiver, \%target]
+  - operation: call_stmt
+    name: source
+    tag: [\%target]

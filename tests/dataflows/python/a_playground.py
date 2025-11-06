@@ -63,11 +63,42 @@
 #
 # B.f()
 
-def a():
-    w = source()
-    b(w)
+def f1():
+    a = 1
+    f2()
 
-def b(z):
-    sink(z)
+def f2():
+    a = 1
+    f3()
 
-a()
+def f3():
+    a = 1
+    f4()
+    f5()
+
+def f4():
+    a = 1
+    f41()
+    f42()
+
+def f41():
+    a = 1
+    f411()
+
+def f42():
+    a = 1
+    f421()
+
+def f411():
+    a = 1
+
+def f421():
+    a = 1
+def f5():
+    a = 1
+    f6()
+def f6():
+    a = 1
+
+
+f1()

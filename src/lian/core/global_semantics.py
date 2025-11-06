@@ -5,6 +5,7 @@ import pprint
 import copy
 from os.path import commonprefix
 
+import networkx as nx
 from lian.core.prelim_semantics import PrelimSemanticAnalysis
 from lian.util import util
 from lian.config import config
@@ -85,9 +86,11 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         #         node.index += baseline_index
         for stmt_status in status.values():
             for each_id, value in enumerate(stmt_status.used_symbols):
-                stmt_status.used_symbols[each_id] = value + baseline_index
+                if value != -1:
+                    stmt_status.used_symbols[each_id] = value + baseline_index
             for each_id, value in enumerate(stmt_status.implicitly_used_symbols):
-                stmt_status.implicitly_used_states[each_id] = value + baseline_index
+                if value != -1:
+                    stmt_status.implicitly_used_states[each_id] = value + baseline_index
             for each_id, value in enumerate(stmt_status.implicitly_defined_symbols):
                 stmt_status.implicitly_defined_symbols[each_id] = value + baseline_index
             stmt_status.defined_symbol += baseline_index
@@ -111,8 +114,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         new_set.add(index + baseline_index)
                     each_space.fields[each_field] = new_set
             each_space.call_site = frame.path[-3:]
-        a = 1
-        # print(space)
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
         """
@@ -467,6 +468,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 self.convert_path_to_tree(path, commonlength - 1, method_id_to_max_node_id, current_tree)
             self.add_unknown_callee_edge(current_tree)
             # current_tree.show()
+            # lca = self.find_method_parent_by_id(current_tree.graph, "0#56", "0#52")
             self.loader.save_global_call_tree_by_entry_point(entry_point, current_tree.graph)
 
     def add_unknown_callee_edge(self, current_tree):
@@ -515,7 +517,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 current_tree.add_edge(caller_node_id, callee_node_id, str(call_stmt_id))
             index += 2
 
-    def find_method_parent(self, method1, method2, method1_class = None, method2_class = None):
+    def find_method_parent_by_name(self, method1, method2, method1_class = None, method2_class = None):
         method1_ids = self.convert_method_name_to_method_ids(method1)
         method2_ids = self.convert_method_name_to_method_ids(method2)
 
@@ -531,6 +533,48 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 method2_ids = method2_ids & methods_in_class
 
 
+    def find_method_parent_by_id(self, call_tree, method1_id, method2_id):
+
+        if method1_id not in call_tree or method2_id not in call_tree:
+            return None
+
+        method1_ancestors = {str(method1_id)}
+        method2_ancestors = {str(method2_id)}
+
+        reversed_tree = call_tree.reverse()
+
+        roots = [n for n, d in reversed_tree.out_degree() if d == 0]
+
+        def root_path(node):
+            if node in roots:  # 自己就是根
+                return [node]
+            # 任取一条到根的最短路径即可
+            for r in roots:
+                if nx.has_path(reversed_tree, node, r):
+                    return nx.shortest_path(reversed_tree, node, r)
+            return [node]  # 孤立节点
+
+        path_u = root_path(method1_id)
+        path_v = root_path(method2_id)
+
+        # path_u = list(nx.all_simple_paths(reversed_tree, method1_id, [n for n, d in reversed_tree.degree() if d == 0]))[0]
+        # path_v = list(nx.all_simple_paths(reversed_tree, method2_id, [n for n, d in reversed_tree.degree() if d == 0]))[0]
+
+        lca = None
+
+        for p, q in zip(reversed(path_u), reversed(path_v)):
+            if p == q:
+                lca = p
+            else:
+                break
+
+        return lca
+
+
+    def is_specified_method(self, method_id, node):
+        if method_id == node.split("#")[-1]:
+            return True
+        return False
 
     def run(self):
         """
@@ -556,10 +600,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
-            # util.write_graph_to_dot(
-            #     sfg.graph,
-            #     f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point + 3}.dot"
-            # )
+            util.write_graph_to_dot(
+                sfg.graph,
+                f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point}3.dot"
+            )
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
