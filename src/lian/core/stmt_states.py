@@ -266,6 +266,14 @@ class StmtStates:
             )
         return None
 
+    def make_state_sfg_node_with_no_context(self, node_index):
+        node = self.frame.symbol_state_space[node_index]
+        if isinstance(node, State):
+            return SFGNode(
+                node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
+            )
+        return None
+
     def make_stmt_sfg_edge(self, stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_FLOW, round=-1, name=""):
         return SFGEdge(edge_type=edge_type, stmt_id=stmt_id, round=round, name=name)
 
@@ -1256,13 +1264,19 @@ class StmtStates:
 
             # 合并caller中同id的states
             states_with_diff_ids = set()
-            for state_id, states in state_id_to_states.items():
-                if len(states) == 1:
-                    new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, next(iter(states)))
-                    states_with_diff_ids.add(new_state_index)
-                else:
-                    states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, status))
+            # 如果是第三阶段，吧states加到states_with_diff_ids，不允许下面的for
+            if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+                for state_id, states in state_id_to_states.items():
+                    if len(states) == 1:
+                        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, next(iter(states)))
+                        states_with_diff_ids.add(new_state_index)
+                    else:
 
+                        states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, status))
+            else:
+                for state_id, states in state_id_to_states.items():
+                    if len(states) == 1:
+                        states_with_diff_ids.update(states)
             if tangping_flag:
                 for state_index in states_with_diff_ids:
                     state: State = self.frame.symbol_state_space[state_index]
@@ -3423,6 +3437,11 @@ class StmtStates:
                     )
                     each_source_state.access_path = access_path
                     self.update_access_path_state_id(each_source_state_index)
+                    self.sfg.add_edge(
+                        self.make_state_sfg_node_with_no_context(new_receiver_state_index),
+                        self.make_state_sfg_node_with_no_context(each_source_state_index),
+                        self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION, name=stmt.operation)
+                    )
 
                 new_receiver_state.fields[each_field_state.value] = source_states
                 defined_symbol_states.add(new_receiver_state_index)
