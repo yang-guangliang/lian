@@ -42,7 +42,11 @@ from lian.common_structs import (
     MethodCallArguments,
     InterruptionData,
     APath,
-    MethodDefUseSummary
+    MethodDefUseSummary,
+    SFGNode,
+    SFGEdge,
+    SFG_NODE_KIND,
+    SFG_EDGE_KIND,
 )
 
 class GlobalStmtStates(StmtStates):
@@ -282,6 +286,7 @@ class GlobalStmtStates(StmtStates):
                     # self.update_access_path_state_id(parameter_state_index)
                     parameter_name_symbol.states.add(parameter_state_index)
                     status.defined_states.add(parameter_state_index)
+                    self.add_arg_to_param_edge(each_pair, status, parameter_name_symbol)
             if len(status.used_symbols) > 0:
                 default_value_index = status.used_symbols[0]
                 default_value = self.frame.symbol_state_space[default_value_index]
@@ -298,3 +303,34 @@ class GlobalStmtStates(StmtStates):
                 else:
                     parameter_name_symbol.states.add(default_value_index)
         return P2ResultFlag()
+
+    def is_used_in_call_stmt(self, node):
+        children = list(self.sfg.graph.successors(node))
+        for child in children:
+            if child.node_type == SFG_NODE_KIND.STMT and self.loader.get_stmt_gir(child.def_stmt_id).operation == "call_stmt":
+                return True
+        return False
+    def add_arg_to_param_edge(self, each_pair, status, parameter_name_symbol):
+        for node in self.sfg.graph.nodes:
+            if self.node_is_state(node) and node.index == each_pair.arg_index_in_space:
+                parents = list(self.sfg.graph.predecessors(node))
+                for parent in parents:
+                    if not self.is_used_in_call_stmt(parent):
+                        continue
+                    self.sfg.add_edge(
+                        parent,
+                        SFGNode(
+                            node_type=SFG_NODE_KIND.SYMBOL,
+                            def_stmt_id=parameter_name_symbol.stmt_id,
+                            index=status.defined_symbol,
+                            node_id=parameter_name_symbol.symbol_id,
+                            name=parameter_name_symbol.name,
+                            context_id=self.frame.call_stmt_id,
+                        ),
+
+                        SFGEdge(
+                            edge_type=SFG_EDGE_KIND.SYMBOL_FLOW,
+                            stmt_id=parameter_name_symbol.stmt_id
+                        )
+                    )
+                    break

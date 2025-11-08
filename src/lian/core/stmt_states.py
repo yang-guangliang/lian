@@ -305,6 +305,11 @@ class StmtStates:
             return True
         return False
 
+    def node_is_state(self, node):
+        if isinstance(node, SFGNode) and node.node_type == SFG_NODE_KIND.STATE:
+            return True
+        return False
+
     def is_first_round(self, stmt_id):
         return self.frame.stmt_counters[stmt_id] == 0
 

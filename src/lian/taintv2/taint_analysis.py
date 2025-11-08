@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import os,sys
+from collections import deque
 from types import SimpleNamespace
 import config1 as config
 import networkx as nx
@@ -29,7 +30,10 @@ from constants import (
     TAG_KEYWORD
 )
 
-from taint_structs import TaintEnv
+from taint_structs import (
+    TaintEnv,
+    Flow,
+)
 from rule_manager import RuleManager
 
 class TaintAnalysis:
@@ -227,6 +231,11 @@ class TaintAnalysis:
                 return self.check_state_tag(field_state_index, space, taint_state_manager)
         return False
 
+    def is_specified_method(self, method_id, node):
+        if method_id == node.split("#")[-1]:
+            return True
+        return False
+
     def find_flows(self, sfg, ct, sources, sinks):
         # 找到所有的taint flow
         # 这里需要应用图遍历算法对taint进行传播
@@ -234,18 +243,90 @@ class TaintAnalysis:
         flow_list = []
         for source in sources:
             for sink in sinks:
-                flow_list.append(self.find_path(sfg, source, sink))
-                # if self.find_method_parent_by_id(sfg, source, sink):
-                #     print(self.find_method_parent_by_id(sfg, source, sink))
+                source_method_id = self.loader.convert_stmt_id_to_method_id(source.def_stmt_id)
+                sink_method_id = self.loader.convert_stmt_id_to_method_id(sink.def_stmt_id)
+                source_method_nodes = []
+                sink_method_nodes = []
+                for node in ct.nodes:
+                    if self.is_specified_method(str(source_method_id), node):
+                        source_method_nodes.append(node)
+                    if self.is_specified_method(str(sink_method_id), node):
+                        sink_method_nodes.append(node)
+                # 这里只需要method_id
+                parent_methods = self.find_method_parent_by_nodes(ct, source_method_nodes, sink_method_nodes)
+                flow_list.extend(self.find_source_to_sink_path(sfg, source, sink, parent_methods))
+
         return flow_list
 
-    def find_path(self, sfg, source, sink):
-        U = sfg.to_undirected()  # 1. 无向化
-        paths = nx.all_simple_paths(U, source, sink)  # 2. 枚举简单路径
-        return max(paths, key=len, default=[])
+    def find_source_to_sink_path(self, sfg, source, sink, parents):
 
+        def nearest_attr_ancestor(G, node, val):
+            """
+            返回 (祖先节点, 最短距离) 其中祖先的 G.nodes[ancestor][attr] == val；
+            若无满足条件的祖先，返回 (None, -1)。
+            """
+            if node not in G:
+                return None, -1
 
-    def find_method_parent_by_id(self, sfg, node1, node2):
+            queue = deque([(node, 0)])  # (当前节点, 距离)
+            seen = {node}
+
+            while queue:
+                cur, dist = queue.popleft()
+
+                # 看父节点
+                for p in G.predecessors(cur):
+                    if p in seen:
+                        continue
+                    seen.add(p)
+
+                    # 满足属性即返回
+                    method_id = self.loader.convert_stmt_id_to_method_id(p.def_stmt_id)
+                    if str(method_id) == val:
+                        return p, dist + 1
+
+                    queue.append((p, dist + 1))
+
+            return None, -1
+
+        flow_list = []
+        for parent in parents:
+            sfgnode, dist = nearest_attr_ancestor(sfg, source, parent)
+            if not sfgnode:
+                continue
+            try:
+                parent_to_source = nx.shortest_path(sfg, sfgnode, source)
+            except nx.NetworkXNoPath:
+                parent_to_source = None
+            try:
+                parent_to_sink = nx.shortest_path(sfg, sfgnode, sink)
+            except nx.NetworkXNoPath:
+                parent_to_sink = None
+            if not parent_to_source or not parent_to_sink:
+                continue
+            new_flow = Flow()
+            new_flow.parent_to_source = parent_to_source
+            new_flow.parent_to_sink = parent_to_sink
+            flow_list.append(new_flow)
+            print(parent_to_source)
+            print(parent_to_sink)
+        return flow_list
+
+    def find_method_parent_by_nodes(self, ct, source_nodes, sink_nodes):
+        if not sink_nodes or len(sink_nodes) == 0:
+            return []
+        if not source_nodes or len(source_nodes) == 0:
+            return []
+        parents = []
+        for source_node in source_nodes:
+            for sink_node in sink_nodes:
+                parent = self.find_method_parent_by_node(ct, source_node, sink_node)
+                if not parent:
+                    continue
+                parents.append(parent.split("#")[-1])
+        return parents
+
+    def find_method_parent_by_node(self, sfg, node1, node2):
 
         if node1 not in sfg or node2 not in sfg:
             return None
@@ -291,7 +372,7 @@ class TaintAnalysis:
             sources = self.find_sources(sfg, call_tree)
             sinks = self.find_sinks(sfg, call_tree)
             flows = self.find_flows(sfg, call_tree, sources, sinks)
-            print(flows)
+            # print(flows)
 
 def main():
     TaintAnalysis().run()

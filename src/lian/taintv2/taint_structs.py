@@ -28,7 +28,10 @@ class MethodTaintFrame:
         self.return_tag = None
         self.callee_return = None
         self.current_call_site = None
-
+@dataclasses.dataclass
+class Flow:
+    parent_to_source:list = dataclasses.field(default_factory=list)
+    parent_to_sink:list = dataclasses.field(default_factory=list)
 @dataclasses.dataclass
 class StmtTaintStatus:
     def __init__(self, stmt_id):
