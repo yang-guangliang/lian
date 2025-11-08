@@ -327,7 +327,6 @@ class GlobalStmtStates(StmtStates):
                             name=parameter_name_symbol.name,
                             context_id=self.frame.call_stmt_id,
                         ),
-
                         SFGEdge(
                             edge_type=SFG_EDGE_KIND.SYMBOL_FLOW,
                             stmt_id=parameter_name_symbol.stmt_id
