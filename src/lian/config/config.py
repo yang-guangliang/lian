@@ -33,6 +33,7 @@ SEMANTIC_DIR_P1                             = "semantic_p1"
 SEMANTIC_DIR_P2                             = "semantic_p2"
 SEMANTIC_DIR_P3                             = "semantic_p3"
 STATE_FLOW_GRAPH_DIR                        = "state_flow_graph"
+STATE_FLOW_GRAPH_P3_DIR                     = "state_flow_graph_p3"
 CALL_TREE_DIR                               = "call_tree"
 
 
