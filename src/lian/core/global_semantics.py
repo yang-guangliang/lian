@@ -602,7 +602,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             util.write_graph_to_dot(
                 sfg.graph,
-                f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point}3.dot"
+                f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point}p3.dot"
             )
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
         # gl: 为啥是0
