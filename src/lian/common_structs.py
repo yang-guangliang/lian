@@ -1984,12 +1984,12 @@ class APath:
     def __post_init__(self):
         # 实例化后验证类型
         if not isinstance(self.path,tuple):
-            util.warn("赋值给APath的值不是tuple类型")
+            util.warn("cannot assign a non-tuple value to APath")
 
     def to_tuple(self):
         return tuple(self.path)
 
-    def to_CallSite_list(self):
+    def to_callsite_list(self):
         callsite_list = []
         if len(self.path) == 1:
             return [CallSite(self.path[0],-1,-1)]

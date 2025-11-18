@@ -1,4 +1,4 @@
-def main():
+def main(e=1,f=2):
     a = A()
     b = a.g
     foo(a)

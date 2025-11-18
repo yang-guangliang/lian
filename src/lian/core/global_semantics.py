@@ -456,16 +456,16 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             method_id_to_max_node_id = {}
             # 同一entry_point的callpaths从长到短排序，取最大前缀长度
             call_paths = sorted(call_paths, key=len, reverse=True)
-            commonlength = len(commonprefix(call_paths))
-            if commonlength % 2 == 0 and commonlength != 0:
-                commonlength -= 1
+            common_length = len(commonprefix(call_paths))
+            if common_length % 2 == 0 and common_length != 0:
+                common_length -= 1
             # 先建前缀
-            self.convert_prefix_to_tree(call_paths[0], commonlength, current_tree)
+            self.convert_prefix_to_tree(call_paths[0], common_length, current_tree)
             # 再建后续
             for path in call_paths:
-                if len(path) <= commonlength:
+                if len(path) <= common_length:
                     continue
-                self.convert_path_to_tree(path, commonlength - 1, method_id_to_max_node_id, current_tree)
+                self.convert_path_to_tree(path, common_length - 1, method_id_to_max_node_id, current_tree)
             self.add_unknown_callee_edge(current_tree)
             # current_tree.show()
             # lca = self.find_method_parent_by_id(current_tree.graph, "0#56", "0#52")
@@ -484,9 +484,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             for unknown_callee in self.caller_unknown_callee_edge[node_name]:
                 current_tree.add_edge(node, unknown_callee[1], unknown_callee[0])
 
-    def convert_prefix_to_tree(self, path, commonlength, current_tree):
+    def convert_prefix_to_tree(self, path, common_length, current_tree):
         index = 0
-        while index <= commonlength-3:
+        while index <= common_length-3:
             if len(path) <= 1:
                 break
             caller_id = path[index]
@@ -601,8 +601,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             util.write_graph_to_dot(
-                sfg.graph,
-                f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}p3.dot"
+                sfg.graph, f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}.dot"
             )
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
         # gl: 为啥是0
@@ -612,8 +611,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
 
         self.loader.export()
-        all_APaths = self.loader.get_global_call_path()
-        # print("所有的APaths: ",all_APaths)
+        all_paths = self.loader.get_global_call_path()
+        # print("所有的APaths: ",all_paths)
 
     def is_decorated_by_app(self, method_id):
         source_code = self.loader.get_stmt_parent_method_source_code(method_id)

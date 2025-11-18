@@ -154,12 +154,16 @@ class Lian:
     def semantic_analysis(self):
         # if self.options.debug:
         #     util.debug("\n\t###########  # Semantic Analysis #  ###########")
-
         BasicSemanticAnalysis(self).run()
         summary_generation = PrelimSemanticAnalysis(self).run()
         #print(summary_generation.analyzed_method_list)
         GlobalSemanticAnalysis(self, summary_generation.analyzed_method_list).run()
         self.loader.export()
+
+        # self.loader.clone_method_in_strict_mode(method_id=20, new_name="new_main")
+        # self.loader.export()
+        #print(self.loader.get)
+
         return self
 
     def security_analysis(self):

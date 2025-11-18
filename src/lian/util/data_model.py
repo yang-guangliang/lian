@@ -261,6 +261,18 @@ class DataModel:
             block.reset_index()
         return block
 
+    def read_block_with_block_stmts(self, block_id, reset_index = True):
+        block_start_end = self.search_block_id(block_id)
+        if block_start_end is None:
+            return []
+        if len(block_start_end) < 2:
+            return []
+
+        block = self.slice(block_start_end[0], block_start_end[1] + 1)
+        if reset_index:
+            block.reset_index()
+        return block
+
     def boundary_of_multi_blocks(self, multi_block_ids):
         ids = [-1]
         for block_id in multi_block_ids:

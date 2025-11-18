@@ -6,6 +6,7 @@
         "./src"
     ],
     "cSpell.words": [
+        "callsite",
         "lian"
     ],
     "python.analysis.typeCheckingMode": "standard"

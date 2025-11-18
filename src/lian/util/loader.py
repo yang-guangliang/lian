@@ -18,7 +18,8 @@ from lian.config import config
 from lian.config.constants import (
     IMPORT_GRAPH_EDGE_KIND,
     SYMBOL_OR_STATE,
-    LIAN_SYMBOL_KIND
+    LIAN_SYMBOL_KIND,
+    GIR_COLUMNS_TO_BE_ADDED
 )
 from lian.common_structs import (
     BasicGraph,
@@ -1285,10 +1286,10 @@ class CallGraphLoader:
 class CallPathLoader:
     def __init__(self, file_path):
         self.path = file_path
-        self.all_APaths = []
+        self.all_paths = []
 
-    def save(self, all_APaths: set):
-        self.all_APaths = all_APaths
+    def save(self, all_paths: set):
+        self.all_paths = all_paths
 
     def get(self):
         # 防止该文件不存在第三阶段call_path从而读取报错
@@ -1296,12 +1297,12 @@ class CallPathLoader:
             return {}
         dm = DataModel().load(self.path)
 
-        return self.all_APaths
+        return self.all_paths
 
     def export(self):
-        if len(self.all_APaths) == 0:
+        if len(self.all_paths) == 0:
             return
-        all_pathTuples = [(index, ap.path) for index, ap in enumerate(self.all_APaths)]
+        all_pathTuples = [(index, ap.path) for index, ap in enumerate(self.all_paths)]
         DataModel(all_pathTuples,columns=schema.call_path_schema).save(self.path)
 
 class UniqueSymbolIDAssignerLoader:
@@ -2202,10 +2203,6 @@ class Loader:
         self.method_header_cache.put(method_id, result)
         return result
 
-    def get_method_body(self, method_id):
-        method_decl_stmt, _ = self.get_method_header(method_id)
-        return self._load_method_body_by_header(method_id, method_decl_stmt)
-
     def _load_method_body_by_header(self, method_id, method_decl_stmt):
         if util.is_empty(method_decl_stmt):
             return None
@@ -2219,35 +2216,29 @@ class Loader:
         self.method_body_cache.put(method_id, method_body)
         return method_body
 
+    def get_method_body(self, method_id):
+        method_decl_stmt, _ = self.get_method_header(method_id)
+        return self._load_method_body_by_header(method_id, method_decl_stmt)
+
     def get_splitted_method_gir(self, method_id):
         method_decl_stmt, method_parameters = self.get_method_header(method_id)
         method_body = self._load_method_body_by_header(method_id, method_decl_stmt)
         return (method_decl_stmt, method_parameters, method_body)
 
     def get_whole_method_gir(self, method_id):
-        stmts = []
-        method_decl_stmt, method_parameters, method_body = self.get_splitted_method_gir(method_id)
-        stmts.append(method_decl_stmt)
-        if util.is_available(method_parameters):
-            for parameter_stmt in method_parameters:
-                stmts.append(parameter_stmt)
-        if util.is_available(method_body):
-            for body_stmt in method_body:
-                stmts.append(body_stmt)
-        return stmts
+        if method_id <= 0:
+            return None
 
-    def clone_method_in_strict_mode(self, method_id, new_name):
-        unit_id = self.convert_method_id_to_unit_id(method_id)
-        method_gir = self.get_whole_method_gir(method_id)
-        if len(method_gir) == 0:
-            return -1
-
-        stmt_ids = [stmt.stmt_id for stmt in method_gir]
-
-        new_method_id = self._clone_method_gir(unit_id, method_id, method_gir, new_name)
-        self.add_method_id_to_unit_id(new_method_id, unit_id)
-        self._clone_method_symbol_state_space_p1(method_id, stmt_ids, new_method_id)
-        return new_method_id
+        unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
+        unit_gir = self._gir_loader.get(unit_id)
+        if util.is_empty(unit_gir):
+            return None
+        method_decl_stmt = unit_gir.query_first(unit_gir.stmt_id.eq(method_id))
+        max_id = unit_gir.boundary_of_multi_blocks([method_decl_stmt.parameters, method_decl_stmt.body])
+        if max_id <= 0:
+            return None
+        method_whole_gir = unit_gir.slice(method_decl_stmt.get_index(), max_id + 1)
+        return method_whole_gir
 
     def _clone_method_gir(self, unit_id, method_id, method_gir, new_name):
         unit_gir = self._gir_loader.get(unit_id)
@@ -2258,29 +2249,11 @@ class Loader:
         new_method_gir = []
         for stmt in method_gir:
             stmt_to_dict =  stmt.copy().to_dict()
-            for column in [
-                "body",
-                "fields",
-                "methods",
-                "nested",
-                "static_init",
-                "init",
-                "parameters",
-                "parameters_end",
-                "parameters_start",
-                "parent_stmt_id",
-                "stmt_id",
-                "body",
-                "then_body",
-                "else_body",
-                "condition_prebody",
-                "update_body",
-                "init_body",
-                "catch_body",
-                "final_body",
-            ]:
+            print("stmt:", stmt_to_dict)
+            for column in GIR_COLUMNS_TO_BE_ADDED:
                 if column in stmt_to_dict:
-                    if isinstance(stmt_to_dict[column], int) and (stmt_to_dict[column] > 0):
+                    if isinstance(stmt_to_dict[column], (int, float)) and (stmt_to_dict[column] > 0):
+                        #print("stmt_to_dict[column]:", stmt_to_dict[column])
                         stmt_to_dict[column] += interval
             new_method_gir.append(stmt_to_dict)
 
@@ -2293,11 +2266,16 @@ class Loader:
 
         return start_stmt_id
 
-    def _clone_method_symbol_state_space_p1(self, method_id, old_stmt_ids, new_method_id):
-        method_space = self.get_symbol_state_space_p1(method_id)
-
+    def clone_method_in_strict_mode(self, method_id, new_name):
+        unit_id = self.convert_method_id_to_unit_id(method_id)
+        method_gir = self.get_whole_method_gir(method_id)
+        if len(method_gir) == 0:
+            return -1
+        #print(method_gir)
+        new_method_id = self._clone_method_gir(unit_id, method_id, method_gir, new_name)
+        self.add_method_id_to_unit_id(new_method_id, unit_id)
+        #self._clone_method_symbol_state_space_p1(method_id, stmt_ids, new_method_id)
         return new_method_id
-
 
     def get_stmt_gir(self, stmt_id):
         if stmt_id <= 0:
@@ -2560,6 +2538,7 @@ class Loader:
 
     def save_stmt_id_to_scope_id(self, stmt_id_to_scope_id_cache):
         return self._stmt_id_to_scope_id_loader.save(stmt_id_to_scope_id_cache)
+
     def _convert_id_to_scope(self, scope_id):
         """返回指定id对应的scope"""
         if scope_id <= 0:
@@ -2572,6 +2551,7 @@ class Loader:
         stmt_scope = scope_data.query_first(scope_data.stmt_id == scope_id)
         self.stmt_scope_cache.put(scope_id, stmt_scope)
         return stmt_scope
+
     def convert_stmt_id_to_scope_id(self, stmt_id):
         scope_id = self._stmt_id_to_scope_id_loader.get(stmt_id)
         if scope_id == -1:
@@ -2887,7 +2867,6 @@ class Loader:
         else:
             method_decl_line_id = int(method_decl_stmt.start_row)
             return unit_source_code[method_decl_line_id]
-
 
     def get_stmt_parent_method_source_code(self, stmt_id):
         # python文件行号从一开始，tree-sitter从0开始

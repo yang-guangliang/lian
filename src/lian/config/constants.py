@@ -431,3 +431,25 @@ SENSITIVE_OPERATIONS = set([
     "field_read",
     "forin_stmt"
 ])
+
+GIR_COLUMNS_TO_BE_ADDED = set([
+    "fields",
+    "methods",
+    "nested",
+    "static_init",
+    "init",
+    "parameters",
+    "parameters_end",
+    "parameters_start",
+    "parent_stmt_id",
+    "stmt_id",
+    "body",
+    "then_body",
+    "else_body",
+    "condition_prebody",
+    "update_body",
+    "init_body",
+    "catch_body",
+    "final_body",
+    "original_stmt"
+])
