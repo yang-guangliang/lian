@@ -348,7 +348,6 @@ class TaintAnalysis:
         path_u = root_path(node1)
         path_v = root_path(node2)
 
-
         lca = None
         for p, q in zip(reversed(path_u), reversed(path_v)):
             if p == q:

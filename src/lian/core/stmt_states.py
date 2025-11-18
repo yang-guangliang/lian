@@ -2067,9 +2067,11 @@ class StmtStates:
                 self.make_symbol_sfg_node(defined_symbol_index),
                 self.make_stmt_sfg_edge(stmt_id, edge_type=SFG_EDGE_KIND.SYMBOL_FLOW, name=stmt.operation)
             )
-
+            source_symbol_id = -1
+            if isinstance(source_symbol, Symbol):
+                source_symbol_id = source_symbol.symbol_id
             new_state = self.create_state_and_add_space(
-                status, stmt_id, source_symbol_id=source_symbol.symbol_id,
+                status, stmt_id, source_symbol_id=source_symbol_id,
                 data_type=str(data_type),
                 state_type=STATE_TYPE_KIND.ANYTHING,
             )
