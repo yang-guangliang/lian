@@ -72,7 +72,7 @@ def appstorage_read_and_write(data: EventData):
     defined_symbol = data.in_data.defined_symbol
 
     if len(positional_args) != 2:
-        return er.is_event_unprocessed()
+        return er.config_event_unprocessed()
     arg0 = list(positional_args[0])
     # arg1 = list(positional_arg[1])
     arg0_state = space[arg0[0].index_in_space]
