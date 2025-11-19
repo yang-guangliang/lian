@@ -357,9 +357,11 @@ class TaintAnalysis:
 
         return lca
 
-    def run(self):
-
-        self.lian = Lian().run()
+    def run(self, lian=None):
+        if lian:
+            self.lian = lian
+        else:
+            self.lian = Lian().run()
         self.loader = self.lian.loader
 
         for method_id in self.loader.get_all_method_ids():

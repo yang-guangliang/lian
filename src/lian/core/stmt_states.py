@@ -315,7 +315,7 @@ class StmtStates:
 
     def create_state_and_add_space(
         self, status: StmtStatus, stmt_id, source_symbol_id=-1, source_state_id=-1, value="", data_type="",
-        state_type=STATE_TYPE_KIND.REGULAR, access_path=[], overwritten_flag=False
+        state_type=STATE_TYPE_KIND.REGULAR, access_path=[], overwritten_flag=False, parent_state=None, parent_state_index = -1
     ):
         """
         创建新状态并加入符号空间：
@@ -343,7 +343,25 @@ class StmtStates:
             item.state_id,
             state_def_node
         )
-
+        if parent_state:
+            self.frame.state_flow_graph.add_edge(
+                SFGNode(
+                    node_type=SFG_NODE_KIND.STATE,
+                    def_stmt_id=parent_state.stmt_id,
+                    index=parent_state_index,
+                    node_id=parent_state.state_id,
+                ),
+                SFGNode(
+                    node_type=SFG_NODE_KIND.STATE,
+                    def_stmt_id=item.stmt_id,
+                    index=index,
+                    node_id=item.state_id,
+                ),
+                SFGEdge(
+                    edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
+                    stmt_id=stmt_id
+                )
+            )
         # if state_def_node not in self.frame.all_state_defs:
         #     self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
         #     self.frame.all_state_defs.add(state_def_node)
