@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import dataclasses
-from taint import (util, config1 as config)
+import util, config1 as config
 
 class MethodTaintFrame:
     def __init__(self, method_id, frame_stack, env):
@@ -29,7 +29,14 @@ class MethodTaintFrame:
         self.callee_return = None
         self.current_call_site = None
 
-@dataclasses.dataclass    def __init__(self, stmt_id):
+@dataclasses.dataclass
+class Flow:
+    parent_to_source:list = dataclasses.field(default_factory=list)
+    parent_to_sink:list = dataclasses.field(default_factory=list)
+    
+@dataclasses.dataclass
+class StmtTaintStatus:
+    def __init__(self, stmt_id):
         self.stmt_id: int = stmt_id
         # {symbol_id: tag_bv}
         self.in_taint: dict = {}
@@ -42,12 +49,10 @@ class MethodTaintFrame:
     def get_in_taint_tag(self, symbol_id):
         return self.in_taint.get(symbol_id, config.NO_TAINT)
 
-class StmtTaintStatus:
-
 class TaintEnv:
     def __init__(self):
-        self.states_to_bv = {} # state_id -> tagbitvector 
-        self.symbols_to_bv = {} # symbol_id -> tagbitvector 
+        self.states_to_bv = {} # state_id -> tagbitvector
+        self.symbols_to_bv = {} # symbol_id -> tagbitvector
         self.bit_vector_manager = TagBitVectorManager()
         self.tag_info_hash_to_data = {}
 
@@ -74,7 +79,7 @@ class TaintEnv:
 
     def get_symbol_tag(self, symbol_id):
         return self.symbols_to_bv.get(symbol_id, 0)
-    
+
     def remove_symbol_tag(self, symbol_id):
         del self.symbols_to_bv[symbol_id]
 
@@ -84,7 +89,7 @@ class TaintEnv:
 
     def get_state_tag(self, state_id):
         return self.states_to_bv.get(state_id, 0)
-    
+
     def remove_state_tag(self, state_id):
         del self.states_to_bv[state_id]
 
@@ -122,7 +127,7 @@ class TaintStateManager:
         self.taint_tag = {}
         self.access_path_to_tag = {}
         self.symbol_id_to_access_path = {} # {id:taintstate, id1:taintstate1}
-    
+
     def add_path_to_tag(self, access_path, tag):
 
         self.access_path_to_tag[access_path] = tag
@@ -136,13 +141,13 @@ class TaintStateManager:
             if key.startswith(access_path):
                 tag |= value
         return tag
-    
+
     def symbol_to_access_path(self, symbol_id):
         return self.symbol_id_to_access_path.get(symbol_id, None)
 
     def add_tag_and_path_for_field_read(self, symbol_id, origin_access_path):
         origin_access_path = util.access_path_formatter(origin_access_path)
-        
+
         if symbol_id not in self.symbol_id_to_access_path:
             self.symbol_id_to_access_path[symbol_id] = TaintState()
         # b = a.g 给b加origin_access_path

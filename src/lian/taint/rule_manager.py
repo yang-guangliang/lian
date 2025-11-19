@@ -8,7 +8,7 @@
 
 import dataclasses
 import yaml
-import taint.config1 as config
+import config1 as config
 
 class Source:
     def __init__(self, name, tag, value):
@@ -83,6 +83,7 @@ class RuleManager:
         self.all_propagations = []
         self.init()
     def init(self):
+        print(config.TAINT_SOURCE)
         with open(config.TAINT_SOURCE, 'r') as file:
             data = yaml.safe_load(file)
             rule_kind = data["rule_kind"]
