@@ -42,6 +42,7 @@ from lian.core.global_semantics import GlobalSemanticAnalysis
 from lian.core.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.externs.extern_system import ExternSystem
+from lian.taint.taint_analysis import TaintAnalysis
 
 class Lian:
     def __init__(self):
@@ -55,10 +56,11 @@ class Lian:
         self.problem_monitor = None
         self.lang_table = lang_config.LANG_TABLE
         self.command_handler = {
-            "lang":         self.lang_analysis,
-            "semantic":     self.semantic_analysis,
-            "security":     self.security_analysis,
-            "run":          self.run_all,
+            "lang"           :     self.lang_analysis,
+            "semantic"       :     self.semantic_analysis,
+            "security"       :     self.security_analysis,
+            "taint"          :     self.taint_analysis,
+            "run"            :     self.run_all,
         }
 
         self.set_workspace_dir_flag = False
@@ -173,6 +175,10 @@ class Lian:
         self.lang_analysis()
         self.semantic_analysis()
         return self
+
+    def taint_analysis(self):
+        self.run_all()
+        TaintAnalysis().run(self)
 
     def run(self):
         self.parse_cmds().init_submodules().dispatch_command()

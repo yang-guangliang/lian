@@ -1,0 +1,54 @@
+rule_kind: propagation
+lang: python
+rules:
+  - operation: assign_stmt
+    src: operand1
+    dst:
+      - [\%target]
+  # - operation: call_stmt
+  #   src: name
+  #   dst:
+  #     - [target,\%args0]
+
+  - operation: field_read
+    src: receiver
+    dst: [\%target]
+
+  # v9 = v10.split
+  - operation: field_read
+    field: [split, next, value, then, trim, map]
+    dst: [\%target]
+
+  # acc = v9.("")
+  # call_stmt可能涉及很多symbol，因此需要指定src_taint为哪一个symbol
+  - operation: call_stmt
+    name: \%anyname.split
+    src: name
+    dst: [\%target]
+
+  - operation: call_stmt
+    name: \%anyname.concat
+    src: name
+    dst: [\%target]
+
+  - operation: call_stmt
+    name: \%anyname.slice
+    src: name
+    dst: [\%target]
+
+  - operation: call_stmt
+    name: getiterator
+    src: [\%arg0]
+    dst: [\%target]
+  - operation: call_stmt
+    name: \%anyname.stringify
+    src: [\%arg0]
+    dst: [\%target]
+  - operation: call_stmt
+    name: \%anyname.getCalendar
+    src: name
+    dst: [\%target]
+
+
+# field_read field_read call call
+# @kit.LocationKit.geoLocationManager.on.arg2.param0

@@ -17,7 +17,7 @@ class ArgsParser:
         # Create the parser for the "lang" command
         parser_lang = subparsers.add_parser('lang', help="Parse code to General IR")
         parser_semantic = subparsers.add_parser('semantic', help='Perform semantic analysis')
-        parser_security = subparsers.add_parser('security', help='Conduct security analysis')
+        parser_security = subparsers.add_parser('taint', help='Conduct taint analysis')
         parser_run = subparsers.add_parser('run', help='Run end-to-end analysis')
         # Add the arguments to the main parser
 
@@ -40,6 +40,8 @@ class ArgsParser:
             parser.add_argument("-inc", "--incremental", action="store_true", help="Reuse previous analysis results for GIR, scope and cfg")
             parser.add_argument("--default-settings", type=str, help="Specify the default settings folder")
             parser.add_argument("--additional-settings",  type=str, help="Specify the additional settings folder")
+            parser.add_argument("--graph", action="store_true", help="Output sfg (state flow graph) to .dot files")
+            parser.add_argument("--complete-graph", action="store_true", help="Output the sfg with more detailed information for each node")
 
             parser.add_argument("--noextern", action="store_true", help="Disable the external processing module")
 
@@ -71,6 +73,9 @@ class ArgsParser:
             incremental = False,
             default_settings = config.DEFAULT_SETTINGS_PATH,
             additional_settings = "",
+            graph = False,
+            complete_graph = False,
+            noextern = False,
         )
 
     def print_help(self):

@@ -1,20 +1,14 @@
 #! /usr/bin/env python3
 import os,sys
 from collections import deque
-from types import SimpleNamespace
 import config as config
 import networkx as nx
-sys.path.extend([config.LIAN_DIR])
+# sys.path.extend([config.LIAN_DIR])
 
-
-from lian.main import Lian
+# from lian.main import Lian
 from lian.util.loader import Loader
 from lian.util import util
-from lian.config.constants import (
-    SFG_EDGE_KIND,
-    SFG_NODE_KIND,
-)
-
+from lian.taint.rule_manager import RuleManager
 from lian.common_structs import (
     APath,
     SimpleWorkList,
@@ -24,17 +18,16 @@ from lian.common_structs import (
     SymbolStateSpace,
 )
 
-from constants import (
+from lian.config.constants import (
     SFG_NODE_KIND,
     SFG_EDGE_KIND,
     TAG_KEYWORD
 )
 
-from taint_structs import (
+from lian.taint.taint_structs import (
     TaintEnv,
     Flow,
 )
-from rule_manager import RuleManager
 
 class TaintAnalysis:
     def __init__(self):
@@ -98,8 +91,8 @@ class TaintAnalysis:
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-        space = self.loader.get_symbol_state_space_p2(method_id)
-        status = self.loader.get_stmt_status_p2(method_id)[stmt_id]
+        space = self.loader.get_symbol_state_space_p3(0)
+        status = self.loader.get_stmt_status_p3(method_id)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
         method_symbol = space[status.used_symbols[0]]
         tag_space_id = space[status.defined_symbol].symbol_id
@@ -149,8 +142,8 @@ class TaintAnalysis:
             return False
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-        space = self.loader.get_symbol_state_space_p2(method_id)
-        status = self.loader.get_stmt_status_p2(method_id)[stmt_id]
+        space = self.loader.get_symbol_state_space_p3(0)
+        status = self.loader.get_stmt_status_p3(method_id)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
 
         method_symbol = space[status.used_symbols[0]]
@@ -357,11 +350,8 @@ class TaintAnalysis:
 
         return lca
 
-    def run(self, lian=None):
-        if lian:
-            self.lian = lian
-        else:
-            self.lian = Lian().run()
+    def run(self, lian):
+        self.lian = lian
         self.loader = self.lian.loader
 
         for method_id in self.loader.get_all_method_ids():

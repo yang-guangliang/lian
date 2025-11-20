@@ -8,7 +8,7 @@
 
 import dataclasses
 import yaml
-import config as config
+from lian.config import config
 
 class Source:
     def __init__(self, name, tag, value):
@@ -77,14 +77,25 @@ class Rule:
 
 
 class RuleManager:
-    def __init__(self):
-        self.all_sources = []
-        self.all_sinks = []
+    def __init__(self, taint_source=None, taint_sink=None, taint_prop=None):
+        self.all_sources      = []
+        self.all_sinks        = []
         self.all_propagations = []
+        self.taint_source     = config.TAINT_SOURCE
+        self.taint_sink       = config.TAINT_SINK
+        self.taint_prop       = config.TAINT_PROPAGATION
+        if taint_source:
+            self.taint_source = taint_source
+        if taint_sink:
+            self.taint_sink   = taint_sink
+        if taint_prop:
+            self.taint_prop   = taint_prop
+
+
         self.init()
+
     def init(self):
-        print(config.TAINT_SOURCE)
-        with open(config.TAINT_SOURCE, 'r') as file:
+        with open(self.taint_source, 'r') as file:
             data = yaml.safe_load(file)
             rule_kind = data["rule_kind"]
             lang = data["lang"]
@@ -103,7 +114,7 @@ class RuleManager:
                                 dst=rule.get("dst", None), 
                                 unset=rule.get("unset", None))
                 self.all_sources.append(new_rule)
-        with open(config.TAINT_SINK, 'r') as file:
+        with open(self.taint_sink, 'r') as file:
             data = yaml.safe_load(file)
             rule_kind = data["rule_kind"]
             lang = data["lang"]
@@ -125,7 +136,7 @@ class RuleManager:
                                 unset=rule.get("unset", None))
                 self.all_sinks.append(new_rule)
 
-        with open(config.TAINT_PROPAGATION, 'r') as file:
+        with open(self.taint_prop, 'r') as file:
             data = yaml.safe_load(file)
             rule_kind = data["rule_kind"]
             lang = data["lang"]
