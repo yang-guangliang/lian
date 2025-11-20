@@ -8,7 +8,7 @@
 
 import dataclasses
 import yaml
-import config1 as config
+import config as config
 
 class Source:
     def __init__(self, name, tag, value):

@@ -2,7 +2,7 @@
 import os,sys
 from collections import deque
 from types import SimpleNamespace
-import config1 as config
+import config as config
 import networkx as nx
 sys.path.extend([config.LIAN_DIR])
 

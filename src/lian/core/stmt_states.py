@@ -2322,8 +2322,13 @@ class StmtStates:
             for each_state_index in type_states:
                 each_state = self.frame.symbol_state_space[each_state_index]
                 init_state_index = self.create_state_and_add_space(
-                    status, stmt_id, source_symbol_id=defined_symbol.symbol_id,
-                    data_type=LIAN_INTERNAL.CLASS_DECL, value=each_state.value,
+                    status,
+                    stmt_id,
+                    source_symbol_id=defined_symbol.symbol_id,
+                    data_type=LIAN_INTERNAL.CLASS_DECL,
+                    value=each_state.value,
+                    parent_state=each_state,
+                    parent_state_index=each_state_index,
                     access_path=[AccessPoint(
                         key=each_state.value,
                     )]
@@ -2494,14 +2499,23 @@ class StmtStates:
 
             if symbol_id_state.value in self.frame.defined_symbols:
                 index = self.create_state_and_add_space(
-                    status, stmt_id, source_symbol_id=stmt_id, state_type=STATE_TYPE_KIND.UNSOLVED
+                    status,
+                    stmt_id,
+                    source_symbol_id=stmt_id,
+                    state_type=STATE_TYPE_KIND.UNSOLVED,
+                    parent_state=symbol_id_state,
+                    parent_state_index=symbol_id_index
                 )
                 target_states.add(index)
                 continue
 
             if symbol_id_state.state_type == STATE_TYPE_KIND.ANYTHING:
                 index = self.create_state_and_add_space(
-                    status, stmt_id, source_symbol_id=symbol_id_state.symbol_id,
+                    status,
+                    stmt_id,
+                    source_symbol_id=symbol_id_state.symbol_id,
+                    parent_state=symbol_id_state,
+                    parent_state_index=symbol_id_index,
                     access_path=self.copy_and_extend_access_path(
                         symbol_id_state.access_path,
                         AccessPoint(

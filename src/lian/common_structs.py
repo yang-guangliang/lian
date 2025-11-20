@@ -1031,25 +1031,41 @@ class SFGNode:
     name: the name of symbol node
     value: the value of state node
     """
-    # 节点类型
-    node_type: int = -1
-    # 这个节点被def的stmt_id
-    def_stmt_id: int = -1
-    # 这个节点在symbol state space中的索引
-    index: int = -1
-    # 这个节点的具体的id，一般是symbol_id或者state_id（根据node_type来判断）
-    node_id: int = -1
-    # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
-    # Hence it is call_stmt_id
-    context_id: int = -1
-    name: str = ""
-    #value: str = ""
+
+    def __init__(self, node_type=-1, def_stmt_id=-1, index=-1, node_id=-1, context_id=-1, name="", loader=None):
+        # 节点类型
+        self.node_type = node_type
+        # 这个节点被def的stmt_id
+        self.def_stmt_id = def_stmt_id
+        # 这个节点在symbol state space中的索引
+        self.index = index
+        # 这个节点的具体的id，一般是symbol_id或者state_id（根据node_type来判断）
+        self.node_id = node_id
+        # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
+        # Hence it is call_stmt_id
+        self.context_id = context_id
+        self.name = name
+
+        if loader and node_type == SFG_NODE_KIND.STMT:
+            stmt = loader.get_stmt_gir(def_stmt_id)
+            unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
+            method_id = loader.convert_stmt_id_to_method_id(def_stmt_id)
+            self.method_name = loader.convert_method_id_to_method_name(method_id)
+            self.module_name = os.path.basename(loader.convert_module_id_to_module_info(unit_id).original_path)
+            self.line_no = stmt.start_row
+            self.operation = stmt.operation
 
     def __hash__(self) -> int:
         return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id, self.name))
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, SFGNode) and self.node_type == other.node_type and self.def_stmt_id == other.def_stmt_id and self.index == other.index and self.node_id == other.node_id and self.context_id == other.context_id and self.name == other.name
+        return (isinstance(other, SFGNode)
+                and self.node_type == other.node_type
+                and self.def_stmt_id == other.def_stmt_id
+                and self.index == other.index
+                and self.node_id == other.node_id
+                and self.context_id == other.context_id
+                and self.name == other.name)
 
     def __repr__(self) -> str:
         result = []
