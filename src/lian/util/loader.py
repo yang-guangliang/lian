@@ -19,7 +19,8 @@ from lian.config.constants import (
     IMPORT_GRAPH_EDGE_KIND,
     SYMBOL_OR_STATE,
     LIAN_SYMBOL_KIND,
-    GIR_COLUMNS_TO_BE_ADDED
+    GIR_COLUMNS_TO_BE_ADDED,
+    ANALYSIS_PHASE_ID,
 )
 from lian.common_structs import (
     BasicGraph,
@@ -3056,4 +3057,22 @@ class Loader:
                     parent_index=wt.parent_pos
                 ))
         return class_relevant_info
+
+    def save_graph_as_dot(self, graph, entry_point, phase_id):
+        if phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}.dot"
+        else:
+            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point}.dot"
+        try:
+            nx.drawing.nx_pydot.write_dot(graph, file_name)
+        except ImportError:
+            util.error("Pydot or PyGraphviz is not installed. Please install one of them to use write_dot.")
+            return
+        except Exception as e:
+            util.error(f"An error occurred: {e}")
+            return
+
+        util.replace_weight_to_label_in_dot(file_name)
+        print(">>> Write state flow graph to dot file: ", file_name)
+
 

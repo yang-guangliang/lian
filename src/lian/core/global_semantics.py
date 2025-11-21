@@ -600,9 +600,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
-            util.write_graph_to_dot(
-                sfg.graph, f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}.dot"
-            )
+            self.loader.save_graph_as_dot(sfg.graph, entry_point, self.analysis_phase_id)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)

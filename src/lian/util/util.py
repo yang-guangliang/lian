@@ -583,19 +583,6 @@ class FakeSpace:
     def to_dict(self, _id = 0):
         return self.space
 
-def write_graph_to_dot(graph, file_name):
-    try:
-        nx.drawing.nx_pydot.write_dot(graph, file_name)
-    except ImportError:
-        error("Pydot or PyGraphviz is not installed. Please install one of them to use write_dot.")
-        return
-    except Exception as e:
-        error(f"An error occurred: {e}")
-        return
-
-    replace_weight_to_label_in_dot(file_name)
-    print(">>> Write state flow graph to dot file: ", file_name)
-
 def replace_weight_to_label_in_dot(file_name):
     with open(file_name, 'r') as file:
         lines = file.readlines()
@@ -606,3 +593,5 @@ def replace_weight_to_label_in_dot(file_name):
 
     with open(file_name, 'w') as file:
         file.writelines(lines)
+
+

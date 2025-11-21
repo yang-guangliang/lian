@@ -1032,7 +1032,7 @@ class SFGNode:
     value: the value of state node
     """
 
-    def __init__(self, node_type=-1, def_stmt_id=-1, index=-1, node_id=-1, context=None, name="", loader=None):
+    def __init__(self, node_type=-1, def_stmt_id=-1, index=-1, node_id=-1, context=None, name="", loader=None, option=None):
         # 节点类型
         self.node_type = node_type
         # 这个节点被def的stmt_id
@@ -1045,7 +1045,8 @@ class SFGNode:
         # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
         # Hence it is call_site
         self.context = context
-        if loader and node_type == SFG_NODE_KIND.STMT:
+
+        if option and option.complete_graph and node_type == SFG_NODE_KIND.STMT:
             stmt = loader.get_stmt_gir(def_stmt_id)
             unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
             method_id = loader.convert_stmt_id_to_method_id(def_stmt_id)

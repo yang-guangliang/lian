@@ -158,7 +158,6 @@ class Lian:
         #     util.debug("\n\t###########  # Semantic Analysis #  ###########")
         BasicSemanticAnalysis(self).run()
         summary_generation = PrelimSemanticAnalysis(self).run()
-        #print(summary_generation.analyzed_method_list)
         GlobalSemanticAnalysis(self, summary_generation.analyzed_method_list).run()
         self.loader.export()
 

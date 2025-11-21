@@ -331,7 +331,7 @@ class PrelimSemanticAnalysis:
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                 frame.state_flow_graph.add_edge(
-                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=stmt.operation, context=frame.call_site, loader=self.loader),
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=stmt.operation, context=frame.call_site, loader=self.loader, option=self.options),
                     SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id,
                             node_id=key.symbol_id, name=defined_symbol.name, context=frame.call_site),
                     SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
@@ -376,7 +376,7 @@ class PrelimSemanticAnalysis:
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                 frame.state_flow_graph.add_edge(
                     SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
-                            name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader),
+                            name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader, option=self.options),
                     SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id,
                             node_id=key.symbol_id, name=defined_symbol.name, context=frame.call_site),
                     SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
@@ -445,7 +445,7 @@ class PrelimSemanticAnalysis:
                         SFGNode(node_type=SFG_NODE_KIND.STATE, index=used_symbol_index, def_stmt_id=used_symbol.stmt_id,
                                 node_id=used_symbol.state_id),
                         SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
-                                name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader),
+                                name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader, option=self.options),
                         SFGEdge(edge_type=SFG_EDGE_KIND.STATE_IS_USED, stmt_id=stmt_id, pos=pos)
                     )
                 else:
@@ -470,7 +470,7 @@ class PrelimSemanticAnalysis:
                         SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id,
                                 node_id=tmp_key.symbol_id, name=used_symbol.name, context=frame.call_site),
                         SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
-                                name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader),
+                                name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader, option=self.options),
                         SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id, pos=pos)
                     )
                 else:
@@ -1261,10 +1261,8 @@ class PrelimSemanticAnalysis:
             self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
             self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
-            util.write_graph_to_dot(
-                frame.state_flow_graph.graph,
-                f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{frame.method_id}.dot"
-            )
+            self.loader.save_graph_as_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id)
+
             frame_stack.pop()
 
     def sort_methods_by_unit_id(self, methods):
