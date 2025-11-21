@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import dataclasses
-import util, lian.config.config as config
-
+import lian.config.config as config
+from lian.util import util
 class MethodTaintFrame:
     def __init__(self, method_id, frame_stack, env):
         self.method_id = method_id
