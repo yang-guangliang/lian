@@ -20,8 +20,7 @@ pd.options.mode.copy_on_write = False
 
 # Init path - 添加 lian 模块的父目录
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-# Add path for problem_monitor - 添加 example 模块的父目录
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))), "src"))
+
 ############################################################
 # Essential content
 ############################################################
@@ -58,7 +57,6 @@ class Lian:
         self.command_handler = {
             "lang"           :     self.lang_analysis,
             "semantic"       :     self.semantic_analysis,
-            "security"       :     self.security_analysis,
             "taint"          :     self.taint_analysis,
             "run"            :     self.run_all,
         }
@@ -167,17 +165,14 @@ class Lian:
 
         return self
 
-    def security_analysis(self):
-        pass
+    def taint_analysis(self):
+        TaintAnalysis(self.options.default_settings).run(self)
 
     def run_all(self):
         self.lang_analysis()
         self.semantic_analysis()
+        self.taint_analysis()
         return self
-
-    def taint_analysis(self):
-        self.run_all()
-        TaintAnalysis(self.options.default_settings).run(self)
 
     def run(self):
         self.parse_cmds().init_submodules().dispatch_command()
