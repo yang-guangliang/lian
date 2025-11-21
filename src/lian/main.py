@@ -114,12 +114,7 @@ class Lian:
         self.loader = Loader(self.options, self.event_manager)
         self.resolver = Resolver(self.options, self.event_manager, self.loader)
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
-
-        # 旧版llm_driven_sec
         self.event_manager.register_extern_system(self.extern_system)
-        # 新版problem_monitor
-        # if hasattr(self.options,"tecent") and self.options.tecent:
-        #     self.event_manager.register_problem_monitor(self.problem_monitor)
 
         # prepare folders and unit info tables
         preparation.run(self.options, self.loader)
@@ -152,21 +147,14 @@ class Lian:
         return self
 
     def semantic_analysis(self):
-        # if self.options.debug:
-        #     util.debug("\n\t###########  # Semantic Analysis #  ###########")
         BasicSemanticAnalysis(self).run()
         summary_generation = PrelimSemanticAnalysis(self).run()
         GlobalSemanticAnalysis(self, summary_generation.analyzed_method_list).run()
         self.loader.export()
-
-        # self.loader.clone_method_in_strict_mode(method_id=20, new_name="new_main")
-        # self.loader.export()
-        #print(self.loader.get)
-
         return self
 
     def taint_analysis(self):
-        TaintAnalysis(self.options.default_settings).run(self)
+        TaintAnalysis(lian, self.options).run(self)
 
     def run_all(self):
         self.lang_analysis()
