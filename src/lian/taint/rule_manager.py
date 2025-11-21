@@ -7,6 +7,8 @@
 # - .yaml config
 
 import dataclasses
+import os
+
 import yaml
 from lian.config import config
 
@@ -77,20 +79,18 @@ class Rule:
 
 
 class RuleManager:
-    def __init__(self, taint_source=None, taint_sink=None, taint_prop=None):
+    def __init__(self, default_settings):
         self.all_sources      = []
         self.all_sinks        = []
         self.all_propagations = []
         self.taint_source     = config.TAINT_SOURCE
         self.taint_sink       = config.TAINT_SINK
         self.taint_prop       = config.TAINT_PROPAGATION
-        if taint_source:
-            self.taint_source = taint_source
-        if taint_sink:
-            self.taint_sink   = taint_sink
-        if taint_prop:
-            self.taint_prop   = taint_prop
 
+        if default_settings:
+            self.taint_source = os.path.join(default_settings, "source.yaml")
+            self.taint_sink   = os.path.join(default_settings, "sink.yaml")
+            self.taint_prop   = os.path.join(default_settings, "propagation.yaml")
 
         self.init()
 

@@ -30,11 +30,11 @@ from lian.taint.taint_structs import (
 )
 
 class TaintAnalysis:
-    def __init__(self):
+    def __init__(self, default_settings):
         self.lian = None
         self.loader = None
         self.taint_manager = None
-        self.rule_manager = RuleManager()
+        self.rule_manager = RuleManager(default_settings)
 
     def read_rules(self, operation, source_rules):
         """从src.yaml文件中获取field_read语句类型的规则, 并根据每条规则创建taint_bv"""

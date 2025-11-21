@@ -178,7 +178,7 @@ class Lian:
 
     def taint_analysis(self):
         self.run_all()
-        TaintAnalysis().run(self)
+        TaintAnalysis(self.options.default_settings).run(self)
 
     def run(self):
         self.parse_cmds().init_submodules().dispatch_command()
