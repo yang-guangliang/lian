@@ -331,9 +331,9 @@ class PrelimSemanticAnalysis:
             frame.symbol_graph.add_edge(stmt_id, key, edge_type)
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                 frame.state_flow_graph.add_edge(
-                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=stmt.operation, context_id=frame.call_stmt_id, loader=self.loader),
+                    SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id, name=stmt.operation, context=frame.call_site, loader=self.loader),
                     SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id,
-                            node_id=key.symbol_id, name=defined_symbol.name, context_id=frame.call_stmt_id),
+                            node_id=key.symbol_id, name=defined_symbol.name, context=frame.call_site),
                     SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
                 )
             else:
@@ -376,9 +376,9 @@ class PrelimSemanticAnalysis:
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                 frame.state_flow_graph.add_edge(
                     SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
-                            name=frame.stmt_id_to_stmt[stmt_id].operation, context_id=frame.call_stmt_id, loader=self.loader),
+                            name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader),
                     SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=key.index, def_stmt_id=key.stmt_id,
-                            node_id=key.symbol_id, name=defined_symbol.name, context_id=frame.call_stmt_id),
+                            node_id=key.symbol_id, name=defined_symbol.name, context=frame.call_site),
                     SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED, stmt_id=stmt_id)
                 )
             else:
@@ -445,7 +445,7 @@ class PrelimSemanticAnalysis:
                         SFGNode(node_type=SFG_NODE_KIND.STATE, index=used_symbol_index, def_stmt_id=used_symbol.stmt_id,
                                 node_id=used_symbol.state_id),
                         SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
-                                name=frame.stmt_id_to_stmt[stmt_id].operation, context_id=frame.call_stmt_id, loader=self.loader),
+                                name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader),
                         SFGEdge(edge_type=SFG_EDGE_KIND.STATE_IS_USED, stmt_id=stmt_id, pos=pos)
                     )
                 else:
@@ -468,9 +468,9 @@ class PrelimSemanticAnalysis:
                 if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                     frame.state_flow_graph.add_edge(
                         SFGNode(node_type=SFG_NODE_KIND.SYMBOL, index=tmp_key.index, def_stmt_id=tmp_key.stmt_id,
-                                node_id=tmp_key.symbol_id, name=used_symbol.name, context_id=frame.call_stmt_id),
+                                node_id=tmp_key.symbol_id, name=used_symbol.name, context=frame.call_site),
                         SFGNode(node_type=SFG_NODE_KIND.STMT, def_stmt_id=stmt_id,
-                                name=frame.stmt_id_to_stmt[stmt_id].operation, context_id=frame.call_stmt_id, loader=self.loader),
+                                name=frame.stmt_id_to_stmt[stmt_id].operation, context=frame.call_site, loader=self.loader),
                         SFGEdge(edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED, stmt_id=stmt_id, pos=pos)
                     )
                 else:
@@ -821,7 +821,7 @@ class PrelimSemanticAnalysis:
                             index=each_symbol_index,
                             node_id=defined_symbol.symbol_id,
                             name=defined_symbol.name,
-                            context_id=frame.call_stmt_id,
+                            context=frame.call_site,
                         ),
                         SFGNode(
                             node_type=SFG_NODE_KIND.STATE,

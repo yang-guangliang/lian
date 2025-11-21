@@ -70,34 +70,16 @@ RETURN_STMT_OPERATION = {
 }
 
 SUMMARY_GENERAL_SYMBOL_ID = util.SimpleEnum({
-    "RETURN_SYMBOL_ID" : -28,
+    "RETURN_SYMBOL_ID"              : -28,
 })
 
-EVENT_KIND = util.SimpleEnum({
-    "NONE"                                          : 0,
-    "MOCK_SOURCE_CODE_READY"                        : 1,
-    "ORIGINAL_SOURCE_CODE_READY"                    : 2,
-    "UNFLATTENED_GIR_LIST_GENERATED"                : 3,
-    "GIR_LIST_GENERATED"                            : 4,
-    "GIR_DATA_MODEL_GENERATED"                      : 5,
-    "ENTRY_POINT_ANALYSIS_BEFORE"                   : 6,
-    "ENTRY_POINT_ANALYSIS_AFTER"                    : 7,
-    "UNIT_KIND_HIERARCHY_GENERATED"                 : 8,
-    "CONTROL_FLOW_GRAPH_GENERATED"                  : 9,
-    "P1STMT_DEF_USE_ANALYSIS_BEFORE"                : 20,
-    "P1STMT_DEF_USE_ANALYSIS_AFTER"                 : 21,
-    "P1METHOD_DEF_USE_SUMMARY_GENERATED"            : 22,
-    "P2STATE_FIELD_READ_BEFORE"                     : 40,
-    "P2STATE_FIELD_READ_AFTER"                      : 41,
-    "P2STATE_GENERATE_EXTERNAL_STATES"              : 42,
-    "P2STATE_NEW_OBJECT_BEFORE"                     : 43,
-    "P2STATE_BUILTIN_FUNCTION_BEFORE"               : 44,
-    "P2STATE_NEW_OBJECT_AFTER"                      : 45,
-    "P2STATE_EXTERN_CALLEE"                         : 46,
-    "P2STATE_FIELD_WRITE_AFTER"                     : 47,
-    "P2STATE_CALL_STMT_BEFORE"                      : 48,
-    "P2STATE_CALL_STMT_AFTER"                       : 49,
-})
+LOOP_OPERATIONS = set([
+    "for_stmt",
+    "forin_stmt",
+    "for_value_stmt",
+    "while_stmt",
+    "dowhile_stmt"
+])
 
 CONFIG_ITEM_Kind = util.SimpleEnum({
     "ARG"                           : 0,
@@ -137,7 +119,6 @@ LIAN_SYMBOL_KIND = util.SimpleEnum({
     "PARAMETER_DECL"                : 6,
     "CALL_STMT"                     : 7,
     "EXPORT_STMT"                   : 8,
-
     "BLOCK_KIND"                    : 9,
     "METHOD_KIND"                   : 10,
     "CLASS_KIND"                    : 11,
@@ -185,14 +166,6 @@ CONTROL_FLOW_KIND = util.SimpleEnum({
     "EXIT"                          : 15,
     "YIELD"                         : 16,
 })
-
-LOOP_OPERATIONS = set([
-    "for_stmt",
-    "forin_stmt",
-    "for_value_stmt",
-    "while_stmt",
-    "dowhile_stmt"
-])
 
 SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND = util.SimpleEnum({
     "REGULAR"                       : 0,
@@ -416,10 +389,23 @@ LIAN_INTERNAL = util.SimpleEnum({
 })
 
 JS_PROTOTYPE = util.SimpleEnum({
-    "PROTOTYPE"                      : "prototype",
-    "PROTO"                          : "__proto__",
-    "CONSTRUCTOR"                     : "constructor",
+    "PROTOTYPE"                     : "prototype",
+    "PROTO"                         : "__proto__",
+    "CONSTRUCTOR"                   : "constructor",
+})
 
+TAG_KEYWORD = util.SimpleEnum({
+    "RETURN"                        : r"\%return",
+    "ARG0"                          : r"\%arg0",
+    "ARG1"                          : r"\%arg1",
+    "ARG2"                          : r"\%arg2",
+    "ARG3"                          : r"\%arg3",
+    "ARG4"                          : r"\%arg4",
+    "TARGET"                        : r"\%target",
+    "RECEIVER"                      : r"\%receiver",
+    "FIELD"                         : r"\%field",
+    "THIS"                          : r"\%this",
+    "ANYNAME"                       : r"\%anyname",
 })
 
 SENSITIVE_OPERATIONS = set([
@@ -451,25 +437,37 @@ GIR_COLUMNS_TO_BE_ADDED = set([
     "original_stmt"
 ])
 
-TAG_KEYWORD = util.SimpleEnum({
-    "RETURN"     : r"\%return",
-    "ARG0"       : r"\%arg0",
-    "ARG1"       : r"\%arg1",
-    "ARG2"       : r"\%arg2",
-    "ARG3"       : r"\%arg3",
-    "ARG4"       : r"\%arg4",
-    "TARGET"     : r"\%target",
-    "RECEIVER"   : r"\%receiver",
-    "FIELD"      : r"\%field",
-    "THIS"       : r"\%this",
-    "ANYNAME"    : r"\%anyname",
+EventKind = util.SimpleEnum({
+    "TAINT_BEFORE"                                  : 0,
+    "SINK_BEFORE"                                   : 1,
+    "PROP_BEFORE"                                   : 2,
+    "PROP_AFTER"                                    : 3,
+    "PROP_FOREACH_ITEM"                             : 4,
+    "CALL_BEFORE"                                   : 5,
 })
 
-EventKind = util.SimpleEnum({
-    "TAINT_BEFORE"                                          : 0,
-    "SINK_BEFORE"                                           : 1,
-    "PROP_BEFORE"                                           : 2,
-    "PROP_AFTER"                                            : 3,
-    "PROP_FOREACH_ITEM"                                     : 4,
-    "CALL_BEFORE"                                           : 5,
+EVENT_KIND = util.SimpleEnum({
+    "NONE"                                          : 0,
+    "MOCK_SOURCE_CODE_READY"                        : 1,
+    "ORIGINAL_SOURCE_CODE_READY"                    : 2,
+    "UNFLATTENED_GIR_LIST_GENERATED"                : 3,
+    "GIR_LIST_GENERATED"                            : 4,
+    "GIR_DATA_MODEL_GENERATED"                      : 5,
+    "ENTRY_POINT_ANALYSIS_BEFORE"                   : 6,
+    "ENTRY_POINT_ANALYSIS_AFTER"                    : 7,
+    "UNIT_KIND_HIERARCHY_GENERATED"                 : 8,
+    "CONTROL_FLOW_GRAPH_GENERATED"                  : 9,
+    "P1STMT_DEF_USE_ANALYSIS_BEFORE"                : 20,
+    "P1STMT_DEF_USE_ANALYSIS_AFTER"                 : 21,
+    "P1METHOD_DEF_USE_SUMMARY_GENERATED"            : 22,
+    "P2STATE_FIELD_READ_BEFORE"                     : 40,
+    "P2STATE_FIELD_READ_AFTER"                      : 41,
+    "P2STATE_GENERATE_EXTERNAL_STATES"              : 42,
+    "P2STATE_NEW_OBJECT_BEFORE"                     : 43,
+    "P2STATE_BUILTIN_FUNCTION_BEFORE"               : 44,
+    "P2STATE_NEW_OBJECT_AFTER"                      : 45,
+    "P2STATE_EXTERN_CALLEE"                         : 46,
+    "P2STATE_FIELD_WRITE_AFTER"                     : 47,
+    "P2STATE_CALL_STMT_BEFORE"                      : 48,
+    "P2STATE_CALL_STMT_AFTER"                       : 49,
 })

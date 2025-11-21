@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 import os,sys
 from collections import deque
-import config as config
+import lian.config.config as config
 import networkx as nx
 # sys.path.extend([config.LIAN_DIR])
 
@@ -92,7 +92,7 @@ class TaintAnalysis:
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
         space = self.loader.get_symbol_state_space_p3(0)
-        status = self.loader.get_stmt_status_p3(method_id)[stmt_id]
+        status = self.loader.get_stmt_status_p3(node.context)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
         method_symbol = space[status.used_symbols[0]]
         tag_space_id = space[status.defined_symbol].symbol_id
@@ -143,7 +143,7 @@ class TaintAnalysis:
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
         space = self.loader.get_symbol_state_space_p3(0)
-        status = self.loader.get_stmt_status_p3(method_id)[stmt_id]
+        status = self.loader.get_stmt_status_p3(node.context)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
 
         method_symbol = space[status.used_symbols[0]]

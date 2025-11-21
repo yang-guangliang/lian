@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import dataclasses
-import util, config as config
+import util, lian.config.config as config
 
 class MethodTaintFrame:
     def __init__(self, method_id, frame_stack, env):

@@ -1,7 +1,0 @@
-rule_kind: sink
-lang: python
-rules:
-
-  - operation: call_stmt
-    name: sink
-    target: [\%arg0]

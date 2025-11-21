@@ -224,12 +224,12 @@ class StmtStates:
         if isinstance(node, Symbol):
             return SFGNode(
                 node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index, node_id=node.symbol_id,
-                context_id=self.frame.call_stmt_id, name=node.name
+                context=self.frame.call_site, name=node.name
             )
         elif isinstance(node, State):
             return SFGNode(
                 node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
-                context_id=self.frame.call_stmt_id
+                context=self.frame.call_site
             )
         return None
 
@@ -238,7 +238,7 @@ class StmtStates:
         if isinstance(node, Symbol):
             return SFGNode(
                 node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index,
-                node_id=node.symbol_id, context_id=self.frame.call_stmt_id, name=node.name
+                node_id=node.symbol_id, context=self.frame.call_site, name=node.name
             )
         return None
 
@@ -249,7 +249,7 @@ class StmtStates:
             if node.symbol_id not in self.used_symbol_id_to_indexes:
                 return SFGNode(
                     node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index,
-                    node_id=node.symbol_id, context_id=self.frame.call_stmt_id, name=node.name
+                    node_id=node.symbol_id, context=self.frame.call_site, name=node.name
                 )
             result = []
             for real_index in self.used_symbol_id_to_indexes[symbol_id]:
@@ -262,7 +262,7 @@ class StmtStates:
         if isinstance(node, State):
             return SFGNode(
                 node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
-                context_id=self.frame.call_stmt_id
+                context=self.frame.call_site
             )
         return None
 
