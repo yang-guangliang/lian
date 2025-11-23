@@ -19,7 +19,7 @@ def dot_to_png(dot_file_path, output_png_path=None):
 # 示例调用
 if __name__ == "__main__":
     path = os.path.dirname(os.path.dirname(__file__))
-    dot_file = "tests/lian_workspace/state_flow_graph/433.dot"  # dot文件路径
+    dot_file = "tests/lian_workspace/state_flow_graph_p3/3011.dot"  # dot文件路径
     path = os.path.join(path, dot_file)
     output_png = "output433.png"  # 输出png路径（可选）
     dot_to_png(path, output_png)

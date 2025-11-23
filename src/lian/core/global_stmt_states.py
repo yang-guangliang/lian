@@ -4,6 +4,7 @@ import ast
 from inspect import Parameter
 import pprint
 
+from networkx.generators.classic import complete_graph
 from pandas.core import frame
 
 from lian.core.resolver import Resolver
@@ -52,7 +53,7 @@ from lian.common_structs import (
 class GlobalStmtStates(StmtStates):
     def __init__(
         self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
-        path_manager: PathManager, analyzed_method_list: list, caller_unknown_callee_edge: dict,
+        path_manager: PathManager, analyzed_method_list: list, caller_unknown_callee_edge: dict, complete_graph=None
     ):
         super().__init__(
             analysis_phase_id=analysis_phase_id,
@@ -61,7 +62,8 @@ class GlobalStmtStates(StmtStates):
             resolver=resolver,
             compute_frame=compute_frame,
             call_graph=None,
-            analyzed_method_list=analyzed_method_list
+            analyzed_method_list=analyzed_method_list,
+            complete_graph=complete_graph,
         )
         self.path_manager = path_manager
         self.analyzed_method_list = analyzed_method_list
@@ -326,6 +328,8 @@ class GlobalStmtStates(StmtStates):
                             node_id=parameter_name_symbol.symbol_id,
                             name=parameter_name_symbol.name,
                             context=self.frame.call_site,
+                            complete_graph=self.complete_graph,
+                            loader=self.loader,
                         ),
                         SFGEdge(
                             edge_type=SFG_EDGE_KIND.SYMBOL_FLOW,

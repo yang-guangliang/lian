@@ -54,12 +54,13 @@ from lian.common_structs import (
     SFGEdge,
 )
 from lian.core.resolver import Resolver
+from networkx.generators.classic import complete_graph
 
 
 class StmtStates:
     def __init__(
         self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver,
-        compute_frame: ComputeFrame, call_graph: CallGraph, analyzed_method_list=[]
+        compute_frame: ComputeFrame, call_graph: CallGraph, analyzed_method_list=[], complete_graph=False
     ):
         """
         初始化语句状态分析上下文：
@@ -79,6 +80,12 @@ class StmtStates:
         self.analysis_phase_id = analysis_phase_id
         self.sfg = self.frame.state_flow_graph
         self.used_symbol_id_to_indexes = {}
+        self.complete_graph = complete_graph
+        self.call_site = None
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+            self.complete_graph = False
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+            self.call_site = self.frame.call_site
 
         self.state_analysis_handlers = {
             "comment_stmt": self.regular_stmt_state,
@@ -223,13 +230,24 @@ class StmtStates:
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, Symbol):
             return SFGNode(
-                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index, node_id=node.symbol_id,
-                context=self.frame.call_site, name=node.name
+                node_type=SFG_NODE_KIND.SYMBOL,
+                def_stmt_id=node.stmt_id,
+                index=node_index,
+                node_id=node.symbol_id,
+                context=self.call_site,
+                name=node.name,
+                loader=self.loader,
+                complete_graph=self.complete_graph,
             )
         elif isinstance(node, State):
             return SFGNode(
-                node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
-                context=self.frame.call_site
+                node_type=SFG_NODE_KIND.STATE,
+                def_stmt_id=node.stmt_id,
+                index=node_index,
+                node_id=node.state_id,
+                context=self.call_site,
+                loader=self.loader,
+                complete_graph=self.complete_graph,
             )
         return None
 
@@ -237,8 +255,14 @@ class StmtStates:
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, Symbol):
             return SFGNode(
-                node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index,
-                node_id=node.symbol_id, context=self.frame.call_site, name=node.name
+                node_type=SFG_NODE_KIND.SYMBOL,
+                def_stmt_id=node.stmt_id,
+                index=node_index,
+                node_id=node.symbol_id,
+                context=self.call_site,
+                name=node.name,
+                loader=self.loader,
+                complete_graph=self.complete_graph,
             )
         return None
 
@@ -248,8 +272,14 @@ class StmtStates:
             symbol_id = node.symbol_id
             if node.symbol_id not in self.used_symbol_id_to_indexes:
                 return SFGNode(
-                    node_type=SFG_NODE_KIND.SYMBOL, def_stmt_id=node.stmt_id, index=node_index,
-                    node_id=node.symbol_id, context=self.frame.call_site, name=node.name
+                    node_type=SFG_NODE_KIND.SYMBOL,
+                    def_stmt_id=node.stmt_id,
+                    index=node_index,
+                    node_id=node.symbol_id,
+                    context=self.call_site,
+                    name=node.name,
+                    loader=self.loader,
+                    complete_graph=self.complete_graph,
                 )
             result = []
             for real_index in self.used_symbol_id_to_indexes[symbol_id]:
@@ -261,8 +291,13 @@ class StmtStates:
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, State):
             return SFGNode(
-                node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
-                context=self.frame.call_site
+                node_type=SFG_NODE_KIND.STATE,
+                def_stmt_id=node.stmt_id,
+                index=node_index,
+                node_id=node.state_id,
+                context=self.call_site,
+                loader=self.loader,
+                complete_graph=self.complete_graph,
             )
         return None
 
@@ -270,7 +305,12 @@ class StmtStates:
         node = self.frame.symbol_state_space[node_index]
         if isinstance(node, State):
             return SFGNode(
-                node_type=SFG_NODE_KIND.STATE, def_stmt_id=node.stmt_id, index=node_index, node_id=node.state_id,
+                node_type=SFG_NODE_KIND.STATE,
+                def_stmt_id=node.stmt_id,
+                index=node_index,
+                node_id=node.state_id,
+                loader=self.loader,
+                complete_graph=self.complete_graph,
             )
         return None
 
@@ -350,12 +390,18 @@ class StmtStates:
                     def_stmt_id=parent_state.stmt_id,
                     index=parent_state_index,
                     node_id=parent_state.state_id,
+                    loader=self.loader,
+                    complete_graph=self.complete_graph,
+                    context=self.call_site,
                 ),
                 SFGNode(
                     node_type=SFG_NODE_KIND.STATE,
                     def_stmt_id=item.stmt_id,
                     index=index,
                     node_id=item.state_id,
+                    loader=self.loader,
+                    context=self.call_site,
+                    complete_graph=self.complete_graph,
                 ),
                 SFGEdge(
                     edge_type=SFG_EDGE_KIND.SYMBOL_STATE,

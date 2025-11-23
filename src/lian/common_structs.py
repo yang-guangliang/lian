@@ -1032,7 +1032,7 @@ class SFGNode:
     value: the value of state node
     """
 
-    def __init__(self, node_type=-1, def_stmt_id=-1, index=-1, node_id=-1, context=None, name="", loader=None, option=None):
+    def __init__(self, node_type=-1, def_stmt_id=-1, index=-1, node_id=-1, context=None, name="", loader=None, complete_graph=False):
         # 节点类型
         self.node_type = node_type
         # 这个节点被def的stmt_id
@@ -1045,8 +1045,14 @@ class SFGNode:
         # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
         # Hence it is call_site
         self.context = context
-
-        if option and option.complete_graph and node_type == SFG_NODE_KIND.STMT:
+        self.method_name=None
+        self.module_name=None
+        self.line_no=-1
+        self.operation=None
+        self.caller_name=None
+        if context and context[0] != -1 and loader:
+            self.caller_name = loader.convert_method_id_to_method_name(context[0])
+        if complete_graph and def_stmt_id != -1:
             stmt = loader.get_stmt_gir(def_stmt_id)
             unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
             method_id = loader.convert_stmt_id_to_method_id(def_stmt_id)
@@ -1056,7 +1062,7 @@ class SFGNode:
             self.operation = stmt.operation
 
     def __hash__(self) -> int:
-        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context, self.name))
+        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context, self.name, self.method_name, self.module_name, self.line_no, self.operation))
 
     def __eq__(self, other) -> bool:
         return (isinstance(other, SFGNode)
@@ -1075,7 +1081,16 @@ class SFGNode:
             attrs.append(f"stmt_id={self.def_stmt_id}")
         if self.context :
             attrs.append(f"context={self.context}")
-
+        if self.module_name :
+            attrs.append(f"module_name={self.module_name}")
+        if self.method_name :
+            attrs.append(f"method={self.method_name}")
+        if self.caller_name :
+            attrs.append(f"method={self.caller_name}")
+        if self.line_no != -1 :
+            attrs.append(f"line_no={self.line_no}")
+        if self.operation :
+            attrs.append(f"operation={self.operation}")
         if self.node_type == SFG_NODE_KIND.STMT:
              if self.name:
                 attrs.append(f"name={self.name}")

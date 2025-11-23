@@ -51,6 +51,8 @@ from lian.core.prelim_semantics import PrelimSemanticAnalysis
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
 from lian.core.global_stmt_states import GlobalStmtStates
+from networkx.generators.classic import complete_graph
+
 
 class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
@@ -142,7 +144,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             compute_frame = frame,
             path_manager = self.path_manager,
             analyzed_method_list = self.analyzed_method_list,
-            caller_unknown_callee_edge = self.caller_unknown_callee_edge
+            caller_unknown_callee_edge = self.caller_unknown_callee_edge,
+            complete_graph=self.options.complete_graph,
         )
 
         round_number = config.FIRST_ROUND
