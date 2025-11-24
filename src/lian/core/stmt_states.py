@@ -1449,13 +1449,27 @@ class StmtStates:
                                                     source_symbol_id, access_path)
 
     def apply_parameter_summary_to_args_states(
-        self, stmt_id, status: StmtStatus, last_states, old_arg_state_index, old_to_new_arg_state,
-        parameter_symbol_id=-1, callee_id=-1, deferred_index_updates=None, old_to_latest_old_arg_state=None
+        self,
+        stmt_id,
+        status: StmtStatus,
+        last_state_indexes: set[int],
+        old_arg_state_index,
+        old_to_new_arg_state,
+        parameter_symbol_id=-1,
+        callee_id=-1,
+        deferred_index_updates=None,
+        old_to_latest_old_arg_state=None,
     ):
-        """用形参的last_states去更新传入的实参"""
+        """
+        用形参的last_states去更新传入的实参：
+            1. copy_on_write实参state
+            2. 收集callee摘要中对应形参的数组/字段/tangping
+            3. 更新caller实参的array/fields/tangping
+            4. 解析ANYTHING
+        """
         if util.is_empty(old_to_latest_old_arg_state):
             old_to_latest_old_arg_state = {}
-        
+
         new_arg_state_index = self.copy_on_write_arg_state(
             stmt_id, status, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state
         )
@@ -1463,11 +1477,34 @@ class StmtStates:
             return
         new_arg_state: State = self.frame.symbol_state_space[new_arg_state_index]
 
-        state_array: list[set] = []
+        (
+            callee_state_arrays,
+            callee_state_fields,
+            tangping_flag,
+            tangping_elements,
+        ) = self.collect_callee_state_effects(last_state_indexes, stmt_id, callee_id)
+
+        # 更新caller实参的array/fields/tangping
+        self.merge_arrays_into_arg_state(new_arg_state, callee_state_arrays)
+        self.merge_tangping_into_arg_state(new_arg_state, tangping_flag, tangping_elements, stmt_id, callee_id)
+        self.merge_callee_fields_into_arg_state(
+            stmt_id, status, new_arg_state, callee_state_fields, parameter_symbol_id
+        )
+        self.resolve_anything_in_arg_fields(
+            new_arg_state.fields,
+            stmt_id,
+            parameter_symbol_id,
+            callee_id,
+            deferred_index_updates,
+        )
+
+    def collect_callee_state_effects(self, last_state_indexes, stmt_id, callee_id):
+        callee_state_arrays: list[set] = []
+        callee_state_fields = {}
         tangping_flag = False
         tangping_elements = set()
-        callee_state_fields = {}
-        for each_state_index in last_states:
+
+        for each_state_index in last_state_indexes:
             each_last_state = self.frame.symbol_state_space[each_state_index]
             if not (each_last_state and isinstance(each_last_state, State)):
                 continue
@@ -1476,66 +1513,100 @@ class StmtStates:
                 tangping_flag = True
                 tangping_elements.update(each_last_state.tangping_elements)
 
-            # collect all array of all states in summary
-            each_last_state_array = each_last_state.array
-            for index in range(len(each_last_state_array)):
-                util.add_to_list_with_default_set(state_array, index, each_last_state_array[index])
-            state_array_copy = copy.deepcopy(state_array)
-            for index in range(len(state_array_copy)):
-                array_states = state_array_copy[index]
-                for each_array_state_index in array_states:
-                    each_array_state = self.frame.symbol_state_space[each_array_state_index]
-                    if each_array_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                        self.resolver.resolve_anything_in_summary_generation(each_array_state_index, self.frame,
-                                                                             stmt_id, callee_id,
-                                                                             set_to_update=state_array[index])
+            for index in range(len(each_last_state.array)):
+                util.add_to_list_with_default_set(callee_state_arrays, index, each_last_state.array[index])
 
-            # collect all fields of all states in summary
             each_state_fields = each_last_state.fields.copy()
             for field_name in each_state_fields:
                 util.add_to_dict_with_default_set(callee_state_fields, field_name, each_state_fields[field_name])
 
-            new_array = new_arg_state.array.copy()
-            for index in range(len(state_array)):
-                util.add_to_list_with_default_set(new_array, index, state_array[index])
-            new_arg_state.array = new_array
+        self.resolve_anything_in_arrays(callee_state_arrays, stmt_id, callee_id)
 
-            new_arg_state.tangping_flag |= tangping_flag
-            for each_tangping_element_index in tangping_elements.copy():
-                each_tangping_element = self.frame.symbol_state_space[each_tangping_element_index]
-                if each_tangping_element.state_type == STATE_TYPE_KIND.ANYTHING:
-                    self.resolver.resolve_anything_in_summary_generation(each_tangping_element_index, self.frame,
-                                                                         stmt_id, callee_id,
-                                                                         set_to_update=tangping_elements)
-            new_arg_state.tangping_elements.update(tangping_elements)
+        return callee_state_arrays, callee_state_fields, tangping_flag, tangping_elements
 
-        new_arg_state_fields = new_arg_state.fields
-        arg_base_access_path = new_arg_state.access_path
-        for field_name in callee_state_fields:
-            if field_name not in new_arg_state_fields:
-                new_arg_state_fields[field_name] = callee_state_fields[field_name]
-            else:
-                access_path = self.copy_and_extend_access_path(
-                    original_access_path=arg_base_access_path,
-                    access_point=AccessPoint(
-                        kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
-                        key=field_name
+    def resolve_anything_in_arrays(self, callee_state_arrays, stmt_id, callee_id):
+        for index, states in enumerate(callee_state_arrays):
+            for each_array_state_index in list(states):
+                each_array_state = self.frame.symbol_state_space[each_array_state_index]
+                if each_array_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                    self.resolver.resolve_anything_in_summary_generation(
+                        each_array_state_index,
+                        self.frame,
+                        stmt_id,
+                        callee_id,
+                        set_to_update=callee_state_arrays[index],
                     )
-                )
-                new_arg_state_fields[field_name] = self.recursively_collect_children_fields(
-                    stmt_id, status, callee_state_fields[field_name], new_arg_state_fields[field_name],
-                    parameter_symbol_id, access_path
-                )
 
-        # TODO：暂时只考虑了field
-        for field_name, field_states in copy.deepcopy(new_arg_state_fields).items():
+    def merge_arrays_into_arg_state(self, arg_state: State, callee_state_arrays: list[set]):
+        new_array = arg_state.array.copy()
+        for index in range(len(callee_state_arrays)):
+            util.add_to_list_with_default_set(new_array, index, callee_state_arrays[index])
+        arg_state.array = new_array
+
+    def merge_tangping_into_arg_state(
+        self, arg_state: State, tangping_flag: bool, tangping_elements: set, stmt_id, callee_id
+    ):
+        if not (tangping_flag or tangping_elements):
+            return
+
+        arg_state.tangping_flag |= tangping_flag
+        for each_tangping_element_index in tangping_elements.copy():
+            each_tangping_element = self.frame.symbol_state_space[each_tangping_element_index]
+            if each_tangping_element.state_type == STATE_TYPE_KIND.ANYTHING:
+                self.resolver.resolve_anything_in_summary_generation(
+                    each_tangping_element_index,
+                    self.frame,
+                    stmt_id,
+                    callee_id,
+                    set_to_update=tangping_elements,
+                )
+        arg_state.tangping_elements.update(tangping_elements)
+
+    def merge_callee_fields_into_arg_state(
+        self, stmt_id, status, arg_state: State, callee_state_fields: dict, parameter_symbol_id
+    ):
+        arg_fields = arg_state.fields
+        arg_base_access_path = arg_state.access_path
+
+        for field_name, callee_fields in callee_state_fields.items():
+            if field_name not in arg_fields:
+                arg_fields[field_name] = callee_fields
+                continue
+
+            access_path = self.copy_and_extend_access_path(
+                original_access_path=arg_base_access_path,
+                access_point=AccessPoint(
+                    kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
+                    key=field_name,
+                ),
+            )
+            arg_fields[field_name] = self.recursively_collect_children_fields(
+                stmt_id,
+                status,
+                callee_fields,
+                arg_fields[field_name],
+                parameter_symbol_id,
+                access_path,
+            )
+
+    def resolve_anything_in_arg_fields(
+        self, arg_fields, stmt_id, parameter_symbol_id, callee_id, deferred_index_updates
+    ):
+        for field_name, field_states in copy.deepcopy(arg_fields).items():
             for each_field_state_index in field_states:
                 each_field_state = self.frame.symbol_state_space[each_field_state_index]
-                if each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                    self.resolver.resolve_anything_in_summary_generation(
-                        each_field_state_index, self.frame, stmt_id, callee_id, deferred_index_updates,
-                        set_to_update=new_arg_state_fields[field_name], parameter_symbol_id=parameter_symbol_id
-                    )
+                if each_field_state.state_type != STATE_TYPE_KIND.ANYTHING:
+                    continue
+
+                self.resolver.resolve_anything_in_summary_generation(
+                    each_field_state_index,
+                    self.frame,
+                    stmt_id,
+                    callee_id,
+                    deferred_index_updates,
+                    set_to_update=arg_fields[field_name],
+                    parameter_symbol_id=parameter_symbol_id,
+                )
 
     def apply_this_symbol_semantic_summary(
         self, stmt_id, callee_summary: MethodSummaryTemplate,
