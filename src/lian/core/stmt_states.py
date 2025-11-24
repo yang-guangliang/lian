@@ -512,6 +512,72 @@ class StmtStates:
         self.used_symbol_id_to_indexes = {}
         return result
 
+    def copy_on_write_arg_state(self, stmt_id, status: StmtStatus, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state):
+        """
+        对实参进行copy_on_write，确保为old_arg_state_index创建并缓存一个new_arg_state_index，并将其加入到当前语句的defined_states中。
+        返回：新拷贝的实参状态索引
+        """
+        if old_arg_state_index in old_to_new_arg_state:
+            return old_to_new_arg_state[old_arg_state_index]
+
+        latest_old_arg_indexes = self.resolver.retrieve_latest_states(
+            self.frame,
+            stmt_id,
+            self.frame.symbol_state_space,
+            {old_arg_state_index},
+            self.frame.state_bit_vector_manager.explain(status.in_state_bits),
+            old_to_latest_old_arg_state
+        )
+        if not latest_old_arg_indexes:
+            return -1
+        latest_old_arg_index = next(iter(latest_old_arg_indexes))
+        new_arg_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, latest_old_arg_index)
+        old_to_new_arg_state[old_arg_state_index] = new_arg_state_index
+        status.defined_states.add(new_arg_state_index)
+        return new_arg_state_index
+
+    def extract_callee_param_last_states(self, mapping, callee_summary: MethodSummaryTemplate, callee_space: SymbolStateSpace):
+        """
+        从callee的摘要中提取指定形参在方法退出点的所有last state索引集合。
+        返回：set[int]（caller空间中的state索引）
+        """
+        last_state_indexes = set()
+        parameter_symbol_id = mapping.parameter_symbol_id
+        parameter_symbols = callee_summary.parameter_symbols
+        parameter_last_states = parameter_symbols.get(parameter_symbol_id, [])
+
+        for index_pair in parameter_last_states:
+            new_index = index_pair.new_index
+            # 将callee_compact_space中的新索引映射到caller空间中的appended index
+            if new_index not in callee_space.old_index_to_new_index:
+                continue
+            index_in_appended_space = callee_space.old_index_to_new_index[new_index]
+            each_parameter_last_state = self.frame.symbol_state_space[index_in_appended_space]
+            if not (each_parameter_last_state and isinstance(each_parameter_last_state, State)):
+                continue
+
+            if mapping.parameter_type == LIAN_INTERNAL.PARAMETER_DECL:
+                last_state_indexes.add(index_in_appended_space)
+
+            elif mapping.parameter_type == LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER:
+                parameter_access_path = mapping.parameter_access_path
+                parameter_index_in_array = parameter_access_path.key
+                if hasattr(each_parameter_last_state, "array") and \
+                   len(each_parameter_last_state.array) > int(parameter_index_in_array):
+                    states_at_pos = each_parameter_last_state.array[int(parameter_index_in_array)]
+                    for idx in states_at_pos:
+                        last_state_indexes.add(idx)
+
+            elif mapping.parameter_type == LIAN_INTERNAL.PACKED_NAMED_PARAMETER:
+                parameter_access_path = mapping.parameter_access_path
+                parameter_field_name = parameter_access_path.key
+                if hasattr(each_parameter_last_state, "fields"):
+                    states_in_field = each_parameter_last_state.fields.get(parameter_field_name, set())
+                    for idx in states_in_field:
+                        last_state_indexes.add(idx)
+
+        return last_state_indexes
+
     def read_defined_symbol_states(self, status: StmtStatus):
         """读取已定义符号的状态集合"""
         defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
@@ -1389,20 +1455,14 @@ class StmtStates:
         """用形参的last_states去更新传入的实参"""
         if util.is_empty(old_to_latest_old_arg_state):
             old_to_latest_old_arg_state = {}
-
-        if old_arg_state_index not in old_to_new_arg_state:
-            latest_old_arg_index = self.resolver.retrieve_latest_states(
-                self.frame, stmt_id, self.frame.symbol_state_space, {old_arg_state_index},
-                self.frame.state_bit_vector_manager.explain(status.in_state_bits), old_to_latest_old_arg_state
-            ).pop()
-            new_arg_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, latest_old_arg_index)
-            old_to_new_arg_state[old_arg_state_index] = new_arg_state_index
-            status.defined_states.add(new_arg_state_index)
-        else:
-            new_arg_state_index = old_to_new_arg_state[old_arg_state_index]
+        
+        new_arg_state_index = self.copy_on_write_arg_state(
+            stmt_id, status, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state
+        )
+        if new_arg_state_index == -1:
+            return
         new_arg_state: State = self.frame.symbol_state_space[new_arg_state_index]
-        # print(f"old_arg_state_index: {old_arg_state_index}")
-        # print(f"new_arg_state_index: {new_arg_state_index}")
+
         state_array: list[set] = []
         tangping_flag = False
         tangping_elements = set()
@@ -1420,7 +1480,6 @@ class StmtStates:
             each_last_state_array = each_last_state.array
             for index in range(len(each_last_state_array)):
                 util.add_to_list_with_default_set(state_array, index, each_last_state_array[index])
-            # 如果callee的array_state有anything(来自于callee外部)，则需要去caller中找到对应的concrete_state
             state_array_copy = copy.deepcopy(state_array)
             for index in range(len(state_array_copy)):
                 array_states = state_array_copy[index]
@@ -1442,7 +1501,6 @@ class StmtStates:
             new_arg_state.array = new_array
 
             new_arg_state.tangping_flag |= tangping_flag
-            # [未测]
             for each_tangping_element_index in tangping_elements.copy():
                 each_tangping_element = self.frame.symbol_state_space[each_tangping_element_index]
                 if each_tangping_element.state_type == STATE_TYPE_KIND.ANYTHING:
@@ -1450,19 +1508,13 @@ class StmtStates:
                                                                          stmt_id, callee_id,
                                                                          set_to_update=tangping_elements)
             new_arg_state.tangping_elements.update(tangping_elements)
-            # print(f"new_arg_state: {new_arg_state}")
-            # print(f"new_arg_state_index: {new_arg_state_index}")
-        # print(f"new_arg_state: {new_arg_state}")
 
         new_arg_state_fields = new_arg_state.fields
         arg_base_access_path = new_arg_state.access_path
-        # print(f"\napply_parameter_fields开始\ncallee_state_field: {callee_state_fields}")
-        # print(f"new_arg_state_fields1: {new_arg_state_fields}")
         for field_name in callee_state_fields:
             if field_name not in new_arg_state_fields:
                 new_arg_state_fields[field_name] = callee_state_fields[field_name]
             else:
-                # TODO：填充a.f的data_type可能有哪些。这需要遍历callee_state_fields.f和arg_state_fields.f
                 access_path = self.copy_and_extend_access_path(
                     original_access_path=arg_base_access_path,
                     access_point=AccessPoint(
@@ -1474,19 +1526,12 @@ class StmtStates:
                     stmt_id, status, callee_state_fields[field_name], new_arg_state_fields[field_name],
                     parameter_symbol_id, access_path
                 )
-        # print(f"new_arg_state_fields2: {new_arg_state_fields}")
-        # print(f"new_arg_state_index {new_arg_state_index}")
 
-        # [rn]如果callee的field_state有anything，则需要去caller中找到对应的concrete_state
         # TODO：暂时只考虑了field
         for field_name, field_states in copy.deepcopy(new_arg_state_fields).items():
             for each_field_state_index in field_states:
                 each_field_state = self.frame.symbol_state_space[each_field_state_index]
                 if each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                    # if config.DEBUG_FLAG:
-                    #     print(f"\n\napply_parameter时, each_field_state {each_field_state_index} 是anything, field_name是{field_name}")
-                    #     pprint.pprint(each_field_state)
-                    #     print()
                     self.resolver.resolve_anything_in_summary_generation(
                         each_field_state_index, self.frame, stmt_id, callee_id, deferred_index_updates,
                         set_to_update=new_arg_state_fields[field_name], parameter_symbol_id=parameter_symbol_id
@@ -1607,42 +1652,12 @@ class StmtStates:
             if each_mapping.arg_source_symbol_id == -1:
                 continue
 
-            parameter_symbol_id = each_mapping.parameter_symbol_id
-            parameter_symbols = callee_summary.parameter_symbols
-            parameter_last_states = parameter_symbols.get(parameter_symbol_id, [])
-            # print(f"parameter_last_states: {parameter_last_states}")
-
-            for index_pair in parameter_last_states:
-                new_index = index_pair.new_index
-                index_in_appended_space = callee_space.old_index_to_new_index[new_index]
-                each_parameter_last_state = self.frame.symbol_state_space[index_in_appended_space]
-                if not (each_parameter_last_state and isinstance(each_parameter_last_state, State)):
-                    continue
-
-                if each_mapping.parameter_type == LIAN_INTERNAL.PARAMETER_DECL:
-                    last_states.add(each_parameter_last_state)
-                    last_state_indexes.add(index_in_appended_space)
-
-                elif each_mapping.parameter_type == LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER:
-                    parameter_access_path = each_mapping.parameter_access_path
-                    parameter_index_in_array = parameter_access_path.key
-                    if len(each_parameter_last_state.array) > int(parameter_index_in_array):
-                        last_state_index_set = each_parameter_last_state.array[int(parameter_index_in_array)]
-                        for last_state_index in last_state_index_set:
-                            last_states.add(self.frame.symbol_state_space[last_state_index])
-                            last_state_indexes.add(last_state_index)
-
-                elif each_mapping.parameter_type == LIAN_INTERNAL.PACKED_NAMED_PARAMETER:
-                    parameter_access_path = each_mapping.parameter_access_path
-                    parameter_field_name = parameter_access_path.key
-                    last_state_index_set = each_parameter_last_state.fields.get(parameter_field_name, set())
-                    for last_state_index in last_state_index_set:
-                        last_states.add(self.frame.symbol_state_space[last_state_index])
-                        last_state_indexes.add(last_state_index)
+            # 提取该参数对应的last state索引集合（caller空间中的索引）
+            last_state_indexes = self.extract_callee_param_last_states(each_mapping, callee_summary, callee_space)
 
             self.apply_parameter_summary_to_args_states(
                 stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state,
-                parameter_symbol_id, callee_id, deferred_index_updates, old_to_latest_old_arg_state
+                each_mapping.parameter_symbol_id, callee_id, deferred_index_updates, old_to_latest_old_arg_state
             )
         # print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")
         # pprint.pprint(deferred_index_updates)
