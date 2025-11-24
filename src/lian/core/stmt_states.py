@@ -1652,14 +1652,12 @@ class StmtStates:
             if each_mapping.arg_source_symbol_id == -1:
                 continue
 
-        # 提取该参数对应的last state索引集合（caller空间中的索引）
-        last_state_indexes = self.extract_callee_param_last_states(each_mapping, callee_summary, callee_space)
-        for idx in last_state_indexes:
-            last_states.add(self.frame.symbol_state_space[idx])
+            # 提取该参数对应的last state索引集合（caller空间中的索引）
+            last_state_indexes = self.extract_callee_param_last_states(each_mapping, callee_summary, callee_space)
 
             self.apply_parameter_summary_to_args_states(
                 stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state,
-            each_mapping.parameter_symbol_id, callee_id, deferred_index_updates, old_to_latest_old_arg_state
+                each_mapping.parameter_symbol_id, callee_id, deferred_index_updates, old_to_latest_old_arg_state
             )
         # print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")
         # pprint.pprint(deferred_index_updates)
