@@ -1499,6 +1499,7 @@ class StmtStates:
         )
 
     def collect_callee_state_effects(self, last_state_indexes, stmt_id, callee_id):
+        """收集在callee summary中的array/field/tangping元素"""
         callee_state_arrays: list[set] = []
         callee_state_fields = {}
         tangping_flag = False
@@ -1525,6 +1526,7 @@ class StmtStates:
         return callee_state_arrays, callee_state_fields, tangping_flag, tangping_elements
 
     def resolve_anything_in_arrays(self, callee_state_arrays, stmt_id, callee_id):
+        """查找array中的ANYTHING，将其解析为caller中具体的state"""
         for index, states in enumerate(callee_state_arrays):
             for each_array_state_index in list(states):
                 each_array_state = self.frame.symbol_state_space[each_array_state_index]
@@ -1565,6 +1567,7 @@ class StmtStates:
     def merge_callee_fields_into_arg_state(
         self, stmt_id, status, arg_state: State, callee_state_fields: dict, parameter_symbol_id
     ):
+        """将callee的field合并进caller的field，并递归合并child field"""
         arg_fields = arg_state.fields
         arg_base_access_path = arg_state.access_path
 
