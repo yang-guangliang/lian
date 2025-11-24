@@ -154,7 +154,7 @@ class Lian:
         return self
 
     def taint_analysis(self):
-        TaintAnalysis(lian, self.options).run(self)
+        TaintAnalysis(self, self.options).run()
 
     def run_all(self):
         self.lang_analysis()
