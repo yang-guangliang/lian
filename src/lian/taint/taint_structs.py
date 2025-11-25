@@ -10,10 +10,8 @@ class MethodTaintFrame:
         self.taint_env:TaintEnv = env
         self.propagation = None
         self.lian = None
-
         self.stmt_id_to_stmt = {}
         self.stmt_counters = {}
-
         self.path_manager = []
         self.taint_state_manager = None
         self.cfg = None
