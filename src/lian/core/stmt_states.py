@@ -1671,72 +1671,122 @@ class StmtStates:
         status.implicitly_defined_symbols.append(index_to_add)
 
     def apply_parameter_semantic_summary(
-        self, stmt_id, callee_id, callee_summary: MethodSummaryTemplate,
-        callee_space: SymbolStateSpace, parameter_mapping_list: list[ParameterMapping]
+        self,
+        stmt_id,
+        callee_id,
+        callee_summary: MethodSummaryTemplate,
+        callee_space: SymbolStateSpace,
+        parameter_mapping_list: list[ParameterMapping],
     ):
+        """
+        对所有实参应用callee的summary
+        """
         status = self.frame.stmt_id_to_status[stmt_id]
         old_to_new_arg_state = {}
         old_to_latest_old_arg_state = {}
         deferred_index_updates = set()
+
         for each_mapping in parameter_mapping_list:
-            # state_array: list[set] = []
-            # state_fields: dict[str, set] = {}
-            last_states: set[State] = set()
-            last_state_indexes = set()
             if each_mapping.is_default_value:
-                default_value_state_type = STATE_TYPE_KIND.REGULAR
-                parameter_symbol_id = each_mapping.parameter_symbol_id  # 直接取parameter_symbol的last_states
-                default_value_symbol_id = each_mapping.arg_state_id
-                for index_pair in callee_summary.parameter_symbols.get(parameter_symbol_id, []):
-                    new_index = index_pair.new_index
-                    index_in_appended_space = callee_space.old_index_to_new_index[new_index]
-                    each_default_value_last_state = self.frame.symbol_state_space[index_in_appended_space]
-                    if not (each_default_value_last_state and isinstance(each_default_value_last_state, State)):
-                        continue
-
-                    if default_value_state_type != STATE_TYPE_KIND.ANYTHING:
-                        if each_default_value_last_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                            default_value_state_type = STATE_TYPE_KIND.ANYTHING
-
-                    last_states.add(each_default_value_last_state)
-                    last_state_indexes.add(index_in_appended_space)
-
-                tmp_default_value_state_index = self.create_state_and_add_space(status, stmt_id,
-                                                                                state_type=default_value_state_type)
-                self.apply_parameter_summary_to_args_states(stmt_id, status, last_state_indexes,
-                                                            tmp_default_value_state_index, old_to_new_arg_state)
-                new_default_value_state_index = old_to_new_arg_state[tmp_default_value_state_index]
-                if default_value_symbol_id not in self.frame.all_local_symbol_ids:
-                    util.add_to_dict_with_default_set(
-                        self.frame.method_summary_template.defined_external_symbols,
-                        default_value_symbol_id,
-                        IndexMapInSummary(raw_index=new_default_value_state_index, new_index=-1)
-                    )
-                index_to_add = self.frame.symbol_state_space.add(
-                    Symbol(
-                        stmt_id=stmt_id,
-                        symbol_id=default_value_symbol_id,
-                        states={new_default_value_state_index}
-                    )
+                self.apply_default_parameter_mapping(
+                    stmt_id,
+                    status,
+                    each_mapping,
+                    callee_summary,
+                    callee_space,
+                    old_to_new_arg_state,
+                    old_to_latest_old_arg_state,
                 )
-                status.defined_states.discard(tmp_default_value_state_index)
-                status.implicitly_defined_symbols.append(index_to_add)
                 continue
 
             if each_mapping.arg_source_symbol_id == -1:
                 continue
 
-            # 提取该参数对应的last state索引集合（caller空间中的索引）
-            last_state_indexes = self.extract_callee_param_last_states(each_mapping, callee_summary, callee_space)
-
-            self.apply_parameter_summary_to_args_states(
-                stmt_id, status, last_state_indexes, each_mapping.arg_index_in_space, old_to_new_arg_state,
-                each_mapping.parameter_symbol_id, callee_id, deferred_index_updates, old_to_latest_old_arg_state
+            last_state_indexes = self.extract_callee_param_last_states(
+                each_mapping, callee_summary, callee_space
             )
-        # print(f"\n\n\n\n\n\\\\\\\\\\\\\\apply_parameter延迟更新 \ndeferred_index_updates")
-        # pprint.pprint(deferred_index_updates)
-        # print(f"old_to_new_arg_state {old_to_new_arg_state}")
-        self.resolver.update_deferred_index(old_to_new_arg_state, deferred_index_updates, self.frame.symbol_state_space)
+            self.apply_parameter_summary_to_args_states(
+                stmt_id,
+                status,
+                last_state_indexes,
+                each_mapping.arg_index_in_space,
+                old_to_new_arg_state,
+                each_mapping.parameter_symbol_id,
+                callee_id,
+                deferred_index_updates,
+                old_to_latest_old_arg_state,
+            )
+
+        self.resolver.update_deferred_index(
+            old_to_new_arg_state, deferred_index_updates, self.frame.symbol_state_space
+        )
+
+    def apply_default_parameter_mapping(
+        self,
+        stmt_id,
+        status: StmtStatus,
+        mapping: ParameterMapping,
+        callee_summary: MethodSummaryTemplate,
+        callee_space: SymbolStateSpace,
+        old_to_new_arg_state,
+        old_to_latest_old_arg_state,
+    ):
+        """
+        处理默认值参数：把callee summary中的默认值状态应用到实参上
+        """
+        parameter_symbol_id = mapping.parameter_symbol_id
+        default_value_symbol_id = mapping.arg_state_id
+        last_state_indexes = set()
+        default_value_state_type = STATE_TYPE_KIND.REGULAR
+
+        for index_pair in callee_summary.parameter_symbols.get(parameter_symbol_id, []):
+            new_index = index_pair.new_index
+            index_in_appended_space = callee_space.old_index_to_new_index[new_index]
+            each_default_value_last_state = self.frame.symbol_state_space[index_in_appended_space]
+            if not (each_default_value_last_state and isinstance(each_default_value_last_state, State)):
+                continue
+
+            if default_value_state_type != STATE_TYPE_KIND.ANYTHING:
+                if each_default_value_last_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                    default_value_state_type = STATE_TYPE_KIND.ANYTHING
+
+            last_state_indexes.add(index_in_appended_space)
+
+        if util.is_empty(last_state_indexes):
+            return
+
+        tmp_default_value_state_index = self.create_state_and_add_space(
+            status, stmt_id, state_type=default_value_state_type
+        )
+        self.apply_parameter_summary_to_args_states(
+            stmt_id,
+            status,
+            last_state_indexes,
+            tmp_default_value_state_index,
+            old_to_new_arg_state,
+            mapping.parameter_symbol_id,
+            callee_id=-1,
+            deferred_index_updates=None,
+            old_to_latest_old_arg_state=old_to_latest_old_arg_state,
+        )
+        new_default_value_state_index = old_to_new_arg_state[tmp_default_value_state_index]
+
+        if default_value_symbol_id not in self.frame.all_local_symbol_ids:
+            util.add_to_dict_with_default_set(
+                self.frame.method_summary_template.defined_external_symbols,
+                default_value_symbol_id,
+                IndexMapInSummary(raw_index=new_default_value_state_index, new_index=-1),
+            )
+
+        index_to_add = self.frame.symbol_state_space.add(
+            Symbol(
+                stmt_id=stmt_id,
+                symbol_id=default_value_symbol_id,
+                states={new_default_value_state_index},
+            )
+        )
+        status.defined_states.discard(tmp_default_value_state_index)
+        status.implicitly_defined_symbols.append(index_to_add)
 
     def apply_other_semantic_summary(
         self, stmt_id, callee_id, status: StmtStatus, callee_summary: MethodSummaryTemplate,
