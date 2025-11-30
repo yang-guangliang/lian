@@ -35,12 +35,6 @@ from lian.util.decorators import static_vars
 
 class Resolver:
     def __init__(self, options, event_manager, loader):
-        """
-        初始化解析器上下文：
-        1. 注册加载器和应用管理器
-        2. 初始化文件路径到单元ID的映射
-        3. 准备符号作用域管理结构
-        """
         self.options = options
         self.loader:Loader = loader
         self.event_manager = event_manager
@@ -61,13 +55,6 @@ class Resolver:
         return unit_ids
 
     def resolve_class_name_to_ids(self, unit_id, scope_id, class_name):
-        """
-        Given a class name, find its source stmt id
-
-        steps:
-            1. find all the symbols in the current unit
-            2. find all the symbols in the imported units
-        """
 
         result = []
 
@@ -142,11 +129,6 @@ class Resolver:
         return SourceSymbolScopeInfo(-1, symbol_id, scope_id)
 
     def resolve_implicit_root_scopes(self, unit_id):
-        """
-            找到指定unit中的implicit_root_scope
-             - implicit_root_scope：
-                既在顶层scope下，又是BLOCK scope类型(比如.py的 "if name == __main__"，实际上里面定义的变量是在顶层作用域)
-        """
         unit_scope_space_dm = self.loader.get_unit_scope_hierarchy(unit_id)
         query_implicit_root_scope_condition =(
             (unit_scope_space_dm.get_data()["scope_id"] == 0) &
@@ -159,21 +141,6 @@ class Resolver:
         return implicit_root_scopes
 
     def resolve_symbol_source_decl(self, unit_id, stmt_id, symbol_name:str, source_symbol_must_be_global = False):
-        """
-        给定symbol_name，解析其最近的声明位置
-        This function is to address the key question:
-            Given a symbol, how to find its symbol_id, i.e., where it is declared?
-
-        Our idea:
-            1. Inside a unit, we can utilize scope hierarchy.
-            2. Outside a unit, since an external symbol must be imported, we can use the results of import symbol analysis.
-
-        Return:
-            SourceSymbolScopeInfo:
-                source_unit_id &
-                source_decl_stmt_id (also source_symbol_id) &
-                source_decl_scope_id
-        """
         if symbol_name == LIAN_INTERNAL.THIS:
             return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID, -1)
         # default return value
@@ -216,12 +183,6 @@ class Resolver:
     def collect_newest_states_by_state_indexes(
         self, frame: ComputeFrame, stmt_id, state_index_set: set, available_state_defs, old_index_ceiling: int = -1
     ):
-        """
-        给定一组state_index的集合。收集其中所有states的最新状态。states可以分为两种情况。
-        ①如果state_index超过原来state_space的长度(old_index_ceiling)，意味着它是本句语句新创建出的state，加入到newest_remaining集合，直接返回。
-        ②如果state_index在原来state_space的长度内，则收集其所有的state_id。最后遍历state_id，从frame.defined_states和available_state_defs共同取出该state_id在这一句时的最新state(**如果没找到就返回自己**)。
-        最后将①和②都返回。
-        """
         newest_remaining = set()
         state_index_set_copy = set()
         status = frame.stmt_id_to_status[stmt_id]
@@ -268,12 +229,6 @@ class Resolver:
     def collect_newest_states_by_state_ids(
         self, frame: ComputeFrame, status, state_id_set
     ):
-        """
-        通过状态ID集合收集索引：
-        1. 递归处理状态定义
-        2. 处理字段/数组等复合状态
-        3. 返回最新状态索引集合
-        """
         index_set = set()
         available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
         def collect_single_state_id(state_id):
@@ -295,9 +250,6 @@ class Resolver:
         return index_set
 
     def obtain_parent_states(self, stmt_id, frame, status, base_state_index):
-        """
-            给定一个base_state，找到其当前最新的parent_sates。
-        """
         # print("obtain_parent_states@ 要找的base_state是",base_state_index)
         parent_state_id = self.obtain_parent_state_id(frame, status, base_state_index)
         # print("obtain_parent_states@ 找到的parent_state_id是",parent_state_id)
@@ -325,9 +277,6 @@ class Resolver:
         return newest_states
 
     def obtain_parent_state_id(self, frame, status, base_state_index):
-        """
-            获取parent_state_id
-        """
         base_state = frame.symbol_state_space[base_state_index]
         if not isinstance(base_state, State):
             return -1
@@ -341,10 +290,6 @@ class Resolver:
         return parent_state_id
 
     def get_this_state(self, caller_frame: ComputeFrame, new_indexes: set):
-        """
-            解析出this/self对应的状态
-            this_states结果会存入new_indexes集合；返回this相关的state space
-        """
         # print("进入get_this_state")
         call_stmt_id = caller_frame.stmt_worklist.peek()
         stmt = caller_frame.stmt_id_to_stmt[call_stmt_id]
@@ -377,12 +322,6 @@ class Resolver:
         return new_space
 
     def infer_arg_from_parameter(self, caller_frame: ComputeFrame, callee_frame: ComputeFrame, state_symbol_id, arg_access_path: list, source_states: set):
-        """
-        推断参数对应的实参：
-        1. 查询参数映射关系
-        2. 处理位置参数和命名参数
-        3. 构建实参状态空间
-        """
         # 可能只找到arg的symbol id,也可能直接找到source state
         call_stmt_id = caller_frame.stmt_worklist.peek()
         current_space = caller_frame.symbol_state_space
@@ -475,11 +414,6 @@ class Resolver:
         return (state_symbol_id, None)
 
     def get_latest_source_state_indexes(self, current_frame: ComputeFrame, state_symbol_id):
-        """
-        输入：symbol_id, current_frame
-        作用：在current_frame中找到能流到当前断点语句处的、该symbol_id的symbol的所有states的最新版本(内部小弟已用retrieve*方法更新)
-        输出：set
-        """
         # if config.DEBUG_FLAG:
         #     print(f"get_latest_source_state_indexes: method_id {current_frame.method_id}, state_symbol_id: {state_symbol_id}")
         current_space = current_frame.symbol_state_space
@@ -521,12 +455,6 @@ class Resolver:
         return latest_source_state_indexes
 
     def get_sub_space(self, current_frame, current_space:SymbolStateSpace, latest_source_state_indexes, new_indexes):
-        """
-        创建子状态空间：
-        1. 基于源状态索引提取子集
-        2. 重建索引映射关系
-        3. 返回新状态空间
-        """
         if not isinstance(current_frame, ComputeFrame):
             return None
 
@@ -546,10 +474,6 @@ class Resolver:
         return new_space
 
     def retrieve_latest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
-        """
-        # input：state_index的集合 或都来自symbol.states，或都来自state[f]。返回：这一批state_index对应的newest_index集合
-        # 作用：输入state_indexes，它会一气更新好内部所有小弟的index，最后返回输入对应的最新indexes(集合)
-        """
         # print(f"找最新retrieve_latest_states state_old_to_new, 输入的是:{state_indexes}")
         return_indexes = set()
         for state_index in state_indexes:
@@ -599,9 +523,6 @@ class Resolver:
         return return_indexes
 
     def get_state_from_path(self, current_space, arg_access_path: list[AccessPoint], source_state_indexes):
-        """
-        传入source_state_indexes和current_space，从current_space中取出source_states。随后根据传入的access_path解析出对应的状态
-        """
         if not arg_access_path:
             return source_state_indexes.copy()
 
@@ -656,13 +577,6 @@ class Resolver:
         return new_source_states
 
     def resolve_symbol_states(self, state: State, frame_stack: ComputeFrameStack, frame: ComputeFrame, stmt_id, stmt, status):
-        """
-        解析符号状态链：
-        1. 遍历调用栈帧
-        2. 处理THIS/方法/类符号
-        3. 解析参数映射关系
-        4. 提取最新状态版本
-        """
         # -traverse the frame stack;
         # -For each frame, check the bit vector of its last stmt;
         # -find the corresponding states based on the bit vector
@@ -865,9 +779,6 @@ class Resolver:
         self, state_index, caller_frame: ComputeFrame, stmt_id, callee_id, parameter_symbol_id = -1,
         deferred_index_updates = None, set_to_update = None, arg_state_indexes = None
         ):
-        """
-        a.f=anything_state(src_symbol为a) 输入anything_state(如%v1和a)。返回一个新field_state，内部已经全都是concrete_state。
-        """
         state = caller_frame.symbol_state_space[state_index]
         access_path = state.access_path
         # print(f"\nresolve_anything_with_same_src_symbol_in_summary_generation state_index {state_index} id_set_to_update {id(set_to_update)} path {access_path}\nbegin========= ")
@@ -947,11 +858,6 @@ class Resolver:
 
 
     def update_deferred_index(self, old_to_new_index, deferred_index_updates, current_space):
-        """
-        [rn]
-        延迟更新。用于处理resolve_anything_in_summary_generation中遇到src_symbol是形参的anything时，在所有参数更新完后进行索引的同步更新。
-        e.g. p1.f=p2.g，先记录相应信息在deferred_index_updates中。当所有parameter都被callee_summary更新后，再去更新过的p2中找到p2.g的真正state,更新set_to_update,即p1.f = p2.g。
-        """
         for deferred_index_update in deferred_index_updates:
             deferred_index_update:DeferedIndexUpdate # 类型提示
             old_arg_indexes = deferred_index_update.arg_state_indexes
@@ -964,12 +870,6 @@ class Resolver:
             set_to_update.update(concrete_states)
 
     def are_states_identical(self, state_index1, state_index2, space1: SymbolStateSpace, space2: SymbolStateSpace):
-        """
-        比较状态等价性：
-        1. 递归比较子状态
-        2. 检查字段/数组结构
-        3. 验证值相等性
-        """
         def are_child_identical(child_index1, child_index2):
             state1 = space1[child_index1]
             state2 = space2[child_index2]
@@ -1014,7 +914,6 @@ class Resolver:
     ) -> dict[str,set[int]]:
 
         def find_symbol_def_above_stmt(_stmt_id, _symbol_ids):
-            """找能够流到stmt的非field_read_stmt symbol定义"""
             result = set()
             status = frame.stmt_id_to_status[_stmt_id]
 
@@ -1035,11 +934,6 @@ class Resolver:
                     result.add(symbol_def_node.stmt_id)
             return result
 
-        """
-            给定symbol_name和当前语句，返回在<当前方法中>：
-            1、def_stmt_ids[NEAREST]：nearest、reachable def_stmt_ids
-            2、def_stmt_ids[ALL]：all def_stmt_ids
-        """
         NEAREST = "nearest_def_stmt_ids"
         ALL = "all_def_stmt_ids"
 
@@ -1069,7 +963,6 @@ class Resolver:
         return def_stmt_ids
 
     def find_symbol_global_def_in_unit(self, unit_id, symbol_name)->dict:
-        """找到unit中对symbol_name的全局定义(函数/类)"""
         unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.get_unit_symbol_decl_summary(unit_id)
         root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE, {})
         global_defs = {
@@ -1083,7 +976,6 @@ class Resolver:
         unit_class_ids: list[int] = self.loader.convert_unit_id_to_class_ids(unit_id)
         unit_methods_ids: list[int] = self.loader.convert_unit_id_to_method_ids(unit_id)
         unit_import_stmt_ids: list[int] = self.loader.convert_unit_id_to_import_stmt_ids(unit_id)
-        """symbol是该文件中位于顶层作用域的类或函数"""
         if symbol_row_id in unit_class_ids:
             global_defs[LIAN_SYMBOL_KIND.CLASS_KIND].add(symbol_row_id)
         if symbol_row_id in unit_methods_ids:
@@ -1093,7 +985,6 @@ class Resolver:
         return global_defs
 
     def get_file_symbol_import_by_name(self, unit_id, symbol_name: str) -> list[str]:
-        """获取指定文件中，指定symbol_name的import源代码"""
         import_stmts = []
         # 获取当前文件中该symbol_name的import信息
         edge_node_list = self.loader.get_edges_and_nodes_with_edge_attrs_in_import_graph(unit_id, {"real_name": symbol_name})
@@ -1105,7 +996,6 @@ class Resolver:
         return import_stmts
 
     def get_previous_call_site(self, frame:ComputeFrame, index:int):
-        """global阶段使用：给定一个index，找到调用栈中向上的第index个调用点信息"""
         call_stack:ComputeFrameStack = frame.frame_stack
         if not isinstance(call_stack,ComputeFrameStack):
             return None

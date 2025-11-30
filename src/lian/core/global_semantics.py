@@ -63,11 +63,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         self.caller_unknown_callee_edge = {}
 
     def get_stmt_id_to_callee_info(self, callees):
-        """
-        构建语句ID到被调用者信息的映射：
-        参数：callees - 包含被调用者信息的对象列表
-        返回：stmt_id -> 被调用者对象的字典
-        """
         results = {}
         for each_callee in callees:
             results[each_callee.stmt_id] = each_callee
@@ -118,13 +113,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             each_space.call_site = frame.path[-3:]
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
-        """
-        初始化计算帧环境：
-        1. 设置方法参数/语句初始状态
-        2. 初始化动态内容分析器
-        3. 加载符号定义、状态定义及控制流图
-        4. 构建符号图和状态空间初始视图
-        """
         frame.has_been_inited = True
         frame.frame_stack = frame_stack
         method_id = frame.method_id
@@ -269,12 +257,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return summary_data
 
     def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryInstance, compact_space: SymbolStateSpace, caller_frame: ComputeFrame = None):
-        """
-        保存分析结果到上层帧：
-        1. 关联调用点与方法摘要实例
-        2. 存储压缩后的符号状态空间
-        3. 更新调用链上下文中的汇总数据
-        """
         if not caller_frame:
             caller_frame: ComputeFrame = frame.frame_stack[-2]
         caller_frame.summary_collection[frame.call_site] = method_summary
@@ -289,10 +271,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         # self.loader.save_method_summary_template(frame.method_id, frame.method_summary_template)
 
     def save_result_to_last_frame_v1(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate):
-        """
-        分版本保存中间分析结果到调用链末端帧：
-        通过不同版本实现结果传递的阶段性存储
-        """
         self.save_result_to_last_frame_v2(frame_stack, current_frame, summary, current_frame.space_summary)
 
     def save_result_to_last_frame_v2(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate, s2space: SymbolStateSpace):
@@ -305,13 +283,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         last_frame.summary_collection[key] = summary_data
 
     def analyze_frame_stack(self, frame_stack: ComputeFrameStack, global_space, sfg: StateFlowGraph):
-        """
-        执行调用栈级分析流程：
-        1. 处理动态调用分析需求
-        2. 管理调用点摘要存储
-        3. 处理未解析动态调用中断
-        4. 生成最终方法摘要并保存结果
-        """
         frame_path = None
         while len(frame_stack) >= 2:
             # get current compute frame
@@ -425,13 +396,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return meta_frame.summary_collection
 
     def init_frame_stack(self, entry_method_id, global_space, sfg):
-        """
-        初始化调用栈框架：
-        1. 创建元帧用于结果收集
-        2. 初始化入口方法计算帧
-        3. 配置初始调用路径信息
-        返回：初始化完成的调用栈对象
-        """
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
         entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph=sfg)
@@ -580,13 +544,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return False
 
     def run(self):
-        """
-        执行全局分析主流程：
-        1. 加载所有入口方法
-        2. 为每个入口点初始化调用栈
-        3. 遍历调用栈执行深度分析
-        4. 持久化最终调用图和摘要数据
-        """
         if config.DEBUG_FLAG:
             util.debug("\n\t++++++++++++++++++++++++++++++++++++++++++++++++\n"
                        "\t======== Phase III analysis is ongoing =========\n"

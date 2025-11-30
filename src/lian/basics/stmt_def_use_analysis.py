@@ -30,12 +30,6 @@ from lian.basics.import_hierarchy import ImportHierarchy
 
 class StmtDefUseAnalysis:
     def __init__(self, loader:Loader, resolver: Resolver, basic_call_graph: BasicCallGraph, compute_frame: ComputeFrame, import_analysis:ImportHierarchy, external_symbol_id_collection):
-        """
-        初始化语句定义使用分析器：
-        1. 注册各类语句的处理回调函数
-        2. 初始化符号状态空间和帧上下文
-        3. 配置导入层次分析器
-        """
         self.loader: Loader = loader
         self.resolver: Resolver = resolver
         self.basic_call_graph: BasicCallGraph = basic_call_graph
@@ -150,19 +144,6 @@ class StmtDefUseAnalysis:
         return self.empty_def_use(stmt_id, stmt)
 
     def add_status_with_symbol_id_sync(self, stmt, status: StmtStatus, is_decl_stmt = False, is_parameter_decl_stmt = False):
-        """
-        1. 状态绑定：将符号状态与当前语句关联
-        2. 符号溯源：解析符号的来源信息（单元ID/符号ID）
-        3. 空间同步：将符号状态同步到当前计算帧的符号状态空间
-        4. 摘要更新：更新方法定义使用摘要中的符号关系
-
-        特殊处理：
-        - 参数声明时自动绑定临时变量ID
-        - 处理THIS/OBJECT等内置符号的特殊映射
-        - 解析符号来源时优先使用显式声明的符号ID
-        - 对未解析符号进行临时ID分配
-
-        """
         frame = self.frame      # for shortcut
         stmt_id = stmt.stmt_id
         self.stmt_id_to_status[stmt_id] = status
@@ -288,12 +269,6 @@ class StmtDefUseAnalysis:
             source_info = None
 
     def create_symbol_and_add_space(self, stmt_id, name, default_data_type = ""):
-        """
-        创建符号并添加到状态空间：
-        1. 生成新符号对象
-        2. 添加到符号状态空间
-        3. 返回符号索引
-        """
         if util.is_empty(name):
             return -1
 

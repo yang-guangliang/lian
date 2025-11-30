@@ -16,9 +16,6 @@ from lian.util.loader import Loader
 from lian.config.constants import LIAN_INTERNAL
 
 def check_this_read(receiver_symbol, receiver_states, frame):
-    """
-    判断此次field_read是否是对this的read: this.field
-    """
     this_flag = False
     if len(receiver_states) != 0:
         for each_receiver_state_index in receiver_states:
@@ -30,11 +27,7 @@ def check_this_read(receiver_symbol, receiver_states, frame):
         return False
     return True
 
-
 def resolve_this_field_method(data: EventData):
-    """
-    用于处理field_read: self.func的情况，找到类中定义的field_methods，并添加到self状态的field "func"中。
-    """
     in_data = data.in_data
     frame: ComputeFrame = in_data.frame
     status = in_data.status

@@ -273,11 +273,6 @@ class GlobalStmtStates(StmtStates):
 
 
     def parameter_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        parameter_decl  attrs    data_type   name    default_value
-        def: name
-        use: default_value
-        """
         parameter_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
         symbol_id = parameter_name_symbol.symbol_id
         if isinstance(parameter_name_symbol, Symbol) and self.frame.params_list:

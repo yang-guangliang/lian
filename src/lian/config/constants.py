@@ -175,8 +175,6 @@ SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND = util.SimpleEnum({
     "IMPLICITLY_USED"               : 4
 })
 
-# """A class that represents the possible value types for a state.
-# """
 STATE_TYPE_KIND = util.SimpleEnum({
     "EMPTY"                         : 0,
     "REGULAR"                       : 1,

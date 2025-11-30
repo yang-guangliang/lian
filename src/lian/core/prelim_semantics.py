@@ -78,10 +78,6 @@ class PrelimSemanticAnalysis:
         return results
 
     def adjust_defined_symbols_and_init_bit_vector(self, frame: ComputeFrame, method_id):
-        """
-        调整符号的定义位向量，初始化符号状态空间。
-        处理旧符号定义，构建新的符号到定义节点的映射关系。
-        """
         old_defined_symbols = self.loader.get_method_defined_symbols(method_id)
         if not old_defined_symbols:
             return
@@ -110,10 +106,6 @@ class PrelimSemanticAnalysis:
         frame.all_symbol_defs = all_symbol_defs
 
     def adjust_defined_states_and_init_bit_vector(self, frame: ComputeFrame, method_id):
-        """
-        调整状态的定义位向量，初始化状态状态空间。
-        处理旧状态定义，构建状态到定义节点的映射关系。
-        """
         frame.defined_states = self.loader.get_method_defined_states_p1(method_id)
         all_state_defs = set()
         for state_id, defined_set in frame.defined_states.items():
@@ -124,10 +116,6 @@ class PrelimSemanticAnalysis:
         frame.all_state_defs = all_state_defs
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack):
-        """
-        初始化计算帧，设置符号状态、控制流图、工作列表等基础数据。
-        加载方法参数、方法体、符号初始状态等信息。
-        """
         frame.has_been_inited = True
         frame.frame_stack = frame_stack
         method_id = frame.method_id
@@ -180,11 +168,6 @@ class PrelimSemanticAnalysis:
         return frame
 
     def update_current_symbol_bit(self, bit_id: SymbolDefNode, frame: ComputeFrame, current_bits):
-        """
-        更新当前符号的位向量，处理新定义的符号节点。
-        参数：bit_id - 符号定义节点，current_bits - 当前位向量
-        返回：更新后的位向量
-        """
         symbol_id = bit_id.symbol_id
         if bit_id not in frame.all_symbol_defs:
             frame.all_symbol_defs.add(bit_id)
@@ -199,11 +182,6 @@ class PrelimSemanticAnalysis:
         return current_bits
 
     def update_current_state_bit(self, bit_id: StateDefNode, frame: ComputeFrame, current_bits, new_defined_state_set: set):
-        """
-        更新当前状态的位向量，处理新定义的状态节点。
-        参数：bit_id - 状态定义节点，current_bits - 当前位向量
-        返回：更新后的位向量
-        """
         state_id = bit_id.state_id
         if bit_id not in frame.all_state_defs:
             frame.all_state_defs.add(bit_id)
@@ -224,11 +202,6 @@ class PrelimSemanticAnalysis:
         return current_bits
 
     def update_out_states(self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_index_ceiling, old_status_defined_states = set()):
-        """
-        为每个defined_states创建一个StateDefNode，并更新out_state_bits，(kill/gen也在这个过程中进行)。
-        如果该语句有defined_symbol且defined_symbol没有任何state，说明没解析出来，人为创建一个UNSOLVED的state给defined_symbol。
-        输出这句语句产生的new_states的集合(超出原来state_space长度的states)。
-        """
         # 这条语句新产生的状态
         new_defined_state_set = set()
         for index in status.defined_states:
@@ -272,10 +245,6 @@ class PrelimSemanticAnalysis:
     def update_symbols_if_changed(
         self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_in_symbol_bits, old_out_symbol_bits, def_changed = False, use_changed = False
     ):
-        """
-        根据符号或使用情况的变化更新符号图。
-        参数：def_changed - 符号定义变化标记，use_changed - 使用变化标记
-        """
         if use_changed:
             self.update_used_symbols_to_symbol_graph(stmt_id, frame, only_implicitly_used_symbols = True)
         elif status.in_symbol_bits != old_in_symbol_bits:
@@ -285,10 +254,6 @@ class PrelimSemanticAnalysis:
             frame.stmts_with_symbol_update.add(util.graph_successors(frame.cfg, stmt_id))
 
     def analyze_reachable_symbols(self, stmt_id, stmt, frame: ComputeFrame):
-        """
-        分析符号的可达性，计算输入符号位向量。
-        处理循环控制流，更新符号状态传播。
-        """
         status = frame.stmt_id_to_status[stmt_id]
         old_out_symbol_bits = status.out_symbol_bits
         old_in_symbol_bits = status.in_symbol_bits
@@ -371,10 +336,6 @@ class PrelimSemanticAnalysis:
                 self.update_symbols_if_changed(stmt_id, frame, status, old_in_symbol_bits, old_out_symbol_bits)
 
     def rerun_analyze_reachable_symbols(self, stmt_id, frame: ComputeFrame, result_flag: P2ResultFlag):
-        """
-        重新分析符号可达性（当结果发生变化时）。
-        处理隐式使用符号的变化传播。
-        """
         status = frame.stmt_id_to_status[stmt_id]
         old_out_symbol_bits = status.out_symbol_bits
         current_bits = status.out_symbol_bits
@@ -419,10 +380,6 @@ class PrelimSemanticAnalysis:
         self.update_symbols_if_changed(stmt_id, frame, status, status.in_symbol_bits, old_out_symbol_bits, result_flag.symbol_def_changed, result_flag.symbol_use_changed)
 
     def check_reachable_symbol_defs(self, stmt_id, frame: ComputeFrame, status, used_symbol: Symbol, available_symbol_defs):
-        """
-        检查可到达的符号定义，区分本地定义与外部引用。
-        返回符号定义节点的集合。
-        """
         used_symbol_id = used_symbol.symbol_id
         # print(f"stmt_id: {stmt_id}, used_symbol: {used_symbol.name}")
         reachable_symbol_defs = set()
@@ -449,10 +406,6 @@ class PrelimSemanticAnalysis:
         return reachable_symbol_defs
 
     def update_used_symbols_to_symbol_graph(self, stmt_id, frame: ComputeFrame, only_implicitly_used_symbols=False):
-        """
-        更新符号图中使用的符号边。
-        参数：only_implicitly_used_symbols - 是否仅处理隐式使用
-        """
         status = frame.stmt_id_to_status[stmt_id]
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         all_used_symbols = []
@@ -527,9 +480,6 @@ class PrelimSemanticAnalysis:
                     )
 
     def get_used_symbol_indexes(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
-        """
-        Here we need to collect the symbols to be used. Please note that the used symbols should not be collected from symbol graph, as the symbol graph is the final result rather than the current result.
-        """
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         # print(f"available_defs: {available_defs}")
         all_used_symbols = status.used_symbols + status.implicitly_used_symbols
@@ -573,10 +523,6 @@ class PrelimSemanticAnalysis:
         return in_symbols
 
     def collect_in_state_bits(self, stmt_id, stmt, frame: ComputeFrame):
-        """
-        收集语句的输入状态位，处理控制流合并。
-        返回合并后的状态位向量。
-        """
         in_state_bits = 0
         parent_stmt_ids = util.graph_predecessors(frame.cfg, stmt_id)
         if stmt.operation in LOOP_OPERATIONS:
@@ -597,9 +543,6 @@ class PrelimSemanticAnalysis:
 
     #def group_in_states_and_obtain_newest_states(self, stmt_id, in_symbols, frame: ComputeFrame):
     def group_in_states(self, stmt_id, in_symbols, frame: ComputeFrame, status):
-        """
-        准备in_states, 返回一个集合 {symbol_id: {newest_states} }
-        """
         # all_in_states are all states of used symbols
         # all_in_states -> align -> status.used_symbols
         symbol_id_to_state_index = {}
@@ -630,10 +573,6 @@ class PrelimSemanticAnalysis:
         return symbol_id_to_state_index
 
     def generate_external_symbol_states(self, frame: ComputeFrame, stmt_id, symbol_id, used_symbol, method_summary):
-        """
-        生成外部符号的状态（如方法/类声明）。
-        返回新生成的状态索引集合。
-        """
         if self.loader.is_method_decl(symbol_id):
             new_state = State(
                 stmt_id = stmt_id,
@@ -705,10 +644,6 @@ class PrelimSemanticAnalysis:
         return {index_pair}
 
     def collect_external_symbol_states(self, frame, stmt_id, stmt, symbol_id, summary_template: MethodSummaryTemplate, old_key_state_indexes: set):
-        """
-        收集外部符号的状态索引。
-        返回状态索引集合。
-        """
         if symbol_id in summary_template.key_dynamic_content:
             return old_key_state_indexes
 
@@ -718,10 +653,6 @@ class PrelimSemanticAnalysis:
         return return_indexes
 
     def complete_in_states_and_check_continue_flag(self, stmt_id, frame: ComputeFrame, stmt, status, in_states, method_summary: MethodSummaryTemplate):
-        """
-        完成in_states的更新，并检查是否需要继续分析。
-        返回是否继续分析的标记。
-        """
         # print("@in_states before", in_states)
         if stmt.operation == "parameter_decl":
             return True
@@ -773,10 +704,6 @@ class PrelimSemanticAnalysis:
         return change_flag
 
     def get_next_stmts_for_state_analysis(self, stmt_id, symbol_graph):
-        """
-        获取后续需要分析的状态相关语句。
-        返回后继语句的集合。
-        """
         if not symbol_graph.has_node(stmt_id):
             return set()
 
@@ -788,9 +715,6 @@ class PrelimSemanticAnalysis:
         return results
 
     def unset_states_of_defined_symbol(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
-        """
-        重置定义符号的状态集合。
-        """
         defined_symbol = frame.symbol_state_space[status.defined_symbol]
         if defined_symbol:
             defined_symbol.states = set()
@@ -799,9 +723,6 @@ class PrelimSemanticAnalysis:
     def restore_states_of_defined_symbol_and_status(
         self, stmt_id, frame: ComputeFrame, status: StmtStatus, old_defined_symbol_states, old_implicitly_defined_symbols, old_status_defined_states
     ):
-        """
-        恢复符号和状态定义的原始状态（用于回滚操作）。
-        """
         defined_symbol = frame.symbol_state_space[status.defined_symbol]
         if defined_symbol:
             defined_symbol.states = old_defined_symbol_states
@@ -809,10 +730,6 @@ class PrelimSemanticAnalysis:
         status.defined_states = old_status_defined_states
 
     def check_outdated_state_indexes(self, status, frame: ComputeFrame):
-        """
-        检查过时的状态索引集合。
-        返回需要更新的状态索引。
-        """
         outdated_state_indexes = set()
         for defined_symbol_index in [status.defined_symbol, *status.implicitly_defined_symbols]:
             defined_symbol = frame.symbol_state_space[defined_symbol_index]
@@ -823,9 +740,6 @@ class PrelimSemanticAnalysis:
         return outdated_state_indexes
 
     def adjust_computation_results(self, stmt_id, frame, status: StmtStatus, old_index_ceiling):
-        """
-        一条语句处理完后，将该语句的所有defined_symbol.states和status.defined_states更新到最新版本。
-        """
         available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
         for defined_symbol_index in [status.defined_symbol, *status.implicitly_defined_symbols]:
             defined_symbol = frame.symbol_state_space[defined_symbol_index]
@@ -906,12 +820,6 @@ class PrelimSemanticAnalysis:
                     )
 
     def compute_stmt_states(self, stmt_id, stmt, frame: ComputeFrame):
-        """
-        执行状态计算的核心逻辑：
-        1. 收集输入状态
-        2. 完成状态传播
-        3. 执行具体语句的状态计算
-        """
         status = frame.stmt_id_to_status[stmt_id]
         in_states = {}
         symbol_graph = frame.symbol_graph.graph
@@ -992,9 +900,6 @@ class PrelimSemanticAnalysis:
         return change_flag
 
     def group_states_with_state_ids(self, frame: ComputeFrame, state_indexes: set):
-        """
-        给定一组state_indexes集合，输出{state_id:states}的映射
-        """
         state_id_to_indexes = {}
         space = frame.symbol_state_space
         for index in state_indexes:
@@ -1006,10 +911,6 @@ class PrelimSemanticAnalysis:
         return state_id_to_indexes
 
     def update_method_def_use_summary(self, stmt_id, frame: ComputeFrame):
-        """
-        更新方法的def-use摘要信息。
-        处理隐式定义/使用符号的记录。
-        """
         summary = frame.method_def_use_summary
         status = frame.stmt_id_to_status[stmt_id]
         for implicitly_defined_symbols_index in status.implicitly_defined_symbols:
@@ -1028,19 +929,10 @@ class PrelimSemanticAnalysis:
             summary.used_external_symbol_ids.add(symbol_id)
 
     def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryTemplate, compact_space: SymbolStateSpace):
-        """
-        保存方法的分析摘要和压缩后的状态空间。
-        """
         self.loader.save_symbol_state_space_summary_p2(frame.method_id, compact_space)
         self.loader.save_method_summary_template(frame.method_id, method_summary)
 
     def generate_and_save_analysis_summary(self, frame: ComputeFrame, method_summary: MethodSummaryTemplate):
-        """
-        生成并保存完整的方法分析摘要：
-        1. 处理返回值状态
-        2. 更新符号到状态的映射
-        3. 保存压缩后的状态空间
-        """
         # print(f"生成方法{frame.method_id}的summary")
         def_use_summary = frame.method_def_use_summary
         if util.is_empty(def_use_summary):
@@ -1191,12 +1083,6 @@ class PrelimSemanticAnalysis:
         # print(f"dynamic_call_stmts: {frame.method_summary_template.dynamic_call_stmts}")
 
     def analyze_stmts(self, frame: ComputeFrame):
-        """
-        执行语句级别的分析循环：
-        1. 处理工作列表中的语句
-        2. 触发中断处理（如调用未分析方法）
-        3. 更新符号图和def-use信息
-        """
         while len(frame.stmt_worklist) != 0:
             stmt_id = frame.stmt_worklist.peek()
             # print(f"当前语句id是{stmt_id}, stmt_worklist:",frame.stmt_worklist)
@@ -1254,13 +1140,6 @@ class PrelimSemanticAnalysis:
             frame.stmt_counters[stmt_id] += 1
 
     def analyze_method(self, method_id):
-        """
-        分析单个方法的完整流程：
-        1. 初始化计算帧
-        2. 执行状态分析循环
-        3. 保存分析结果
-        4. 处理方法调用中断
-        """
         current_frame = ComputeFrame(method_id=method_id, loader=self.loader)
         frame_stack = ComputeFrameStack().add(current_frame)
         while len(frame_stack) != 0:
@@ -1316,10 +1195,6 @@ class PrelimSemanticAnalysis:
             frame_stack.pop()
 
     def sort_methods_by_unit_id(self, methods):
-        """
-        按单元ID对方法进行排序。
-        返回排序后的方法列表。
-        """
         return sorted(list(methods), key=lambda method: self.loader.convert_method_id_to_unit_id(method))
 
     def reversed_methods_by_unit_id(self, methods):
@@ -1337,9 +1212,6 @@ class PrelimSemanticAnalysis:
         self.count_stmt_defined_states_number_for_debug[op] += new_out_states_len
 
     def print_count_stmt_def_states(self):
-        """
-        打印summary_generation阶段，每条语句产生的new_out_states数量，倒序排列
-        """
         filtered_stmts_nodes = [node for node in self.count_stmt_defined_states_for_debug.values() if node.new_out_states_len >= 5]
         sorted_stmts_nodes = sorted(filtered_stmts_nodes, key=lambda x: x.new_out_states_len, reverse=True)
         counter = 0
@@ -1365,12 +1237,6 @@ class PrelimSemanticAnalysis:
         self.max_analysis_round = config.MAX_ANALYSIS_ROUND
 
     def run(self):
-        """
-        执行语义摘要生成的主流程：
-        1. 遍历所有方法分组
-        2. 调用单个方法分析
-        3. 保存全局调用图和最终结果
-        """
         if config.DEBUG_FLAG:
             util.debug("\n\t------------------------------------------------\n"
                        "\t~~~~~~~~ Phase II analysis is ongoing ~~~~~~~~~\n"

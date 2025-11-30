@@ -16,9 +16,6 @@ from lian.util.loader import Loader
 from lian.config.constants import LIAN_INTERNAL
 
 def check_this_write(receiver_symbol, receiver_states, frame):
-    """
-    判断此次field_read是否是对this的read: this.field
-    """
     this_flag = False
     if len(receiver_states) != 0:
         for each_receiver_state_index in receiver_states:

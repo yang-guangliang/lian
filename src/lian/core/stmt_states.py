@@ -62,12 +62,6 @@ class StmtStates:
         self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver,
         compute_frame: ComputeFrame, call_graph: CallGraph, analyzed_method_list=[], complete_graph=False
     ):
-        """
-        初始化语句状态分析上下文：
-        1. 注册核心组件（加载器、解析器、计算帧等）
-        2. 初始化状态处理器映射表
-        3. 准备符号状态空间和定义集合
-        """
         self.event_manager = event_manager
         self.loader = loader
         self.resolver: Resolver = resolver
@@ -178,23 +172,11 @@ class StmtStates:
         }
 
     def copy_and_extend_access_path(self, original_access_path, access_point):
-        """
-        扩展访问路径：
-        1. 复制原始访问路径
-        2. 追加新的访问点
-        3. 返回扩展后的路径
-        """
         new_path: list = original_access_path.copy()
         new_path.append(access_point)
         return new_path
 
     def make_state_tangping(self, new_state):
-        """
-        标记状态为tangping：
-        1. 设置tangping标志
-        2. 合并数组元素到tangping集合
-        3. 清空原数组和字段集合
-        """
         new_state.tangping_flag = True
         for each_array in new_state.array:
             new_state.tangping_elements.update(each_array)
@@ -318,11 +300,6 @@ class StmtStates:
         return SFGEdge(edge_type=edge_type, stmt_id=stmt_id, round=round, name=name)
 
     def is_state_a_class_decl(self, state):
-        """
-        判断状态是否为类声明：
-        1. 检查状态数据类型
-        2. 验证符号是否为类声明
-        """
         if state.data_type == LIAN_INTERNAL.CLASS_DECL:
             return True
         if self.loader.is_class_decl(state.value):
@@ -334,11 +311,6 @@ class StmtStates:
             return True
 
     def is_state_a_method_decl(self, state):
-        """
-        判断状态是否为方法声明：
-        1. 检查状态数据类型
-        2. 验证符号是否为方法声明
-        """
         if state.data_type == LIAN_INTERNAL.METHOD_DECL:
             return True
         if self.loader.is_method_decl(state.value):
@@ -357,13 +329,6 @@ class StmtStates:
         self, status: StmtStatus, stmt_id, source_symbol_id=-1, source_state_id=-1, value="", data_type="",
         state_type=STATE_TYPE_KIND.REGULAR, access_path=[], overwritten_flag=False, parent_state=None, parent_state_index = -1
     ):
-        """
-        创建新状态并加入符号空间：
-        1. 构造State对象
-        2. 添加至符号状态空间
-        3. 更新状态定义集合
-        4. 处理外部符号关联
-        """
         item = State(
             stmt_id=stmt_id,
             value=value,
@@ -421,7 +386,6 @@ class StmtStates:
         return index
 
     def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index):
-        """复制已有状态并添加到状态空间，更新相关定义信息"""
         state = self.frame.symbol_state_space[state_index]
         if not isinstance(state, State):
             return -1
@@ -451,7 +415,6 @@ class StmtStates:
         return index
 
     def create_copy_of_symbol_and_add_space(self, status: StmtStatus, stmt_id, symbol: Symbol):
-        """复制符号并添加到符号空间，更新相关定义信息"""
         new_symbol = symbol.copy(stmt_id)
         new_symbol_index = self.frame.symbol_state_space.add(new_symbol)
 
@@ -469,7 +432,6 @@ class StmtStates:
     def create_unsolved_state_and_update_symbol(
         self, status, stmt_id, receiver_symbol, data_type="", state_type=STATE_TYPE_KIND.UNSOLVED
     ):
-        """创建未解决状态并更新关联符号的状态集合"""
         if isinstance(receiver_symbol, Symbol):
             index = self.create_state_and_add_space(
                 status, stmt_id, receiver_symbol.symbol_id, data_type=data_type, state_type=state_type
@@ -483,7 +445,6 @@ class StmtStates:
         return index
 
     def read_used_states(self, index, in_states):
-        """读取给定索引对应的符号或状态在输入状态集合中的使用情况"""
         target = self.frame.symbol_state_space[index]
         if isinstance(target, Symbol):
             return in_states.get(target.symbol_id, set())
@@ -491,7 +452,6 @@ class StmtStates:
         return {index}
 
     def obtain_states(self, index):
-        """获取给定索引对应的状态集合（符号的状态或单个状态）"""
         s = self.frame.symbol_state_space[index]
         if isinstance(s, State):
             return {index}
@@ -500,7 +460,6 @@ class StmtStates:
         return set()
 
     def run(self, stmt_id, stmt, status: StmtStatus, in_states, used_symbol_id_to_indexes):
-        """根据语句类型分发到对应的状态处理函数进行分析"""
         # print("status.operation:", status.operation)
         self.used_symbol_id_to_indexes = used_symbol_id_to_indexes
         handler = self.state_analysis_handlers.get(stmt.operation, None)
@@ -513,10 +472,6 @@ class StmtStates:
         return result
 
     def copy_on_write_arg_state(self, stmt_id, status: StmtStatus, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state):
-        """
-        对实参进行copy_on_write，确保为old_arg_state_index创建并缓存一个new_arg_state_index，并将其加入到当前语句的defined_states中。
-        返回：新拷贝的实参状态索引
-        """
         if old_arg_state_index in old_to_new_arg_state:
             return old_to_new_arg_state[old_arg_state_index]
 
@@ -537,10 +492,6 @@ class StmtStates:
         return new_arg_state_index
 
     def extract_callee_param_last_states(self, mapping, callee_summary: MethodSummaryTemplate, callee_space: SymbolStateSpace):
-        """
-        从callee的摘要中提取指定形参在方法退出点的所有last state索引集合。
-        返回：set[int]（caller空间中的state索引）
-        """
         last_state_indexes = set()
         parameter_symbol_id = mapping.parameter_symbol_id
         parameter_symbols = callee_summary.parameter_symbols
@@ -579,7 +530,6 @@ class StmtStates:
         return last_state_indexes
 
     def read_defined_symbol_states(self, status: StmtStatus):
-        """读取已定义符号的状态集合"""
         defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if not isinstance(defined_symbol, Symbol):
             return set()
@@ -587,7 +537,6 @@ class StmtStates:
         return defined_symbol.states
 
     def unset_key_state_flag(self, symbol_id, state_index, stmt_id=-1):
-        """取消关键状态标记，并清理相关动态调用信息"""
         key_state = self.frame.symbol_state_space[state_index]
         if not (key_state and isinstance(key_state, State)):
             return
@@ -603,7 +552,6 @@ class StmtStates:
             self.frame.method_summary_template.dynamic_call_stmts.discard(stmt_id)
 
     def tag_key_state_flag(self, stmt_id, symbol_id, state_index):
-        """将状态标记为关键状态，并记录相关动态调用信息"""
         key_state = self.frame.symbol_state_space[state_index]
         if not (key_state and isinstance(key_state, State)):
             return
@@ -617,11 +565,9 @@ class StmtStates:
         self.frame.method_summary_template.dynamic_call_stmts.add(stmt_id)
 
     def regular_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """do not need to do anything at this moment"""
         return P2ResultFlag()
 
     def control_flow_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """deal with control flow statement"""
         condition_index = status.used_symbols[0]
         condition_states = self.read_used_states(condition_index, in_states)
 
@@ -654,14 +600,6 @@ class StmtStates:
         state.access_path[-1].state_id = state.state_id
 
     def forin_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        <forin_stmt defined_symbol: name, used_symbol: [receiver]>
-        处理for-in循环语句状态：
-        1. 获取接收器符号状态
-        2. 分析数组/字典结构
-        3. 生成循环轮次状态
-        4. 更新定义符号集合
-        """
         receiver_index = status.used_symbols[0]
         receiver_symbol = self.frame.symbol_state_space[receiver_index]
         receiver_states = self.read_used_states(receiver_index, in_states)
@@ -765,16 +703,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def compute_two_states(self, stmt, state1, state2, defined_symbol: Symbol):
-        """
-        计算双状态运算结果：
-        1. 处理常规类型运算
-        2. 处理动态类型组合
-        3. 生成新状态并关联操作符
-
-        REGULAR op REGULAR = REGULAR
-        REGULAR op UNSOLVED = UNSOLVED
-        REGULAR op ANY = ANY
-        """
         symbol_id = defined_symbol.symbol_id
         if util.is_empty(state1) or util.is_empty(state2):
             return set()
@@ -855,11 +783,6 @@ class StmtStates:
         return set()
 
     def assign_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        assign_stmt data_type   target  operand operator    operand2
-        def: target
-        use: operand operand2
-        """
         operand_index = status.used_symbols[0]
         operand_symbol = self.frame.symbol_state_space[operand_index]
         operand_states = self.read_used_states(operand_index, in_states)
@@ -948,10 +871,6 @@ class StmtStates:
         # index#2 of packed_named_args: -1
         # index#3 of named_args: [sorted values, -1]
         # index#4 of positional_args: [1, index#2/index#3]
-        """
-        Sequentially parse the arguments by types:
-            packed_named_args, named_args, packed_positional_args, positional_args
-        """
 
         positional_args = []
         named_args = {}
@@ -1111,14 +1030,6 @@ class StmtStates:
         self, args: MethodCallArguments, parameters: MethodDeclParameters,
         parameter_mapping_list: list[ParameterMapping], call_site
     ):
-        """
-        Mapping arguments and parameters in terms of symbol_ids
-        This is done sequnetially by their types:
-            - positional_args
-            - named_args
-            - packed_positional_args
-            - packed_named_args
-        """
         #### < key:symbol_id of parameter, value: parameter's states >
 
         # link args and parameters in terms of symbol_ids
@@ -1253,9 +1164,6 @@ class StmtStates:
             self.loader.save_parameter_mapping_p3(call_site, parameter_mapping_list)
 
     def fuse_states_to_one_state(self, state_indexes: set, stmt_id, status: StmtStatus):
-        """
-        给定一组state_indexes的集合，将这些states进行合并,只产生一个新state，合并了所有children_states
-        """
         if util.is_empty(state_indexes) or len(state_indexes) == 1:
             return state_indexes
         # 以集合中的任一个元素作为模板，创建一个fusion_state。create_copy过程中会自动将fusion_state加入status.defined_states中。
@@ -1285,15 +1193,10 @@ class StmtStates:
 
     def recursively_collect_children_fields(self, stmt_id, status: StmtStatus, state_set_in_summary_field: set,
                                             state_set_in_arg_field: set, source_symbol_id, access_path):
-        """
-        合并两个“状态集合”———— 【一个来自 summary field（state_set_in_summary_field），一个来自 arg field（state_set_in_arg_field）】所对应的所有 State 对象中的 fields（字段）信息，
-        最终创建一个或多个新的 State，并返回这些新 State 在符号空间（symbol_state_space）中的索引集合。
-        """
         # 闭包缓存，避免field环形依赖
         cache = {}
 
         def _set_attributes_on_states(states, fields_to_set, state_type, source_symbol_id, access_path):
-            """设置states字段和属性"""
             for state_index in states:
                 state: State = self.frame.symbol_state_space[state_index]
                 state.fields = fields_to_set
@@ -1303,17 +1206,6 @@ class StmtStates:
             return states
 
         def _merge_fields_for_states(summary_states_fields, arg_state_fields, access_path):
-            """
-            将summary_fields和arg_fields合并
-
-            参数:
-                summary_states_fields: dict - summary字段
-                arg_state_fields: dict - arg字段
-                access_path: list - 访问路径
-
-            返回值:
-                dict - 合并后的字段字典
-            """
             current_arg_state_fields = arg_state_fields.copy()
 
             # 处理字段合并
@@ -1460,13 +1352,6 @@ class StmtStates:
         deferred_index_updates=None,
         old_to_latest_old_arg_state=None,
     ):
-        """
-        用形参的last_states去更新传入的实参：
-            1. copy_on_write实参state
-            2. 收集callee摘要中对应形参的数组/字段/tangping
-            3. 更新caller实参的array/fields/tangping
-            4. 解析ANYTHING
-        """
         if util.is_empty(old_to_latest_old_arg_state):
             old_to_latest_old_arg_state = {}
 
@@ -1499,7 +1384,6 @@ class StmtStates:
         )
 
     def collect_callee_state_effects(self, last_state_indexes, stmt_id, callee_id):
-        """收集在callee summary中的array/field/tangping元素"""
         callee_state_arrays: list[set] = []
         callee_state_fields = {}
         tangping_flag = False
@@ -1526,7 +1410,6 @@ class StmtStates:
         return callee_state_arrays, callee_state_fields, tangping_flag, tangping_elements
 
     def resolve_anything_in_arrays(self, callee_state_arrays, stmt_id, callee_id):
-        """查找array中的ANYTHING，将其解析为caller中具体的state"""
         for index, states in enumerate(callee_state_arrays):
             for each_array_state_index in list(states):
                 each_array_state = self.frame.symbol_state_space[each_array_state_index]
@@ -1567,7 +1450,6 @@ class StmtStates:
     def merge_callee_fields_into_arg_state(
         self, stmt_id, status, arg_state: State, callee_state_fields: dict, parameter_symbol_id
     ):
-        """将callee的field合并进caller的field，并递归合并child field"""
         arg_fields = arg_state.fields
         arg_base_access_path = arg_state.access_path
 
@@ -1678,9 +1560,6 @@ class StmtStates:
         callee_space: SymbolStateSpace,
         parameter_mapping_list: list[ParameterMapping],
     ):
-        """
-        对所有实参应用callee的summary
-        """
         status = self.frame.stmt_id_to_status[stmt_id]
         old_to_new_arg_state = {}
         old_to_latest_old_arg_state = {}
@@ -1731,9 +1610,6 @@ class StmtStates:
         old_to_new_arg_state,
         old_to_latest_old_arg_state,
     ):
-        """
-        处理默认值参数：把callee summary中的默认值状态应用到实参上
-        """
         parameter_symbol_id = mapping.parameter_symbol_id
         default_value_symbol_id = mapping.arg_state_id
         last_state_indexes = set()
@@ -1967,19 +1843,6 @@ class StmtStates:
         return None
 
     def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        call_stmt   target  name    return_type prototype   args
-        target = name(args)
-
-        call_stmt: target = name(positional_args, named_args)
-
-        =============================
-
-        1. generate summary
-        2. parse args
-        3. parse parameters
-        4. apply the summary to args and parameters
-        """
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
 
@@ -2188,10 +2051,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def global_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        global_stmt name
-        def: name
-        """
         global_symbol_index = status.defined_symbol
         # self.frame_stack.global_bit_vector_manager.add_bit_id()
         global_symbol = self.frame.symbol_state_space[global_symbol_index]
@@ -2213,10 +2072,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def nonlocal_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        nonlocal_stmt   name
-        def: name
-        """
         defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
@@ -2238,12 +2093,6 @@ class StmtStates:
 
     # TODO:
     def type_cast_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        type_cast_stmt  target  data_type   source  error   cast_action
-        def: target data_type
-        use: source
-        target = (data_type)source
-        """
         source_symbol_index = status.used_symbols[0]
         source_symbol = self.frame.symbol_state_space[source_symbol_index]
         source_states = self.read_used_states(source_symbol_index, in_states)
@@ -2285,10 +2134,6 @@ class StmtStates:
 
     # TODO:
     def type_alias_decl_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        type_alias_decl target source
-        typedef source target
-        """
         source_symbol_index = status.used_symbols[0]
         source_symbol = self.frame.symbol_state_space[source_symbol_index]
         if not isinstance(source_symbol, Symbol):
@@ -2308,12 +2153,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def phi_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        phi_stmt    target  phi_values  phi_labels
-        def: target
-        use: phi_values
-        target = [phi_value, phi_label]
-        """
         used_symbol_indexes = status.used_symbols
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
@@ -2327,11 +2166,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def namespace_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        namespace_decl  name    body
-        def: name
-        use:
-        """
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -2352,14 +2186,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def class_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        class_decl  attrs    name    supers  static_init init    fields  methods nested
-        def: name
-        use:
-        for x in []:
-            int i = 10
-            A a = new A()
-        """
         defined_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if not isinstance(defined_symbol, Symbol):
             return P2ResultFlag()
@@ -2379,11 +2205,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def parameter_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        parameter_decl  attrs    data_type   name    default_value
-        def: name
-        use: default_value
-        """
         defined_symbol_index = status.defined_symbol
         parameter_name_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if isinstance(parameter_name_symbol, Symbol):
@@ -2417,11 +2238,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def variable_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        variable_decl   attrs    data_type   name
-        def: name
-        use:
-        """
         # variable_name_symbol: Symbol = self.frame.symbol_state_space[status.defined_symbol]
         # variable_state_index = self.create_state_and_add_space(
         #     status, stmt_id,
@@ -2438,11 +2254,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def method_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        method_decl attrs    data_type   name    parameters  body
-        def: name
-        use:
-        """
         method_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if isinstance(method_name_symbol, Symbol):
             method_state_index = self.create_state_and_add_space(
@@ -2461,11 +2272,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def new_object_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        new_object  type  attrs  name  args
-        def: type
-        use:
-        """
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -2549,11 +2355,6 @@ class StmtStates:
         return p2result_flag
 
     def new_array_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        new_array   target  attrs    data_type
-        def: target
-        use:
-        """
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -2570,11 +2371,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def new_record_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        new_record  target  attrs    data_type
-        def: target
-        use:
-        """
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -2592,11 +2388,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def new_set_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        new_set target  attrs    data_type
-        def: target
-        use:
-        """
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -2614,28 +2405,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def addr_of_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        addr_of target  source
-        def: target
-        use: source
-        target = &source  (source.id => target.state)
-        if condition:
-           a = 3  -> Symbol1: [0, a, state2(3)]
-           p = &a -> p -> [0]
-        else:
-           a = 4  -> Symbol3: [4, a, state5(4)]
-           p = &a -> p -> [4]
-        c = *p    -> Symbol5: [c, [state2(3), state5(4)]]
-        a = 5     -> Symbol5: [0, a, state4(4)]
-        d = *p    -> Symbol5: [c, state4(4)]
-
-        a = 3  -> Symbol1: [0, a, state2(3)]
-        p = &a -> p -> [0]
-        if.true a =
-        a = 4  -> Symbol3: [0, a, state4(4)]
-        c = *p -> Symbol5: [c, state4(4)]   <= Symbol1.states live at this moment bit_vector.in_bits
-        a = 5  -> Symbol6: [0, a, state7(5)]
-        """
         source_symbol_index = status.used_symbols[0]
         source_symbol: Symbol = self.frame.symbol_state_space[source_symbol_index]
         defined_symbol_index = status.defined_symbol
@@ -2653,21 +2422,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def mem_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        mem_read    target  address
-        def: target
-        use: address
-        target = *address (find_symbol_by_id(address.state.value).state => target.state)
-        """
-        """
-        int x;
-        int *p;
-        int **q;
-        x = 20;
-        p = &x;     <p, [ID(x)]>
-        q = &p;     <q, [ID(p)]>
-        y = **q;
-        """
         address_index = status.used_symbols[0]
         address_symbol: Symbol = self.frame.symbol_state_space[address_index]
         old_id_list = self.obtain_states(address_index)
@@ -2735,12 +2489,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def mem_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        mem_write   address source
-        def:
-        use: address source
-        *address = source (source.states => find_symbol_by_id(address.state).state)
-        """
         address_symbol_index = status.used_symbols[0]
         source_symbol_index = status.used_symbols[1]
         # address_symbol = self.frame.symbol_state_space[address_symbol_index]
@@ -2785,16 +2533,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def common_element_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        分发array / record / object 的read操作
-        <array_read: target, array, index>
-            def: target
-            use: array, index
-        <field_read: target, receiver_object, field>
-            def: target
-            use: receiver_object, field
-        <record_read: 不存在>
-        """
         # 统一建模为 receiver field
         # [例] target = receiver[field], target = receiver.field
         field_index = status.used_symbols[1]
@@ -2815,18 +2553,6 @@ class StmtStates:
         return self.field_read_stmt_state(stmt_id, stmt, status, in_states)
 
     def common_element_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        分发array / record / object 的write操作
-        <array_write: array, index, source>
-            def: array
-            use: array, index, source
-        <field_write: receiver_object, field, source>
-            def: receiver_object
-            use: receiver_object, field, source
-        <record_write: receiver_symbol, key, value>
-            def: receiver_record
-            use: receiver_record, key, value
-        """
         # 统一建模为 receiver field source
         # [例] receiver[field] = source, receiver.field = source
         field_index = status.used_symbols[1]
@@ -2853,12 +2579,6 @@ class StmtStates:
         return True
 
     def array_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        array_read  target  array   index
-        def: target
-        use: array index
-        target = array[index]
-        """
         defined_symbol_index = status.defined_symbol
         defined_symbol: Symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -2962,12 +2682,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def array_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        array_write array   index   source
-        def: array
-        use: array index source
-        array[index] = source
-        """
         array_index = status.used_symbols[0]
         index_index = status.used_symbols[1]
         source_index = status.used_symbols[2]
@@ -3053,11 +2767,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def array_insert_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        array_insert    array   source  index
-        def: array
-        use: array source index
-        """
         array_index = status.used_symbols[0]
         source_index = status.used_symbols[1]
         index_index = status.used_symbols[2]
@@ -3132,12 +2841,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def array_append_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        array_append: array source
-        def: array
-        use: array source
-        array.append(source)
-        """
         used_array_index = status.used_symbols[0]
         used_array_states: set = self.read_used_states(used_array_index, in_states)
 
@@ -3174,12 +2877,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def array_extend_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        array_extend: array, source
-        def: array
-        use: array source
-        array.extend(source)
-        """
         used_array_index = status.used_symbols[0]
         used_array = self.frame.symbol_state_space[used_array_index]
         used_array_states: set = self.read_used_states(used_array_index, in_states)
@@ -3230,11 +2927,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def record_extend_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        record_extend: record, source
-        def: record
-        use: record source
-        """
         receiver_state_index = status.used_symbols[0]
         receiver_symbol = self.frame.symbol_state_space[receiver_state_index]
         receiver_states = self.read_used_states(receiver_state_index, in_states)
@@ -3366,12 +3058,6 @@ class StmtStates:
         receiver_symbol.states.add(receiver_state_index)
 
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        <field_read: target, receiver_object, field>
-        target = receiver_symbol.field
-
-        通过state_bit_vector_manager拿到receiver_states的state id对应的最新的state
-        """
         receiver_symbol_index = status.used_symbols[0]
         field_index = status.used_symbols[1]
         receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_symbol_index]
@@ -3569,12 +3255,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        field_write: receiver_object, field, source
-        def: receiver_object
-        use: receiver_object field source
-        receiver_symbol[field] = source
-        """
 
         def tangping():
             new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
@@ -3697,12 +3377,6 @@ class StmtStates:
 
     # TODO:
     def field_addr_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        field_addr  target  data_type   name
-        def: target
-        use: data_type name
-        target = data_type  name
-        """
         # data_type_index = status.used_symbols[0]
         # name_index = status.used_symbols[1]
         # data_type = self.frame.symbol_state_space[data_type_index]
@@ -3723,15 +3397,6 @@ class StmtStates:
 
     # TODO:
     def slice_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        slice_write array source start end step
-        def: array
-        use: array source start end step
-        array[start:end:step] = source
-
-        slice write: 不指定step时，以[start, end)这个区间为界(注: start作为第一个元素，end作为最后一个元素的后一个)将source直接塞进去(长短可以不匹配)
-                     指定step时，必须要保证source长度不大于[start, end)，否则会报错
-        """
         start_set = set()
         end_set = set()
         step_set = set()
@@ -3857,12 +3522,6 @@ class StmtStates:
         return P2ResultFlag()
 
     def slice_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        slice_read  target  array   start   end step
-        def: array start end step
-        use: target
-        target = array[start:end:step]
-        """
         defined_states = set()
         start_set = set()
         end_set = set()
@@ -4010,19 +3669,9 @@ class StmtStates:
         return P2ResultFlag()
 
     def del_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        del_stmt    name
-        def:
-        use: name
-        """
         return P2ResultFlag()
 
     def unset_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        """
-        unset_stmt  name
-        def:
-        use: name
-        """
         target_symbol = self.frame.symbol_state_space[status.defined_symbol]
         if not isinstance(target_symbol, Symbol):
             return P2ResultFlag()
