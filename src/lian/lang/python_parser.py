@@ -533,14 +533,25 @@ class Parser(common_parser.Parser):
     def call_expression(self, node: Node, statements: list):
         tmp_call = self.tmp_variable()
         call_name = self.find_child_by_field(node, "function")
-        shadow_call_name = self.parse(call_name, statements)
+        receiver_name = None
+        field_name = None
+        if call_name.type == "attribute":
+            receiver_name, field_name = self.parse_field(call_name, statements)
+        else:
+            shadow_call_name = self.parse(call_name, statements)
 
         args = self.find_child_by_field(node, "arguments")
         if args.named_child_count == 0:
-            self.append_stmts(statements,
-                node, {"call_stmt": {"target": tmp_call, "name": shadow_call_name}}
-            )
-            return tmp_call
+            if call_name.type == "attribute":
+                self.append_stmts(statements,
+                                  node, {"object_call": {"target": tmp_call, "field": field_name, "receiver_object": receiver_name}}
+                                  )
+                return tmp_call
+            else:
+                self.append_stmts(statements,
+                    node, {"call_stmt": {"target": tmp_call, "name": shadow_call_name}}
+                )
+                return tmp_call
 
         positional_args = []
         named_args = None
@@ -593,14 +604,27 @@ class Parser(common_parser.Parser):
 
         if named_args is not None:
             named_args = str(named_args)
-        self.append_stmts(statements, node, {"call_stmt": {
-            "target": tmp_call,
-            "name": shadow_call_name,
-            "positional_args": positional_args,
-            "packed_positional_args": packed_array_args,
-            "packed_named_args": packed_record_args,
-            "named_args": named_args}
-        })
+
+        if call_name.type == "attribute":
+            self.append_stmts(statements, node, {"object_call": {
+                "receiver":receiver_name,
+                "target": tmp_call,
+                "field": field_name,
+                "positional_args": positional_args,
+                "packed_positional_args": packed_array_args,
+                "packed_named_args": packed_record_args,
+                "named_args": named_args}
+            })
+
+        else:
+            self.append_stmts(statements, node, {"call_stmt": {
+                "target": tmp_call,
+                "name": shadow_call_name,
+                "positional_args": positional_args,
+                "packed_positional_args": packed_array_args,
+                "packed_named_args": packed_record_args,
+                "named_args": named_args}
+            })
 
         return tmp_call
 
@@ -907,7 +931,7 @@ class Parser(common_parser.Parser):
         tmp_var = self.tmp_variable()
         shadow_object, shadow_field = self.parse_field(node, statements)
         self.append_stmts(statements, node, {"field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": shadow_field}})
-        return tmp_var
+        return shadow_object, shadow_field
 
     def parse_slice(self, node):
         start, end, step = None, None, None
