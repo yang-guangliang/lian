@@ -510,6 +510,9 @@ class Parser(common_parser.Parser):
             if myvalue:
                 shadow_value = self.parse(myvalue, statements)
 
+                if not isinstance(shadow_value, list):
+                    shadow_value = [shadow_value]
+
                 for s_name, s_value in zip(shadow_name, shadow_value):
                     self.append_stmts(statements, node, {"assign_stmt": {"target": s_name, "operand": s_value}})
 
