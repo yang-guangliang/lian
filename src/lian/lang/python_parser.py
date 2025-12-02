@@ -931,7 +931,7 @@ class Parser(common_parser.Parser):
         tmp_var = self.tmp_variable()
         shadow_object, shadow_field = self.parse_field(node, statements)
         self.append_stmts(statements, node, {"field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": shadow_field}})
-        return shadow_object, shadow_field
+        return tmp_var
 
     def parse_slice(self, node):
         start, end, step = None, None, None

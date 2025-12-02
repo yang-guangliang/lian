@@ -402,6 +402,8 @@ class StmtDefUseAnalysis:
 
         used_symbols = status.used_symbols
         arg_symbol_list = used_symbols[1:]
+        if stmt.operation == "object_call":
+            arg_symbol_list = used_symbols[2:]
         callee_name_symbol_index = used_symbols[0]
         callee_name_symbol = self.symbol_state_space[callee_name_symbol_index]
 
@@ -462,8 +464,7 @@ class StmtDefUseAnalysis:
         self.loader.save_stmt_id_to_call_stmt_format(stmt_id, call_format)
 
     def call_stmt_def_use(self, stmt_id, stmt):
-        is_field_call = hasattr(stmt, "receiver") and util.is_available(stmt.receiver)
-        # convert stmt.args(str) to list
+
         args_list = []
         if not util.isna(stmt.positional_args):
             args_list = ast.literal_eval(stmt.positional_args)
@@ -481,8 +482,7 @@ class StmtDefUseAnalysis:
 
         used_symbol_list = []
         stmt_symbol_list = [stmt.name, *args_list]
-        if is_field_call:
-            stmt_symbol_list.insert(0, stmt.receiver)
+
         for symbol in stmt_symbol_list:
             if not util.isna(symbol):
                 used_symbol_list.append(self.create_symbol_or_state_and_add_space(stmt_id, symbol))
@@ -495,8 +495,7 @@ class StmtDefUseAnalysis:
         # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
         # So check the source stmt id
         call_name_symbol_index = used_symbol_list[0]
-        if is_field_call:
-            call_name_symbol_index = used_symbol_list[1]
+
         call_name_symbol = self.symbol_state_space[call_name_symbol_index]
         # fail to resolve call_name
         if isinstance(call_name_symbol, Symbol):
@@ -508,8 +507,7 @@ class StmtDefUseAnalysis:
                     stmt_id,
                 )
                 self.callees.add(internal_callee)
-                # if config.DEBUG_FLAG:
-                #     util.debug("Found callee", internal_callee.to_dict())
+
             else:
                 if self.loader.is_method_decl(call_name_symbol.symbol_id) \
                 or self.loader.is_class_decl(call_name_symbol.symbol_id):
@@ -537,7 +535,6 @@ class StmtDefUseAnalysis:
                     # if config.DEBUG_FLAG:
                     #     util.debug("Found callee", internal_callee.to_dict())
     def object_call_def_use(self, stmt_id, stmt):
-        is_field_call = hasattr(stmt, "receiver_object") and util.is_available(stmt.receiver_object)
         # convert stmt.args(str) to list
         args_list = []
         if not util.isna(stmt.positional_args):
@@ -555,23 +552,29 @@ class StmtDefUseAnalysis:
                 args_list.append(args_dict[key])
 
         used_symbol_list = []
-        stmt_symbol_list = [stmt.name, *args_list]
-        if is_field_call:
-            stmt_symbol_list.insert(0, stmt.receiver)
+        stmt_symbol_list = [stmt.receiver_object, stmt.field, *args_list]
+        index = 0
         for symbol in stmt_symbol_list:
+            if index == 1 and not util.isna(symbol):
+                used_symbol_list.append(
+                    self.create_state_and_add_space(
+                        stmt_id,
+                        value=symbol,
+                        data_type=LIAN_INTERNAL.STRING,
+                        # state_type=
+                    ))
             if not util.isna(symbol):
                 used_symbol_list.append(self.create_symbol_or_state_and_add_space(stmt_id, symbol))
+                index += 1
         defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target)
         status = StmtStatus(stmt_id, defined_symbol = defined_symbol, used_symbols = used_symbol_list)
         self.add_status_with_symbol_id_sync(stmt, status)
-        # if not is_field_call:
         self.analyze_and_save_call_stmt_args(stmt_id, stmt, positional_arg_index, args_list, status)
 
         # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
         # So check the source stmt id
         call_name_symbol_index = used_symbol_list[0]
-        if is_field_call:
-            call_name_symbol_index = used_symbol_list[1]
+
         call_name_symbol = self.symbol_state_space[call_name_symbol_index]
         # fail to resolve call_name
         if isinstance(call_name_symbol, Symbol):
