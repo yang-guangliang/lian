@@ -467,6 +467,8 @@ class Parser(common_parser.Parser):
             shadow_value = []
             if myvalue:
                 shadow_value = self.parse(myvalue, statements)
+                if not isinstance(shadow_value, list):
+                    shadow_value = [shadow_value]
                 for s_name, s_value in zip(shadow_name, shadow_value):
                     self.append_stmts(statements, node, {"assign_stmt": {"target": s_name, "operand": s_value}})
 
@@ -509,10 +511,8 @@ class Parser(common_parser.Parser):
             shadow_value = []
             if myvalue:
                 shadow_value = self.parse(myvalue, statements)
-
                 if not isinstance(shadow_value, list):
                     shadow_value = [shadow_value]
-
                 for s_name, s_value in zip(shadow_name, shadow_value):
                     self.append_stmts(statements, node, {"assign_stmt": {"target": s_name, "operand": s_value}})
 
@@ -554,7 +554,8 @@ class Parser(common_parser.Parser):
                 shadow_left_list.append(self.read_node_text(child))
 
         shadow_right_list = self.parse(right, statements)
-
+        if not isinstance(shadow_right_list, list):
+            shadow_right_list = [shadow_right_list]
         for name, value in zip(shadow_left_list, shadow_right_list):
             self.append_stmts(statements, node, {"variable_decl": {"data_type": "", "name": name}})
             self.append_stmts(statements, node, {"assign_stmt": {"target": name, "operand": value}})
