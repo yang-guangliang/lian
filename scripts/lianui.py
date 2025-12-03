@@ -1,9 +1,28 @@
+import os
 import streamlit as st
 import subprocess
 import pandas as pd
 from pathlib import Path
 
-st.set_page_config(layout="wide", page_title="代码分析工具")
+BASE_DIR = Path(__file__).parent.absolute()
+LOGO_PATH = BASE_DIR / "logo.png"
+
+st.set_page_config(
+    layout="wide",
+    page_title="代码分析工具",
+    page_icon=LOGO_PATH,
+    initial_sidebar_state="expanded"
+)
+# 显示logo和项目信息
+
+# 项目网址链接
+st.markdown("""
+<div style="text-align: center; margin-top: 10px;">
+    <a href="https://github.com/yourusername/lian" target="_blank" style="text-decoration: none;">
+        🌐 项目地址: https://github.com/yourusername/lian
+    </a>
+</div>
+""", unsafe_allow_html=True)
 
 st.title("🔍莲花代码分析LIAN")
 
@@ -20,21 +39,35 @@ SUPPORTED_LANGUAGES = [
     "llvm"
 ]
 
+# 分析类型选项
+ANALYSIS_COMMANDS = {
+    "run": "污点分析",
+    "lang": "生成通用IR",
+}
+
 class Config:
     def build_sidebar(self):
         # 侧边栏: 通用参数
         with st.sidebar:
-            st.header("LIAN配置")
+            st.header("运行LIAN")
+            # 分析类型选择
+            self.sub_command = st.radio(
+                "选择分析命令",
+                options=list(ANALYSIS_COMMANDS.keys()),
+                format_func=lambda x: ANALYSIS_COMMANDS[x],
+                help="选择要执行的分析命令"
+            )
 
+            st.header("语言 (-l)")
             self.lang = st.multiselect(
-                "编程语言 (-l)",
+                "编程语言选择",
                 options=SUPPORTED_LANGUAGES,
                 default=[],
                 help="选择要分析的编程语言，可多选",
                 key="lang_sidebar"
             )
 
-            st.subheader("输入路径选择")
+            st.header("待分析路径 (in_path)")
             path_option = st.radio(
                 "选择输入方式:",
                 ["手动输入", "选择文件", ],
@@ -46,7 +79,7 @@ class Config:
                 uploaded_file = st.file_uploader(
                     "选择文件",
                     accept_multiple_files=True,
-                    help="选择要分析的单个代码文件"
+                    help="选择要分析的单个代码文件",
                 )
                 if uploaded_file is not None:
                     if isinstance(uploaded_file, list):
@@ -56,14 +89,14 @@ class Config:
                         self.in_path = uploaded_file.name
             else:
                 self.in_path = st.text_input(
-                    "输入路径 (in_path)",
+                    "输入路径",
                     value="",
                     help="要分析的代码路径，可以是文件或目录，以逗号隔开"
                 )
 
-            self.workspace = st.text_input("工作空间 (-w)", value="lian_workspace", help="工作空间目录，用于存储分析结果（默认：lian_workspace）")
+            st.header("其他配置")
 
-            st.divider()
+            #st.divider()
             self.quiet = st.checkbox("安静模式 (-q)", value=False, help="禁用详细输出，减少控制台信息")
             self.force = st.checkbox("强制模式 (-f)", value=False, help="启用强制模式，重写工作空间目录")
             self.debug = st.checkbox("调试模式 (-d)", value=False, help="启用调试模式，输出详细调试信息")
@@ -75,78 +108,92 @@ class Config:
             self.strict_parse = st.checkbox("严格解析 (--strict-parse-mode)", value=False, help="启用严格的代码解析方式")
             self.incremental = st.checkbox("增量分析 (-inc)", value=False, help="重用之前的分析结果（GIR、作用域和CFG）")
             self.noextern = st.checkbox("禁用外部处理 (--noextern)", value=False, help="禁用外部处理模块")
-            self.output_graph = st.checkbox("输出 SFG 图 (--graph)", value=False, help="输出状态流图（SFG）到.dot文件")
-            self.complete_graph = st.checkbox("完整图信息 (--complete-graph)", value=False, help="输出包含每个节点更详细信息的状态流图")
+            self.output_graph = st.checkbox("输出SFG (state flow graph) 图 (--graph)", value=False, help="输出状态流图（SFG）到.dot文件")
+            self.complete_graph = st.checkbox("输出完整SFG信息 (--complete-graph)", value=False, help="输出包含每个节点更详细信息的状态流图")
 
             #self.cores = st.number_input("CPU 核心数 (-c)", min_value=1, value=1, help="配置可用的CPU核心数")
 
-            st.divider()
+            #st.divider()
+            self.workspace = st.text_input("工作空间 (-w)", value="lian_workspace", help="工作空间目录，用于存储分析结果（默认：lian_workspace）")
             self.event_handlers = st.text_input("事件处理器 (-e)", value="", help="配置事件处理器目录")
             self.default_settings = st.text_input("默认设置文件夹 (--default-settings)", value="", help="指定默认设置文件夹路径")
             self.additional_settings = st.text_input("额外设置文件夹 (--additional-settings)", value="", help="指定额外设置文件夹路径")
 
+    def build_command(self, **kwargs):
+        """构建命令行参数
+
+        Args:
+            subcommand: 子命令名称 (run, lang, taint等)
+            **kwargs: 额外的参数配置
+        """
+        # 基础命令
+        cmd = ["python", "-m", "lian"]
+
+        # 添加子命令
+        cmd.append(self.subcommand)
+
+        # 添加语言参数
+        if self.lang:
+            cmd.extend(["-l", ",".join(self.lang)])
+
+        # 添加输入路径
+        if self.in_path:
+            if isinstance(self.in_path, list):
+                for path in self.in_path:
+                    cmd.append(str(path))
+            else:
+                cmd.append(str(self.in_path))
+
+        # 添加工作空间参数
+        if self.workspace and self.workspace != "lian_workspace":
+            cmd.extend(["-w", self.workspace])
+
+        # 添加布尔参数
+        if self.quiet:
+            cmd.append("-q")
+        if self.force:
+            cmd.append("-f")
+        if self.debug:
+            cmd.append("-d")
+        if self.print_stmts:
+            cmd.append("-p")
+        if self.android_mode:
+            cmd.append("--android")
+        if self.strict_parse:
+            cmd.append("--strict-parse-mode")
+        if self.incremental:
+            cmd.append("-inc")
+        if self.noextern:
+            cmd.append("--noextern")
+        if self.output_graph:
+            cmd.append("--graph")
+        if self.complete_graph:
+            cmd.append("--complete-graph")
+
+        # 添加事件处理器
+        if self.event_handlers:
+            cmd.extend(["-e", self.event_handlers])
+
+        # 添加设置文件夹
+        if self.default_settings:
+            cmd.extend(["--default-settings", self.default_settings])
+        if self.additional_settings:
+            cmd.extend(["--additional-settings", self.additional_settings])
+
+        # 添加kwargs中的额外参数
+        for key, value in kwargs.items():
+            if value is not None and value != "":
+                if len(key) == 1:
+                    cmd.extend([f"-{key}", str(value)])
+                else:
+                    cmd.extend([f"--{key}", str(value)])
+
+        return cmd
+
+
 config = Config()
 config.build_sidebar()
-
-
-# 主界面: 子命令选择
-tab1, tab2, tab3, tab4 = st.tabs([
-    "▶️ Run (端到端分析)",
-    "📝 Lang (生成IR)",
-    "🧠 Semantic (语义分析)",
-    "🔒 Taint (污点分析)"
-])
-
-def build_command(subcommand, **kwargs):
-    """构建命令行"""
-    cmd = ["./your_tool", subcommand]
-
-    # 添加通用参数
-    if quiet:
-        cmd.append("-q")
-    cmd.extend([in_path])
-    cmd.extend(["-w", workspace])
-    if force:
-        cmd.append("-f")
-    if debug:
-        cmd.append("-d")
-    cmd.extend(["-c", str(cores)])
-
-    if included_headers:
-        cmd.extend(["-i", included_headers])
-    if enable_header_preprocess:
-        cmd.append("-I")
-    if print_stmts:
-        cmd.append("-p")
-    if android_mode:
-        cmd.append("--android")
-    if event_handlers:
-        cmd.extend(["-e", event_handlers])
-    if strict_parse:
-        cmd.append("--strict-parse-mode")
-    if incremental:
-        cmd.append("-inc")
-    if default_settings:
-        cmd.extend(["--default-settings", default_settings])
-    if additional_settings:
-        cmd.extend(["--additional-settings", additional_settings])
-    if output_graph:
-        cmd.append("--graph")
-    if complete_graph:
-        cmd.append("--complete-graph")
-    if noextern:
-        cmd.append("--noextern")
-
-    # 添加子命令特定参数
-    for key, value in kwargs.items():
-        if value is not None and value != "":
-            if isinstance(value, bool) and value:
-                cmd.append(f"--{key.replace('_', '-')}")
-            elif not isinstance(value, bool):
-                cmd.extend([f"--{key.replace('_', '-')}", str(value)])
-
-    return cmd
-
+config.build_command()
 
 # Tab 1: Run
 with tab1:
