@@ -8,3 +8,4 @@ line_profiler
 matplotlib
 PyYAML
 pydot
+streamlit
