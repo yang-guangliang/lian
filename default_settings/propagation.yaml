@@ -45,6 +45,10 @@ rules:
     src: [\%arg0]
     dst: [\%target]
   - operation: call_stmt
+    name: util.abspath
+    src: [\%arg0]
+    dst: [\%target]
+  - operation: call_stmt
     name: \%anyname.getCalendar
     src: name
     dst: [\%target]

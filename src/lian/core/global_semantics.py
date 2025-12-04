@@ -434,7 +434,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 self.convert_path_to_tree(path, common_length - 1, method_id_to_max_node_id, current_tree)
             self.add_unknown_callee_edge(current_tree)
             # current_tree.show()
-            # lca = self.find_method_parent_by_id(current_tree.graph, "0#56", "0#52")
+            if current_tree.graph.number_of_edges() == 0:
+                current_tree.graph.add_node(str(entry_point))
             self.loader.save_global_call_tree_by_entry_point(entry_point, current_tree.graph)
 
     def add_unknown_callee_edge(self, current_tree):

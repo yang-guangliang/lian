@@ -12,3 +12,6 @@ rules:
   - operation: call_stmt
     name: source
     tag: [\%target]
+  - operation: call_stmt
+    name: utils.abspath
+    tag: [\%target]
