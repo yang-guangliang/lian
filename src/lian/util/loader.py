@@ -2118,7 +2118,7 @@ class Loader:
         self._symbol_graph_p2_loader: SymbolGraphLoader = SymbolGraphLoader(
             options,
             schema.symbol_graph_schema_p2,
-            os.path.join(self.semantic_path_p2, config.SYMBOL_GRAPH_BUNDLE_PATH),
+            os.path.join(self.semantic_path_p2, config.SYMBOL_GRAPH_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2126,7 +2126,7 @@ class Loader:
         self._symbol_graph_p3_loader: SymbolGraphLoader = SymbolGraphLoader(
             options,
             schema.symbol_graph_schema_p2,
-            os.path.join(self.semantic_path_p2, config.SYMBOL_GRAPH_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_path_p3, config.SYMBOL_GRAPH_BUNDLE_PATH_P3),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2250,7 +2250,7 @@ class Loader:
         new_method_gir = []
         for stmt in method_gir:
             stmt_to_dict =  stmt.copy().to_dict()
-            print("stmt:", stmt_to_dict)
+            #print("stmt:", stmt_to_dict)
             for column in GIR_COLUMNS_TO_BE_ADDED:
                 if column in stmt_to_dict:
                     if isinstance(stmt_to_dict[column], (int, float)) and (stmt_to_dict[column] > 0):
@@ -2710,7 +2710,7 @@ class Loader:
     def get_global_call_path(self):
         return self._global_call_path_loader.get()
 
-    def save_global_call_tree_by_entry_point(self,method_id,  call_tree):
+    def save_global_call_tree_by_entry_point(self, method_id,  call_tree):
         return self._call_tree_loader.save(method_id, call_tree)
     def get_global_call_tree_by_entry_point(self, method_id):
         return self._call_tree_loader.get(method_id)
@@ -3026,7 +3026,6 @@ class Loader:
     #         print(call_path)
     #         # while index < len(methods):
 
-
     def get_parent_class_by_class_name(self, class_name):
         type_graph = self.get_type_graph().graph
         class_relevant_info = []
@@ -3062,7 +3061,7 @@ class Loader:
         if phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
             file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}.dot"
         else:
-            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_DIR}/{entry_point}.dot"
+            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P2_DIR}/{entry_point}.dot"
         try:
             nx.drawing.nx_pydot.write_dot(graph, file_name)
         except ImportError:
@@ -3073,6 +3072,7 @@ class Loader:
             return
 
         util.replace_weight_to_label_in_dot(file_name)
-        print(">>> Write state flow graph to dot file: ", file_name)
+        if self.options.debug:
+            util.debug(">>> Write state flow graph to dot file: ", file_name)
 
 

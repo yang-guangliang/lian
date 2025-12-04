@@ -23,7 +23,7 @@ class WorkspaceBuilder:
         self.required_subdirs = [
             config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.BASIC_DIR,
             config.SEMANTIC_DIR_P1, config.SEMANTIC_DIR_P2, config.SEMANTIC_DIR_P3,
-            config.STATE_FLOW_GRAPH_DIR, config.STATE_FLOW_GRAPH_P3_DIR,config.CALL_TREE_DIR
+            config.STATE_FLOW_GRAPH_P2_DIR, config.STATE_FLOW_GRAPH_P3_DIR,config.CALL_TREE_DIR
         ]
         self.header_keywords = [
             "stdio.h", "stdlib.h", "string.h", "math.h", "ctype.h", "time.h",
@@ -64,15 +64,15 @@ class WorkspaceBuilder:
         path = self.options.workspace
         if not os.path.exists(path):
             os.makedirs(path)
-            if config.DEBUG_FLAG:
-                util.debug(f"Directory created at: {path}")
+            if not self.options.quiet:
+                print(f"Directory created at: {path}")
             return
 
         if not self.options.force:
             if not self.options.incremental:
                 util.error_and_quit(f"The target directory already exists: {path}. Use --force/-f to overwrite.")
         else:
-            if config.DEBUG_FLAG:
+            if not self.options.quiet:
                 util.warn(f"With the force mode flag, the workspace is being rewritten: {path}")
 
             for filename in os.listdir(path):

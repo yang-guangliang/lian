@@ -748,7 +748,7 @@ class PrelimSemanticAnalysis:
             adjusted_states = self.resolver.collect_newest_states_by_state_indexes(
                 frame, stmt_id, defined_symbol.states, available_state_defs, old_index_ceiling
             )
-            # if config.DEBUG_FLAG:
+            # if self.options.debug:
             #     print(f"\ndefined_symbol: {defined_symbol.name} {defined_symbol.symbol_id}")
             #     print(f"defined_symbol.states: {defined_symbol.states}")
             #     print(f"adjusted_states: {adjusted_states}")
@@ -757,7 +757,7 @@ class PrelimSemanticAnalysis:
         adjusted_states = self.resolver.collect_newest_states_by_state_indexes(
             frame, stmt_id, status.defined_states, available_state_defs, old_index_ceiling
         )
-        # if config.DEBUG_FLAG:
+        # if self.options.debug:
         #     print(f"status.defined_states: {status.defined_states}")
         #     print(f"adjusted_states: {adjusted_states}")
         status.defined_states = adjusted_states
@@ -1106,7 +1106,7 @@ class PrelimSemanticAnalysis:
                     frame.stmt_worklist.pop()
                     continue
 
-            if config.DEBUG_FLAG:
+            if self.options.debug:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
                 # print("gir2: ",self.loader.load_stmt_gir(stmt_id))
 
@@ -1144,8 +1144,8 @@ class PrelimSemanticAnalysis:
         frame_stack = ComputeFrameStack().add(current_frame)
         while len(frame_stack) != 0:
             frame = frame_stack.peek()
-            if config.DEBUG_FLAG:
-                util.debug(f"\n\tPhase II Analysis is in progress <method {frame.method_id}> \n")
+            if not self.options.quiet:
+                print(f"\n\tPhase II Analysis is in progress <method {frame.method_id}> \n")
 
             if not frame.has_been_inited:
                 if self.init_compute_frame(frame, frame_stack) is None:
@@ -1159,8 +1159,8 @@ class PrelimSemanticAnalysis:
                 # create a new frame and add it to the stack
                 frame.interruption_flag = True
                 data:InterruptionData = result.interruption_data
-                if config.DEBUG_FLAG:
-                    util.debug(f"Interrupt! Now handle unsolved_callee_ids: {data.callee_ids}")
+                if not self.options.quiet:
+                    print(f"Interrupt! Now handle unsolved_callee_ids: {data.callee_ids}")
                 if len(data.callee_ids) != 0:
                     frame.stmts_with_symbol_update.add(data.call_stmt_id)
                     for callee_id in data.callee_ids:
@@ -1237,10 +1237,11 @@ class PrelimSemanticAnalysis:
         self.max_analysis_round = config.MAX_ANALYSIS_ROUND
 
     def run(self):
-        if config.DEBUG_FLAG:
-            util.debug("\n\t------------------------------------------------\n"
-                       "\t~~~~~~~~ Phase II analysis is ongoing ~~~~~~~~~\n"
-                       "\t------------------------------------------------\n")
+        if not self.options.quiet:
+            print("\n\t------------------------------------------------\n"
+                "\t~~~~~~~~ Phase II analysis is ongoing ~~~~~~~~~\n"
+                "\t------------------------------------------------\n"
+            )
 
         # analyze all methods
         grouped_methods:SimplyGroupedMethodTypes = self.loader.get_grouped_methods()

@@ -414,7 +414,7 @@ class Resolver:
         return (state_symbol_id, None)
 
     def get_latest_source_state_indexes(self, current_frame: ComputeFrame, state_symbol_id):
-        # if config.DEBUG_FLAG:
+        # if self.options.debug:
         #     print(f"get_latest_source_state_indexes: method_id {current_frame.method_id}, state_symbol_id: {state_symbol_id}")
         current_space = current_frame.symbol_state_space
         current_stmt_id = current_frame.stmt_worklist.peek()
@@ -582,7 +582,7 @@ class Resolver:
         # -find the corresponding states based on the bit vector
 
         state_symbol_id = state.source_symbol_id
-        # if config.DEBUG_FLAG:
+        # if self.options.debug:
         #     print(f"\n\n进入resolve_symbol_states\nresolve_symbol_states@ state_symbol_id: {state_symbol_id} \nresolving_state: {state}\n")
         access_path = state.access_path.copy()
         data_type = state.data_type
@@ -595,13 +595,13 @@ class Resolver:
         for current_frame_index in range(len(frame_stack) - 1, 0, -1):
             current_frame: ComputeFrame = frame_stack[current_frame_index]
             current_space = frame.symbol_state_space
-            # if config.DEBUG_FLAG:
+            # if self.options.debug:
                 # print(f"--current method id: {current_frame.method_id} state_symbol_id: {state_symbol_id} access_path: {access_path}")
             if len(current_frame.stmt_worklist) == 0:
                 continue
 
             if data_type == LIAN_INTERNAL.THIS or state_symbol_id == frame.method_def_use_summary.this_symbol_id:
-                # if config.DEBUG_FLAG:
+                # if self.options.debug:
                 #     print("resolve_symbol_states 在找this")
                 caller_frame = frame_stack[current_frame_index - 1]
                 if not isinstance(caller_frame, ComputeFrame):
@@ -612,7 +612,7 @@ class Resolver:
 
             else:
                 if self.loader.is_method_decl(state_symbol_id):
-                    # if config.DEBUG_FLAG:
+                    # if self.options.debug:
                     #     print(f"state_source_symbol_id {state_symbol_id} is method_decl")
                     new_state = State(
                         stmt_id = stmt_id,
@@ -624,7 +624,7 @@ class Resolver:
                     return {frame_stack[-1].symbol_state_space.add(new_state)}
 
                 elif self.loader.is_class_decl(state_symbol_id):
-                    # if config.DEBUG_FLAG:
+                    # if self.options.debug:
                     #     print(f"state_source_symbol_id {state_symbol_id} is class_decl")
                     new_state = State(
                         stmt_id = stmt_id,
@@ -636,7 +636,7 @@ class Resolver:
                     return {frame_stack[-1].symbol_state_space.add(new_state)}
 
                 if state_symbol_id not in current_frame.defined_symbols:
-                    # if config.DEBUG_FLAG:
+                    # if self.options.debug:
                     #     print("state_symbol_id not in current_frame.defined_symbols")
                     continue
 
@@ -663,13 +663,13 @@ class Resolver:
         if util.is_empty(current_space):
             return return_indexes
 
-        # if config.DEBUG_FLAG:
+        # if self.options.debug:
         #     print(f"\nsource_state_indexes before get_state_from_path: {source_state_indexes}")
         #     print(f"current_space:{current_space}")
         #     print(f"access_path: {access_path}")
         # 根据source state的access_path找到目标state
         accessed_states = self.get_state_from_path(current_space, access_path, source_state_indexes)
-        # if config.DEBUG_FLAG:
+        # if self.options.debug:
         #     print(f"source_state_indexes after get_state_from_path: {accessed_states}")
         if not accessed_states:
             return return_indexes
@@ -790,7 +790,7 @@ class Resolver:
             or len(access_path) == 1:
             # print(set_to_update)
             set_to_update.discard(state_index)
-            # if config.DEBUG_FLAG:
+            # if self.options.debug:
             #     if not state.fields:
             #         print("进入的state没有fields(a.f=a.g) 延迟更新")
             #     elif len(access_path) == 1:

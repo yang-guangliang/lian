@@ -31,10 +31,6 @@ BASIC_DIR                                                    = "basic"
 SEMANTIC_DIR_P1                                              = "semantic_p1"
 SEMANTIC_DIR_P2                                              = "semantic_p2"
 SEMANTIC_DIR_P3                                              = "semantic_p3"
-STATE_FLOW_GRAPH_DIR                                         = "state_flow_graph"
-STATE_FLOW_GRAPH_P3_DIR                                      = "state_flow_graph_p3"
-CALL_TREE_DIR                                                = "call_tree"
-
 
 ROOT_DIR                                                     = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
@@ -48,6 +44,9 @@ EXTERN_RULES_DIR                                             = os.path.join(SRC_
 EXTERN_MODEL_CODE_DIR                                        = os.path.join(SRC_LIAN_DIR, "externs/modeling")
 MOCK_METHOD_NAME_SEPARATOR                                   = "_1_"
 
+DEFAULT_SETTINGS                                             = os.path.join(ROOT_DIR, "default_settings")
+DEFAULT_SETTINGS_PATH                                        = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
+
 BUNDLE_CACHE_CAPACITY                                        = 10
 LRU_CACHE_CAPACITY                                           = 10000
 GIR_CACHE_CAPACITY                                           = LRU_CACHE_CAPACITY / 2
@@ -56,8 +55,25 @@ METHOD_HEADER_CACHE_CAPABILITY                               = 10000
 METHOD_BODY_CACHE_CAPABILITY                                 = 1000
 STMT_SCOPE_CACHE_CAPABILITY                                  = 1000
 
-DEFAULT_SETTINGS                                             = os.path.join(ROOT_DIR, "default_settings")
-DEFAULT_SETTINGS_PATH                                        = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
+UNSOLVED_SYMBOL_NAME                                         = "%%%%unsolved_symbols"
+POSITIVE_GIR_INTERVAL                                        = 10000
+DEFAULT_MAX_GIR_ID                                           = 100000000
+
+MAX_TYPE_CAST_SOURCE_STATES                                  = 4
+MAX_ARRAY_ELEMENT_STATES                                     = 4
+
+TAINT_DIR                                                    = os.path.join(SRC_LIAN_DIR, "/taint")
+MAX_METHOD_CALL_COUNT                                        = 30
+
+TAINT_SOURCE                                                 = os.path.join(DEFAULT_SETTINGS, "source.yaml")
+TAINT_SINK                                                   = os.path.join(DEFAULT_SETTINGS, "sink.yaml")
+TAINT_PROPAGATION                                            = os.path.join(DEFAULT_SETTINGS, "propagation.yaml")
+
+NO_TAINT                                                     = 0
+MAX_STMT_TAINT_ANALYSIS_COUNT                                = 3
+ANY_LANG                                                     = "%"
+
+
 ENTRY_POINTS_FILE                                            = "entry.yaml"
 PROPAGATION_FILE                                             = "propagation.yaml"
 SOURCE_FILE                                                  = "source.yaml"
@@ -130,33 +146,19 @@ IMPORT_GRAPH_PATH                                            = "import_graph"
 
 TYPE_GRAPH_PATH                                              = "type_graph"
 
-SYMBOL_GRAPH_BUNDLE_PATH                                     = "symbol_graph"
+SYMBOL_GRAPH_BUNDLE_PATH_P2                                  = "symbol_graph"
 SYMBOL_GRAPH_BUNDLE_PATH_P3                                  = "symbol_graph_p3"
 SFG_BUNDLE_PATH_P2                                           = "state_flow_graph_p2"
 SFG_BUNDLE_PATH_P3                                           = "state_flow_graph_p3"
 CALL_TREE_PATH                                               = "call_tree"
+STATE_FLOW_GRAPH_P2_DIR                                      = "state_flow_graph_p2"
+STATE_FLOW_GRAPH_P3_DIR                                      = "state_flow_graph_p3"
+CALL_TREE_DIR                                                = "call_tree"
+
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2                      = "callee_parameter_mapping_p2"
 CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3                      = "callee_parameter_mapping_p3"
 
 METHOD_DEF_USE_SUMMARY_PATH                                  = "method_def_use_summary"
 METHOD_SUMMARY_TEMPLATE_PATH                                 = "method_summary_template"
 METHOD_SUMMARY_INSTANCE_PATH                                 = "method_summary_instance"
-
-UNSOLVED_SYMBOL_NAME                                         = "%%%%unsolved_symbols"
-POSITIVE_GIR_INTERVAL                                        = 10000
-DEFAULT_MAX_GIR_ID                                           = 100000000
-
-MAX_TYPE_CAST_SOURCE_STATES                                  = 4
-MAX_ARRAY_ELEMENT_STATES                                     = 4
-
-TAINT_DIR                                                    = os.path.join(SRC_LIAN_DIR, "/taint")
-MAX_METHOD_CALL_COUNT                                        = 30
-
-TAINT_SOURCE                                                 = os.path.join(DEFAULT_SETTINGS, "source.yaml")
-TAINT_SINK                                                   = os.path.join(DEFAULT_SETTINGS, "sink.yaml")
-TAINT_PROPAGATION                                            = os.path.join(DEFAULT_SETTINGS, "propagation.yaml")
-
-NO_TAINT                                                     = 0
-MAX_STMT_TAINT_ANALYSIS_COUNT                                = 3
-ANY_LANG                                                     = "%"
 

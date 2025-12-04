@@ -195,8 +195,8 @@ class BasicSemanticAnalysis:
         return False
 
     def run(self):
-        if self.options.debug:
-            util.debug("\n\t###########  # Basic Analysis #  ###########")
+        if not self.options.quiet:
+            print("\n\t###########  # Basic Analysis #  ###########")
         unit_list = []
         # Analyze each unit's scope hierarchy and entry points
         for unit_info in self.loader.get_all_unit_info():

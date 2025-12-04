@@ -779,7 +779,7 @@ class Parser(common_parser.Parser):
             if child.type == "method_definition":
                 methods = []
                 self.parse(child, methods)
-                print(methods)
+                #print(methods)
                 i = 0
                 while i < len(methods):
                     stmt = methods[i]

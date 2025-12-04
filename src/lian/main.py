@@ -66,6 +66,9 @@ class Lian:
     def parse_cmds(self, **custom_options):
         self.options = self.args_parser.init().parse_cmds()
 
+        if self.options.quiet:
+            self.options.debug = False
+
         if not hasattr(self.options, "default_settings") or len(self.options.default_settings) == 0:
             self.options.default_settings = config.DEFAULT_SETTINGS
         if not hasattr(self.options, "addition_settings") or len(self.options.addition_settings) == 0:
@@ -164,6 +167,8 @@ class Lian:
 
     def run(self):
         self.parse_cmds().init_submodules().dispatch_command()
+        if not self.options.quiet:
+            print("Done.")
 
         return self
 

@@ -288,8 +288,8 @@ class GIRParser:
         """
         lang_option = determine_lang_by_path(file_unit)
 
-        if self.options.debug:
-            util.debug("GIR-Parsing:", file_unit)
+        if not self.options.quiet:
+            print("GIR-Parsing:", file_unit)
 
         gir_statements = self.parse(unit_info, file_unit, lang_option, lang_table = lang_table)
         if not gir_statements:
@@ -367,8 +367,8 @@ class LangAnalysis:
         3. 执行解析和扁平化处理
         4. 导出最终分析结果
         """
-        if self.options.debug:
-            util.debug("\n\t###########  # Language Parsing #  ###########")
+        if not self.options.quiet:
+            print("\n\t###########  # Language Parsing #  ###########")
 
         gir_parser = GIRParser(
             self.options,

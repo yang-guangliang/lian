@@ -213,14 +213,14 @@ class TaintAnalysis:
         tag = self.taint_manager.get_state_tag(state_id)
         if tag != config.NO_TAINT :
             # 报告sink
-            print(space[state_index])
-            print(f"sink in {space[state_index].stmt_id}, tag: {tag}")
+            #print(space[state_index])
+            #print(f"sink in {space[state_index].stmt_id}, tag: {tag}")
             return True
         # if access_path_tag != config.NO_TAINT:
         #     # 报告sink
         #     print(f"access_path sink in {space[state_index].stmt_id}, tag: {access_path_tag}")
         #     return True
-        print(space[state_index].fields)
+        #print(space[state_index].fields)
         for value in space[state_index].fields.values():
             for field_state_index in value:
                 return self.check_state_tag(field_state_index, space, taint_state_manager)
@@ -303,8 +303,8 @@ class TaintAnalysis:
             new_flow.parent_to_source = parent_to_source
             new_flow.parent_to_sink = parent_to_sink
             flow_list.append(new_flow)
-            print(parent_to_source)
-            print(parent_to_sink)
+            #print(parent_to_source)
+            #print(parent_to_sink)
         return flow_list
 
     def find_method_parent_by_nodes(self, ct, source_nodes, sink_nodes):

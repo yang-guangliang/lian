@@ -449,9 +449,9 @@ class UnitScopeHierarchyAnalysis:
 
                 if util.is_available(symbol_name):
                     if self.options.strict_parse_mode:
-                        print("row:", row)
+                        #print("row:", row)
                         if row.scope_id in scope_id_to_symbol_info:
-                            print("symbol_name:", symbol_name)
+                            #print("symbol_name:", symbol_name)
                             if symbol_name in scope_id_to_symbol_info[row.scope_id]:
                                 previous_decl_id = scope_id_to_symbol_info[row.scope_id][symbol_name]
                                 previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)

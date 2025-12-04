@@ -202,8 +202,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
     def collect_external_symbol_states(self, frame: ComputeFrame, stmt_id, stmt, symbol_id, summary: MethodSummaryTemplate, old_key_state_indexes: set):
         # key_dynamic_content = summary.key_dynamic_content
-        # if config.DEBUG_FLAG:
-        #     print(f"进入collect_external_symbol_states: symbol_id {symbol_id}, old_key_states {old_key_state_indexes}")
+        # if self.options.debug:
+        #     print(f"@enter collect_external_symbol_states: symbol_id {symbol_id}, old_key_states {old_key_state_indexes}")
         if frame.stmt_counters[stmt_id] != config.FIRST_ROUND:
             return old_key_state_indexes
 
@@ -247,9 +247,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
         # update external symbols
         # used_external_symbols[symbol_id] = {IndexMapInSummary(raw_index = index, new_index = -1) for index in new_state_indexes}
-        # if config.DEBUG_FLAG:
+        # if self.options.debug:
         #     for index in new_state_indexes:
-        #         print(f"finally collect_external_symbol_states: stmt_id {stmt_id}, symbol_id {symbol_id}, {frame.symbol_state_space[index]}")
+        #         print(f"@exit collect_external_symbol_states: stmt_id {stmt_id}, symbol_id {symbol_id}, {frame.symbol_state_space[index]}")
         return new_state_indexes
 
     def generate_analysis_summary_and_s2space(self, frame: ComputeFrame):
@@ -295,11 +295,11 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 frame_path = APath(frame.call_site)
 
             method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
-            if config.DEBUG_FLAG:
-                util.debug(f"\n\tPhase III Analysis is in progress <method {frame.method_id} name: {method_name}> \n")
+            if not self.options.quiet:
+                print(f"\n\tPhase III Analysis is in progress <method {frame.method_id} name: {method_name}> \n")
 
             if frame.content_to_be_analyzed:
-                if config.DEBUG_FLAG:
+                if self.options.debug:
                     util.debug(f"\t<method {frame.method_id}> has content to be analyzed: {frame.content_to_be_analyzed}")
                 # check if all children have been analyzed
                 children_done_flag = True
@@ -346,7 +346,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 #summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(frame.method_id)
                 #summary_template: MethodSummaryTemplate = p2_summary_template.copy()
                 # if not summary_template.dynamic_call_stmts:
-                #     if config.DEBUG_FLAG:
+                #     if self.options.quiet:
                 #         util.debug(f"\t<method {frame.method_id}> does not need to be processed")
 
                 #     self.save_analysis_summary_and_space(frame, summary_template.copy(), summary_compact_space.copy(), caller_frame)
@@ -387,10 +387,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
             # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)
 
-
             frame_stack.pop()
-            if config.DEBUG_FLAG:
-                util.debug(f"\n\t<method {frame.method_id}> is Done\n")
+            if not self.options.quiet:
+                print(f"\n\t<method {frame.method_id}> is Done\n")
 
         meta_frame: MetaComputeFrame = frame_stack[0]
         return meta_frame.summary_collection
@@ -463,10 +462,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             index += 2
 
     def convert_path_to_tree(self, path, common_index, method_id_to_max_node_id, current_tree):
-
         index = common_index
         while index <= len(path) - 3:
-            print(path)
+            #print(path)
             if len(path) <= 1:
                 break
 
@@ -544,10 +542,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return False
 
     def run(self):
-        if config.DEBUG_FLAG:
-            util.debug("\n\t++++++++++++++++++++++++++++++++++++++++++++++++\n"
-                       "\t======== Phase III analysis is ongoing =========\n"
-                       "\t++++++++++++++++++++++++++++++++++++++++++++++++\n")
+        if not self.options.quiet:
+            print("\n\t++++++++++++++++++++++++++++++++++++++++++++++++\n"
+                "\t======== Phase III analysis is ongoing =========\n"
+                "\t++++++++++++++++++++++++++++++++++++++++++++++++\n")
         global_space = SymbolStateSpace()
         for entry_point in self.loader.get_entry_points():
             # for path in self.call_graph.find_paths(entry_point):

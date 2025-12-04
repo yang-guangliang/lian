@@ -482,7 +482,7 @@ class StmtDefUseAnalysis:
                     stmt_id,
                 )
                 self.callees.add(internal_callee)
-                # if config.DEBUG_FLAG:
+                # if self.option.debug:
                 #     util.debug("Found callee", internal_callee.to_dict())
             else:
                 if self.loader.is_method_decl(call_name_symbol.symbol_id) \
@@ -496,7 +496,7 @@ class StmtDefUseAnalysis:
                         call_name_symbol_index
                     )
                     self.callees.add(internal_callee)
-                    # if config.DEBUG_FLAG:
+                    # if self.option.debug:
                     #     util.debug("Found callee", internal_callee.to_dict())
                 else:
                     self.basic_call_graph.add_edge(self.method_id, BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD, stmt_id)
@@ -508,7 +508,7 @@ class StmtDefUseAnalysis:
                         call_name_symbol_index
                     )
                     self.callees.add(internal_callee)
-                    # if config.DEBUG_FLAG:
+                    # if self.option.debug:
                     #     util.debug("Found callee", internal_callee.to_dict())
 
     def echo_stmt_def_use(self, stmt_id, stmt):
