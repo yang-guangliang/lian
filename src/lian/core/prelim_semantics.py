@@ -1145,7 +1145,7 @@ class PrelimSemanticAnalysis:
         while len(frame_stack) != 0:
             frame = frame_stack.peek()
             if not self.options.quiet:
-                print(f"\n\tPhase II Analysis is in progress <method {frame.method_id}> \n")
+                print(f"Analyzing <method {frame.method_id}>")
 
             if not frame.has_been_inited:
                 if self.init_compute_frame(frame, frame_stack) is None:
@@ -1238,10 +1238,7 @@ class PrelimSemanticAnalysis:
 
     def run(self):
         if not self.options.quiet:
-            print("\n\t------------------------------------------------\n"
-                "\t~~~~~~~~ Phase II analysis is ongoing ~~~~~~~~~\n"
-                "\t------------------------------------------------\n"
-            )
+            print("\n############ # Phase II: Preliminary (Bottom-up) Analysis # ##########")
 
         # analyze all methods
         grouped_methods:SimplyGroupedMethodTypes = self.loader.get_grouped_methods()

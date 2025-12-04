@@ -387,6 +387,9 @@ class TaintAnalysis:
         return lca
 
     def run(self):
+        if not self.options.quiet:
+            print("\n########### # Phase IV: Taint Analysis # ##########")
+
         for method_id in self.loader.get_all_method_ids():
             call_tree = self.loader.get_global_call_tree_by_entry_point(method_id)
             sfg = self.loader.get_global_sfg_by_entry_point(method_id)
@@ -396,7 +399,10 @@ class TaintAnalysis:
             sources = self.find_sources(sfg, call_tree)
             sinks = self.find_sinks(sfg, call_tree)
             flows = self.find_flows(sfg, call_tree, sources, sinks)
-            self.print_flows(flows)
+
+            if self.options.debug:
+                # gl:麻烦进行美化
+                self.print_flows(flows)
 
     def print_flows(self, flows):
         for flow in flows:
@@ -406,6 +412,7 @@ class TaintAnalysis:
                 stmt = self.loader.get_stmt_gir(stmt_id)
                 line_no = stmt.start_row
                 print(node,"in line ", line_no)
+
 def main():
     TaintAnalysis().run()
 

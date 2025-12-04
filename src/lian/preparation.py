@@ -61,7 +61,10 @@ class WorkspaceBuilder:
                 util.error_and_quit(f"Failed to delete {file_path}. Reason: {e}")
 
     def manage_directory(self):
-        path = self.options.workspace
+        path = os.path.abspath(self.options.workspace)
+        if not self.options.quiet:
+            print(f"<Workspace directory> : {path}")
+
         if not os.path.exists(path):
             os.makedirs(path)
             if not self.options.quiet:
@@ -73,7 +76,7 @@ class WorkspaceBuilder:
                 util.error_and_quit(f"The target directory already exists: {path}. Use --force/-f to overwrite.")
         else:
             if not self.options.quiet:
-                util.warn(f"With the force mode flag, the workspace is being rewritten: {path}")
+                util.warn(f"With the force mode flag, the workspace is being rewritten")
 
             for filename in os.listdir(path):
                 file_path = os.path.join(path, filename)

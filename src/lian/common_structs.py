@@ -2077,7 +2077,7 @@ class PathManager:
         if self.has_any_negative(new_path_tuple):
             return False
         new_path_len = len(new_path_tuple)
-        # print("\n进入add_path的path_tuple是: ",new_path_tuple)
+        # print("进入add_path的path_tuple是: ",new_path_tuple)
 
         # 检查new_path是否是现有路径的严格前缀
         need_to_add = False

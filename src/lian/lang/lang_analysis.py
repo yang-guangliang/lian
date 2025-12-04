@@ -368,7 +368,7 @@ class LangAnalysis:
         4. 导出最终分析结果
         """
         if not self.options.quiet:
-            print("\n\t###########  # Language Parsing #  ###########")
+            print("\n###########  # Language Parsing #  ###########")
 
         gir_parser = GIRParser(
             self.options,

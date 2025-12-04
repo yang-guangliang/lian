@@ -296,7 +296,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
             method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
             if not self.options.quiet:
-                print(f"\n\tPhase III Analysis is in progress <method {frame.method_id} name: {method_name}> \n")
+                print(f"Analyzing <method {frame.method_id} name: {method_name}>")
 
             if frame.content_to_be_analyzed:
                 if self.options.debug:
@@ -389,7 +389,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
             frame_stack.pop()
             if not self.options.quiet:
-                print(f"\n\t<method {frame.method_id}> is Done\n")
+                print(f"<method {frame.method_id}> is Done")
 
         meta_frame: MetaComputeFrame = frame_stack[0]
         return meta_frame.summary_collection
@@ -544,9 +544,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
     def run(self):
         if not self.options.quiet:
-            print("\n\t++++++++++++++++++++++++++++++++++++++++++++++++\n"
-                "\t======== Phase III analysis is ongoing =========\n"
-                "\t++++++++++++++++++++++++++++++++++++++++++++++++\n")
+            print("\n########### # Phase III: Global (Top-down) Semantic Analysis ##########")
         global_space = SymbolStateSpace()
         for entry_point in self.loader.get_entry_points():
             # for path in self.call_graph.find_paths(entry_point):

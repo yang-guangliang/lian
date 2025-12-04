@@ -1,11 +1,9 @@
 import os
-import shutil
 import streamlit as st
 import subprocess
 import pandas as pd
-import glob
 from pathlib import Path
-import time
+import collections
 
 # --- 基础配置 ---
 BASE_DIR = Path(__file__).parent.absolute()
@@ -13,15 +11,6 @@ BASE_DIR = Path(__file__).parent.absolute()
 LOGO_PATH = BASE_DIR / "logo.png" if (BASE_DIR / "logo.png").exists() else None
 LIAN_PATH = os.path.join(os.path.dirname(BASE_DIR), "src/lian/main.py")
 DEFAULT_WORKSPACE = "{in_path}/lian_workspace"
-
-st.set_page_config(
-    layout="wide",
-    page_title="代码分析工具",
-    page_icon=LOGO_PATH,
-    initial_sidebar_state="expanded"
-)
-
-st.title("🔍 莲花代码分析 LIAN")
 
 # 支持的语言列表
 SUPPORTED_LANGUAGES = [
@@ -34,8 +23,28 @@ ANALYSIS_COMMANDS = {
     "lang": "生成通用IR (GIR)",
 }
 
+IGNORED_EXTENSIONS = [".indexing"]
+TXT_EXTENSIONS = [".txt", ".dot"]
+
+
+# 定义日志展示行数限制（防止浏览器卡死）
+MAX_DISPLAY_LINES = 40
+UPDATE_FREQ = 10
+
 # --- 配置类 (保留你的原始逻辑并微调) ---
-class Config:
+class Render:
+    def __init__(self) -> None:
+        self.workspace = "./lian_workspace"
+        self.in_path = ""
+
+    def config_logo(self):
+        st.set_page_config(
+            layout="wide",
+            page_title="代码分析工具",
+            page_icon=LOGO_PATH,
+            initial_sidebar_state="expanded"
+        )
+
     def build_sidebar(self):
         with st.sidebar:
             st.header("LIAN配置")
@@ -70,14 +79,24 @@ class Config:
                     else:
                         self.in_path = self.uploaded_files.name
             else:
-                self.in_path = st.text_input(
+                in_path_input = st.text_input(
                     "输入路径",
-                    value="",
+                    value=self.in_path,
                     help="要分析的代码路径，可以是文件或目录"
                 )
+                if in_path_input != self.in_path:
+                    self.in_path = in_path_input
+                    # 当in_path改变时，自动更新workspace
+                    if self.in_path:
+                        if "lian_workspace" not in self.in_path:
+                            self.workspace = os.path.join(self.in_path, "lian_workspace")
+                        else:
+                            self.workspace = self.in_path
+
 
             st.header("其他配置")
-            self.quiet = st.checkbox("安静模式 (-q)", value=False)
+            self.workspace = st.text_input("工作空间路径 (-w)", value="./lian_workspace")
+
             self.force = st.checkbox("强制模式 (-f)", value=False)
             self.debug = st.checkbox("调试模式 (-d)", value=False)
             self.print_stmts = st.checkbox("打印语句 (-p)", value=False)
@@ -88,7 +107,6 @@ class Config:
             self.output_graph = st.checkbox("输出SFG图 (--graph)", value=False)
             self.complete_graph = st.checkbox("输出完整SFG (--complete-graph)", value=False)
 
-            self.workspace = st.text_input("工作空间路径 (-w)", value="{in_path}/lian_workspace")
             self.event_handlers = st.text_input("事件处理器 (-e)", value="")
             self.default_settings = st.text_input("默认设置 (--default-settings)", value="")
             self.additional_settings = st.text_input("额外设置 (--additional-settings)", value="")
@@ -104,7 +122,6 @@ class Config:
 
         # 参数映射
         flags = [
-            ("-q", self.quiet),
             ("-f", self.force),
             ("-d", self.debug),
             ("-p", self.print_stmts),
@@ -131,134 +148,246 @@ class Config:
 
         cmd.append(self.in_path)
 
+        self.cmd = cmd
+
         return cmd
 
-# --- 实例化配置 ---
-config = Config()
-config.build_sidebar()
+    def create_log_container(self):
+        # 创建一个用于展示分析状态的 st.status 容器
+        status_box = st.empty()
+        status_box.info("准备开始分析...")
 
-# Initialize session state for the button
-if "analyze_clicked" not in st.session_state:
-    st.session_state.analyze_clicked = False
+        # 用于保存完整日志的列表
+        full_log_content = []
 
-st.markdown("### 🚀 执行控制台")
+        # 用于界面显示的滚动缓冲区（只保留最后 N 行）
+        log_buffer = collections.deque(maxlen=MAX_DISPLAY_LINES)
 
-# 1. 运行按钮与命令预览
-col1, col2 = st.columns([1, 4])
-with col1:
-    run_btn = st.button("开始分析", type="primary", use_container_width=True)
+        # 计数器
+        line_counter = 0
 
-if run_btn:
-    st.session_state.analyze_clicked = True
-    run_btn = None
+        # 创建一个可折叠的区域来显示日志细节
+        with st.expander(f"⚙️ 分析控制台输出 (实时刷新，显示最近 {MAX_DISPLAY_LINES} 行)", expanded=False) as log_expander:
+            # 创建一个占位符用于实时刷新日志
+            log_placeholder = st.empty()
+            log_text = ""
 
-if st.session_state.analyze_clicked:
-    st.session_state.analyze_clicked = False
+            try:
+                status_box.info("🚀 正在启动 LIAN 分析...")
 
-    cmd = config.build_command()
-    if cmd:
-        # 将列表转为字符串显示
-        cmd_str = " ".join(cmd)
-        st.code(cmd_str, language="bash")
+                # 使用 Popen 而不是 run，实现流式读取
+                process = subprocess.Popen(
+                    self.cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,  # 行缓冲
+                    encoding='utf-8',
+                    errors='replace' # 替换无法解码的字符，防止崩溃
+                )
 
-    st.divider()
+                # 实时读取输出
+                while True:
+                    line = process.stdout.readline()
 
-    # 创建可展开的日志监控区域
-    with st.expander("📝 实时日志监控 (点击展开/折叠)", expanded=True):
-        log_container = st.empty()
-        full_logs = []
+                    # 如果进程结束且没有新行了，跳出
+                    if not line and process.poll() is not None:
+                        break
 
+                    if line:
+                        # 1. 存入完整日志和缓冲区
+                        line = line.rstrip()
+
+                        if "<Workspace directory> :" is line:
+                            workspace_dir = line.split(":")[1].strip()
+                            self.workspace = workspace_dir
+
+                        full_log_content.append(line)
+                        log_buffer.append(line)
+
+                        # 2. 根据日志内容更新主状态 (例如：进度指示)
+                        if "######" in line:
+                            # 重要的阶段性输出，直接显示在主状态栏
+                            status_box.write(line)
+
+                        line_counter += 1
+
+                        # 3. 刷新 UI，避免过于频繁，导致浏览器卡顿
+                        if line_counter % UPDATE_FREQ == 0:
+                            log_text = "\n".join(log_buffer)
+                            log_placeholder.code(log_text, language="bash")
+
+                # --- 循环结束后 ---
+                # 4. 强制最后刷新一次，确保所有日志都显示
+                log_text = "\n".join(log_buffer)
+                log_placeholder.code(log_text, language="bash")
+
+                # 等待进程完全结束获取返回码
+                return_code = process.wait()
+
+                # 运行结束后的逻辑：更新 st.status 状态
+                if return_code == 0:
+                    status_box.success("✅ 分析完成！")
+                else:
+                    status_box.error(f"❌ 分析异常终止 (Exit Code: {return_code})")
+
+            except Exception as e:
+                status_box.error(f"❌ 执行错误: {str(e)}")
+                st.exception(e) # 显示详细的 Python 异常堆栈
+
+        # --- 日志完整显示 ---
+        if full_log_content and len(full_log_content) > MAX_DISPLAY_LINES:
+            full_log_str = "\n".join(full_log_content)
+
+            # # 下载按钮放在醒目位置
+            # st.download_button(
+            #     label="💾 下载完整日志文件",
+            #     data=full_log_str,
+            #     file_name="lian_analysis_log.txt",
+            #     mime="text/plain",
+            #     use_container_width=True,
+            #     type="secondary"
+            # )
+
+            # 创建一个可展开的区域来显示完整日志
+            with st.expander("点击查看全部控制台输出（完整内容）", expanded=False):
+                st.code(full_log_str, language="bash")
+
+        return True
+
+    def read_dataframe(self, file_path: Path):
         try:
-            #print(cmd)
-            # 使用 Popen 执行命令
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, # 将错误重定向到标准输出
-                text=True,
-                bufsize=1,
-                universal_newlines=True
-            )
+            return pd.read_feather(file_path)
+        except:
+            return ""
 
-            # 实时读取输出
-            while True:
-                line = process.stdout.readline()
-                if not line and process.poll() is not None:
-                    break
-                if line:
-                    full_logs.append(line)
-                    # 为了性能，每接收几行或者每隔一点时间刷新一次UI会更好，
-                    # 这里为了简单直接刷新最后20行
-                    log_text = "".join(full_logs[-20:])
-                    log_container.text_area(
-                        "实时日志",
-                        value=log_text,
-                        height=300,  # 设置高度为 300 像素
-                    )
-
-            if process.returncode == 0:
-                st.success("✅ 分析执行完毕！")
-            else:
-                st.error(f"❌ 分析出错，返回码: {process.returncode}")
-
+    def display_as_text(self, file_path: Path):
+        """显示文本文件内容"""
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            st.code(content, language="text")
         except Exception as e:
-            st.error(f"执行过程中发生异常: {str(e)}")
+            st.error(f"无法读取文件: {e}")
 
-    # 3. 结果可视化展示
-    st.divider()
-    st.markdown("### 📊 分析结果展示")
+    def render_results(self):
+        # 检查并处理工作空间路径
+        # 检查并处理工作空间路径
+        workspace_path = Path(self.workspace)
 
-    # 检查工作空间是否存在
-    workspace_path = Path(config.workspace)
+        if not workspace_path.exists():
+            st.info(f"等待分析完成... 工作空间 `{self.workspace}` 尚未找到。")
+            return
 
-    if not workspace_path.exists():
-        st.info(f"等待分析结果... (工作空间 '{config.workspace}' 尚未创建)")
-    else:
-        st.write(f"正在从工作空间读取结果: `{workspace_path.absolute()}`")
+        search_query = st.text_input(
+            "🔍 在结果中过滤文件或目录",
+            key="results_search_box"
+        ).lower()
 
-        # 查找工作空间内的所有 CSV 文件 (假设结果以 CSV 格式存储)
-        # 如果你的工具生成的是 excel 或 json，请相应修改后缀
-        result_files = list(workspace_path.glob("**/*.csv"))
+        # 查找所有文件 (不再过滤后缀)
+        result_dirs_map = collections.defaultdict(list) # {dir_path: [file_paths]}
 
-        if not result_files:
-            st.warning("工作空间中未找到 CSV 结果文件。")
-        else:
-            # 使用 Tabs 对不同文件进行分类展示
-            file_names = [f.name for f in result_files]
-            tabs = st.tabs(file_names)
+        for root, _, files in os.walk(self.workspace):
+            current_root = Path(root)
+            for file in files:
+                flag = True
+                for ext in IGNORED_EXTENSIONS:
+                    if file.endswith(ext):
+                        flag = False
+                        continue
+                if not flag:
+                    continue
 
-            for i, file_path in enumerate(result_files):
-                with tabs[i]:
-                    try:
-                        df = pd.read_csv(file_path)
+                if str(current_root).endswith("/src"):
+                    continue
 
-                        st.markdown(f"**文件路径**: `{file_path}`")
-                        st.markdown(f"**数据行数**: {len(df)}")
+                file_path = current_root / file
 
-                        # 交互式 DataFrame
-                        st.dataframe(df, use_container_width=True)
+                # 检查是否匹配搜索关键词
+                file_name_lower = file.lower()
+                dir_name_lower = current_root.name.lower()
 
-                        # 简单的下载按钮
-                        csv = df.to_csv(index=False).encode('utf-8')
-                        st.download_button(
-                            label=f"下载 {file_path.name}",
-                            data=csv,
-                            file_name=file_path.name,
-                            mime='text/csv',
-                        )
-                    except Exception as e:
-                        st.error(f"无法读取文件 {file_path.name}: {e}")
+                if not search_query or search_query in file_name_lower or search_query in dir_name_lower:
+                    result_dirs_map[current_root].append(file_path)
 
-        # 如果有 .dot 文件 (Graphviz)，也可以尝试展示
-        dot_files = list(workspace_path.glob("**/*.dot"))
-        if dot_files and config.output_graph:
-            st.markdown("#### 🕸️ 状态流图 (SFG)")
-            dot_tabs = st.tabs([f.name for f in dot_files])
-            for i, dot_file in enumerate(dot_files):
-                with dot_tabs[i]:
-                    try:
-                        with open(dot_file, "r") as f:
-                            dot_source = f.read()
-                        st.graphviz_chart(dot_source)
-                    except Exception as e:
-                        st.error(f"无法渲染图表: {e}")
+        if not result_dirs_map:
+            if search_query:
+                 st.warning(f"在工作空间中未找到与关键词 '{search_query}' 匹配的文件。")
+            else:
+                 st.warning("工作空间中未发现任何文件。")
+            return
+
+        # 1. 目录层设计 (Tabs)
+        sorted_dirs = sorted(list(result_dirs_map.keys()))
+
+        tabs_map = {}
+        for d in sorted_dirs:
+            relative_path = d.relative_to(workspace_path)
+            tab_name = str(relative_path) if str(relative_path) != '.' else workspace_path.name
+
+            if tab_name in tabs_map:
+                 tab_name = f"{d.parent.name}/{d.name}"
+
+            tabs_map[tab_name] = d
+
+        tab_names_list = list(tabs_map.keys())
+        dir_tabs = st.tabs(tab_names_list)
+
+        # 2. 文件层设计 (Tabs)
+        for idx, tab_name in enumerate(tab_names_list):
+            dir_path = tabs_map[tab_name]
+
+            with dir_tabs[idx]:
+                dir_files = sorted(result_dirs_map[dir_path])
+                file_names = [f.name for f in dir_files]
+
+                if not file_names:
+                    continue
+
+                file_tabs = st.tabs(file_names)
+                for file_idx, file_name in enumerate(file_names):
+                    file_path = dir_files[file_idx]
+
+                    with file_tabs[file_idx]:
+                        st.markdown(f"**文件路径**: `{file_path.relative_to(workspace_path)}`")
+
+                        # --- 核心：直接加载内容 (使用 spinner 提升用户体验) ---
+                        with st.spinner(f"正在加载 {file_name} ({file_path.suffix.upper()})..."):
+                            # 1. 尝试作为 DataFrame/Feather 加载
+                            if file_path.suffix.lower() not in TXT_EXTENSIONS:
+                                try:
+                                    df = self.read_dataframe(file_path)
+                                    st.dataframe(df, use_container_width=True)
+                                except Exception as e:
+                                    st.error(f"无法将 {file_name} 加载为 DataFrame/Feather 格式：{e}")
+                                    st.warning("尝试作为文本显示...")
+                                    self.display_as_text(file_path)
+
+                            # 2. 尝试作为文本/代码加载 (对于日志, dot 文件等)
+                            else:
+                                self.display_as_text(file_path)
+
+
+# --- 主界面逻辑 ---
+def main():
+    st.title("🔍 莲花代码分析 (LIAN)")
+
+    render = Render()
+    render.config_logo()
+    render.build_sidebar()
+
+    # 执行按钮
+    if st.button("开始分析", type="primary", use_container_width=True):
+        cmd_list = render.build_command()
+        st.code(" ".join(cmd_list), language="bash")
+
+        # 执行与日志输出区域
+        #st.divider()
+        st.subheader("1. 执行日志")
+        render.create_log_container()
+
+    st.subheader("分析结果可视化")
+    render.render_results()
+
+if __name__ == "__main__":
+    main()

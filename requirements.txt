@@ -1,11 +1,21 @@
 setuptools
+# the frontend for code parsing
 tree-sitter==0.24.0
+# for data storage and manipulation
 pandas
 pyarrow
+# graph visualization
 networkx
+# for math
 numpy
+# for profiling
 line_profiler
+# for plotting
 matplotlib
+# for configuration
 PyYAML
+# for visualization
 pydot
+graphviz
+# for web app UI
 streamlit

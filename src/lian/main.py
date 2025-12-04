@@ -166,9 +166,15 @@ class Lian:
         return self
 
     def run(self):
-        self.parse_cmds().init_submodules().dispatch_command()
+        self.parse_cmds().init_submodules()
+
         if not self.options.quiet:
-            print("Done.")
+            print("Start analysis...")
+
+        self.dispatch_command()
+
+        if not self.options.quiet:
+            print("\nThe analysis is done. Please check the output folder: " + os.path.abspath(self.options.workspace))
 
         return self
 
