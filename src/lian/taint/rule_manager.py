@@ -75,7 +75,13 @@ class Rule:
             "dst": self.dst,
             "unset": self.unset,
         }
-
+@dataclasses.dataclass
+class SourceCodeRule:
+    unit_path: str = ""
+    line_num: str = ""
+    symbol_name: str = ""
+    kind: int = -1
+    lang: str = config.ANY_LANG
 
 
 class RuleManager:
@@ -83,9 +89,14 @@ class RuleManager:
         self.all_sources      = []
         self.all_sinks        = []
         self.all_propagations = []
+        self.all_sources_from_code = []
+        self.all_sinks_from_code = []
         self.taint_source     = config.TAINT_SOURCE
         self.taint_sink       = config.TAINT_SINK
         self.taint_prop       = config.TAINT_PROPAGATION
+        self.taint_source_from_code     = config.TAINT_SOURCE_FROM_CODE
+        self.taint_sink_from_code = config.TAINT_SINK_FROM_CODE
+
 
         if default_settings:
             self.taint_source = os.path.join(default_settings, "source.yaml")
@@ -155,7 +166,33 @@ class RuleManager:
                                 dst=rule.get("dst", None), 
                                 unset=rule.get("unset", None))
                 self.all_propagations.append(new_rule)
-    
+        with open(self.taint_source_from_code, 'r') as file:
+            data = yaml.safe_load(file)
+            rule_kind = data["rule_kind"]
+            lang = data["lang"]
+            rules = data["rules"]
+            for rule in rules:
+                new_rule = SourceCodeRule(kind=rule_kind,
+                                lang=lang,
+                                unit_path=rule.get("unit_path", None),
+                                line_num=rule.get("line_num", None),
+                                symbol_name=rule.get("symbol_name", None),
+                           )
+                self.all_sources_from_code.append(new_rule)
+        with open(self.taint_sink_from_code, 'r') as file:
+            data = yaml.safe_load(file)
+            rule_kind = data["rule_kind"]
+            lang = data["lang"]
+            rules = data["rules"]
+            for rule in rules:
+                new_rule = SourceCodeRule(kind=rule_kind,
+                                lang=lang,
+                                unit_path=rule.get("unit_path", None),
+                                line_num=rule.get("line_num", None),
+                                symbol_name=rule.get("symbol_name", None),
+                           )
+                self.all_sinks_from_code.append(new_rule)
+
     def add_rule(self, rule_type, rule):
         pass
 

@@ -68,6 +68,8 @@ MAX_METHOD_CALL_COUNT                                        = 30
 TAINT_SOURCE                                                 = os.path.join(DEFAULT_SETTINGS, "source.yaml")
 TAINT_SINK                                                   = os.path.join(DEFAULT_SETTINGS, "sink.yaml")
 TAINT_PROPAGATION                                            = os.path.join(DEFAULT_SETTINGS, "propagation.yaml")
+TAINT_SOURCE_FROM_CODE                                       = os.path.join(DEFAULT_SETTINGS, "source_from_code.yaml")
+TAINT_SINK_FROM_CODE                                         = os.path.join(DEFAULT_SETTINGS, "sink_from_code.yaml")
 
 NO_TAINT                                                     = 0
 MAX_STMT_TAINT_ANALYSIS_COUNT                                = 3

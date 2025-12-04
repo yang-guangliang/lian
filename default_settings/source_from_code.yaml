@@ -1,0 +1,18 @@
+rule_kind: source
+lang: python
+rules:
+ - unit_path: "ComfyUI-0.2.2/server.py"
+   line_num: 60
+   symbol_name: request
+
+ - unit_path: "ComfyUI-0.2.2/server.py"
+   line_num: 68
+   symbol_name: request
+
+ - unit_path: "test/server.py"
+   line_num: 60
+   symbol_name: request
+
+ - unit_path: "test/server.py"
+   line_num: 68
+   symbol_name: request

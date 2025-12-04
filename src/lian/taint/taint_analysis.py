@@ -57,8 +57,34 @@ class TaintAnalysis:
                 if self.apply_call_stmt_source_rules(node):
                     defined_symbol_node, defined_state_node = self.find_symbol_chain(sfg, node)
                     node_list.append(defined_state_node)
+            elif node.node_type == SFG_NODE_KIND.STMT:
+                rules = self.rule_manager.all_sources_from_code
+                if self.apply_rules_from_code(node, rules):
+                    node_list.append(node)
 
         return node_list
+
+    def apply_rules_from_code(self, node, rules):
+        stmt_id = node.def_stmt_id
+        space = self.loader.get_symbol_state_space_p3(0)
+        status = self.loader.get_stmt_status_p3(node.context)[stmt_id]
+        stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
+        for rule in rules:
+
+            if str(stmt.start_row) != rule.line_num:
+                continue
+
+            symbol_in_stmt = False
+            if space[status.defined_symbol].name == rule.symbol_name:
+                symbol_in_stmt = True
+            for symbol_index in status.used_symbols:
+                symbol = space[symbol_index]
+                if symbol.name == rule.symbol_name:
+                    symbol_in_stmt = True
+            if not symbol_in_stmt:
+                continue
+
+
 
     def next_by_edge_type(self, G, src, edge_type):
         """返回从 src 出发、第一条边数据['type']==edge_type 的目标节点；无则 None"""
@@ -136,6 +162,9 @@ class TaintAnalysis:
         node_list = []
         for node in sfg.nodes:
             if self.should_apply_call_stmt_sink_rules(node):
+                node_list.append(node)
+            rules = self.rule_manager.all_sinks_from_code
+            if node.node_type == SFG_NODE_KIND.STMT and self.apply_rules_from_code(node, rules):
                 node_list.append(node)
         return node_list
 
