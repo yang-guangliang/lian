@@ -159,6 +159,7 @@ class TaintAnalysis:
             for state in method_symbol.states:
                 # 检查函数名是否符合规则
                 if self.check_method_name(rule.name, state, space):
+                    return True
                     return self.check_tag(rule.target, used_symbols, space, self.taint_manager)
                     # 检查参数是否携带tag
 
@@ -305,6 +306,8 @@ class TaintAnalysis:
             flow_list.append(new_flow)
             #print(parent_to_source)
             #print(parent_to_sink)
+
+
         return flow_list
 
     def find_method_parent_by_nodes(self, ct, source_nodes, sink_nodes):
@@ -316,6 +319,8 @@ class TaintAnalysis:
         for source_node in source_nodes:
             for sink_node in sink_nodes:
                 parent = self.find_method_parent_by_node(ct, source_node, sink_node)
+                if source_node == sink_node:
+                    parent = source_node
                 if not parent:
                     continue
                 parents.append(parent.split("#")[-1])
@@ -362,8 +367,16 @@ class TaintAnalysis:
             sources = self.find_sources(sfg, call_tree)
             sinks = self.find_sinks(sfg, call_tree)
             flows = self.find_flows(sfg, call_tree, sources, sinks)
-            # print(flows)
+            self.print_flows(flows)
 
+    def print_flows(self, flows):
+        for flow in flows:
+            print("--------------------------------")
+            for node in flow.parent_to_sink:
+                stmt_id = node.def_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                line_no = stmt.start_row
+                print(node,"in line ", line_no)
 def main():
     TaintAnalysis().run()
 

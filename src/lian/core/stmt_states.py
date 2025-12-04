@@ -327,7 +327,7 @@ class StmtStates:
 
     def create_state_and_add_space(
         self, status: StmtStatus, stmt_id, source_symbol_id=-1, source_state_id=-1, value="", data_type="",
-        state_type=STATE_TYPE_KIND.REGULAR, access_path=[], overwritten_flag=False, parent_state=None, parent_state_index = -1
+        state_type=STATE_TYPE_KIND.REGULAR, access_path=[], overwritten_flag=False, parent_state=None, parent_state_index = -1,args = None
     ):
         item = State(
             stmt_id=stmt_id,
@@ -357,7 +357,7 @@ class StmtStates:
                     node_id=parent_state.state_id,
                     loader=self.loader,
                     complete_graph=self.complete_graph,
-                    context=self.call_site,
+                    # context=self.call_site,
                 ),
                 SFGNode(
                     node_type=SFG_NODE_KIND.STATE,
@@ -365,7 +365,7 @@ class StmtStates:
                     index=index,
                     node_id=item.state_id,
                     loader=self.loader,
-                    context=self.call_site,
+                    # context=self.call_site,
                     complete_graph=self.complete_graph,
                 ),
                 SFGEdge(
@@ -373,6 +373,35 @@ class StmtStates:
                     stmt_id=stmt_id
                 )
             )
+        if args:
+            positional_args = args.positional_args
+            for pos_arg in positional_args:
+                for arg in pos_arg:
+                    arg_state = self.frame.symbol_state_space[arg.index_in_space]
+                    self.frame.state_flow_graph.add_edge(
+                        SFGNode(
+                            node_type=SFG_NODE_KIND.STATE,
+                            def_stmt_id=arg_state.stmt_id,
+                            index=arg.index_in_space,
+                            node_id=arg.state_id,
+                            loader=self.loader,
+                            complete_graph=self.complete_graph,
+                            # context=self.call_site,
+                        ),
+                        SFGNode(
+                            node_type=SFG_NODE_KIND.STATE,
+                            def_stmt_id=item.stmt_id,
+                            index=index,
+                            node_id=item.state_id,
+                            loader=self.loader,
+                            # context=self.call_site,
+                            complete_graph=self.complete_graph,
+                        ),
+                        SFGEdge(
+                            edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
+                            stmt_id=stmt_id
+                        )
+                    )
         # if state_def_node not in self.frame.all_state_defs:
         #     self.frame.state_bit_vector_manager.add_bit_id(state_def_node)
         #     self.frame.all_state_defs.add(state_def_node)
@@ -1835,7 +1864,8 @@ class StmtStates:
                 access_path=[AccessPoint(
                     kind=ACCESS_POINT_KIND.CALL_RETURN,
                     key=util.read_stmt_field(defined_symbol.name)
-                )]
+                )],
+                args=args
             )
             self.update_access_path_state_id(unsolved_state_index)
             defined_symbol.states = {unsolved_state_index}
@@ -3027,7 +3057,9 @@ class StmtStates:
                             kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
                             key=field_name
                         )
-                    )
+                    ),
+                    parent_state=receiver_state,
+                    parent_state_index=receiver_state_index,
                 )
             else:
                 source_index = self.create_state_and_add_space(
@@ -3042,8 +3074,9 @@ class StmtStates:
                         AccessPoint(
                             kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
                             key=field_name
-                        )]
-
+                        )],
+                    parent_state=receiver_state,
+                    parent_state_index=receiver_state_index,
                 )
             self.update_access_path_state_id(source_index)
 

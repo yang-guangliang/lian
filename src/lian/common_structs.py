@@ -1056,7 +1056,7 @@ class SFGNode:
             stmt = loader.get_stmt_gir(def_stmt_id)
             unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
             method_id = loader.convert_stmt_id_to_method_id(def_stmt_id)
-            self.method_name = loader.convert_method_id_to_method_name(method_id)
+            # self.method_name = loader.convert_method_id_to_method_name(method_id)
             self.module_name = os.path.basename(loader.convert_module_id_to_module_info(unit_id).original_path)
             self.line_no = stmt.start_row
             self.operation = stmt.operation
