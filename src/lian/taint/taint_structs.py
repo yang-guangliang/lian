@@ -224,7 +224,6 @@ class TagBitVectorManager:
     def gen(self, bit_vector, bit_pos_list):
         for bit_pos in bit_pos_list:
             if bit_pos and bit_pos > 0:
-                print(type(bit_vector))
                 bit_vector |= (1 << bit_pos)
         return bit_vector
 
