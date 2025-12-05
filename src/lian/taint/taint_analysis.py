@@ -67,7 +67,7 @@ class TaintAnalysis:
     def apply_rules_from_code(self, node, rules):
         stmt_id = node.def_stmt_id
         space = self.loader.get_symbol_state_space_p3(0)
-        status = self.loader.get_stmt_status_p3(node.context)[stmt_id]
+        status = self.loader.get_stmt_status_p3(node.full_context)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
         for rule in rules:
 
@@ -120,7 +120,7 @@ class TaintAnalysis:
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
         space = self.loader.get_symbol_state_space_p3(0)
-        status = self.loader.get_stmt_status_p3(node.context)[stmt_id]
+        status = self.loader.get_stmt_status_p3(node.full_context)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
         method_symbol = space[status.used_symbols[0]]
         tag_space_id = space[status.defined_symbol].symbol_id
@@ -174,7 +174,7 @@ class TaintAnalysis:
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
         space = self.loader.get_symbol_state_space_p3(0)
-        status = self.loader.get_stmt_status_p3(node.context)[stmt_id]
+        status = self.loader.get_stmt_status_p3(node.full_context)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
 
         method_symbol = space[status.used_symbols[0]]

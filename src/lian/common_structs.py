@@ -1044,19 +1044,22 @@ class SFGNode:
         self.name = name
         # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
         # Hence it is call_site
-        self.context = context
+        self.context = -1
         self.method_name=None
         self.module_name=None
         self.line_no=-1
         self.operation=None
         self.caller_name=None
+        self.full_context = context
+        if context:
+            self.context = context[1]
         if context and context[0] != -1 and loader:
             self.caller_name = loader.convert_method_id_to_method_name(context[0])
         if complete_graph and def_stmt_id != -1:
             stmt = loader.get_stmt_gir(def_stmt_id)
             unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
             method_id = loader.convert_stmt_id_to_method_id(def_stmt_id)
-            # self.method_name = loader.convert_method_id_to_method_name(method_id)
+            self.method_name = loader.convert_method_id_to_method_name(method_id)
             self.module_name = os.path.basename(loader.convert_module_id_to_module_info(unit_id).original_path)
             self.line_no = stmt.start_row
             self.operation = stmt.operation

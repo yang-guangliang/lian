@@ -328,7 +328,7 @@ class StmtStates:
 
     def create_state_and_add_space(
         self, status: StmtStatus, stmt_id, source_symbol_id=-1, source_state_id=-1, value="", data_type="",
-        state_type=STATE_TYPE_KIND.REGULAR, access_path=[], overwritten_flag=False, parent_state=None, parent_state_index = -1,args = None
+        state_type=STATE_TYPE_KIND.REGULAR, access_path=[], overwritten_flag=False, parent_state=None, parent_state_index = -1,args = None, edge_name = None
     ):
         item = State(
             stmt_id=stmt_id,
@@ -399,8 +399,9 @@ class StmtStates:
                             complete_graph=self.complete_graph,
                         ),
                         SFGEdge(
-                            edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
-                            stmt_id=stmt_id
+                            edge_type=SFG_EDGE_KIND.STATE_INCLUSION,
+                            stmt_id=stmt_id,
+                            name=edge_name,
                         )
                     )
         # if state_def_node not in self.frame.all_state_defs:
@@ -1850,7 +1851,7 @@ class StmtStates:
                     kind=ACCESS_POINT_KIND.CALL_RETURN,
                     key=util.read_stmt_field(defined_symbol.name)
                 )],
-                args=args
+                # args=args
             )
             self.update_access_path_state_id(unsolved_state_index)
             defined_symbol.states = {unsolved_state_index}
@@ -3043,6 +3044,7 @@ class StmtStates:
                     ),
                     parent_state=receiver_state,
                     parent_state_index=receiver_state_index,
+                    edge_name=field_name,
                 )
             else:
                 source_index = self.create_state_and_add_space(
@@ -3060,6 +3062,7 @@ class StmtStates:
                         )],
                     parent_state=receiver_state,
                     parent_state_index=receiver_state_index,
+                    edge_name=field_name,
                 )
             self.update_access_path_state_id(source_index)
 
@@ -3611,7 +3614,7 @@ class StmtStates:
                     self.sfg.add_edge(
                         self.make_state_sfg_node_with_no_context(new_receiver_state_index),
                         self.make_state_sfg_node_with_no_context(each_source_state_index),
-                        self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION, name=stmt.operation)
+                        self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION, name=each_field_state.value)
                     )
 
                 new_receiver_state.fields[each_field_state.value] = source_states
