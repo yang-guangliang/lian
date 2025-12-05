@@ -53,8 +53,6 @@ from lian.core.resolver import Resolver
 from lian.core.global_stmt_states import GlobalStmtStates
 from networkx.generators.classic import complete_graph
 
-from src.lian.config.schema import method_summary_schema
-
 
 class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
