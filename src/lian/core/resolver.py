@@ -250,9 +250,7 @@ class Resolver:
         return index_set
 
     def obtain_parent_states(self, stmt_id, frame, status, base_state_index):
-        # print("obtain_parent_states@ 要找的base_state是",base_state_index)
         parent_state_id = self.obtain_parent_state_id(frame, status, base_state_index)
-        # print("obtain_parent_states@ 找到的parent_state_id是",parent_state_id)
         parent_state_id = int(parent_state_id)
         if parent_state_id <= 0:
             return set()
@@ -271,9 +269,7 @@ class Resolver:
         #         util.add_to_dict_with_default_set(frame.defined_states, state_id, bit_id)
         #         frame.state_bit_vector_manager.add_bit_id(bit_id)
 
-        # print(f"available_state_defs: {available_state_defs}")
         newest_states = self.collect_newest_states_by_state_ids(frame, status, {parent_state_id})
-        # print("obtain_parent_states@ 找到的newest_states是",newest_states, ", method_id是",frame.method_id)
         return newest_states
 
     def obtain_parent_state_id(self, frame, status, base_state_index):
@@ -474,7 +470,6 @@ class Resolver:
         return new_space
 
     def retrieve_latest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
-        # print(f"找最新retrieve_latest_states state_old_to_new, 输入的是:{state_indexes}")
         return_indexes = set()
         for state_index in state_indexes:
             if state_index in state_index_old_to_new: # 一个下标只处理一次
@@ -483,7 +478,6 @@ class Resolver:
 
             # 找到当前state的最新别名
             newest_state_index_set =  self.collect_newest_states_by_state_indexes(frame, stmt_id, {state_index}, available_defined_states)
-            # print(f"retrieve_lateset_states old {state_index}, new {newest_state_index_set}",)
             for newest_state_index in newest_state_index_set:
                 if newest_state_index in state_index_old_to_new:
                     state_index_old_to_new[state_index] = state_index_old_to_new[newest_state_index]
