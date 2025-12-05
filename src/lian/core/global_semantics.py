@@ -409,10 +409,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         # call_path中若只有一个函数，则不建call_tree
         entry_points_to_path = {}
         for call_path in self.path_manager.paths:
-            if call_path[0] not in entry_points_to_path:
-                entry_points_to_path[call_path[0]] = []
-            entry_points_to_path[call_path[0]].append((call_path.path))
-
+            entry_point_method = call_path[0]
+            if entry_point_method not in entry_points_to_path:
+                entry_points_to_path[entry_point_method] = []
+            entry_points_to_path[entry_point_method].append((call_path.path))
 
         for entry_point, call_paths in entry_points_to_path.items():
             if len(call_paths) == 0:
