@@ -54,8 +54,7 @@ from lian.common_structs import (
     SFGEdge,
 )
 from lian.core.resolver import Resolver
-from networkx.generators.classic import complete_graph
-from zope.interface import named
+
 
 
 class StmtStates:
