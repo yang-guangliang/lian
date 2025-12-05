@@ -4,6 +4,7 @@ import subprocess
 import pandas as pd
 from pathlib import Path
 import collections
+import base64
 
 # --- 基础配置 ---
 BASE_DIR = Path(__file__).parent.absolute()
@@ -86,16 +87,10 @@ class Render:
                 )
                 if in_path_input != self.in_path:
                     self.in_path = in_path_input
-                    # 当in_path改变时，自动更新workspace
-                    if self.in_path:
-                        if "lian_workspace" not in self.in_path:
-                            self.workspace = os.path.join(self.in_path, "lian_workspace")
-                        else:
-                            self.workspace = self.in_path
 
 
             st.header("其他配置")
-            self.workspace = st.text_input("工作空间路径 (-w)", value=DEFAULT_WORKSPACE)
+            self.workspace = st.text_input("工作空间路径 (-w)", value=self.workspace)
 
             self.force = st.checkbox("强制模式 (-f)", value=False)
             self.debug = st.checkbox("调试模式 (-d)", value=False)
@@ -136,8 +131,11 @@ class Render:
             if condition:
                 cmd.append(flag)
 
+        # 始终传递工作空间路径 (-w)，避免依赖后端默认值
+        if self.workspace:
+            cmd.extend(["-w", self.workspace])
+
         options = [
-            ("-w", self.workspace, DEFAULT_WORKSPACE),
             ("-e", self.event_handlers, ""),
             ("--default-settings", self.default_settings, ""),
             ("--additional-settings", self.additional_settings, ""),
@@ -152,52 +150,39 @@ class Render:
 
         return cmd
 
-    def create_log_container(self):
-        # 创建一个用于展示分析状态的 st.status 容器
+    def create_log_container_with_result(self):
+        """执行命令并返回日志内容和状态，用于保存到 session_state"""
         status_box = st.empty()
         status_box.info("准备开始分析...")
 
-        # 用于保存完整日志的列表
         full_log_content = []
-
-        # 用于界面显示的滚动缓冲区（只保留最后 N 行）
         log_buffer = collections.deque(maxlen=MAX_DISPLAY_LINES)
-
-        # 计数器
         line_counter = 0
+        result_status = "success"
 
-        # 创建一个可折叠的区域来显示日志细节
-        with st.expander(f"⚙️ 分析控制台输出 (实时刷新，显示最近 {MAX_DISPLAY_LINES} 行)", expanded=False) as log_expander:
-            # 创建一个占位符用于实时刷新日志
+        with st.expander(f"⚙️ 分析控制台输出 (实时刷新，显示最近 {MAX_DISPLAY_LINES} 行)", expanded=False):
             log_placeholder = st.empty()
-            log_text = ""
 
             try:
                 status_box.info("🚀 正在启动 LIAN 分析...")
 
-                # 使用 Popen 而不是 run，实现流式读取
                 process = subprocess.Popen(
                     self.cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
-                    bufsize=1,  # 行缓冲
+                    bufsize=1,
                     encoding='utf-8',
-                    errors='replace' # 替换无法解码的字符，防止崩溃
+                    errors='replace'
                 )
 
-                # 实时读取输出
                 while True:
                     line = process.stdout.readline()
-
-                    # 如果进程结束且没有新行了，跳出
                     if not line and process.poll() is not None:
                         break
 
                     if line:
-                        # 1. 存入完整日志和缓冲区
                         line = line.rstrip()
-
                         if "<Workspace directory> :" in line:
                             workspace_dir = line.split(":")[1].strip()
                             self.workspace = workspace_dir
@@ -205,61 +190,67 @@ class Render:
                         full_log_content.append(line)
                         log_buffer.append(line)
 
-                        # 2. 根据日志内容更新主状态 (例如：进度指示)
                         if "######" in line:
-                            # 重要的阶段性输出，直接显示在主状态栏
                             status_box.write(line)
 
                         line_counter += 1
-
-                        # 3. 刷新 UI，避免过于频繁，导致浏览器卡顿
                         if line_counter % UPDATE_FREQ == 0:
-                            log_text = "\n".join(log_buffer)
-                            log_placeholder.code(log_text, language="bash")
+                            log_placeholder.code("\n".join(log_buffer), language="bash")
 
-                # --- 循环结束后 ---
-                # 4. 强制最后刷新一次，确保所有日志都显示
-                log_text = "\n".join(log_buffer)
-                log_placeholder.code(log_text, language="bash")
-
-                # 等待进程完全结束获取返回码
+                log_placeholder.code("\n".join(log_buffer), language="bash")
                 return_code = process.wait()
 
-                # 运行结束后的逻辑：更新 st.status 状态
                 if return_code == 0:
                     status_box.success("✅ 分析完成！")
+                    result_status = "success"
                 else:
                     status_box.error(f"❌ 分析异常终止 (Exit Code: {return_code})")
+                    result_status = "error"
 
             except Exception as e:
                 status_box.error(f"❌ 执行错误: {str(e)}")
-                st.exception(e) # 显示详细的 Python 异常堆栈
+                result_status = "error"
 
-        # --- 日志完整显示 ---
-        if full_log_content and len(full_log_content) > MAX_DISPLAY_LINES:
-            full_log_str = "\n".join(full_log_content)
-
-            # # 下载按钮放在醒目位置
-            # st.download_button(
-            #     label="💾 下载完整日志文件",
-            #     data=full_log_str,
-            #     file_name="lian_analysis_log.txt",
-            #     mime="text/plain",
-            #     use_container_width=True,
-            #     type="secondary"
-            # )
-
-            # 创建一个可展开的区域来显示完整日志
-            with st.expander("点击查看全部控制台输出（完整内容）", expanded=False):
-                st.code(full_log_str, language="bash")
-
-        return True
+        full_log_str = "\n".join(full_log_content) if full_log_content else ""
+        return full_log_str, result_status
 
     def read_dataframe(self, file_path: Path):
-        try:
-            return pd.read_feather(file_path)
-        except:
-            return ""
+        return pd.read_feather(file_path)
+
+    def render_dataframe_with_search(self, df, key_suffix):
+        """渲染带有高级检索功能的 DataFrame"""
+        # --- DataFrame 高级检索功能 ---
+        with st.expander("🔍 数据检索与过滤", expanded=False):
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                search_cols = st.multiselect(
+                    "限制检索列 (留空则检索所有列)",
+                    options=df.columns.tolist(),
+                    default=[],
+                    key=f"cols_{key_suffix}"
+                )
+            with col2:
+                search_term = st.text_input(
+                    "输入检索内容 (支持部分匹配)",
+                    key=f"search_{key_suffix}"
+                )
+
+        # 执行过滤逻辑
+        if search_term:
+            target_cols = search_cols if search_cols else df.columns
+            
+            # 构建查询条件
+            mask = pd.DataFrame(False, index=df.index, columns=target_cols)
+            for col in target_cols:
+                mask[col] = df[col].astype(str).str.contains(search_term, case=False, na=False)
+            
+            final_mask = mask.any(axis=1)
+            filtered_df = df[final_mask]
+            
+            st.info(f"检索到 {len(filtered_df)} / {len(df)} 行数据")
+            st.dataframe(filtered_df, use_container_width=True)
+        else:
+            st.dataframe(df, use_container_width=True)
 
     def display_as_text(self, file_path: Path):
         """显示文本文件内容"""
@@ -272,7 +263,6 @@ class Render:
 
     def render_results(self):
         # 检查并处理工作空间路径
-        # 检查并处理工作空间路径
         workspace_path = Path(self.workspace)
 
         if not workspace_path.exists():
@@ -284,30 +274,26 @@ class Render:
             key="results_search_box"
         ).lower()
 
-        # 查找所有文件 (不再过滤后缀)
+        # 查找所有文件
         result_dirs_map = collections.defaultdict(list) # {dir_path: [file_paths]}
 
         for root, _, files in os.walk(self.workspace):
             current_root = Path(root)
-            for file in files:
-                flag = True
-                for ext in IGNORED_EXTENSIONS:
-                    if file.endswith(ext):
-                        flag = False
-                        continue
-                if not flag:
-                    continue
+            current_root_str = str(current_root)
+            
+            # 过滤工作空间中的 src 根目录和所有 externs 相关目录
+            if current_root_str.endswith("/src") or "/externs/" in current_root_str or current_root_str.endswith("/externs"):
+                continue
 
-                if str(current_root).endswith("/src"):
+            for file in files:
+                # 扩展名过滤
+                if any(file.endswith(ext) for ext in IGNORED_EXTENSIONS):
                     continue
 
                 file_path = current_root / file
 
                 # 检查是否匹配搜索关键词
-                file_name_lower = file.lower()
-                dir_name_lower = current_root.name.lower()
-
-                if not search_query or search_query in file_name_lower or search_query in dir_name_lower:
+                if not search_query or search_query in file.lower() or search_query in current_root.name.lower():
                     result_dirs_map[current_root].append(file_path)
 
         if not result_dirs_map:
@@ -333,58 +319,110 @@ class Render:
         tab_names_list = list(tabs_map.keys())
         dir_tabs = st.tabs(tab_names_list)
 
-        # 2. 文件层设计 (Tabs)
+        # 2. 文件层设计：下拉选择 + 内容展示
         for idx, tab_name in enumerate(tab_names_list):
             dir_path = tabs_map[tab_name]
 
             with dir_tabs[idx]:
                 dir_files = sorted(result_dirs_map[dir_path])
-                file_names = [f.name for f in dir_files]
+                files_with_names = list(zip([f.name for f in dir_files], dir_files))
+                files_with_names.sort(
+                    key=lambda item: (
+                        item[0].endswith("indexing") or ".indexing" in item[0],
+                        item[0],
+                    )
+                )
+                file_names = [name for name, _ in files_with_names]
+                dir_files = [path for _, path in files_with_names]
 
-                if not file_names:
+                # 文件选择组件
+                select_key = f"selected_file_{tab_name}"
+                if select_key not in st.session_state:
+                    st.session_state[select_key] = None
+                
+                selected_file = st.selectbox(
+                    "选择文件",
+                    options=file_names,
+                    index=None,
+                    placeholder="Choose options",
+                    key=f"select_{tab_name}",
+                    label_visibility="collapsed",
+                )
+                
+                if selected_file:
+                    selected_idx = file_names.index(selected_file)
+                    st.session_state[select_key] = str(dir_files[selected_idx])
+                
+                if st.session_state[select_key] is None:
                     continue
+                
+                file_path = Path(st.session_state[select_key])
 
-                file_tabs = st.tabs(file_names)
-                for file_idx, file_name in enumerate(file_names):
-                    file_path = dir_files[file_idx]
+                st.markdown(f"**文件路径**: `{file_path}`")
 
-                    with file_tabs[file_idx]:
-                        st.markdown(f"**文件路径**: `{file_path}`")
+                with st.spinner(f"正在加载 {file_path.name} ({file_path.suffix.upper()})..."):
+                    if file_path.suffix.lower() not in TXT_EXTENSIONS:
+                        try:
+                            df = self.read_dataframe(file_path)
+                            self.render_dataframe_with_search(df, f"{tab_name}_{file_path.name}")
+                        except Exception as e:
+                            st.warning("尝试作为文本显示...")
+                            self.display_as_text(file_path)
 
-                        # --- 核心：直接加载内容 (使用 spinner 提升用户体验) ---
-                        with st.spinner(f"正在加载 {file_name} ({file_path.suffix.upper()})..."):
-                            # 1. 尝试作为 DataFrame/Feather 加载
-                            if file_path.suffix.lower() not in TXT_EXTENSIONS:
-                                try:
-                                    df = self.read_dataframe(file_path)
-                                    st.dataframe(df, use_container_width=True)
-                                except Exception as e:
-                                    #st.error(f"无法将 {file_name} 加载为 DataFrame/Feather 格式：{e}")
-                                    st.warning("尝试作为文本显示...")
-                                    self.display_as_text(file_path)
-
-                            # 2. 尝试作为文本/代码加载 (对于日志, dot 文件等)
-                            else:
-                                self.display_as_text(file_path)
+                    else:
+                        self.display_as_text(file_path)
 
 
 # --- 主界面逻辑 ---
 def main():
-    st.title("🔍 莲花代码分析 (LIAN)")
 
     render = Render()
     render.config_logo()
+
+    if LOGO_PATH:
+        with open(LOGO_PATH, "rb") as f:
+            img_bytes = f.read()
+        img_b64 = base64.b64encode(img_bytes).decode()
+        header_html = f"""
+        <div style=\"display:flex;align-items:center;gap:12px;margin-bottom:1rem;\">
+            <img src=\"data:image/png;base64,{img_b64}\" style=\"height:48px;\" />
+            <h1 style=\"margin:0;\">莲花代码分析 (LIAN)</h1>
+        </div>
+        """
+        st.markdown(header_html, unsafe_allow_html=True)
+    else:
+        st.title("莲花代码分析 (LIAN)")
+
     render.build_sidebar()
+
+    # 初始化日志状态
+    if "last_cmd" not in st.session_state:
+        st.session_state.last_cmd = None
+        st.session_state.last_log = None
+        st.session_state.last_status = None
 
     # 执行按钮
     if st.button("开始分析", type="primary", use_container_width=True):
         cmd_list = render.build_command()
-        st.code(" ".join(cmd_list), language="bash")
-
-        # 执行与日志输出区域
-        #st.divider()
+        st.session_state.last_cmd = " ".join(cmd_list)
+        st.code(st.session_state.last_cmd, language="bash")
         st.subheader("执行日志")
-        render.create_log_container()
+        # 执行并保存日志
+        log_result, status = render.create_log_container_with_result()
+        st.session_state.last_log = log_result
+        st.session_state.last_status = status
+    
+    # 显示上次执行的日志（如果有）
+    elif st.session_state.last_cmd:
+        st.code(st.session_state.last_cmd, language="bash")
+        st.subheader("执行日志")
+        if st.session_state.last_status == "success":
+            st.success("✅ 分析完成！")
+        elif st.session_state.last_status == "error":
+            st.error("❌ 分析异常终止")
+        if st.session_state.last_log:
+            with st.expander("点击查看控制台输出", expanded=False):
+                st.code(st.session_state.last_log, language="bash")
 
     st.subheader("分析结果可视化")
     render.render_results()
