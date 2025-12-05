@@ -103,7 +103,7 @@ class Render:
             self.android_mode = st.checkbox("Android 模式 (--android)", value=False)
             self.strict_parse = st.checkbox("严格解析 (--strict-parse-mode)", value=False)
             self.incremental = st.checkbox("增量分析 (-inc)", value=False)
-            self.noextern = st.checkbox("禁用外部处理 (--noextern)", value=False)
+            self.noextern = st.checkbox("禁用外部处理 (--noextern)", value=True)
             self.output_graph = st.checkbox("输出SFG图 (--graph)", value=False)
             self.complete_graph = st.checkbox("输出完整SFG (--complete-graph)", value=False)
 
