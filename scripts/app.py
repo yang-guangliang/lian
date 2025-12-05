@@ -238,15 +238,15 @@ class Render:
         # 执行过滤逻辑
         if search_term:
             target_cols = search_cols if search_cols else df.columns
-            
+
             # 构建查询条件
             mask = pd.DataFrame(False, index=df.index, columns=target_cols)
             for col in target_cols:
                 mask[col] = df[col].astype(str).str.contains(search_term, case=False, na=False)
-            
+
             final_mask = mask.any(axis=1)
             filtered_df = df[final_mask]
-            
+
             st.info(f"检索到 {len(filtered_df)} / {len(df)} 行数据")
             st.dataframe(filtered_df, use_container_width=True)
         else:
@@ -280,7 +280,7 @@ class Render:
         for root, _, files in os.walk(self.workspace):
             current_root = Path(root)
             current_root_str = str(current_root)
-            
+
             # 过滤工作空间中的 src 根目录和所有 externs 相关目录
             if current_root_str.endswith("/src") or "/externs/" in current_root_str or current_root_str.endswith("/externs"):
                 continue
@@ -304,7 +304,22 @@ class Render:
             return
 
         # 1. 目录层设计 (Tabs)
-        sorted_dirs = sorted(list(result_dirs_map.keys()))
+        sorted_dirs = sorted(
+            list(result_dirs_map.keys()),
+            key=lambda d: (
+                # Priority order for specific directories
+                [
+                    "call_tree",
+                    "initial",
+                    "semantic_p1",
+                    "semantic_p2",
+                    "semantic_p3"
+                ].index(d.name)
+                if d.name in ["initial", "semantic_p1", "semantic_p2", "semantic_p3"]
+                else float('inf'),  # Other directories go after
+                d.name  # Secondary sort by name
+            )
+        )
 
         tabs_map = {}
         for d in sorted_dirs:
@@ -339,7 +354,7 @@ class Render:
                 select_key = f"selected_file_{tab_name}"
                 if select_key not in st.session_state:
                     st.session_state[select_key] = None
-                
+
                 selected_file = st.selectbox(
                     "选择文件",
                     options=file_names,
@@ -348,14 +363,14 @@ class Render:
                     key=f"select_{tab_name}",
                     label_visibility="collapsed",
                 )
-                
+
                 if selected_file:
                     selected_idx = file_names.index(selected_file)
                     st.session_state[select_key] = str(dir_files[selected_idx])
-                
+
                 if st.session_state[select_key] is None:
                     continue
-                
+
                 file_path = Path(st.session_state[select_key])
 
                 st.markdown(f"**文件路径**: `{file_path}`")
@@ -411,7 +426,7 @@ def main():
         log_result, status = render.create_log_container_with_result()
         st.session_state.last_log = log_result
         st.session_state.last_status = status
-    
+
     # 显示上次执行的日志（如果有）
     elif st.session_state.last_cmd:
         st.code(st.session_state.last_cmd, language="bash")
