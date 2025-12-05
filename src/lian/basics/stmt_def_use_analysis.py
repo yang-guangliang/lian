@@ -387,7 +387,6 @@ class StmtDefUseAnalysis:
         packed_positional_args = []
         named_args = []
         packed_named_args = []
-
         # args_list = []
         if not util.isna(stmt.positional_args):
             positional_args = args_list[:positional_arg_index]
@@ -448,6 +447,10 @@ class StmtDefUseAnalysis:
 
         defined_symbol = self.symbol_state_space[status.defined_symbol]
 
+        if isinstance(callee_name_symbol, Symbol):
+            callee_symbol_id = callee_name_symbol.symbol_id
+        elif isinstance(callee_name_symbol, State):
+            callee_symbol_id = callee_name_symbol.state_id
         call_format = {
             "unit_id": self.unit_id,
             "method_id": self.method_id,
@@ -455,7 +458,7 @@ class StmtDefUseAnalysis:
             "target_name": stmt.target,
             "target_symbol_id": defined_symbol.symbol_id,
             "callee_name": stmt.name,
-            "callee_symbol_id": callee_name_symbol.symbol_id,
+            "callee_symbol_id": callee_symbol_id,
             "positional_args": str(positional_args_info),
             "packed_positional_args": str(packed_positional_args_info),
             "packed_named_args": str(packed_named_args_info),
@@ -563,9 +566,9 @@ class StmtDefUseAnalysis:
                         data_type=LIAN_INTERNAL.STRING,
                         # state_type=
                     ))
-            if not util.isna(symbol):
+            elif not util.isna(symbol):
                 used_symbol_list.append(self.create_symbol_or_state_and_add_space(stmt_id, symbol))
-                index += 1
+            index += 1
         defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target)
         status = StmtStatus(stmt_id, defined_symbol = defined_symbol, used_symbols = used_symbol_list)
         self.add_status_with_symbol_id_sync(stmt, status)

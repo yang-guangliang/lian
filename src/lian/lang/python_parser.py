@@ -607,7 +607,7 @@ class Parser(common_parser.Parser):
 
         if call_name.type == "attribute":
             self.append_stmts(statements, node, {"object_call": {
-                "receiver":receiver_name,
+                "receiver_object":receiver_name,
                 "target": tmp_call,
                 "field": field_name,
                 "positional_args": positional_args,
