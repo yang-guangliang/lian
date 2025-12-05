@@ -148,21 +148,8 @@ class GlobalStmtStates(StmtStates):
             name_symbol = self.frame.symbol_state_space[name_symbol_index]
             for name_state_index in name_symbol.states:
                 name_state = self.frame.symbol_state_space[name_state_index]
-                if not isinstance(name_state, State):
-                    continue
-                access_path = name_state.access_path
-                if len(access_path) < 2:
-                    continue
-                receiver_path = access_path[-2]
-                receiver_state_id = receiver_path.state_id
-                receiver_state_indexs = self.resolver.collect_newest_states_by_state_ids(self.frame, status,{receiver_state_id})
-                for receiver_state_index in receiver_state_indexs:
-                    if receiver_state_index < 0:
-                        continue
-                    receiver_state = self.frame.symbol_state_space[receiver_state_index]
-
-                    if isinstance(receiver_state, State) and self.is_state_a_class_decl(receiver_state):
-                       this_class_ids.append(receiver_state.value)
+                if isinstance(name_state, State) and self.is_state_a_class_decl(name_state):
+                   this_class_ids.append(name_state.value)
 
             return P2ResultFlag(
                 # states_changed = True,

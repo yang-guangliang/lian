@@ -912,15 +912,7 @@ class Parser(common_parser.Parser):
         shadow_object = ""
         myobject = self.find_child_by_field(node, "object")
         type_text = ""
-        if myobject:
-            shadow_object = self.parse(myobject, statements)
-            type_arguments = self.find_child_by_field(node, "type_arguments")
-            if type_arguments:
-                type_text = self.read_node_text(type_arguments)[1:-1]
 
-            tmp_var = self.tmp_variable()
-            self.append_stmts(statements, node, {"field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": shadow_name}})
-            shadow_name = tmp_var
 
         args = self.find_child_by_field(node, "arguments")
         args_list = []
@@ -935,7 +927,19 @@ class Parser(common_parser.Parser):
                     args_list.append(shadow_variable)
 
         tmp_return = self.tmp_variable()
-        self.append_stmts(statements, node, {"call_stmt": {"target": tmp_return, "name": shadow_name, "type_parameters": type_text, "positional_args": args_list}})
+        if myobject:
+            shadow_object = self.parse(myobject, statements)
+            # type_arguments = self.find_child_by_field(node, "type_arguments")
+            # if type_arguments:
+            #     type_text = self.read_node_text(type_arguments)[1:-1]
+
+            # tmp_var = self.tmp_variable()
+            # self.append_stmts(statements, node, {
+            #     "field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": shadow_name}})
+            # shadow_name = tmp_var
+            self.append_stmts(statements, node, {"object_call": {"target": tmp_return, "field": shadow_name, "receiver_object": shadow_object, "positional_args": args_list}})
+        else:
+            self.append_stmts(statements, node, {"call_stmt": {"target": tmp_return, "name": shadow_name, "type_parameters": type_text, "positional_args": args_list}})
 
         return tmp_return
 

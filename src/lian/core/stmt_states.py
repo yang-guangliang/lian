@@ -55,6 +55,7 @@ from lian.common_structs import (
 )
 from lian.core.resolver import Resolver
 from networkx.generators.classic import complete_graph
+from zope.interface import named
 
 
 class StmtStates:
@@ -126,6 +127,7 @@ class StmtStates:
 
             "assign_stmt": self.assign_stmt_state,
             "call_stmt": self.call_stmt_state,
+            "object_call":self.object_call_state,
             "global_stmt": self.global_stmt_state,
             "nonlocal_stmt": self.nonlocal_stmt_state,
             "type_cast_stmt": self.type_cast_stmt_state,
@@ -3285,6 +3287,260 @@ class StmtStates:
             }
         )
         app_return = self.event_manager.notify(event)
+        return P2ResultFlag()
+
+    def object_call_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+        """
+        <field_read: target, receiver_object, field>
+        target = receiver_symbol.field
+
+        通过state_bit_vector_manager拿到receiver_states的state id对应的最新的state
+        """
+        receiver_symbol_index = status.used_symbols[0]
+        field_index = status.used_symbols[1]
+        receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_symbol_index]
+        field_symbol: Symbol = self.frame.symbol_state_space[field_index]
+        if not isinstance(receiver_symbol, Symbol):  # TODO: 暂时未处理<string>.format的形式
+            return
+        receiver_states = self.read_used_states(receiver_symbol_index, in_states)
+        # print("field_read经过插件之前的receiver_states",receiver_states)
+        field_states = self.read_used_states(field_index, in_states)
+        defined_symbol_index = status.defined_symbol
+        defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
+        if not isinstance(defined_symbol, Symbol):
+            return P2ResultFlag()
+
+        named_states = set()
+
+        event = EventData(
+            self.lang,
+            EVENT_KIND.P2STATE_FIELD_READ_BEFORE,
+            {
+                "resolver": self.resolver,
+                "stmt_id": stmt_id,
+                "stmt": stmt,
+                "status": status,
+                "receiver_states": receiver_states,
+                "receiver_symbol": receiver_symbol,
+                "frame": self.frame,
+                "field_states": field_states,
+                "in_states": in_states,
+                "defined_symbol": defined_symbol,
+                "state_analysis": self,
+                "defined_states": named_states
+            }
+        )
+        app_return = self.event_manager.notify(event)
+        if er.should_block_event_requester(app_return):
+            defined_symbol.states = event.out_data.defined_states
+            return P2ResultFlag()
+        # else:
+        # receiver_states = event.out_data.receiver_states
+        # print("field_read经过插件后的receiver_states是：",receiver_states)
+
+        for receiver_state_index in receiver_states:
+            each_defined_states = set()
+            each_receiver_state = self.frame.symbol_state_space[receiver_state_index]
+            if not isinstance(each_receiver_state, State):
+                continue
+
+            for each_field_state_index in field_states:
+                each_field_state = self.frame.symbol_state_space[each_field_state_index]
+                if not isinstance(each_field_state, State):
+                    continue
+
+                field_name = str(each_field_state.value)
+                if each_receiver_state.tangping_elements:
+                    each_defined_states.update(each_receiver_state.tangping_elements)
+                    continue
+
+                elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                    self.change_field_read_receiver_state(
+                        stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
+                        field_name, each_defined_states, is_tangping=True
+                    )
+                    continue
+
+                elif field_name in each_receiver_state.fields:
+                    index_set = each_receiver_state.fields.get(field_name, set())
+                    each_defined_states.update(index_set)
+                    continue
+
+                # if field_name not in receiver_state.fields:
+                elif self.is_state_a_unit(each_receiver_state):
+                    import_graph = self.loader.get_import_graph()
+                    import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
+                    # [ah]
+                    found_in_import_graph = False
+                    # 解决file.symbol的情况，从import graph里找symbol
+                    for u, v, wt in import_graph.edges(data=True):
+                        real_name = wt.get("real_name", None)
+                        if real_name == field_name:
+                            symbol_type = wt.get("symbol_type", None)
+                            if symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
+                                data_type = LIAN_INTERNAL.METHOD_DECL
+                            elif symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
+                                data_type = LIAN_INTERNAL.CLASS_DECL
+                            else:
+                                data_type = LIAN_INTERNAL.UNIT
+
+                            state_index = self.create_state_and_add_space(
+                                status, stmt_id=stmt_id,
+                                source_symbol_id=v,
+                                source_state_id=each_receiver_state.source_state_id,
+                                data_type=data_type,
+                                value=v,
+                                # access_path=self.copy_and_extend_access_path(
+                                #     each_receiver_state.access_path,
+                                #     AccessPoint(
+                                #         key=real_name,
+                                #     )
+                                # )
+                                access_path=[AccessPoint(key=real_name)]
+                            )
+                            found_in_import_graph = True
+                            self.update_access_path_state_id(state_index)
+                            each_defined_states.add(state_index)
+
+                    if import_symbols and not found_in_import_graph:
+                        for import_symbol in import_symbols:
+                            if import_symbol.symbol_name == field_name:
+                                if import_symbol.symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
+                                    data_type = LIAN_INTERNAL.METHOD_DECL
+                                elif import_symbol.symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
+                                    data_type = LIAN_INTERNAL.CLASS_DECL
+                                else:
+                                    data_type = LIAN_INTERNAL.UNIT
+
+                                state_index = self.create_state_and_add_space(
+                                    status, stmt_id=stmt_id,
+                                    source_symbol_id=import_symbol.symbol_id,
+                                    source_state_id=each_receiver_state.source_state_id,
+                                    data_type=data_type,
+                                    value=import_symbol.import_stmt,
+                                    # access_path = self.copy_and_extend_access_path(
+                                    #     each_receiver_state.access_path,
+                                    #     AccessPoint(
+                                    #         key=import_symbol.symbol_name,
+                                    #     )
+                                    # )
+                                    access_path=[AccessPoint(key=import_symbol.symbol_name)]
+                                )
+                                self.update_access_path_state_id(state_index)
+                                each_defined_states.add(state_index)
+
+                elif self.is_state_a_class_decl(each_receiver_state):
+                    first_found_class_id = -1  # 记录从下往上找到该方法的第一个class_id。最后只返回该class中所有的同名方法，不继续向上找。
+                    class_methods = self.loader.get_methods_in_class(each_receiver_state.value)
+                    if class_methods:
+                        for method in class_methods:
+                            if method.name == field_name:
+                                method_class_id = self.loader.convert_method_id_to_class_id(method.stmt_id)
+                                if first_found_class_id == -1:
+                                    first_found_class_id = method_class_id
+
+                                if method_class_id != first_found_class_id:
+                                    continue
+                                data_type = LIAN_INTERNAL.METHOD_DECL
+                                if self.loader.is_class_decl(method.stmt_id):
+                                    data_type = LIAN_INTERNAL.CLASS_DECL
+                                state_index = self.create_state_and_add_space(
+                                    status, stmt_id=stmt_id,
+                                    source_symbol_id=method.stmt_id,
+                                    source_state_id=each_receiver_state.source_state_id,
+                                    data_type=data_type,
+                                    value=method.stmt_id,
+                                    # access_path=[AccessPoint(key=method.name)]
+                                    access_path = self.copy_and_extend_access_path(
+                                        each_receiver_state.access_path,
+                                        AccessPoint(
+                                            key=method.name,
+                                        )
+                                    )
+                                )
+                                self.update_access_path_state_id(state_index)
+                                each_defined_states.add(state_index)
+
+                # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
+                self.change_field_read_receiver_state(
+                    stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
+                    field_name, each_defined_states, is_tangping=False
+                )
+            named_states |= each_defined_states
+
+        defined_symbol.states = named_states
+
+        event = EventData(
+            self.lang,
+            EVENT_KIND.P2STATE_FIELD_READ_AFTER,
+            {
+                "resolver": self.resolver,
+                "stmt_id": stmt_id,
+                "stmt": stmt,
+                "status": status,
+                "receiver_states": receiver_states,
+                "receiver_symbol": receiver_symbol,
+                "frame": self.frame,
+                "field_states": field_states,
+                "in_states": in_states,
+                "defined_symbol": defined_symbol,
+                "state_analysis": self,
+                "defined_states": named_states
+            }
+        )
+        app_return = self.event_manager.notify(event)
+
+        unsolved_callee_states = set()
+        args = self.prepare_args(stmt_id, stmt, status, in_states)
+        callee_info = self.frame.stmt_id_to_callee_info.get(stmt_id)
+
+        name_symbol = None
+        if util.is_empty(callee_info):
+            result = self.trigger_extern_callee(
+                stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
+            )
+            if util.is_available(result):
+                return result
+            return P2ResultFlag()
+
+        callee_type = callee_info.callee_type
+        callee_method_ids = set()
+        callee_class_ids = set()
+        this_state_set = set()
+        for each_state_index in named_states:
+            each_state = self.frame.symbol_state_space[each_state_index]
+            if not isinstance(each_state, State):
+                continue
+
+            if self.is_state_a_method_decl(each_state):
+                if each_state.value:
+                    source_state_id = each_state.source_state_id
+                    # 如果是state1.func()的形式，要去找state1
+                    if source_state_id != each_state.state_id:
+                        this_state_set.update(
+                            self.resolver.obtain_parent_states(stmt_id, self.frame, status, each_state_index)
+                        )
+                    if callee_id := util.str_to_int(each_state.value):
+                        callee_method_ids.add(callee_id)
+
+            else:
+                unsolved_callee_states.add(each_state_index)
+
+        # call plugin to deal with undefined_callee_error
+        # if len(unsolved_callee_states) != 0:
+
+        if len(callee_method_ids) == 0 or self.is_abstract_method(callee_method_ids):
+            out_data = self.trigger_extern_callee(
+                stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
+            )
+            if util.is_available(out_data):
+                if hasattr(out_data, "callee_method_ids"):
+                    callee_method_ids.update(out_data.callee_method_ids)
+                else:
+                    return out_data
+        return self.compute_target_method_states(
+            stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
+        )
         return P2ResultFlag()
 
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):

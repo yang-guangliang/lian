@@ -52,6 +52,7 @@ class StmtDefUseAnalysis:
             "package_stmt"                          : self.package_stmt_def_use,
             "assign_stmt"                           : self.assign_stmt_def_use,
             "call_stmt"                             : self.call_stmt_def_use,
+            "object_call"                           : self.object_call_def_use,
             "echo_stmt"                             : self.echo_stmt_def_use,
             "exit_stmt"                             : self.exit_stmt_def_use,
             "return_stmt"                           : self.return_stmt_def_use,
@@ -361,7 +362,6 @@ class StmtDefUseAnalysis:
         packed_positional_args = []
         named_args = []
         packed_named_args = []
-
         # args_list = []
         if not util.isna(stmt.positional_args):
             positional_args = args_list[:positional_arg_index]
@@ -376,6 +376,8 @@ class StmtDefUseAnalysis:
 
         used_symbols = status.used_symbols
         arg_symbol_list = used_symbols[1:]
+        if stmt.operation == "object_call":
+            arg_symbol_list = used_symbols[2:]
         callee_name_symbol_index = used_symbols[0]
         callee_name_symbol = self.symbol_state_space[callee_name_symbol_index]
 
@@ -420,6 +422,10 @@ class StmtDefUseAnalysis:
 
         defined_symbol = self.symbol_state_space[status.defined_symbol]
 
+        if isinstance(callee_name_symbol, Symbol):
+            callee_symbol_id = callee_name_symbol.symbol_id
+        elif isinstance(callee_name_symbol, State):
+            callee_symbol_id = callee_name_symbol.state_id
         call_format = {
             "unit_id": self.unit_id,
             "method_id": self.method_id,
@@ -427,7 +433,7 @@ class StmtDefUseAnalysis:
             "target_name": stmt.target,
             "target_symbol_id": defined_symbol.symbol_id,
             "callee_name": stmt.name,
-            "callee_symbol_id": callee_name_symbol.symbol_id,
+            "callee_symbol_id": callee_symbol_id,
             "positional_args": str(positional_args_info),
             "packed_positional_args": str(packed_positional_args_info),
             "packed_named_args": str(packed_named_args_info),
@@ -436,8 +442,7 @@ class StmtDefUseAnalysis:
         self.loader.save_stmt_id_to_call_stmt_format(stmt_id, call_format)
 
     def call_stmt_def_use(self, stmt_id, stmt):
-        is_field_call = hasattr(stmt, "receiver") and util.is_available(stmt.receiver)
-        # convert stmt.args(str) to list
+
         args_list = []
         if not util.isna(stmt.positional_args):
             args_list = ast.literal_eval(stmt.positional_args)
@@ -455,8 +460,7 @@ class StmtDefUseAnalysis:
 
         used_symbol_list = []
         stmt_symbol_list = [stmt.name, *args_list]
-        if is_field_call:
-            stmt_symbol_list.insert(0, stmt.receiver)
+
         for symbol in stmt_symbol_list:
             if not util.isna(symbol):
                 used_symbol_list.append(self.create_symbol_or_state_and_add_space(stmt_id, symbol))
@@ -469,8 +473,86 @@ class StmtDefUseAnalysis:
         # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
         # So check the source stmt id
         call_name_symbol_index = used_symbol_list[0]
-        if is_field_call:
-            call_name_symbol_index = used_symbol_list[1]
+
+        call_name_symbol = self.symbol_state_space[call_name_symbol_index]
+        # fail to resolve call_name
+        if isinstance(call_name_symbol, Symbol):
+            if call_name_symbol is None or call_name_symbol.symbol_id == -1:
+                self.basic_call_graph.add_edge(self.method_id, BASIC_CALL_GRAPH_NODE_KIND.ERROR_METHOD)
+                internal_callee = MethodInternalCallee(
+                    self.method_id,
+                    CALLEE_TYPE.ERROR_CALLEE,
+                    stmt_id,
+                )
+                self.callees.add(internal_callee)
+
+            else:
+                if self.loader.is_method_decl(call_name_symbol.symbol_id) \
+                or self.loader.is_class_decl(call_name_symbol.symbol_id):
+                    self.basic_call_graph.add_edge(self.method_id, call_name_symbol.symbol_id, stmt_id)
+                    internal_callee = MethodInternalCallee(
+                        self.method_id,
+                        CALLEE_TYPE.DIRECT_CALLEE,
+                        stmt_id,
+                        call_name_symbol.symbol_id,
+                        call_name_symbol_index
+                    )
+                    self.callees.add(internal_callee)
+                    # if config.DEBUG_FLAG:
+                    #     util.debug("Found callee", internal_callee.to_dict())
+                else:
+                    self.basic_call_graph.add_edge(self.method_id, BASIC_CALL_GRAPH_NODE_KIND.DYNAMIC_METHOD, stmt_id)
+                    internal_callee = MethodInternalCallee(
+                        self.method_id,
+                        CALLEE_TYPE.DYNAMIC_CALLEE,
+                        stmt_id,
+                        call_name_symbol.symbol_id,
+                        call_name_symbol_index
+                    )
+                    self.callees.add(internal_callee)
+                    # if config.DEBUG_FLAG:
+                    #     util.debug("Found callee", internal_callee.to_dict())
+    def object_call_def_use(self, stmt_id, stmt):
+        # convert stmt.args(str) to list
+        args_list = []
+        if not util.isna(stmt.positional_args):
+            args_list = ast.literal_eval(stmt.positional_args)
+        elif not util.isna(stmt.packed_positional_args):
+            args_list = [stmt.packed_positional_args]
+
+        positional_arg_index = len(args_list)
+
+        if not util.isna(stmt.packed_named_args):
+            args_list.append(stmt.packed_named_args)
+        elif not util.isna(stmt.named_args):
+            args_dict = ast.literal_eval(stmt.named_args)
+            for key in sorted(args_dict.keys()):
+                args_list.append(args_dict[key])
+
+        used_symbol_list = []
+        stmt_symbol_list = [stmt.receiver_object, stmt.field, *args_list]
+        index = 0
+        for symbol in stmt_symbol_list:
+            if index == 1 and not util.isna(symbol):
+                used_symbol_list.append(
+                    self.create_state_and_add_space(
+                        stmt_id,
+                        value=symbol,
+                        data_type=LIAN_INTERNAL.STRING,
+                        # state_type=
+                    ))
+            elif not util.isna(symbol):
+                used_symbol_list.append(self.create_symbol_or_state_and_add_space(stmt_id, symbol))
+            index += 1
+        defined_symbol = self.create_symbol_and_add_space(stmt_id, stmt.target)
+        status = StmtStatus(stmt_id, defined_symbol = defined_symbol, used_symbols = used_symbol_list)
+        self.add_status_with_symbol_id_sync(stmt, status)
+        self.analyze_and_save_call_stmt_args(stmt_id, stmt, positional_arg_index, args_list, status)
+
+        # Here the call name symbol's ID(i.e., unit_id. symbol_id) has been sync
+        # So check the source stmt id
+        call_name_symbol_index = used_symbol_list[0]
+
         call_name_symbol = self.symbol_state_space[call_name_symbol_index]
         # fail to resolve call_name
         if isinstance(call_name_symbol, Symbol):
@@ -510,7 +592,6 @@ class StmtDefUseAnalysis:
                     self.callees.add(internal_callee)
                     # if self.option.debug:
                     #     util.debug("Found callee", internal_callee.to_dict())
-
     def echo_stmt_def_use(self, stmt_id, stmt):
         used_symbol_list = []
         for symbol in [stmt.name]:

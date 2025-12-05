@@ -523,8 +523,12 @@ class Parser(common_parser.Parser):
         if node.type == "decorator_call_expression":
             return
 
+
         name = self.find_child_by_field(node, "function")
-        shadow_name = self.parse(name, statements)
+        if name.type == "member_expression":
+           shadow_object, shadow_name = self.parse_field(node, statements)
+        else:
+            shadow_name = self.parse(name, statements)
 
         args = self.find_child_by_field(node, "arguments")
 
@@ -542,16 +546,23 @@ class Parser(common_parser.Parser):
                         positional_args.append(shadow_expr)
 
         tmp_return = self.tmp_variable()
-        self.append_stmts(statements, node,
-            {
-                "call_stmt": {
-                    "target": tmp_return,
-                    "name": shadow_name,
-                    "positional_args": positional_args,
-                    "packed_positional_args": packed_positional_args,
+
+        if name.type == "member_expression":
+            self.append_stmts(statements, node, {
+                "object_call": {"target": tmp_return, "field": shadow_name, "receiver_object": shadow_object,
+                                "positional_args": positional_args,
+                        "packed_positional_args": packed_positional_args,}})
+        else:
+            self.append_stmts(statements, node,
+                {
+                    "call_stmt": {
+                        "target": tmp_return,
+                        "name": shadow_name,
+                        "positional_args": positional_args,
+                        "packed_positional_args": packed_positional_args,
+                    }
                 }
-            }
-        )
+            )
 
         return tmp_return
 
