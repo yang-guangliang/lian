@@ -53,6 +53,8 @@ from lian.core.resolver import Resolver
 from lian.core.global_stmt_states import GlobalStmtStates
 from networkx.generators.classic import complete_graph
 
+from src.lian.config.schema import method_summary_schema
+
 
 class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
@@ -537,6 +539,37 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return lca
 
 
+    def find_method_caller_callee(self, method_id):
+        callees = set()
+        callers = set()
+        method_id = str(method_id)
+        for entry_point in self.loader.get_entry_points():
+            call_tree = self.loader.get_global_call_tree_by_entry_point(entry_point)
+
+            for node in call_tree.nodes:
+                if method_id == node.split("#")[-1]:
+                    callees = callees | set(call_tree.successors(node))
+                    callers = callers | set(call_tree.predecessors(node))
+
+        callee_names = self.convert_nodes_to_method_names(callees)
+        caller_names = self.convert_nodes_to_method_names(callers)
+
+        return caller_names, callee_names
+
+    def convert_nodes_to_method_names(self, methods):
+        method_names = set()
+        if not methods:
+            return set()
+        for method in methods:
+            method_name = method
+            if '#' in method:
+                method_name = method_name.split('#')[-1]
+            if method_name.isdigit():
+                method_name = self.loader.convert_method_id_to_method_name(int(method_name))
+            method_names.add(method_name)
+        return method_names
+
+
     def is_specified_method(self, method_id, node):
         if method_id == node.split("#")[-1]:
             return True
@@ -563,7 +596,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.save_call_tree()
         self.loader.save_global_call_path(self.path_manager.paths)
-
 
         self.loader.export()
         all_paths = self.loader.get_global_call_path()

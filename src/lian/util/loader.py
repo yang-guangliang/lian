@@ -1744,6 +1744,7 @@ class Loader:
         self.semantic_path_p1 = os.path.join(options.workspace, config.SEMANTIC_DIR_P1)
         self.semantic_path_p2 = os.path.join(options.workspace, config.SEMANTIC_DIR_P2)
         self.semantic_path_p3 = os.path.join(options.workspace, config.SEMANTIC_DIR_P3)
+        self.call_tree_path = os.path.join(options.workspace, config.CALL_TREE_PATH)
         self.event_handlers = event_handlers
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
@@ -2150,7 +2151,7 @@ class Loader:
         self._call_tree_loader: CallTreeLoader = CallTreeLoader(
             options,
             schema.call_tree_schema,
-            os.path.join(self.semantic_path_p3, config.CALL_TREE_PATH),
+            os.path.join(self.call_tree_path, config.CALL_TREE_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
