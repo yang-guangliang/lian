@@ -1400,8 +1400,8 @@ class StmtStates:
         ) = self.collect_callee_state_effects(last_state_indexes, stmt_id, callee_id)
 
         # 更新caller实参的array/fields/tangping
-        self.merge_arrays_into_arg_state(new_arg_state, callee_state_arrays)
-        self.merge_tangping_into_arg_state(new_arg_state, tangping_flag, tangping_elements, stmt_id, callee_id)
+        self.merge_callee_arrays_into_arg_state(new_arg_state, callee_state_arrays)
+        self.merge_callee_tangping_into_arg_state(new_arg_state, tangping_flag, tangping_elements, stmt_id, callee_id)
         self.merge_callee_fields_into_arg_state(
             stmt_id, status, new_arg_state, callee_state_fields, parameter_symbol_id
         )
@@ -1452,13 +1452,13 @@ class StmtStates:
                         set_to_update=callee_state_arrays[index],
                     )
 
-    def merge_arrays_into_arg_state(self, arg_state: State, callee_state_arrays: list[set]):
+    def merge_callee_arrays_into_arg_state(self, arg_state: State, callee_state_arrays: list[set]):
         new_array = arg_state.array.copy()
         for index in range(len(callee_state_arrays)):
             util.add_to_list_with_default_set(new_array, index, callee_state_arrays[index])
         arg_state.array = new_array
 
-    def merge_tangping_into_arg_state(
+    def merge_callee_tangping_into_arg_state(
         self, arg_state: State, tangping_flag: bool, tangping_elements: set, stmt_id, callee_id
     ):
         if not (tangping_flag or tangping_elements):
@@ -1528,7 +1528,6 @@ class StmtStates:
         callee_space: SymbolStateSpace, instance_state_indexes: set[int],
         new_object_flag: bool
     ):
-        # print("apply_this_symbol_semantic_summary@instance_state_indexes",instance_state_indexes)
         if util.is_empty(instance_state_indexes):
             return
         status = self.frame.stmt_id_to_status[stmt_id]
@@ -1537,16 +1536,12 @@ class StmtStates:
         # 收集callee_summary中this_symbols的last_states，并应用到实际传入的instance_state中。
         for this_symbol_id in this_symbols:
             this_symbol_last_states = this_symbols.get(this_symbol_id, [])
-            last_states: set[State] = set()
             last_state_indexes = set()
 
             for index_pair in this_symbol_last_states:
                 new_index = index_pair.new_index
                 index_in_appended_space = callee_space.old_index_to_new_index[new_index]
-                each_this_symbol_last_state = self.frame.symbol_state_space[index_in_appended_space]
-                last_states.add(each_this_symbol_last_state)
                 last_state_indexes.add(index_in_appended_space)
-            # print("apply_this_symbol_semantic_summary@this_last_state_indexes",last_state_indexes)
 
             for instance_state_index_in_space in instance_state_indexes.copy():
                 # 将summary中的this_symbol_last_state应用到实际的instance_state上
@@ -1562,7 +1557,6 @@ class StmtStates:
             new_this_states.add(old_to_new_arg_state[old_state])
         if not new_this_states:
             return
-        # print("apply_this_symbol_semantic_summary@new_this_states",new_this_states)
 
         this_symbol_id = self.frame.method_def_use_summary.this_symbol_id
         index_to_add = self.frame.symbol_state_space.add(
@@ -1696,8 +1690,7 @@ class StmtStates:
 
     def apply_other_semantic_summary(
         self, stmt_id, callee_id, status: StmtStatus, callee_summary: MethodSummaryTemplate,
-        callee_compact_space: SymbolStateSpace, parameter_mapping_list: list[ParameterMapping],
-        this_state_set: set = set()
+        callee_compact_space: SymbolStateSpace
     ):
         target_index = status.defined_symbol
         target_symbol = self.frame.symbol_state_space[target_index]
@@ -1750,14 +1743,6 @@ class StmtStates:
         callee_summary, callee_compact_space: SymbolStateSpace,
         this_state_set: set = set(), new_object_flag=False
     ):
-        # print("---开始apply_callee_semantic_summary---")
-        # print("callee_id", callee_id, self.loader.convert_method_id_to_method_name(callee_id))
-        # print("callee_summary")
-        # pprint.pprint(callee_summary)
-        # print("callee_compact_space")
-        # print(len(callee_compact_space))
-        # pprint.pprint(callee_compact_space)
-
         status = self.frame.stmt_id_to_status[stmt_id]
         # append callee space to caller space
         self.frame.symbol_state_space.append_space_copy(callee_compact_space)
@@ -1801,7 +1786,6 @@ class StmtStates:
             if self.frame.symbol_state_space.convert_state_index_to_state_id(each_state_index) in defined_state_id_set:
                 status.defined_states.discard(each_state_index)
         status.defined_states.update(defined_states)
-        # print("apply_callee_semantic_summary中, 添加的status.defined_states:",status.defined_states)
 
         # mapping parameter and argument
         caller_id = self.frame.method_id
@@ -1823,7 +1807,7 @@ class StmtStates:
 
         # apply other callee_summary to args
         self.apply_other_semantic_summary(
-            stmt_id, callee_id, status, callee_summary, callee_compact_space, this_state_set
+            stmt_id, callee_id, status, callee_summary, callee_compact_space
         )
 
         if callee_summary.dynamic_call_stmts:
@@ -1976,8 +1960,6 @@ class StmtStates:
         this_state_set=set(), new_object_flag=False
     ):
         # Compute callees' summaries
-        # TODO 如果method_id空，退出
-        # print(f"第二阶段 compute_target_method_states callee_ids {callee_method_ids}")
         callee_ids_to_be_analyzed = []
         caller_id = self.frame.method_id
         call_stmt_id = stmt_id
@@ -3299,10 +3281,9 @@ class StmtStates:
         field_index = status.used_symbols[1]
         receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_symbol_index]
         field_symbol: Symbol = self.frame.symbol_state_space[field_index]
-        if not isinstance(receiver_symbol, Symbol):  # TODO: 暂时未处理<string>.format的形式
+        if not isinstance(receiver_symbol, Symbol):
             return
         receiver_states = self.read_used_states(receiver_symbol_index, in_states)
-        # print("field_read经过插件之前的receiver_states",receiver_states)
         field_states = self.read_used_states(field_index, in_states)
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
@@ -3310,6 +3291,7 @@ class StmtStates:
             return P2ResultFlag()
 
         named_states = set()
+        receiver_callee_dict = {}
 
         event = EventData(
             self.lang,
@@ -3335,7 +3317,6 @@ class StmtStates:
             return P2ResultFlag()
         # else:
         # receiver_states = event.out_data.receiver_states
-        # print("field_read经过插件后的receiver_states是：",receiver_states)
 
         for receiver_state_index in receiver_states:
             each_defined_states = set()
@@ -3465,7 +3446,9 @@ class StmtStates:
                     stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                     field_name, each_defined_states, is_tangping=False
                 )
+
             named_states |= each_defined_states
+            util.add_to_dict_with_default_set(receiver_callee_dict, receiver_state_index, each_defined_states)
 
         defined_symbol.states = named_states
 
@@ -3506,28 +3489,25 @@ class StmtStates:
         callee_method_ids = set()
         callee_class_ids = set()
         this_state_set = set()
-        for each_state_index in named_states:
-            each_state = self.frame.symbol_state_space[each_state_index]
-            if not isinstance(each_state, State):
-                continue
+        for each_receiver_state_index, callee_state_index_set in receiver_callee_dict.items():
+            each_receiver_state = self.frame.symbol_state_space[each_receiver_state_index]
+            for each_state_index in callee_state_index_set:
+                each_state = self.frame.symbol_state_space[each_state_index]
+                if not isinstance(each_state, State):
+                    continue
 
-            if self.is_state_a_method_decl(each_state):
-                if each_state.value:
-                    source_state_id = each_state.source_state_id
-                    # 如果是state1.func()的形式，要去找state1
-                    if source_state_id != each_state.state_id:
+                if self.is_state_a_method_decl(each_state):
+                    if each_state.value:
                         this_state_set.update(
-                            self.resolver.obtain_parent_states(stmt_id, self.frame, status, each_state_index)
+                            self.resolver.collect_newest_states_by_state_ids(self.frame, status, each_receiver_state.state_id)
                         )
-                    if callee_id := util.str_to_int(each_state.value):
-                        callee_method_ids.add(callee_id)
+                        if callee_id := util.str_to_int(each_state.value):
+                            callee_method_ids.add(callee_id)
 
-            else:
-                unsolved_callee_states.add(each_state_index)
+                else:
+                    unsolved_callee_states.add(each_state_index)
 
         # call plugin to deal with undefined_callee_error
-        # if len(unsolved_callee_states) != 0:
-
         if len(callee_method_ids) == 0 or self.is_abstract_method(callee_method_ids):
             out_data = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
@@ -3540,7 +3520,6 @@ class StmtStates:
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )
-        return P2ResultFlag()
 
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
 

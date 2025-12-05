@@ -1015,8 +1015,6 @@ class PrelimSemanticAnalysis:
                            fusion_states.update(states_with_same_id)
                     symbol_id_to_latest_state_indexes[symbol_id] = fusion_states
 
-            # print("generate_and_save_analysis_summary@ symbol_id_to_latest_state_indexes: ")
-            # pprint.pprint(symbol_id_to_latest_state_indexes)
             # save results
             lines_to_be_updated = (
                 (def_use_summary.parameter_symbol_ids,          method_summary.parameter_symbols),
