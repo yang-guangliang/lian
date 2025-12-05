@@ -23,7 +23,7 @@ ANALYSIS_COMMANDS = {
     "lang": "生成通用IR (GIR)",
 }
 
-IGNORED_EXTENSIONS = [".indexing"]
+IGNORED_EXTENSIONS = []
 TXT_EXTENSIONS = [".txt", ".dot"]
 
 
