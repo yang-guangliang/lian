@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import re
 import shutil
 import tempfile
@@ -73,7 +74,7 @@ class WorkspaceBuilder:
 
         if not self.options.force:
             if not self.options.incremental:
-                util.error_and_quit(f"The target directory already exists: {path}. Use --force/-f to overwrite.")
+                util.error_and_quit(f"The target directory already exists. Use --force/-f to overwrite.")
         else:
             if not self.options.quiet:
                 util.warn(f"With the force mode flag, the workspace is being rewritten")

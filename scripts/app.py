@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).parent.absolute()
 # 假设 logo 存在，如果没有可以注释掉
 LOGO_PATH = BASE_DIR / "logo.png" if (BASE_DIR / "logo.png").exists() else None
 LIAN_PATH = os.path.join(os.path.dirname(BASE_DIR), "src/lian/main.py")
-DEFAULT_WORKSPACE = "{in_path}/lian_workspace"
+DEFAULT_WORKSPACE = "/tmp/lian_workspace"
 
 # 支持的语言列表
 SUPPORTED_LANGUAGES = [
@@ -34,7 +34,7 @@ UPDATE_FREQ = 10
 # --- 配置类 (保留你的原始逻辑并微调) ---
 class Render:
     def __init__(self) -> None:
-        self.workspace = "./lian_workspace"
+        self.workspace = DEFAULT_WORKSPACE
         self.in_path = ""
 
     def config_logo(self):
@@ -95,7 +95,7 @@ class Render:
 
 
             st.header("其他配置")
-            self.workspace = st.text_input("工作空间路径 (-w)", value="./lian_workspace")
+            self.workspace = st.text_input("工作空间路径 (-w)", value=DEFAULT_WORKSPACE)
 
             self.force = st.checkbox("强制模式 (-f)", value=False)
             self.debug = st.checkbox("调试模式 (-d)", value=False)
@@ -198,7 +198,7 @@ class Render:
                         # 1. 存入完整日志和缓冲区
                         line = line.rstrip()
 
-                        if "<Workspace directory> :" is line:
+                        if "<Workspace directory> :" in line:
                             workspace_dir = line.split(":")[1].strip()
                             self.workspace = workspace_dir
 
