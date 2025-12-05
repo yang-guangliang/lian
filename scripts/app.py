@@ -349,7 +349,7 @@ class Render:
                     file_path = dir_files[file_idx]
 
                     with file_tabs[file_idx]:
-                        st.markdown(f"**文件路径**: `{file_path.relative_to(workspace_path)}`")
+                        st.markdown(f"**文件路径**: `{file_path}`")
 
                         # --- 核心：直接加载内容 (使用 spinner 提升用户体验) ---
                         with st.spinner(f"正在加载 {file_name} ({file_path.suffix.upper()})..."):
@@ -359,7 +359,7 @@ class Render:
                                     df = self.read_dataframe(file_path)
                                     st.dataframe(df, use_container_width=True)
                                 except Exception as e:
-                                    st.error(f"无法将 {file_name} 加载为 DataFrame/Feather 格式：{e}")
+                                    #st.error(f"无法将 {file_name} 加载为 DataFrame/Feather 格式：{e}")
                                     st.warning("尝试作为文本显示...")
                                     self.display_as_text(file_path)
 
@@ -383,7 +383,7 @@ def main():
 
         # 执行与日志输出区域
         #st.divider()
-        st.subheader("1. 执行日志")
+        st.subheader("执行日志")
         render.create_log_container()
 
     st.subheader("分析结果可视化")
