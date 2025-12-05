@@ -24,19 +24,41 @@ ANALYSIS_COMMANDS = {
     "lang": "生成通用IR (GIR)",
 }
 
-IGNORED_EXTENSIONS = []
+IGNORED_EXTENSIONS = [".log", ".indexing"]
 TXT_EXTENSIONS = [".txt", ".dot"]
+IGNORED_DIRS = ["externs", "src"]
+
+SORTED_DIRS = [
+    "initial",
+    "semantic_p1",
+    "semantic_p2",
+    "semantic_p3"
+]
 
 
 # 定义日志展示行数限制（防止浏览器卡死）
 MAX_DISPLAY_LINES = 40
 UPDATE_FREQ = 10
+DATAFRAME_HEIGHT = 600
+FOOTER_HEIGHT = 100
 
 # --- 配置类 (保留你的原始逻辑并微调) ---
 class Render:
     def __init__(self) -> None:
         self.workspace = DEFAULT_WORKSPACE
         self.in_path = ""
+
+    def is_ignored_file(self, path):
+        for ext in IGNORED_EXTENSIONS:
+            if path.endswith(ext):
+                return True
+        return False
+
+    def is_ignored_dir(self, path):
+        for dir_name in IGNORED_DIRS:
+            if f"/{dir_name}/" in path or path.endswith(f"/{dir_name}") or path.startswith(f"{dir_name}/") or path == dir_name:
+                return True
+        return False
 
     def config_logo(self):
         st.set_page_config(
@@ -45,6 +67,31 @@ class Render:
             page_icon=LOGO_PATH,
             initial_sidebar_state="expanded"
         )
+
+    def config_css(self):
+        st.markdown("""
+        <style>
+            .stTabs [data-baseweb="tab-list"] {
+                flex-wrap: wrap;
+                row-gap: 0px;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
+    def config_title(self):
+        if LOGO_PATH:
+            with open(LOGO_PATH, "rb") as f:
+                img_bytes = f.read()
+            img_b64 = base64.b64encode(img_bytes).decode()
+            header_html = f"""
+            <div style=\"display:flex;align-items:center;gap:12px;margin-bottom:1rem;\">
+                <img src=\"data:image/png;base64,{img_b64}\" style=\"height:48px;\" />
+                <h1 style=\"margin:0;\">莲花代码分析 (LIAN)</h1>
+            </div>
+            """
+            st.markdown(header_html, unsafe_allow_html=True)
+        else:
+            st.title("莲花代码分析 (LIAN)")
 
     def build_sidebar(self):
         with st.sidebar:
@@ -107,7 +154,8 @@ class Render:
             self.additional_settings = st.text_input("额外设置 (--additional-settings)", value="")
 
             st.divider()
-            st.markdown("🌐 [项目地址](https://github.com/yang-guangliang/lian)")
+            st.markdown("查看[项目源代码地址](https://github.com/yang-guangliang/lian)")
+            st.markdown("本项目由[复旦大学系统安全与可靠性研究组](https://gitee.com/fdu-ssr/)开发和维护")
 
     def build_command(self):
         cmd = ["python", LIAN_PATH, self.sub_command]
@@ -248,9 +296,9 @@ class Render:
             filtered_df = df[final_mask]
 
             st.info(f"检索到 {len(filtered_df)} / {len(df)} 行数据")
-            st.dataframe(filtered_df, use_container_width=True)
+            st.dataframe(filtered_df, use_container_width=True, height=DATAFRAME_HEIGHT)
         else:
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=DATAFRAME_HEIGHT)
 
     def display_as_text(self, file_path: Path):
         """显示文本文件内容"""
@@ -282,12 +330,12 @@ class Render:
             current_root_str = str(current_root)
 
             # 过滤工作空间中的 src 根目录和所有 externs 相关目录
-            if current_root_str.endswith("/src") or "/externs/" in current_root_str or current_root_str.endswith("/externs"):
+            if self.is_ignored_dir(current_root_str):
                 continue
 
             for file in files:
                 # 扩展名过滤
-                if any(file.endswith(ext) for ext in IGNORED_EXTENSIONS):
+                if self.is_ignored_file(file):
                     continue
 
                 file_path = current_root / file
@@ -308,14 +356,8 @@ class Render:
             list(result_dirs_map.keys()),
             key=lambda d: (
                 # Priority order for specific directories
-                [
-                    "call_tree",
-                    "initial",
-                    "semantic_p1",
-                    "semantic_p2",
-                    "semantic_p3"
-                ].index(d.name)
-                if d.name in ["initial", "semantic_p1", "semantic_p2", "semantic_p3"]
+                SORTED_DIRS.index(d.name)
+                if d.name in SORTED_DIRS
                 else float('inf'),  # Other directories go after
                 d.name  # Secondary sort by name
             )
@@ -339,44 +381,32 @@ class Render:
             dir_path = tabs_map[tab_name]
 
             with dir_tabs[idx]:
-                dir_files = sorted(result_dirs_map[dir_path])
-                files_with_names = list(zip([f.name for f in dir_files], dir_files))
-                files_with_names.sort(
-                    key=lambda item: (
-                        item[0].endswith("indexing") or ".indexing" in item[0],
-                        item[0],
-                    )
-                )
-                file_names = [name for name, _ in files_with_names]
-                dir_files = [path for _, path in files_with_names]
+                files_with_names = {f.name: f for f in result_dirs_map[dir_path]}
+                file_names = sorted(list(files_with_names.keys()))
 
-                # 文件选择组件
-                select_key = f"selected_file_{tab_name}"
-                if select_key not in st.session_state:
-                    st.session_state[select_key] = None
-
-                selected_file = st.selectbox(
-                    "选择文件",
-                    options=file_names,
-                    index=None,
-                    placeholder="Choose options",
-                    key=f"select_{tab_name}",
-                    label_visibility="collapsed",
-                )
-
-                if selected_file:
-                    selected_idx = file_names.index(selected_file)
-                    st.session_state[select_key] = str(dir_files[selected_idx])
-
-                if st.session_state[select_key] is None:
+                if len(file_names) == 0:
                     continue
 
-                file_path = Path(st.session_state[select_key])
+                # 文件选择组件
+                selected_file = st.selectbox(
+                    f"选择文件 ({len(file_names)} 个文件)",
+                    options=["请选择文件..."] + file_names,
+                    key=f"file_select_{tab_name}",
+                    index=1 if len(file_names) == 1 else 0
+                )
+
+                file_path_str = files_with_names.get(selected_file, None)
+                if not file_path_str:
+                    continue
+
+                file_path = Path(file_path_str)
 
                 st.markdown(f"**文件路径**: `{file_path}`")
 
                 with st.spinner(f"正在加载 {file_path.name} ({file_path.suffix.upper()})..."):
-                    if file_path.suffix.lower() not in TXT_EXTENSIONS:
+                    if file_path.suffix.lower() in TXT_EXTENSIONS:
+                        self.display_as_text(file_path)
+                    else:
                         try:
                             df = self.read_dataframe(file_path)
                             self.render_dataframe_with_search(df, f"{tab_name}_{file_path.name}")
@@ -384,30 +414,17 @@ class Render:
                             st.warning("尝试作为文本显示...")
                             self.display_as_text(file_path)
 
-                    else:
-                        self.display_as_text(file_path)
-
+    def build_footer(self):
+        st.markdown(f"""
+        <div style="min-height: {FOOTER_HEIGHT}vh;"></div>
+        """, unsafe_allow_html=True)
 
 # --- 主界面逻辑 ---
 def main():
-
     render = Render()
+    render.config_css()
     render.config_logo()
-
-    if LOGO_PATH:
-        with open(LOGO_PATH, "rb") as f:
-            img_bytes = f.read()
-        img_b64 = base64.b64encode(img_bytes).decode()
-        header_html = f"""
-        <div style=\"display:flex;align-items:center;gap:12px;margin-bottom:1rem;\">
-            <img src=\"data:image/png;base64,{img_b64}\" style=\"height:48px;\" />
-            <h1 style=\"margin:0;\">莲花代码分析 (LIAN)</h1>
-        </div>
-        """
-        st.markdown(header_html, unsafe_allow_html=True)
-    else:
-        st.title("莲花代码分析 (LIAN)")
-
+    render.config_title()
     render.build_sidebar()
 
     # 初始化日志状态
@@ -421,8 +438,9 @@ def main():
         cmd_list = render.build_command()
         st.session_state.last_cmd = " ".join(cmd_list)
         st.code(st.session_state.last_cmd, language="bash")
-        st.subheader("执行日志")
+
         # 执行并保存日志
+        st.subheader("执行日志")
         log_result, status = render.create_log_container_with_result()
         st.session_state.last_log = log_result
         st.session_state.last_status = status
@@ -441,6 +459,8 @@ def main():
 
     st.subheader("分析结果可视化")
     render.render_results()
+
+    render.build_footer()
 
 if __name__ == "__main__":
     main()
