@@ -45,7 +45,7 @@ class TaintAnalysis:
                 rules.append(rule)
         return rules
 
-    def find_sources(self, sfg, ct):
+    def find_sources(self, sfg):
         node_list = []
         # 应该包括所有的可能symbol和state节点作为sources
         # 这里应该应用source的规则
@@ -154,7 +154,7 @@ class TaintAnalysis:
 
         return apply_rule_flag
 
-    def find_sinks(self, sfg, ct):
+    def find_sinks(self, sfg):
         # 找到所有的sink函数或者语句
         # 这里应该应用sink的规则
         node_list = []
@@ -383,13 +383,12 @@ class TaintAnalysis:
             print("\n########### # Phase IV: Taint Analysis # ##########")
 
         for method_id in self.loader.get_all_method_ids():
-            call_tree = self.loader.get_global_call_tree_by_entry_point(method_id)
             sfg = self.loader.get_global_sfg_by_entry_point(method_id)
             if not sfg:
                 continue
             self.taint_manager = TaintEnv()
-            sources = self.find_sources(sfg, call_tree)
-            sinks = self.find_sinks(sfg, call_tree)
+            sources = self.find_sources(sfg)
+            sinks = self.find_sinks(sfg)
             flows = self.find_flows(sfg, method_id, sources, sinks)
 
             if self.options.debug:
