@@ -1,0 +1,1219 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://yang-guangliang.github.io/lian/en/zh/gir/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Gir - Welcome to LIAN</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Welcome to LIAN" class="md-header__button md-logo" aria-label="Welcome to LIAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Welcome to LIAN
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Gir
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yang-guangliang/lian" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Welcome to LIAN" class="md-nav__button md-logo" aria-label="Welcome to LIAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Welcome to LIAN
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yang-guangliang/lian" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontends
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Frontends
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/lang_parser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language Parsers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/gir/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    General IR - GIR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic Analysis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Semantic Analysis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/basic_analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/summary_generation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary Generation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/global_analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Global Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Underlying Layer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Underlying Layer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/underlying/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Gir</h1>
+
+<p>本页面描述了我们自主研发的通用性中间语言。与以往语言相比，GIR更侧重于用简明的方式表达变量符号之间的逻辑关系，类型推断、控制流等等语义则交给后续“多合一”语义分析引擎处理。</p>
+<table>
+<thead>
+<tr>
+<th><strong>GIR</strong></th>
+<th><strong>属性</strong></th>
+<th><strong>描述</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>program</td>
+<td>name<br>body</td>
+<td></td>
+</tr>
+<tr>
+<td>namespace_decl</td>
+<td>name<br>body</td>
+<td>namespace name {body}</td>
+</tr>
+<tr>
+<td>comment_stmt</td>
+<td>data</td>
+<td></td>
+</tr>
+<tr>
+<td>package_stmt</td>
+<td>name</td>
+<td>表示package声明语句，格式为package name</td>
+</tr>
+<tr>
+<td>import_stmt</td>
+<td>attrs<br>name<br>alias</td>
+<td>表示import语句</td>
+</tr>
+<tr>
+<td>from_import_stmt</td>
+<td>attrs<br>source<br>name<br>alias</td>
+<td>attrs说明： <br/>- unit : 表示name必须是文件名字，而不是文件夹名字<br/>- init：import时，必须对目标文件进行初始化</td>
+</tr>
+<tr>
+<td>export_stmt</td>
+<td>attrs<br>name<br>alias</td>
+<td>表示导出命令，格式为export <name> as <alias> <br/>attrs用于标识是否是export default(仅用于js)</td>
+</tr>
+<tr>
+<td>from_export_stmt</td>
+<td>attrs<br>module_path<br>name<br>alias</td>
+<td></td>
+</tr>
+<tr>
+<td>require_stmt</td>
+<td>target<br>name</td>
+<td>表示require语句，格式为target = require(name)<br/>只在php中出现</td>
+</tr>
+<tr>
+<td>class_decl</td>
+<td>attrs<br>name<br>supers<br>static_init<br>init<br>fields<br>methods<br>nested</td>
+<td>表示类声明其中attrs表示属性内容，例如public\static\private等等<br/>name表示类的名字<br/>supers表示父类名字，是个列表<br/>type_parameters是所有的类型参数，是个列表<br/>fields是所有的成员变量声明，每一个成员变量用variable_decl表示，详见variable_decl的说明<br/>methods是所有的成员函数，是个列表；每一个成员函数用method_decl表示<br/>nested是个列表，表示了嵌套的其他声明<br/>init和static_init是用于存放初始化内容，init用于存放一般field的初始化，static_init用于存放静态field初始化内容 <br/><br/>例如public class name extends a implements b {           <br/>&emsp;&emsp;&emsp;int i = 1;<br/>} <br/><br/>可以写成<br/>{""class_decl"": {""attrs"": [""public""], ""name"": name, ""supers"": [""a"", ""b""], ""fields"": [{""variable_decl"": {""data_type"": int, ""name"":i}}], ""init"": [ this.i = 1] }}</td>
+</tr>
+<tr>
+<td>record_decl</td>
+<td>attrs<br>name<br>supers<br>type_parameters<br>static_init<br>init<br>fields<br>methods<br>nested</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>interface_decl</td>
+<td>attrs<br>name<br>supers<br>type_parameters<br>static_init<br>init<br>fields<br>methods<br>nested</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>enum_decl</td>
+<td>attrs<br>name<br>supers<br>static_init<br>init<br>fields<br>methods<br>nested</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>annotation_type_decl</td>
+<td>attrs<br>name<br>static_init<br>init<br>fields<br>methods<br>nested</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>annotation_type_elements_decl</td>
+<td>attrs<br>data_type<br>name<br>value</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>struct_decl</td>
+<td>attrs<br>name<br>fields</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>parameter_decl</td>
+<td>attrs<br>data_type<br>name<br>default_value</td>
+<td>用于存放参数声明<br/>attrs代表了属性<br/>data_type代表了该参数的数据类型<br/>name代表了参数名字<br/>default_value代表默认值 <br/><br/>例如int f(int a, int b = 4); f函数声明中的参数列表为[{""parameter_decl"": { ""data_type"": ""int"", ""name"": ""a""}},{....}]</td>
+</tr>
+<tr>
+<td>variable_decl</td>
+<td>attrs<br>data_type<br>name</td>
+<td>用于存放本地变量声明或者class内部field声明<br/>attrs为属性<br/>data_type代表了该变量的数据类型<br/>name代表了变量的名字 <br/><br/>例如signed int i  = 10;可以写成两条指令，一条为变量声明，一条为赋值语句<br/>[{""variable_decl"": {""attrs"": ""signed"", ""data_type"": ""int"", ""name"": ""i""}},{""assign_stmt"": {""target"": ""i"", ""operand"": 10}}]</td>
+</tr>
+<tr>
+<td>method_decl</td>
+<td>attrs<br>data_type<br>name<br>parameters<br>body</td>
+<td>该指令用于表示函数声明attrs为该函数的属性，例如public\static等<br/>data_type为返回值的数据类型<br/>name为函数名称<br/>parameters是参数列表，为列表<br/>init是参数指明了参数初始化内容，为列表<br/>body为函数内部具体指令，为列表 <br/><br/>以java为例，public int f(int a ) {}<br/>attrs: public<br/>data_type: int<br/>name: f<br/>parameters对应的是个list，里面每一项都是parameter_decl: []  <br/><br/>另外，需要注意的是，如果碰到匿名函数，也需要转为有名函数 <br/><br/>譬如python里面lamda x: x+1<br/>转为def tmp_method(x):              return x + 1</td>
+</tr>
+<tr>
+<td>assign_stmt</td>
+<td>data_type<br>target<br>operand<br>operator<br>operand2</td>
+<td>赋值语句 <br/>target = operand [<operator> operand2] <br/>如果operand2缺失的话，是一元操作，例如a=b，或者a = -b</td>
+</tr>
+<tr>
+<td>call_stmt</td>
+<td>target<br>name<br>positional_args<br>packed_positional_args<br>named_args<br>packed_named_args<br>data_type<br>prototype</td>
+<td>用于调用函数，格式为target = name(args)<br/>target是函数返回值，一般为临时变量<br/>name为被调用函数的名字<br/>positional_args是位置参数列表<br/>data_type为返回值的数据类型<br/>prototype为被调用函数的原型，llvm和dalvik等中间语言会用到<br/>例如e = o.f(a, b, c + d)<br/>首先改写<br/>%v1 = o.f<br/>%v2 = c + d<br/>%v3 = %v1(a, b, %v2) // positional_args:[a, b, %v2]<br/>e = %v3 <br/>======================<br/>关于参数的说明：<br/>positional_args是位置参数列表<br/>packed_positional_args是解包位置参数：如果当参数列表中的参数用到解包符号时，将所有的位置参数保存为一个变量，存放到packed_positional_args中；positional_args和packed_positional_args是互斥关系，只能用一个<br/>named_args是关键字参数列表<br/>packed_named_args是打包关键字参数：当参数列表中的参数用到字典解包符号时，将所有的关键字参数保存为一个变量，存放到packed_named_args中；named_args和packed_named_args也是互斥关系 <br/><br/>例如<br/>f(a,b,c, d=3)<br/>只需要提供positional_args和named_args即可<br/>call_stmt, name:f, positional_args:[a,b,c], named_args:{d:3} <br/><br/>再例如，f(a, b, c, *l, d, a = b, c = d)<br/>这里面就用到解包操作，所以会提供packed_positional_args和named_args<br/>变成如下中间语言：<br/>%v0 = [a, b, c]<br/>%v1 = %v0.update(l)<br/>%v2 = %v1.append(d)<br/>call_stmt, name:f, packed_positional_args:%v2, named_args:{a:b, c:d}</td>
+</tr>
+<tr>
+<td>echo_stmt</td>
+<td>name</td>
+<td>php中的echo指令</td>
+</tr>
+<tr>
+<td>exit_stmt</td>
+<td>name</td>
+<td>php中的exit指令</td>
+</tr>
+<tr>
+<td>return_stmt</td>
+<td>name</td>
+<td>用于返回变量，格式为return name</td>
+</tr>
+<tr>
+<td>if_stmt</td>
+<td>condition<br>then_body<br>else_body</td>
+<td>用于表示if.else其中condition是个变量，then_body和else_body分别为对应的指令列表 <br/><br/>例如if (a + b &gt; c) {}<br/>%v1 = a + b<br/>%v2 = %v1 &gt; c<br/>if (%v2) ...</td>
+</tr>
+<tr>
+<td>dowhile_stmt</td>
+<td>condition<br>body</td>
+<td>类似于if</td>
+</tr>
+<tr>
+<td>while_stmt</td>
+<td>condition<br>body<br>else_body</td>
+<td>类似于if</td>
+</tr>
+<tr>
+<td>for_stmt</td>
+<td>init_body<br>condition<br>condition_prebody<br>update_body<br>body</td>
+<td>传统for循环，格式为<br/>for (init_body; condition_prebody; condition; update_body) {}<br/>init_body为初始化块，为指令列表<br/>condition_prebody存在用于判断condition的前置指令，为指令列表<br/>condition为变量<br/>update_body为每次循环迭代需要执行的指令列表<br/><br/> 例如<br/>for (int a = 1, b = 3; a +  b &lt; 10; a ++, b++) {}<br/>其中间语言逻辑结构为<br/>for_stmt: [  <br/>&emsp;&emsp;init_body: [       <br/>&emsp;&emsp;&emsp;&emsp;variable_decl int a       <br/>&emsp;&emsp;&emsp;&emsp;a = 1       <br/>&emsp;&emsp;&emsp;&emsp;variable_decl int b       <br/>&emsp;&emsp;&emsp;&emsp;b = 3   <br/>&emsp;&emsp;]  <br/>&emsp;&emsp;condition_prebody: [          <br/>&emsp;&emsp;&emsp;&emsp;%v1 = a + b          <br/>&emsp;&emsp;&emsp;&emsp;%v2 = %v1 &lt; 10  <br/>&emsp;&emsp;]  <br/>&emsp;&emsp;condition: %v2  <br/>&emsp;&emsp;update_body: [        <br/>&emsp;&emsp;&emsp;&emsp;a = a + 1        <br/>&emsp;&emsp;&emsp;&emsp;b = b + 1  <br/>&emsp;&emsp;]  <br/>&emsp;&emsp;body : []<br/>]</td>
+</tr>
+<tr>
+<td>forin_stmt</td>
+<td>attrs<br>data_type<br>name<br>receiver<br>body</td>
+<td>类似于传统for<br>attrs表示迭代变量属性<br/>data_type为迭代变量数据类型<br/>name为迭代变量<br/>receiver为目标变量<br/>body为指令列表<br/>格式为 for attrs data_type name in receiver {} <br/><br/>例如  for x in list<br/>可以写成<br/>forin receiver:list name:x <br/><br/>例如for a, b in list:    <br/>&emsp;&emsp;&emsp;&emsp;body<br/>可以写成<br/>forin receiver:list name:%v0:     <br/>&emsp;&emsp;array_read a = %v0[0]    <br/>&emsp;&emsp;array_read b = %v0[1]     <br/>&emsp;body</td>
+</tr>
+<tr>
+<td>for_value_stmt</td>
+<td>attrs<br>data_type<br>name<br>receiver<br>body</td>
+<td>类似于for in， 为了 js 中的 for of 和 php 中的 for each 设计</td>
+</tr>
+<tr>
+<td>switch_stmt</td>
+<td>condition<br>body</td>
+<td>表示switch指令，格式为switch(condition) <body><br/>其中condition为用于判断的变量</td>
+</tr>
+<tr>
+<td>case_stmt</td>
+<td>condition<br>body</td>
+<td>表示case指令，格式为switch(condition) <body><br/>其中condition为用于判断的变量</td>
+</tr>
+<tr>
+<td>default_stmt</td>
+<td>body</td>
+<td>表示default指令，格式为default <body></td>
+</tr>
+<tr>
+<td>break_stmt</td>
+<td>name</td>
+<td>表示break指令，格式为break name</td>
+</tr>
+<tr>
+<td>continue_stmt</td>
+<td>name</td>
+<td>表示continue指令，格式为continue name</td>
+</tr>
+<tr>
+<td>goto_stmt</td>
+<td>name</td>
+<td>表示goto指令，格式为goto name</td>
+</tr>
+<tr>
+<td>yield_stmt</td>
+<td>name</td>
+<td>表示yield指令，格式为yield  name</td>
+</tr>
+<tr>
+<td>throw_stmt</td>
+<td>name</td>
+<td>表示抛异常指令，格式为throw target</td>
+</tr>
+<tr>
+<td>try_stmt</td>
+<td>body<br>catch_body<br>else_body<br>final_body</td>
+<td>表示try指令，格式为try body catch_body else_body final_body<br/>其中 body代表try内部的指令列表<br/>catch_body为catch关键字下面的指令列表，其内部可包含多个catch_stmt，<br/>else_body为else关键字下面的指令列表<br/>final为final关键字下面的指令列表</td>
+</tr>
+<tr>
+<td>catch_stmt</td>
+<td>exception<br>body</td>
+<td>表示catch指令，body为其内部指令列表</td>
+</tr>
+<tr>
+<td>label_stmt</td>
+<td>name</td>
+<td>表示label指令</td>
+</tr>
+<tr>
+<td>asm_stmt</td>
+<td>target<br>data_type<br>attrs<br>data<br>extra<br>args</td>
+<td>target = attrs data(asm content), extra(input/out), args</td>
+</tr>
+<tr>
+<td>assert_stmt</td>
+<td>condition</td>
+<td>表示assert指令，其格式为assert condition</td>
+</tr>
+<tr>
+<td>del_stmt</td>
+<td>receiver<br>name</td>
+<td>表示删除指令，例如python中 del target</td>
+</tr>
+<tr>
+<td>unset_stmt</td>
+<td>receiver<br>name</td>
+<td>表示重置指令，php</td>
+</tr>
+<tr>
+<td>pass_stmt</td>
+<td></td>
+<td>表示空指令</td>
+</tr>
+<tr>
+<td>global_stmt</td>
+<td>name</td>
+<td>表示全局应用指令，例如python中glabol target</td>
+</tr>
+<tr>
+<td>nonlocal_stmt</td>
+<td>name</td>
+<td>表示变量引用指令，例如python中nonlocal target</td>
+</tr>
+<tr>
+<td>type_cast_stmt</td>
+<td>target<br>data_type<br>source<br>error<br>cast_action</td>
+<td>表示类型转换，格式为target = (data_type) source<br/>如果有错误，产生error</td>
+</tr>
+<tr>
+<td>type_alias_decl</td>
+<td>data_type<br>name<br> type_parameters</td>
+<td>Typedef: <code>typedef int a</code> → <code>name: a</code>, <code>data_type: int</code></td>
+</tr>
+<tr>
+<td>with_stmt</td>
+<td>attrs<br>with_init</td>
+<td>表示with指令，后面接上下文管理器，其中attrs一般为async，with_init为对于上下文管理器的初始化操作，body为内部指令列表；<br/>对于一条with语句：async with aiofiles.open(filepath, 'r') as file:    <br/>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;content = await file.read()<br/>它的中间表示为：<br/>{'with_stmt': {'attrs': ['async'],       <br/>'with_init': [{'field_read': {'target': '%v0',                                              <br/>'receiver_object': 'aiofiles',                                              <br/>'field': 'open'}},                              <br/>{'call_stmt': {'target': '%v1',                                            <br/>'name': '%v0',                                             <br/>'args': ['filepath', ""'r'""]}},                              <br/>{'assign_stmt': {'target': 'file',                                               <br/>'operand': '%v1'}}],                <br/>'body': [{'field_read': {'target': '%v0',                                        <br/>'receiver_object': 'file',                                         <br/>'field': 'read'}},                         <br/>{'call_stmt': {'target': '%v1',                                        <br/>'name': '%v0',                                        <br/>'args': []}},                        <br/> {'await': {'target': '%v1'}},                         <br/>{'variable_decl': {'data_type': None,                                            <br/>'name': 'content'}},                         <br/>{'assign_stmt': {'target': 'content',                                         <br/> 'operand': None}}]}}</td>
+</tr>
+<tr>
+<td>unsafe_block</td>
+<td>body</td>
+<td>表示rust中的unsafe块<br/>其中body是一个指令列表</td>
+</tr>
+<tr>
+<td>block</td>
+<td>body</td>
+<td>表示普通块<br/>其中body是一个指令列表</td>
+</tr>
+<tr>
+<td>block_start</td>
+<td>stmt_id<br>parent_stmt_id</td>
+<td>内部指令，表示body的开始，不需要显式定义</td>
+</tr>
+<tr>
+<td>block_end</td>
+<td>stmt_id<br>parent_stmt_id</td>
+<td>内部指令，表示body的结束，不需要显式定义</td>
+</tr>
+<tr>
+<td>new_array</td>
+<td>target<br>attrs<br>data_type</td>
+<td>表示一个新数组的实例化格式为<br>target = attrs data_type[]</td>
+</tr>
+<tr>
+<td>new_object</td>
+<td>target<br>attrs<br>data_type<br>args</td>
+<td>实例化一个类：target = attrs new datatype(args)</td>
+</tr>
+<tr>
+<td>new_record</td>
+<td>target<br>attrs<br>data_type</td>
+<td>表示一个新字典的实例化</td>
+</tr>
+<tr>
+<td>new_set</td>
+<td>target<br>attrs<br>data_type</td>
+<td>表示一个新集合的实例化</td>
+</tr>
+<tr>
+<td>new_struct</td>
+<td>target<br>attrs<br>data_type</td>
+<td></td>
+</tr>
+<tr>
+<td>phi_stmt</td>
+<td>target<br>phi_values<br>phi_labels</td>
+<td>target = [phi_value, phi_label] <br/>【注】来自llvm，根据路径选择value</td>
+</tr>
+<tr>
+<td>mem_read</td>
+<td>target<br>address</td>
+<td>用于从内存address中读取内容，其格式为target = *address</td>
+</tr>
+<tr>
+<td>mem_write</td>
+<td>address<br>source</td>
+<td>用于往内存address中写内容，其格式为*address = source</td>
+</tr>
+<tr>
+<td>array_write</td>
+<td>array<br>index<br>source</td>
+<td>用于写数组内容，格式为 array[index] = source</td>
+</tr>
+<tr>
+<td>array_read</td>
+<td>target<br>array<br>index</td>
+<td>读取数组指定的元素例如a0 = result[0]</td>
+</tr>
+<tr>
+<td>array_insert</td>
+<td>array<br>source<br>index</td>
+<td>用于向数组指定位置插入元素</td>
+</tr>
+<tr>
+<td>array_append</td>
+<td>array<br>source</td>
+<td>用于写数组内容，格式为 <array>.append(<source>)</td>
+</tr>
+<tr>
+<td>array_extend</td>
+<td>array<br>source</td>
+<td>用于写数组内容，格式为 <array>.extend(<source>)</td>
+</tr>
+<tr>
+<td>record_write</td>
+<td>receiver_object<br>key<br>value</td>
+<td>用于写map中内容record[key] = value</td>
+</tr>
+<tr>
+<td>record_extend</td>
+<td>record<br>source</td>
+<td>用于写map中内容<record>.update(<source>)</td>
+</tr>
+<tr>
+<td>field_write</td>
+<td>receiver_object<br>field<br>source</td>
+<td>用于写receiver_object中成员变量，格式为receiver_object.field = source</td>
+</tr>
+<tr>
+<td>field_read</td>
+<td>target<br>receiver_object<br>field</td>
+<td>用于读receiver_object中成员变量，格式为target = receiver_object.field</td>
+</tr>
+<tr>
+<td>slice_wirte</td>
+<td>array<br>source<br>start<br>end<br>step</td>
+<td>对应于python中的slice指令<br/>格式为 array[start: end: step] = source<br/>start: 切片开始的索引。<br/>stop: 切片结束的索引。<br/>step: 每次跳过的元素数。</td>
+</tr>
+<tr>
+<td>slice_read</td>
+<td>target<br>array<br>start<br>end<br>step</td>
+<td>对应于python中的slice指令<br/>格式为 target = array[start: end: step]<br/>start: 切片开始的索引。<br/>stop: 切片结束的索引。<br/>step: 每次跳过的元素数。<br/><br/>以python为例：a = list[x:y:3]<br/>对应的中间表示为：<br/>{'slice_read': {'target': '%v1', 'array': 'list', 'start': 'x', 'end': 'y', 'step': '3'}} <br/>{'assign_stmt': {'target': 'a', 'operand': '%v1'}}</td>
+</tr>
+<tr>
+<td>addr_of</td>
+<td>target<br>source</td>
+<td>用于取地址，其格式为target = &amp;source</td>
+</tr>
+<tr>
+<td>await_stmt</td>
+<td>target</td>
+<td></td>
+</tr>
+<tr>
+<td>field_addr</td>
+<td>target<br>data_type<br>name</td>
+<td>用于查询field在struct_decl中的地址编译量<br/><br/>例如：<br/>struct address {   <br/>&emsp;&emsp;char name[50];   <br/>&emsp;&emsp;char street[50];   <br/>&emsp;&emsp;int phone;<br/>};<br/>offsetof(struct address, name); <br/><br/>转换为target = data_type: address, name: name <br/><br/>【注】offsetof()</td>
+</tr>
+<tr>
+<td>switch_type_stmt</td>
+<td>condition<br>body</td>
+<td>表示switch指令，格式为switch(condition) <body><br/>其中condition为用于判断的变量</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      <p/>Developed & Maintained by <a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;"> the System Security and Reliability Research group</a>, Fudan University<p/>
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["announce.dismiss", "navigation.sections", "toc.follow"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
