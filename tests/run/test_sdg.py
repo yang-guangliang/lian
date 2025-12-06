@@ -9,7 +9,7 @@ import numpy as np
 from collections import defaultdict
 from unittest.mock import patch
 
-import config
+import tests.run.init_test as init_test
 from lian.interfaces.main import Lian
 
 class symbol_graphTestCase(unittest.TestCase):
@@ -157,10 +157,10 @@ class symbol_graphTestCase(unittest.TestCase):
                     tests[os.path.basename(dirpath)].append(os.path.realpath(os.path.join(dirpath, file)))
             return tests
 
-        cls.tests = get_all_tests(os.path.join(config.RESOURCE_DIR, "symbol_dependence"))
+        cls.tests = get_all_tests(os.path.join(init_test.RESOURCE_DIR, "symbol_dependence"))
         # cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR, delete=False)
-        os.system("mkdir -p " + config.TMP_DIR)
-        cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR)
+        os.system("mkdir -p " + init_test.TMP_DIR)
+        cls.out_dir = tempfile.TemporaryDirectory(dir=init_test.TMP_DIR)
 
     @classmethod
     def raw_test(cls):
@@ -184,7 +184,7 @@ class symbol_graphTestCase(unittest.TestCase):
                 print("*"*20, target_file, "*"*20)
                 patched_testcase = patch(
                         'sys.argv',
-                        ["", "run", "-f", "-l", "python,java", target_file, "-w", config.OUTPUT_DIR]
+                        ["", "run", "-f", "-l", "python,java", target_file, "-w", init_test.OUTPUT_DIR]
                     )(
                         self.raw_test
                     )

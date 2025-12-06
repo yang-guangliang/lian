@@ -6,7 +6,7 @@ from io import BytesIO
 import pandas as pd
 import networkx as nx
 
-import config
+import tests.run.init_test as init_test
 
 from lian.semantic.internal import common_structure
 
@@ -53,7 +53,7 @@ class TestSearchGraph(unittest.TestCase):
         self.assertEqual(search.backward_search(3, Test().test), {11, 12, 211, 212})
 
     def test_pre_process_graph(self):
-        
+
 
 
 if __name__ == '__main__':

@@ -44,7 +44,7 @@ from lian.common_structs import (
     IndexMapInSummary,
     MethodSummaryInstance,
     MethodInClass,
-    APath,
+    CallPath,
     SymbolNodeInImportGraph,
     TypeNode,
     StateFlowGraph,

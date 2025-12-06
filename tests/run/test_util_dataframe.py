@@ -6,7 +6,7 @@ import pandas as pd
 
 import sys
 
-import config
+import tests.run.init_test as init_test
 
 from lian.util import data_model as dm
 from lian.util.util import SimpleEnum

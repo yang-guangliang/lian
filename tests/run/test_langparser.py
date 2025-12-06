@@ -6,7 +6,7 @@ import unittest
 from collections import defaultdict
 from unittest.mock import patch
 
-import config
+import tests.run.init_test as init_test
 from lian.interfaces.main import Lian
 
 
@@ -21,10 +21,10 @@ class ParserTestCase(unittest.TestCase):
                     tests[os.path.basename(dirpath)].append(os.path.realpath(os.path.join(dirpath, file)))
             return tests
 
-        cls.tests = get_all_tests(os.path.join(config.RESOURCE_DIR, "lang_parser"))
+        cls.tests = get_all_tests(os.path.join(init_test.RESOURCE_DIR, "lang_parser"))
         # cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR, delete=False)
-        os.system("mkdir -p " + config.TMP_DIR)
-        cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR)
+        os.system("mkdir -p " + init_test.TMP_DIR)
+        cls.out_dir = tempfile.TemporaryDirectory(dir=init_test.TMP_DIR)
 
     def test_sample(self):
         for test, files in self.tests.items():

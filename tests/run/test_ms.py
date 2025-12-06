@@ -11,29 +11,49 @@ from prettytable import PrettyTable
 from collections import defaultdict
 from unittest.mock import patch
 
-import config
+import tests.run.init_test as init_test
 from lian.interfaces.main import Lian
 
 class sfgTestCase(unittest.TestCase):
     @classmethod
-    def compare_sfg(cls, symbols_states, stmt_status, target_file):
-        space_path = os.path.join(config.RESOURCE_DIR, "state_flow", "standard_results", f"{target_file}.space")
-        status_path = os.path.join(config.RESOURCE_DIR, "state_flow", "standard_results", f"{target_file}.status")
+    def compare_sfg(cls, symbols_states, stmt_status, method_summary, target_file):
+        space_path = os.path.join(init_test.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.space")
+        status_path = os.path.join(init_test.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.status")
+        summary_path = os.path.join(init_test.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.summary")
 
         print("_"*60, "current symbols_states", "_"*60)
         for item in symbols_states:
             print(item)
-        with open(space_path, 'r') as file:
-            correct_symbols_states = [ast.literal_eval(line.strip()) for line in file if line.strip()]
+
+        # with open(space_path, 'r') as file:
+        #     correct_symbols_states = [ast.literal_eval(line.strip()) for line in file if line.strip()]
+        # print("_"*60, "correct symbols_states", "_"*60)
+        # for item in correct_symbols_states:
+        #     print(item)
 
         print("_"*60, "current stmt_status", "_"*60)
         for item in stmt_status:
             print(item)
-        with open(status_path, 'r') as file:
-            correct_stmt_status = [ast.literal_eval(line.strip()) for line in file if line.strip()]
 
-        assert symbols_states == correct_symbols_states
-        assert stmt_status == correct_stmt_status
+        # with open(status_path, 'r') as file:
+        #     correct_stmt_status = [ast.literal_eval(line.strip()) for line in file if line.strip()]
+        # print("_"*60, "correct stmt_status", "_"*60)
+        # for item in correct_stmt_status:
+        #     print(item)
+
+        print("_"*60, "current method_summary", "_"*60)
+        for item in method_summary:
+            print(item)
+
+        with open(summary_path, 'r') as file:
+            correct_method_summary = [ast.literal_eval(line.strip()) for line in file if line.strip()]
+        print("_"*60, "correct method_summary", "_"*60)
+        for item in correct_method_summary:
+            print(item)
+
+        # assert symbols_states == correct_symbols_states
+        # assert stmt_status == correct_stmt_status
+        assert method_summary == correct_method_summary
 
     @classmethod
     def setUpClass(cls):
@@ -44,10 +64,10 @@ class sfgTestCase(unittest.TestCase):
                     tests[os.path.basename(dirpath)].append(os.path.realpath(os.path.join(dirpath, file)))
             return tests
 
-        cls.tests = get_all_tests(os.path.join(config.RESOURCE_DIR, "state_flow/verified_cases"))
+        cls.tests = get_all_tests(os.path.join(init_test.RESOURCE_DIR, "method_summary/verified_cases/python"))
         # cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR, delete=False)
-        os.system("mkdir -p " + config.TMP_DIR)
-        cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR)
+        os.system("mkdir -p " + init_test.TMP_DIR)
+        cls.out_dir = tempfile.TemporaryDirectory(dir=init_test.TMP_DIR)
 
     @classmethod
     def raw_test(cls):
@@ -114,6 +134,27 @@ class sfgTestCase(unittest.TestCase):
         print(table)
         return results
 
+    def read_method_summary(cls, ms_path):
+        ms = pd.read_feather(ms_path)
+        print(ms)
+        results = []
+        # unit_id = sfg["unit_id"].values
+        # method_id = sfg["method_id"].values
+        method_id = ms["method_id"].values
+        symbol_type = ms["symbol_type"].values
+        symbol_index = ms["symbol"].values
+        states = ms["last_all_states"].values
+        for index in range(len(ms)):
+            results.append((method_id[index], symbol_type[index], symbol_index[index], states[index]))
+        results = sorted(results)
+        table = PrettyTable()
+        table.field_names = ["method_id", "symbol_type", "symbol", "last_all_states"]
+        for item in results:
+            table.add_row(item)
+        print("_"*60, "method_summary_table", "_"*60)
+        print(table)
+        return results
+
     def test_run_all(self):
         os.system('clear')
         for test, files in self.tests.items():
@@ -123,16 +164,18 @@ class sfgTestCase(unittest.TestCase):
                 print("\n","=*"*30, file_name, "=*"*30)
                 patched_testcase = patch(
                             'sys.argv',
-                            ["", "run", "-d", "-f", "-l", "python,java,c", target_file, "-w", config.OUTPUT_DIR]
+                            ["", "run", "-f", "-l", "python,java,c", target_file, "-w", init_test.OUTPUT_DIR]
                         )(
                             self.raw_test
                         )
                 patched_testcase()
-                symbols_states_path = os.path.join(config.OUTPUT_DIR, "semantic/glang_bundle0.symbols_states")
-                stmt_status_path = os.path.join(config.OUTPUT_DIR, "semantic/glang_bundle0.stmt_status")
+                symbols_states_path = os.path.join(init_test.OUTPUT_DIR, "semantic/glang_bundle0.symbols_states")
+                stmt_status_path = os.path.join(init_test.OUTPUT_DIR, "semantic/glang_bundle0.stmt_status")
+                method_summary_path = os.path.join(init_test.OUTPUT_DIR, "semantic/glang_bundle0.method_summary")
                 symbols_states = self.read_symbols_states(symbols_states_path)
                 stmt_status = self.read_stmt_status(stmt_status_path)
-                self.compare_sfg(symbols_states, stmt_status, file_name)
+                method_summary = self.read_method_summary(method_summary_path)
+                self.compare_sfg(symbols_states, stmt_status, method_summary, file_name)
 
 if __name__ == '__main__':
     unittest.main()

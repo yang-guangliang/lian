@@ -11,15 +11,15 @@ from prettytable import PrettyTable
 from collections import defaultdict
 from unittest.mock import patch
 
-import config
+import tests.run.init_test as init_test
 from lian.interfaces.main import Lian
 
 class LoaderLinkerTestCase(unittest.TestCase):
     @classmethod
     def compare_LoaderLinker(cls, symbols_states, stmt_status, method_summary, target_file):
-        space_path = os.path.join(config.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.space")
-        status_path = os.path.join(config.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.status")
-        summary_path = os.path.join(config.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.summary")
+        space_path = os.path.join(init_test.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.space")
+        status_path = os.path.join(init_test.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.status")
+        summary_path = os.path.join(init_test.RESOURCE_DIR, "method_summary", "standard_results", f"{target_file}.summary")
 
         print("_"*60, "current symbols_states", "_"*60)
         for item in symbols_states:
@@ -64,10 +64,10 @@ class LoaderLinkerTestCase(unittest.TestCase):
                     tests[os.path.basename(dirpath)].append(os.path.realpath(os.path.join(dirpath, file)))
             return tests
 
-        cls.tests = get_all_tests(os.path.join(config.RESOURCE_DIR, "loader"))
+        cls.tests = get_all_tests(os.path.join(init_test.RESOURCE_DIR, "loader"))
         # cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR, delete=False)
-        os.system("mkdir -p " + config.TMP_DIR)
-        cls.out_dir = tempfile.TemporaryDirectory(dir=config.TMP_DIR)
+        os.system("mkdir -p " + init_test.TMP_DIR)
+        cls.out_dir = tempfile.TemporaryDirectory(dir=init_test.TMP_DIR)
 
     @classmethod
     def raw_test(cls):
@@ -108,14 +108,14 @@ class LoaderLinkerTestCase(unittest.TestCase):
                     print("\n","=*"*30, file_name, "=*"*30)
                     patched_testcase = patch(
                                 'sys.argv',
-                                ["", "run", "-p", "-d", "-f", "-l", "python,java,c", target_file, "-w", config.OUTPUT_DIR]
+                                ["", "run", "-p", "-d", "-f", "-l", "python,java,c", target_file, "-w", init_test.OUTPUT_DIR]
                             )(
                                 self.raw_test
                             )
                     patched_testcase()
-                    symbols_states_path = os.path.join(config.OUTPUT_DIR, "semantic/glang_bundle0.symbols_states")
-                    stmt_status_path = os.path.join(config.OUTPUT_DIR, "semantic/glang_bundle0.stmt_status")
-                    method_summary_path = os.path.join(config.OUTPUT_DIR, "semantic/glang_bundle0.method_summary")
+                    symbols_states_path = os.path.join(init_test.OUTPUT_DIR, "semantic/glang_bundle0.symbols_states")
+                    stmt_status_path = os.path.join(init_test.OUTPUT_DIR, "semantic/glang_bundle0.stmt_status")
+                    method_summary_path = os.path.join(init_test.OUTPUT_DIR, "semantic/glang_bundle0.method_summary")
                     symbols_states = self.read_symbols_states(symbols_states_path)
                     stmt_status = self.read_stmt_status(stmt_status_path)
                     method_summary = self.read_method_summary(method_summary_path)

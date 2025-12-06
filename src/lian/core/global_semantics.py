@@ -38,7 +38,7 @@ from lian.common_structs import (
     IndexMapInSummary,
     StateDefNode,
     MethodSummaryInstance,
-    APath,
+    CallPath,
     StmtStatus,
     StateFlowGraph,
     CallTree,
@@ -168,7 +168,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
         if len(frame_stack) > 2:
             frame.path = frame_stack[-2].path + (frame.call_stmt_id, frame.method_id)
-            frame_path = APath(frame.path)
+            frame_path = CallPath(frame.path)
             self.path_manager.add_path(frame_path)
 
         # avoid changing the content of the loader
@@ -292,7 +292,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # call_stmt_id = frame.call_stmt_id
             caller_frame = frame_stack[-2]
             if not isinstance(caller_frame, ComputeFrame):
-                frame_path = APath(frame.call_site)
+                frame_path = CallPath(frame.call_site)
 
             method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
             if not self.options.quiet:
@@ -400,7 +400,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph=sfg)
         # entry_frame.path = tuple([entry_method_id])
         entry_frame.path = (entry_method_id,)
-        entry_frame_path = APath(entry_frame.path)
+        entry_frame_path = CallPath(entry_frame.path)
         self.path_manager.add_path(entry_frame_path)
         frame_stack.add(entry_frame)
         return frame_stack

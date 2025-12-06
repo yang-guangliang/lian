@@ -476,6 +476,7 @@ class AccessPoint:
         return False
 
 
+
 # @dataclasses.dataclass
 # class ExternalKeyState:
 #     stmt_id: int = -1
@@ -1785,12 +1786,22 @@ class CallTree(CallGraph):
     def __init__(self, method_id):
         self.method_id = method_id
         super().__init__()
+
     def _add_one_edge(self, src_stmt_id, dst_stmt_id, weight):
         if '-' in src_stmt_id :
             return
 
         self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
 
+@dataclasses.dataclass
+class CallTreeNode:
+    caller_id: int = -1
+    call_stmt_id: int = -1
+    callee_id: int = -1
+
+    def __init__(self, method_id):
+        self.method_id = method_id
+        self.children = []
 
 @dataclasses.dataclass
 class CGNode:
@@ -2008,147 +2019,214 @@ class Parameter:
     def __hash__(self) -> int:
         return hash((self.method_id, self.position, self.name, self.symbol_id))
 
-@dataclasses.dataclass
-class APath:
+class CallSite:
+    def __init__(self, caller_id, call_stmt_id, callee_id):
+        self.caller_id = caller_id
+        self.call_stmt_id = call_stmt_id
+        self.callee_id = callee_id
+
+    def __eq__(self, other):
+        if not isinstance(other, CallSite):
+            return False
+        return (self.caller_id == other.caller_id and
+                self.call_stmt_id == other.call_stmt_id and
+                self.callee_id == other.callee_id)
+
+    def __hash__(self):
+        return hash((self.caller_id, self.call_stmt_id, self.callee_id))
+
+    def __repr__(self):
+        return f"CallSite({self.caller_id}, {self.call_stmt_id}, {self.callee_id})"
+
+    def has_negative(self):
+        return self.caller_id < 0 or self.call_stmt_id < 0 or self.callee_id < 0
+
+@dataclasses.dataclass(frozen=True)  # frozen=True 使其不可变
+class CallPath:
     path: tuple = dataclasses.field(default_factory=tuple)
 
-    # def add_call(self, source_node, stmt_id, target_node):
-    #     self.path += (source_node, stmt_id, target_node)
+    def __len__(self):
+        return len(self.path)
 
-    def __post_init__(self):
-        # 实例化后验证类型
-        if not isinstance(self.path,tuple):
-            util.warn("cannot assign a non-tuple value to APath")
+    def get_length(self):
+        return len(self.path)
 
-    def to_tuple(self):
-        return tuple(self.path)
+    def __iter__(self):
+        for item in self.path:
+            yield item
 
-    def to_callsite_list(self):
-        callsite_list = []
-        if len(self.path) == 1:
-            return [CallSite(self.path[0],-1,-1)]
-        if len(self.path) < 3 or len(self.path) % 2 != 1:
-            raise ValueError("Please check the APath format")
-        for i in range(0, len(self.path) - 2, 2):
-            caller = self.path[i]
-            call_stmt = self.path[i + 1]
-            callee = self.path[i + 2]
-            callsite_list.append(CallSite(caller, call_stmt, callee))
-        return callsite_list
+    def __contains__(self, item):
+        return item in self.path
 
     def __getitem__(self, index):
         return self.path[index]
 
-    def __hash__(self) -> int:
-        return hash(self.path)
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, APath):
-            return False
-        return self.path == other.path
-
-@dataclasses.dataclass
-class CallSite:
-    caller_id : int = -1
-    call_stmt_id : int = -1
-    callee_id : int = -1
+    # 移除 __hash__ 和 __eq__，因为 dataclass 会自动生成
 
     def to_tuple(self):
-        return (self.caller_id, self.call_stmt_id, self.callee_id)
+        return self.path  # 已经是 tuple 了
+
+    def has_any_negative(self):
+        for item in self.path:
+            if item and item.has_negative():
+                return True
+        return False
+
+    def add_callsite(self, callsite: CallSite):
+        # 返回新对象而不是修改现有对象
+        return CallPath(self.path + (callsite,))
+
+    def count_cycles(self):
+        visited = set()
+        cycle_count = 0
+
+        for callsite in self.path:
+            caller_id = callsite.caller_id
+            callee_id = callsite.callee_id
+
+            if callee_id in visited:
+                cycle_count += 1
+
+            visited.add(caller_id)
+            visited.add(callee_id)
+
+        return cycle_count
 
 class TrieNode:
-    """
-    前缀树节点
-    """
     def __init__(self):
-        self.children = {} # 存储子节点。key为路径元素，value为TrieNode
-        self.is_end = False # 标记该节点是否为路径终点/叶子结点
+        self.children = {}
+        self.is_terminal = False
+        self.path = None
 
-class PathManager:
+class PathTrie:
     def __init__(self):
-        self.paths = set() # 所有完整路径
         self.root = TrieNode()
+        self.paths = set()
 
-    def add_path(self, new_path: APath):
+    def add_path(self, path):
         """
-        添加路径到路径管理器中，并自动处理重复前缀路径。若添加成功，返回True，否则返回False。
+        添加路径的规则（长路径优先，但不同分支可共存）：
+        1. 如果新路径与已存在路径完全一致 -> 拒绝
+        2. 如果新路径是已存在某条路径的严格前缀 -> 拒绝
+        3. 如果某条已存在路径是新路径的严格前缀 -> 删除旧路径，添加新路径
+        4. 如果新路径与已存在路径只是部分重叠（不同分支）-> 都保留
         """
-        if not isinstance(new_path, APath):
-            util.error("@PathManager: Invalid path type!!!!!!!! to be added: ", str(new_path), type(new_path))
-            return False
-        new_path_tuple = new_path.to_tuple()
-        if self.has_any_negative(new_path_tuple):
-            return False
-        new_path_len = len(new_path_tuple)
-        # print("进入add_path的path_tuple是: ",new_path_tuple)
 
-        # 检查new_path是否是现有路径的严格前缀
-        need_to_add = False
-        current = self.root
-        for i, val in enumerate(new_path_tuple):
-            # 向前缀树中添加新节点
-            if need_to_add:
-                current.children[val] = TrieNode()
-                current = current.children[val]
-                continue
+        # Step 1: 遍历新路径，检查是否与已存在路径冲突
+        node = self.root
+        for i, elem in enumerate(path.path):
+            if elem not in node.children:
+                # 新路径在这里diverge，没有冲突，可以添加
+                break
+            node = node.children[elem]
 
-            # 是一条新路径，不是已有前缀
-            if val not in current.children:
-                # print(f"{val} not in current.children")
-                current.children[val] = TrieNode()
-                current = current.children[val]
-                need_to_add = True
-                continue
-
-            current = current.children[val]
-            # 若前缀树遍历到头了
-            if current.is_end:
-                # 长度一样，说明已有和new_path一样的path，不添加
-                if (i + 1) == new_path_len:
+            # 检查当前节点是否是终点
+            if node.is_terminal:
+                # 存在一个前缀路径
+                if i + 1 == len(path.path):
+                    # 新路径和已存在路径完全相同
                     return False
-                # 否则说明new_path是更长的已有path。清除较短的path。
-                self._remove_path(new_path_tuple[:i + 1])
-                current.is_end = False
-                need_to_add = True
+                else:
+                    # 新路径更长，已存在路径是其前缀
+                    # 这种情况需要删除前缀路径，继续添加新路径
+                    pass  # 后面会处理
+        else:
+            # 遍历完新路径的所有元素
+            # 检查当前节点是否是终点
+            if node.is_terminal:
+                # 路径已存在
+                return False
 
-        if need_to_add:
-            current.is_end = True
-            # print("添加路径:",new_path)
-            self.paths.add(new_path)
+            # 检查当前节点是否有子节点（即是否存在更长的路径）
+            if node.children:
+                # 存在以新路径为前缀的更长路径，拒绝新路径
+                return False
 
-    def _remove_path(self, removed_path:tuple):
-        # print("要删除的path是",removed_path)
-        removed_APath = APath(removed_path)
-        self.paths.discard(removed_APath)
+        # Step 2: 查找并删除是新路径严格前缀的已存在路径
+        paths_to_remove = []
+        node = self.root
+        for i, elem in enumerate(path.path):
+            if elem not in node.children:
+                break
+            node = node.children[elem]
 
-    def has_any_negative(self, path: tuple) -> bool:
-        """判断路径元组中是否存在任意负数"""
-        return any(x < 0 for x in path)
+            if node.is_terminal and i + 1 < len(path.path):
+                # 找到一个严格前缀路径
+                paths_to_remove.append(node.path)
+
+        # 删除前缀路径
+        for p in paths_to_remove:
+            self.paths.discard(p)
+            self._mark_non_terminal(p)
+
+        # Step 3: 插入新路径
+        node = self.root
+        for elem in path.path:
+            if elem not in node.children:
+                node.children[elem] = TrieNode()
+            node = node.children[elem]
+
+        node.is_terminal = True
+        node.path = path
+        self.paths.add(path)
+        return True
+
+    def _mark_non_terminal(self, path):
+        """
+        将路径标记为非终端
+        """
+        node = self.root
+        for elem in path.path:
+            if elem not in node.children:
+                return
+            node = node.children[elem]
+
+        node.is_terminal = False
+        node.path = None
 
     def path_exists(self, path):
         return path in self.paths
 
-    def count_cycles(self, path):
-        n = len(path)
-        if n < 2:
-            return 0
+    def remove_path(self, path):
+        if path not in self.paths:
+            return False
+        self.paths.discard(path)
+        self._mark_non_terminal(path)
+        return True
 
-        last_element = path[-1]
-        cycle_count = 0
+class PathManager:
+    def __init__(self):
+        self.trie = PathTrie()  # 新增
+        self.paths = set()      # 对外 view
 
-        for i in range(n-2, -1, -1):
-            if path[i] == last_element:
-                cycle_length = n - i - 1
-                if path[i - cycle_length + 1 : i + 1] == path[i + 1 : i + 1 + cycle_length]:
-                    current_cycle = path[i - cycle_length + 1 : i + 1]
-                    cycle_count += 1
-                    for j in range(i - 2*cycle_length + 1, -1, -cycle_length):
-                        if path[j : j + cycle_length] == current_cycle:
-                            cycle_count += 1
+    def add_path(self, new_path: CallPath):
+        # 类型检查和业务逻辑保留
+        if not isinstance(new_path, CallPath):
+            util.error("@PathManager: Invalid path type", str(new_path))
+            return False
 
-                    break
+        if new_path.has_any_negative():
+            return False
 
-        return cycle_count
+        if new_path in self.paths:
+            return False
+
+        # 使用 Trie 处理前缀
+        ok = self.trie.add_path(new_path)
+        #print("ok:", ok)
+        if ok:
+            # Trie 内部 paths 已更新
+            self.paths = set(self.trie.paths)   # 取终端路径集合
+        return ok
+
+    def remove_path(self, removed_path):
+        ok = self.trie.remove_path(removed_path)
+        if ok:
+            self.paths = set(self.trie.paths)
+        return ok
+
+    def path_exists(self, path):
+        return self.trie.path_exists(path)
 
 class SymbolNodeInImportGraph:
     def __init__(self, scope_id, symbol_type, symbol_id, symbol_name, unit_id=-1):

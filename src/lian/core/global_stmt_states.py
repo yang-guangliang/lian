@@ -42,7 +42,7 @@ from lian.common_structs import (
     P2ResultFlag,
     MethodCallArguments,
     InterruptionData,
-    APath,
+    CallPath,
     MethodDefUseSummary,
     SFGNode,
     SFGEdge,
@@ -112,7 +112,7 @@ class GlobalStmtStates(StmtStates):
         for each_callee_id in callee_method_ids:
             callee_path = self.frame.path + (stmt_id, each_callee_id)
             # self.print_path(callee_path)
-            new_path = APath(callee_path)
+            new_path = CallPath(callee_path)
             new_call_site = (caller_id, stmt_id, each_callee_id)
             # TODO: 检查是否已经分析过
             if(
@@ -166,7 +166,7 @@ class GlobalStmtStates(StmtStates):
             )
 
         for each_callee_id in callee_method_ids:
-            new_path = APath(self.frame.path + (stmt_id, each_callee_id))
+            new_path = CallPath(self.frame.path + (stmt_id, each_callee_id))
             if caller_id != each_callee_id:
                 self.path_manager.add_path(new_path)
             new_call_site = (caller_id, stmt_id, each_callee_id)

@@ -4,7 +4,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from config import TEST_CONFIG
+from tests.run.init_test import TEST_CONFIG
 
 from lian.interfaces.args_parser import parse_args
 

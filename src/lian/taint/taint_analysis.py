@@ -10,7 +10,7 @@ from lian.util.loader import Loader
 from lian.util import util
 from lian.taint.rule_manager import RuleManager
 from lian.common_structs import (
-    APath,
+    CallPath,
     SimpleWorkList,
     State,
     Symbol,

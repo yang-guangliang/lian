@@ -3,7 +3,7 @@
 import unittest
 from unittest import mock
 
-from config import TEST_CONFIG
+from tests.run.init_test import TEST_CONFIG
 
 
 class TestConfig(unittest.TestCase):

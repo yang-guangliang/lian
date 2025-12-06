@@ -5,7 +5,7 @@ from io import BytesIO
 
 import pandas as pd
 
-import config
+import tests.run.init_test as init_test
 
 from lian.config.constants import SymbolType
 from lian.semantic.internal.unit_symbols import UnitSymbol, PackageUnit
