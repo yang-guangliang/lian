@@ -207,7 +207,7 @@ class Render:
         if not from_btn_flag:
             if "full_log" in st.session_state:
                 st.code(st.session_state.full_log, language="bash")
-            del st.session_state.full_log
+                del st.session_state.full_log
             return "", ""
 
         st.subheader(f"执行日志")
