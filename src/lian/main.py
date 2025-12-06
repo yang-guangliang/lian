@@ -162,7 +162,7 @@ class Lian:
     def run_all(self):
         self.lang_analysis()
         self.semantic_analysis()
-        #self.taint_analysis()
+        self.taint_analysis()
         return self
 
     def run(self):
