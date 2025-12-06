@@ -112,7 +112,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         new_set.add(index + baseline_index)
                     each_item.fields[each_field] = new_set
             # ????
-            #each_item.call_site = frame.path[-1]
+            #each_item.call_site = frame.path[-1] 
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
         frame.has_been_inited = True
