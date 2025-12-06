@@ -1344,6 +1344,54 @@ class CallPathLoader:
                     callee.add(call_site.callee_id)
         return callee
 
+    def get_lowest_common_ancestor(self, node1, node2, entry_point):
+        """
+        寻找两个节点的最近公共祖先 (LCA)
+        :param edges: 列表，格式为 [(src, weight, dst), ...]
+        :param node1: 目标节点1
+        :param node2: 目标节点2
+        :return: 公共祖先节点 (如果不存在则返回 None)
+        """
+
+        # 1. 构建 {子节点: 父节点} 的映射字典
+        # 假设边是有向的: src -> dst (父 -> 子)
+        call_path = None
+        for path in self.all_paths:
+            if path[0].caller_id == entry_point:
+                call_path = path
+        if not call_path:
+            return None
+        parent_map = {}
+
+        # 用来记录所有出现过的节点，防止查询不存在的节点
+        all_nodes = set()
+
+        for call_site in call_path:
+            parent_map[call_site.callee_id] = call_site.caller_id
+            all_nodes.add(call_site.caller_id)
+            all_nodes.add(call_site.callee_id)
+        print(parent_map)
+        # 如果输入的节点不在树中，直接返回 None
+        if node1 not in all_nodes or node2 not in all_nodes:
+            return None
+
+        # 2. 记录 node1 到根节点的路径上的所有节点
+        ancestors_of_n1 = set()
+        curr = node1
+        while curr is not None:
+            ancestors_of_n1.add(curr)
+            # 获取当前节点的父节点，如果已经是根节点(在map中不存在)，则get返回None
+            curr = parent_map.get(curr)
+
+        # 3. 从 node2 开始向上遍历，找到第一个出现在 ancestors_of_n1 中的节点
+        curr = node2
+        while curr is not None:
+            if curr in ancestors_of_n1:
+                return curr  # 找到了最近公共祖先
+            curr = parent_map.get(curr)
+
+        return None  # 没有公共祖先（比如是两棵不连通的树）
+
 
 class UniqueSymbolIDAssignerLoader:
     def __init__(self, path):
@@ -2793,6 +2841,9 @@ class Loader:
             callee_names.add(self.convert_method_id_to_method_name(callee_id))
 
         return callee_names
+
+    def get_lowest_common_ancestor(self, method_id1, method_id2, entry_point_id):
+        return self._global_call_path_loader.get_lowest_common_ancestor(method_id1, method_id2, entry_point_id)
 
     def save_global_call_tree_by_entry_point(self, method_id,  call_tree):
         return self._call_tree_loader.save(method_id, call_tree)

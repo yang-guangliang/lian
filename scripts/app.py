@@ -61,13 +61,13 @@ class Render:
         return False
 
     def config_logo(self):
-        st.set_page_config(
-            layout="wide",
-            page_title="代码分析工具",
-            page_icon=LOGO_PATH,
-            initial_sidebar_state="expanded"
-        )
-
+        # st.set_page_config(
+        #     layout="wide",
+        #     page_title="代码分析工具",
+        #     page_icon=LOGO_PATH,
+        #     initial_sidebar_state="expanded"
+        # )
+        pass
     def config_css(self):
         st.markdown("""
         <style>

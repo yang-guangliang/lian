@@ -2,4 +2,4 @@
 
 DIR=$(dirname $(realpath $0))
 
-streamlit run $DIR/app.py --server.showEmailPrompt False
+streamlit run $DIR/app.py

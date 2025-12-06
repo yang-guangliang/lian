@@ -268,16 +268,10 @@ class TaintAnalysis:
             for sink in sinks:
                 source_method_id = self.loader.convert_stmt_id_to_method_id(source.def_stmt_id)
                 sink_method_id = self.loader.convert_stmt_id_to_method_id(sink.def_stmt_id)
-                source_method_nodes = []
-                sink_method_nodes = []
-                for node in ct.nodes:
-                    if self.is_specified_method(str(source_method_id), node):
-                        source_method_nodes.append(node)
-                    if self.is_specified_method(str(sink_method_id), node):
-                        sink_method_nodes.append(node)
+
                 # 这里只需要method_id
-                parent_methods = self.find_method_parent_by_nodes(ct, source_method_nodes, sink_method_nodes)
-                flow_list.extend(self.find_source_to_sink_path(sfg, source, sink, parent_methods))
+                parent_method = self.loader.get_lowest_common_ancestor(source_method_id, sink_method_id)
+                flow_list.extend(self.find_source_to_sink_path(sfg, source, sink, [parent_method]))
 
         return flow_list
 
@@ -305,7 +299,7 @@ class TaintAnalysis:
 
                     # 满足属性即返回
                     method_id = self.loader.convert_stmt_id_to_method_id(p.def_stmt_id)
-                    if str(method_id) == val:
+                    if method_id == val:
                         return p, dist + 1
 
                     queue.append((p, dist + 1))
@@ -337,52 +331,52 @@ class TaintAnalysis:
 
         return flow_list
 
-    def find_method_parent_by_nodes(self, ct, source_nodes, sink_nodes):
-        if not sink_nodes or len(sink_nodes) == 0:
-            return []
-        if not source_nodes or len(source_nodes) == 0:
-            return []
-        parents = []
-        for source_node in source_nodes:
-            for sink_node in sink_nodes:
-                parent = self.find_method_parent_by_node(ct, source_node, sink_node)
-                if source_node == sink_node:
-                    parent = source_node
-                if not parent:
-                    continue
-                parents.append(parent.split("#")[-1])
-        return parents
-
-    def find_method_parent_by_node(self, sfg, node1, node2):
-
-        if node1 not in sfg or node2 not in sfg:
-            return None
-
-
-        reversed_tree = sfg.reverse()
-
-        roots = [n for n, d in reversed_tree.out_degree() if d == 0]
-
-        def root_path(node):
-            if node in roots:  # 自己就是根
-                return [node]
-            # 任取一条到根的最短路径即可
-            for r in roots:
-                if nx.has_path(reversed_tree, node, r):
-                    return nx.shortest_path(reversed_tree, node, r)
-            return [node]  # 孤立节点
-
-        path_u = root_path(node1)
-        path_v = root_path(node2)
-
-        lca = None
-        for p, q in zip(reversed(path_u), reversed(path_v)):
-            if p == q:
-                lca = p
-            else:
-                break
-
-        return lca
+    # def find_method_parent_by_nodes(self, source_nodes, sink_nodes):
+    #     if not sink_nodes or len(sink_nodes) == 0:
+    #         return []
+    #     if not source_nodes or len(source_nodes) == 0:
+    #         return []
+    #     parents = []
+    #     for source_node in source_nodes:
+    #         for sink_node in sink_nodes:
+    #             parent = self.find_method_parent_by_node(ct, source_node, sink_node)
+    #             if source_node == sink_node:
+    #                 parent = source_node
+    #             if not parent:
+    #                 continue
+    #             parents.append(parent.split("#")[-1])
+    #     return parents
+    #
+    # def find_method_parent_by_node(self, sfg, node1, node2):
+    #
+    #     if node1 not in sfg or node2 not in sfg:
+    #         return None
+    #
+    #
+    #     reversed_tree = sfg.reverse()
+    #
+    #     roots = [n for n, d in reversed_tree.out_degree() if d == 0]
+    #
+    #     def root_path(node):
+    #         if node in roots:  # 自己就是根
+    #             return [node]
+    #         # 任取一条到根的最短路径即可
+    #         for r in roots:
+    #             if nx.has_path(reversed_tree, node, r):
+    #                 return nx.shortest_path(reversed_tree, node, r)
+    #         return [node]  # 孤立节点
+    #
+    #     path_u = root_path(node1)
+    #     path_v = root_path(node2)
+    #
+    #     lca = None
+    #     for p, q in zip(reversed(path_u), reversed(path_v)):
+    #         if p == q:
+    #             lca = p
+    #         else:
+    #             break
+    #
+    #     return lca
 
     def run(self):
         if not self.options.quiet:
