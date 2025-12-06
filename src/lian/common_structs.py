@@ -1907,7 +1907,7 @@ class ComputeFrame(MetaComputeFrame):
         self.used_external_symbol_id_to_state_id_set = {}
         self.initial_state_to_external_symbol = {}
         self.external_symbol_id_to_initial_state_index = {}
-        self.path: tuple = ()
+        self.path: CallPath = CallPath()
 
         self.args_list = None
         self.params_list = params_list
@@ -2041,6 +2041,9 @@ class CallSite:
     def has_negative(self):
         return self.caller_id < 0 or self.call_stmt_id < 0 or self.callee_id < 0
 
+    def is_entry_point(self):
+        return self.caller_id > 0 and self.call_stmt_id == 0 and self.callee_id == 0
+
 @dataclasses.dataclass(frozen=True)  # frozen=True 使其不可变
 class CallPath:
     path: tuple = dataclasses.field(default_factory=tuple)
@@ -2071,6 +2074,22 @@ class CallPath:
             if item and item.has_negative():
                 return True
         return False
+
+    def add_entry_point(self, caller_id):
+        return self.add_callsite(CallSite(caller_id, 0, 0))
+
+    def add_callee(self, call_stmt_id, callee_id):
+        caller_id = 0
+        if len(self.path) > 0:
+            last_callsite = self.path[-1]
+            if last_callsite.is_entry_point():
+                caller_id = last_callsite.caller_id
+            else:
+                caller_id = last_callsite.callee_id
+        return self.add_callsite(CallSite(caller_id, call_stmt_id, callee_id))
+
+    def add_call(self, caller_id, call_stmt_id, callee_id):
+        return self.add_callsite(CallSite(caller_id, call_stmt_id, callee_id))
 
     def add_callsite(self, callsite: CallSite):
         # 返回新对象而不是修改现有对象

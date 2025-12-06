@@ -23,6 +23,7 @@ from lian.config.constants import (
 )
 from lian.common_structs import (
     CallGraph,
+    CallSite,
     MethodDeclParameters,
     Parameter,
     Argument,
@@ -110,14 +111,13 @@ class GlobalStmtStates(StmtStates):
             self.caller_unknown_callee_edge[str(caller_id)] = unknown_callee_set
 
         for each_callee_id in callee_method_ids:
-            callee_path = self.frame.path + (stmt_id, each_callee_id)
-            # self.print_path(callee_path)
-            new_path = CallPath(callee_path)
+            tmp_call_site = CallSite(caller_id, stmt_id, each_callee_id)
+            callee_path = self.frame.path.add_callsite(tmp_call_site)
             new_call_site = (caller_id, stmt_id, each_callee_id)
             # TODO: 检查是否已经分析过
             if(
-                self.path_manager.path_exists(new_path) or
-                self.path_manager.count_cycles(callee_path) > 1 or
+                self.path_manager.path_exists(callee_path) or
+                callee_path.count_cycles() > 1 or
                 each_callee_id in self.frame.path or
                 new_call_site in self.frame.summary_collection
             ):
@@ -166,7 +166,7 @@ class GlobalStmtStates(StmtStates):
             )
 
         for each_callee_id in callee_method_ids:
-            new_path = CallPath(self.frame.path + (stmt_id, each_callee_id))
+            new_path = self.frame.path.add_call(caller_id, stmt_id, each_callee_id)
             if caller_id != each_callee_id:
                 self.path_manager.add_path(new_path)
             new_call_site = (caller_id, stmt_id, each_callee_id)

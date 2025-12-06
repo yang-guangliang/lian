@@ -167,9 +167,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
 
         if len(frame_stack) > 2:
-            frame.path = frame_stack[-2].path + (frame.call_stmt_id, frame.method_id)
-            frame_path = CallPath(frame.path)
-            self.path_manager.add_path(frame_path)
+            frame.path = frame_stack[-2].path.add_callee(frame.call_stmt_id, frame.method_id)
+            self.path_manager.add_path(frame.path)
 
         # avoid changing the content of the loader
         status = copy.deepcopy(self.loader.get_stmt_status_p2(method_id))
@@ -292,7 +291,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # call_stmt_id = frame.call_stmt_id
             caller_frame = frame_stack[-2]
             if not isinstance(caller_frame, ComputeFrame):
-                frame_path = CallPath(frame.call_site)
+                frame_path = CallPath().add_callsite(frame.call_site)
 
             method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
             if not self.options.quiet:
@@ -398,10 +397,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
         entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph=sfg)
-        # entry_frame.path = tuple([entry_method_id])
-        entry_frame.path = (entry_method_id,)
-        entry_frame_path = CallPath(entry_frame.path)
-        self.path_manager.add_path(entry_frame_path)
+        entry_frame.path = CallPath().add_entry_point(entry_method_id)
+        self.path_manager.add_path(entry_frame.path)
         frame_stack.add(entry_frame)
         return frame_stack
 
@@ -409,15 +406,19 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         # call_path中若只有一个函数，则不建call_tree
         entry_points_to_path = {}
         for call_path in self.path_manager.paths:
-            entry_point_method = call_path[0]
-            if entry_point_method not in entry_points_to_path:
-                entry_points_to_path[entry_point_method] = []
-            entry_points_to_path[entry_point_method].append((call_path.path))
+            if len(call_path) == 0:
+                continue
+            entry_id = call_path[0].caller_id
+            if entry_id not in entry_points_to_path:
+                entry_points_to_path[entry_id] = []
+            entry_points_to_path[entry_id].append(call_path)
 
-        for entry_point, call_paths in entry_points_to_path.items():
+        # gl:我改到这里
+
+        for entry_id, call_paths in entry_points_to_path.items():
             if len(call_paths) == 0:
                 continue
-            current_tree = CallTree(entry_point)
+            current_tree = CallTree(entry_id)
 
             method_id_to_max_node_id = {}
             # 同一entry_point的callpaths从长到短排序，取最大前缀长度
@@ -435,8 +436,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             self.add_unknown_callee_edge(current_tree)
             # current_tree.show()
             if current_tree.graph.number_of_edges() == 0:
-                current_tree.graph.add_node(str(entry_point))
-            self.loader.save_global_call_tree_by_entry_point(entry_point, current_tree.graph)
+                current_tree.graph.add_node(str(entry_id))
+            self.loader.save_global_call_tree_by_entry_point(entry_id, current_tree.graph)
 
     def add_unknown_callee_edge(self, current_tree):
         node_list = []
