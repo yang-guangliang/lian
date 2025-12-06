@@ -1154,6 +1154,9 @@ class PrelimSemanticAnalysis:
             frame.stmt_counters[stmt_id] += 1
 
     def save_graph_as_dot(self, graph, entry_point, phase_id):
+        if not self.options.graph and not self.options.complete_graph:
+            return
+
         if phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
             file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}.dot"
         else:

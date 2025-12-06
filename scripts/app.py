@@ -40,9 +40,10 @@ SORTED_DIRS = [
 MAX_DISPLAY_LINES = 40
 UPDATE_FREQ = 10
 DATAFRAME_HEIGHT = 600
-FOOTER_HEIGHT = 4
+FOOTER_HEIGHT = 64
+MIN_FOOTER_HEIGHT = 0
+MAX_FOOTER_HEIGHT = FOOTER_HEIGHT
 
-# --- 配置类 (保留你的原始逻辑并微调) ---
 class Render:
     def __init__(self) -> None:
         self.workspace = DEFAULT_WORKSPACE
@@ -60,10 +61,10 @@ class Render:
                 return True
         return False
 
-    def config_logo(self):
+    def config_layout(self, page_title="代码分析工具"):
         st.set_page_config(
             layout="wide",
-            page_title="代码分析工具",
+            page_title=page_title,
             page_icon=LOGO_PATH,
             initial_sidebar_state="expanded"
         )
@@ -89,7 +90,7 @@ class Render:
             img_b64 = base64.b64encode(img_bytes).decode()
             header_html = f"""
             <div style=\"display:flex;align-items:center;gap:12px;margin-bottom:1rem;\">
-                <img src=\"data:image/png;base64,{img_b64}\" style=\"height:48px;\" />
+                <img src=\"data:image/png;base64,{img_b64}\" style=\"height:36px;\" />
                 <h1 style=\"margin:0;\">莲花代码分析 (LIAN)</h1>
             </div>
             """
@@ -143,22 +144,25 @@ class Render:
             st.header("其他配置")
             self.workspace = st.text_input("工作空间路径 (-w)", value=self.workspace)
 
+            self.display_full_log = st.checkbox("显示完整日志", value=False)
+            self.reset_tabs = st.checkbox("重置结果Tabs视图", value=False)
             self.force = st.checkbox("强制模式 (-f)", value=False)
             self.debug = st.checkbox("调试模式 (-d)", value=False)
+            self.output_graph = st.checkbox("输出SFG图 (--graph)", value=False)
+            self.complete_graph = st.checkbox("输出完整SFG (--complete-graph)", value=False)
+
             self.print_stmts = st.checkbox("打印语句 (-p)", value=False)
-            self.android_mode = st.checkbox("Android 模式 (--android)", value=False)
+            #self.android_mode = st.checkbox("Android 模式 (--android)", value=False)
             self.strict_parse = st.checkbox("严格解析 (--strict-parse-mode)", value=False)
             self.incremental = st.checkbox("增量分析 (-inc)", value=False)
             self.noextern = st.checkbox("禁用外部处理 (--noextern)", value=True)
-            self.output_graph = st.checkbox("输出SFG图 (--graph)", value=False)
-            self.complete_graph = st.checkbox("输出完整SFG (--complete-graph)", value=False)
 
             self.event_handlers = st.text_input("事件处理器 (-e)", value="")
             self.default_settings = st.text_input("默认设置 (--default-settings)", value="")
             self.additional_settings = st.text_input("额外设置 (--additional-settings)", value="")
 
             st.divider()
-            st.markdown("查看[项目源代码地址](https://github.com/yang-guangliang/lian)")
+            st.markdown("查看[项目源代码](https://github.com/yang-guangliang/lian)")
             st.markdown("本项目由[复旦大学系统安全与可靠性研究组](https://gitee.com/fdu-ssr/)开发和维护")
 
     def build_command(self):
@@ -172,7 +176,7 @@ class Render:
             ("-f", self.force),
             ("-d", self.debug),
             ("-p", self.print_stmts),
-            ("--android", self.android_mode),
+            #("--android", self.android_mode),
             ("--strict-parse-mode", self.strict_parse),
             ("-inc", self.incremental),
             ("--noextern", self.noextern),
@@ -204,13 +208,20 @@ class Render:
 
     def create_log_container_with_result(self, from_btn_flag: bool = False):
         """执行命令并返回日志内容和状态，用于保存到 session_state"""
+        st.subheader(f"执行日志")
         if not from_btn_flag:
             if "full_log" in st.session_state:
-                st.code(st.session_state.full_log, language="bash")
-                del st.session_state.full_log
+                #st.info("分析完毕")
+                with st.expander(f"⚙️ 日志记录", expanded=self.display_full_log):
+                    if self.display_full_log:
+                        st.code(st.session_state.full_log, language="bash")
+                    else:
+                        log_lines = st.session_state.full_log.splitlines()
+                        recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
+                        st.code("\n".join(recent_lines), language="bash")
+                        #del st.session_state.full_log
             return "", ""
 
-        st.subheader(f"执行日志")
         status_box = st.empty()
         status_box.info("准备开始分析...")
 
@@ -219,7 +230,13 @@ class Render:
         line_counter = 0
         result_status = "success"
 
-        with st.expander(f"⚙️ 分析控制台输出 (实时刷新，显示最近 {MAX_DISPLAY_LINES} 行)", expanded=False):
+        expander_flag = False
+        expander_str = f"⚙️ 分析控制台输出 (实时刷新，显示最近 {MAX_DISPLAY_LINES} 行)"
+        if self.display_full_log:
+            expander_flag = True
+            expander_str = f"⚙️ 分析控制台输出 (实时刷新)"
+
+        with st.expander(expander_str, expanded=expander_flag):
             log_placeholder = st.empty()
 
             try:
@@ -254,9 +271,16 @@ class Render:
 
                         line_counter += 1
                         if line_counter % UPDATE_FREQ == 0:
-                            log_placeholder.code("\n".join(log_buffer), language="bash")
+                            if self.display_full_log:
+                                log_placeholder.code("\n".join(full_log_content), language="bash")
+                            else:
+                                log_placeholder.code("\n".join(log_buffer), language="bash")
 
-                log_placeholder.code("\n".join(log_buffer), language="bash")
+                if self.display_full_log:
+                    log_placeholder.code("\n".join(full_log_content), language="bash")
+                else:
+                    log_placeholder.code("\n".join(log_buffer), language="bash")
+
                 return_code = process.wait()
 
                 if return_code == 0:
@@ -271,9 +295,8 @@ class Render:
                 result_status = "error"
 
             # 如果日志的长度超过了允许显示的长度，那么提供查看选项
-            if len(full_log_content) > MAX_DISPLAY_LINES:
-                st.session_state.full_log = "\n".join(full_log_content)
-
+            st.session_state.full_log = "\n".join(full_log_content)
+            if not self.display_full_log and len(full_log_content) > MAX_DISPLAY_LINES:
                 # 创建两个按钮供用户选择
                 col1, col2 = st.columns(2)
 
@@ -408,72 +431,72 @@ class Render:
             tabs_map[tab_name] = d
 
         tab_names_list = list(tabs_map.keys())
-        dir_tabs = st.tabs(tab_names_list)
+        tab_name = st.radio("目录", options=tab_names_list, index=0, horizontal=True)
 
         # 2. 文件层设计：下拉选择 + 内容展示
-        for idx, tab_name in enumerate(tab_names_list):
-            dir_path = tabs_map[tab_name]
+        dir_path = tabs_map[tab_name]
+        files_with_names = {f.name: f for f in result_dirs_map[dir_path]}
+        file_names = sorted(list(files_with_names.keys()))
 
-            with dir_tabs[idx]:
-                files_with_names = {f.name: f for f in result_dirs_map[dir_path]}
-                file_names = sorted(list(files_with_names.keys()))
+        if len(file_names) == 0:
+            return
 
-                if len(file_names) == 0:
-                    continue
+        # 文件选择组件
+        selected_file = st.selectbox(
+            f"选择文件 ({len(file_names)} 个文件)",
+            options=["请选择文件..."] + file_names,
+            key=f"file_select_{tab_name}",
+            index=1 if len(file_names) == 1 else 0
+        )
 
-                # 文件选择组件
-                selected_file = st.selectbox(
-                    f"选择文件 ({len(file_names)} 个文件)",
-                    options=["请选择文件..."] + file_names,
-                    key=f"file_select_{tab_name}",
-                    index=1 if len(file_names) == 1 else 0
-                )
+        file_path_str = files_with_names.get(selected_file, None)
+        if not file_path_str:
+            return
 
-                file_path_str = files_with_names.get(selected_file, None)
-                if not file_path_str:
-                    continue
+        file_path = Path(file_path_str)
 
-                file_path = Path(file_path_str)
+        st.markdown(f"**文件路径**: `{file_path}`")
+        self.config_layout(page_title=f"{tab_name}/{file_path.name}")
 
-                st.markdown(f"**文件路径**: `{file_path}`")
 
-                with st.spinner(f"正在加载 {file_path.name} ({file_path.suffix.upper()})..."):
-                    if file_path.suffix.lower() in TXT_EXTENSIONS:
-                        self.display_as_text(file_path)
-                    else:
-                        try:
-                            df = self.read_dataframe(file_path)
-                            self.render_dataframe_with_search(df, f"{tab_name}_{file_path.name}")
-                        except Exception as e:
-                            st.warning("尝试作为文本显示...")
-                            self.display_as_text(file_path)
+        with st.spinner(f"正在加载 {file_path.name} ({file_path.suffix.upper()})..."):
+            if file_path.suffix.lower() in TXT_EXTENSIONS:
+                self.display_as_text(file_path)
+            else:
+                try:
+                    df = self.read_dataframe(file_path)
+                    self.render_dataframe_with_search(df, f"{tab_name}_{file_path.name}")
+                except Exception as e:
+                    st.warning("尝试作为文本显示...")
+                    self.display_as_text(file_path)
 
-    def build_footer(self):
+    def build_footer(self, space_height=FOOTER_HEIGHT):
         st.markdown(f"""
-        <div style="min-height: {FOOTER_HEIGHT}vh;"></div>
+        <div style="min-height: {space_height}vh;"></div>
         """, unsafe_allow_html=True)
 
 # --- 主界面逻辑 ---
 def main():
     render = Render()
     render.config_css()
-    render.config_logo()
+    render.config_layout()
     render.config_title()
     render.build_sidebar()
-
-    # 初始化日志状态
-    if "last_cmd" not in st.session_state:
-        st.session_state.last_cmd = None
-        st.session_state.last_log = None
-        st.session_state.last_status = None
 
     # 执行按钮
     from_btn_flag = False
     if st.button("开始分析", type="primary", width='stretch'):
         cmd_list = render.build_command()
         st.session_state.last_cmd = " ".join(cmd_list)
-        st.code(st.session_state.last_cmd, language="bash")
         from_btn_flag = True
+
+    if render.reset_tabs:
+        for key in st.session_state.keys():
+            if key.startswith("file_select_"):
+                st.session_state[key] = None
+
+    if "last_cmd" in st.session_state:
+        st.code(st.session_state.last_cmd, language="bash")
 
     # 执行并保存日志
     render.create_log_container_with_result(from_btn_flag)
