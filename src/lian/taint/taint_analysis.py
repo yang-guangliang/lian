@@ -259,7 +259,7 @@ class TaintAnalysis:
             return True
         return False
 
-    def find_flows(self, sfg, ct, sources, sinks):
+    def find_flows(self, sfg, entry_point, sources, sinks):
         # 找到所有的taint flow
         # 这里需要应用图遍历算法对taint进行传播
         # 这里需要把taint管理器用起来，对symbol和state层面有污点的节点进行标记
@@ -270,7 +270,7 @@ class TaintAnalysis:
                 sink_method_id = self.loader.convert_stmt_id_to_method_id(sink.def_stmt_id)
 
                 # 这里只需要method_id
-                parent_method = self.loader.get_lowest_common_ancestor(source_method_id, sink_method_id)
+                parent_method = self.loader.get_lowest_common_ancestor(source_method_id, sink_method_id, entry_point)
                 flow_list.extend(self.find_source_to_sink_path(sfg, source, sink, [parent_method]))
 
         return flow_list
@@ -390,7 +390,7 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources(sfg, call_tree)
             sinks = self.find_sinks(sfg, call_tree)
-            flows = self.find_flows(sfg, call_tree, sources, sinks)
+            flows = self.find_flows(sfg, method_id, sources, sinks)
 
             if self.options.debug:
                 # gl:麻烦进行美化
