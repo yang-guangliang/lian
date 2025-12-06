@@ -40,7 +40,7 @@ SORTED_DIRS = [
 MAX_DISPLAY_LINES = 40
 UPDATE_FREQ = 10
 DATAFRAME_HEIGHT = 600
-FOOTER_HEIGHT = 100
+FOOTER_HEIGHT = 4
 
 # --- 配置类 (保留你的原始逻辑并微调) ---
 class Render:
@@ -74,6 +74,10 @@ class Render:
             .stTabs [data-baseweb="tab-list"] {
                 flex-wrap: wrap;
                 row-gap: 0px;
+            }
+            pre code {
+                white-space: pre-wrap !important;
+                word-break: break-all !important;
             }
         </style>
         """, unsafe_allow_html=True)
@@ -198,8 +202,15 @@ class Render:
 
         return cmd
 
-    def create_log_container_with_result(self):
+    def create_log_container_with_result(self, from_btn_flag: bool = False):
         """执行命令并返回日志内容和状态，用于保存到 session_state"""
+        if not from_btn_flag:
+            if "full_log" in st.session_state:
+                st.code(st.session_state.full_log, language="bash")
+            del st.session_state.full_log
+            return "", ""
+
+        st.subheader(f"执行日志")
         status_box = st.empty()
         status_box.info("准备开始分析...")
 
@@ -259,8 +270,29 @@ class Render:
                 status_box.error(f"❌ 执行错误: {str(e)}")
                 result_status = "error"
 
-        full_log_str = "\n".join(full_log_content) if full_log_content else ""
-        return full_log_str, result_status
+            # 如果日志的长度超过了允许显示的长度，那么提供查看选项
+            if len(full_log_content) > MAX_DISPLAY_LINES:
+                st.session_state.full_log = "\n".join(full_log_content)
+
+                # 创建两个按钮供用户选择
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # 在新页面中查看完整日志
+                    st.button("📄 在新页面查看完整日志", width='stretch')
+
+                with col2:
+                    # 下载日志文件
+                    st.download_button(
+                        label="💾 下载日志文件",
+                        data="\n".join(full_log_content),
+                        file_name="lian_analysis.log",
+                        mime="text/plain",
+                        width='stretch'
+                    )
+
+        log_str = "\n".join(log_buffer) if log_buffer else ""
+        return log_str, result_status
 
     def read_dataframe(self, file_path: Path):
         return pd.read_feather(file_path)
@@ -296,9 +328,9 @@ class Render:
             filtered_df = df[final_mask]
 
             st.info(f"检索到 {len(filtered_df)} / {len(df)} 行数据")
-            st.dataframe(filtered_df, use_container_width=True, height=DATAFRAME_HEIGHT)
+            st.dataframe(filtered_df, width='stretch', height=DATAFRAME_HEIGHT)
         else:
-            st.dataframe(df, use_container_width=True, height=DATAFRAME_HEIGHT)
+            st.dataframe(df, width='stretch', height=DATAFRAME_HEIGHT)
 
     def display_as_text(self, file_path: Path):
         """显示文本文件内容"""
@@ -310,6 +342,8 @@ class Render:
             st.error(f"无法读取文件: {e}")
 
     def render_results(self):
+        st.subheader("分析结果可视化")
+
         # 检查并处理工作空间路径
         workspace_path = Path(self.workspace)
 
@@ -434,32 +468,16 @@ def main():
         st.session_state.last_status = None
 
     # 执行按钮
-    if st.button("开始分析", type="primary", use_container_width=True):
+    from_btn_flag = False
+    if st.button("开始分析", type="primary", width='stretch'):
         cmd_list = render.build_command()
         st.session_state.last_cmd = " ".join(cmd_list)
         st.code(st.session_state.last_cmd, language="bash")
+        from_btn_flag = True
 
-        # 执行并保存日志
-        st.subheader("执行日志")
-        log_result, status = render.create_log_container_with_result()
-        st.session_state.last_log = log_result
-        st.session_state.last_status = status
-
-    # 显示上次执行的日志（如果有）
-    elif st.session_state.last_cmd:
-        st.code(st.session_state.last_cmd, language="bash")
-        st.subheader("执行日志")
-        if st.session_state.last_status == "success":
-            st.success("✅ 分析完成！")
-        elif st.session_state.last_status == "error":
-            st.error("❌ 分析异常终止")
-        if st.session_state.last_log:
-            with st.expander("点击查看控制台输出", expanded=False):
-                st.code(st.session_state.last_log, language="bash")
-
-    st.subheader("分析结果可视化")
+    # 执行并保存日志
+    render.create_log_container_with_result(from_btn_flag)
     render.render_results()
-
     render.build_footer()
 
 if __name__ == "__main__":

@@ -1921,6 +1921,9 @@ class ComputeFrame(MetaComputeFrame):
     def get_context(self):
         return self.call_site
 
+    def get_context_hash(self):
+        return hash(self.call_site)
+
 class ComputeFrameStack:
     def __init__(self):
         self._stack = []

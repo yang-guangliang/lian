@@ -112,7 +112,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         new_set.add(index + baseline_index)
                     each_item.fields[each_field] = new_set
             # ????
-            #each_item.call_site = frame.path[-1] 
+            #each_item.call_site = frame.path[-1]
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
         frame.has_been_inited = True
@@ -260,16 +260,17 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryInstance, compact_space: SymbolStateSpace, caller_frame: ComputeFrame = None):
         if not caller_frame:
             caller_frame: ComputeFrame = frame.frame_stack[-2]
-        caller_frame.summary_collection[frame.call_site] = method_summary
-        caller_frame.symbol_state_space_collection[frame.call_site] = compact_space
-        self.loader.save_symbol_state_space_summary_p3(frame.call_site, compact_space)
-        self.loader.save_method_summary_instance(frame.call_site, method_summary)
+        key = frame.get_context_hash()
+        caller_frame.summary_collection[key] = method_summary
+        caller_frame.symbol_state_space_collection[key] = compact_space
+        self.loader.save_symbol_state_space_summary_p3(key, compact_space)
+        self.loader.save_method_summary_instance(key, method_summary)
         # print("method_summary_instance:")
         # pprint.pprint(method_summary)
         # print("compact_space:")
         # pprint.pprint(compact_space)
-        # self.loader.save_symbol_state_space_summary_p3(frame.method_id, compact_space)
-        # self.loader.save_method_summary_template(frame.method_id, frame.method_summary_template)
+        # self.loader.save_symbol_state_space_summary_p3(key, compact_space)
+        # self.loader.save_method_summary_template(key, frame.method_summary_template)
 
     def save_result_to_last_frame_v1(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate):
         self.save_result_to_last_frame_v2(frame_stack, current_frame, summary, current_frame.space_summary)
@@ -328,8 +329,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
             else:
                 self.path_manager.add_path(frame_path)
-                summary_instance: MethodSummaryInstance = self.loader.get_method_summary_instance(frame.call_site)
-                summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p3(frame.call_site)
+                context_id = frame.get_context_hash()
+                summary_instance: MethodSummaryInstance = self.loader.get_method_summary_instance(context_id)
+                summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p3(context_id)
                 if summary_instance and summary_compact_space:
                     self.save_analysis_summary_and_space(frame, summary_instance.copy(), summary_compact_space.copy(), caller_frame)
                     frame_stack.pop()
@@ -382,11 +384,12 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
             summary, space = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
             self.save_analysis_summary_and_space(frame, summary, space, caller_frame)
-            self.loader.save_stmt_status_p3(frame.call_site, frame.stmt_id_to_status)
-            self.loader.save_method_defined_symbols_p3(frame.call_site, frame.defined_symbols)
-            # self.loader.save_symbol_bit_vector_p3(frame.call_site, frame.symbol_bit_vector_manager)
-            # self.loader.save_state_bit_vector_p3(frame.call_site, frame.state_bit_vector_manager)
-            # self.loader.save_method_symbol_graph_p3(frame.call_site, frame.symbol_graph.graph)
+            context_id = frame.get_context_hash()
+            self.loader.save_stmt_status_p3(context_id, frame.stmt_id_to_status)
+            self.loader.save_method_defined_symbols_p3(context_id, frame.defined_symbols)
+            # self.loader.save_symbol_bit_vector_p3(context_id, frame.symbol_bit_vector_manager)
+            # self.loader.save_state_bit_vector_p3(context_id, frame.state_bit_vector_manager)
+            # self.loader.save_method_symbol_graph_p3(context_id, frame.symbol_graph.graph)
 
             frame_stack.pop()
             if not self.options.quiet:
