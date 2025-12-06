@@ -309,7 +309,7 @@ class GlobalStmtStates(StmtStates):
                             index=status.defined_symbol,
                             node_id=parameter_name_symbol.symbol_id,
                             name=parameter_name_symbol.name,
-                            context=self.frame.call_site,
+                            context=self.frame.get_context(),
                             complete_graph=self.complete_graph,
                             loader=self.loader,
                         ),

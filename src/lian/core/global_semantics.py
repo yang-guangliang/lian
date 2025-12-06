@@ -91,26 +91,28 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             for each_id, value in enumerate(stmt_status.implicitly_defined_symbols):
                 stmt_status.implicitly_defined_symbols[each_id] = value + baseline_index
             stmt_status.defined_symbol += baseline_index
-        for each_space in space:
-            # each_space.index += baseline_index
-            a = 1
-            if isinstance(each_space, Symbol):
+
+        for each_item in space:
+            # each_item.index += baseline_index
+
+            if isinstance(each_item, Symbol):
                 new_set = set()
-                for each_id in each_space.states:
+                for each_id in each_item.states:
                     new_set.add(each_id + baseline_index)
-                each_space.states = new_set
+                each_item.states = new_set
             else:
-                for each_id, each_status in enumerate(each_space.array):
+                for each_id, each_status in enumerate(each_item.array):
                     new_set = set()
                     for index in each_status:
                         new_set.add(index + baseline_index)
-                    each_space.array[each_id] = new_set
-                for each_field, value_set in each_space.fields.items():
+                    each_item.array[each_id] = new_set
+                for each_field, value_set in each_item.fields.items():
                     new_set = set()
                     for index in value_set:
                         new_set.add(index + baseline_index)
-                    each_space.fields[each_field] = new_set
-            each_space.call_site = frame.path[-3:]
+                    each_item.fields[each_field] = new_set
+            # ????
+            #each_item.call_site = frame.path[-1]
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
         frame.has_been_inited = True
@@ -577,6 +579,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase III: Global (Top-down) Semantic Analysis ##########")
+
         global_space = SymbolStateSpace()
         for entry_point in self.loader.get_entry_points():
             # for path in self.call_graph.find_paths(entry_point):
@@ -589,16 +592,19 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
-            self.loader.save_graph_as_dot(sfg.graph, entry_point, self.analysis_phase_id)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
+            self.save_graph_as_dot(sfg.graph, entry_point, self.analysis_phase_id)
+
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.save_call_tree()
         self.loader.save_global_call_paths(self.path_manager.paths)
 
         self.loader.export()
-        #all_paths = self.loader.get_global_call_paths()
-        # print("所有的APaths: ",all_paths)
+
+        # if self.options.debug:
+        #       all_paths = self.loader.get_global_call_paths()
+        #       print("所有的APaths: ",all_paths)
 
     def is_decorated_by_app(self, method_id):
         source_code = self.loader.get_stmt_parent_method_source_code(method_id)

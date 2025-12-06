@@ -3,9 +3,7 @@ import os,sys
 from collections import deque
 import lian.config.config as config
 import networkx as nx
-# sys.path.extend([config.LIAN_DIR])
 
-# from lian.main import Lian
 from lian.util.loader import Loader
 from lian.util import util
 from lian.taint.rule_manager import RuleManager

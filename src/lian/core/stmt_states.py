@@ -75,11 +75,11 @@ class StmtStates:
         self.sfg = self.frame.state_flow_graph
         self.used_symbol_id_to_indexes = {}
         self.complete_graph = complete_graph
-        self.call_site = None
+        self.context = None
         if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
             self.complete_graph = False
         if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
-            self.call_site = self.frame.call_site
+            self.context = self.frame.get_context()
 
         self.state_analysis_handlers = {
             "comment_stmt": self.regular_stmt_state,
@@ -217,7 +217,7 @@ class StmtStates:
                 def_stmt_id=node.stmt_id,
                 index=node_index,
                 node_id=node.symbol_id,
-                context=self.call_site,
+                context=self.context,
                 name=node.name,
                 loader=self.loader,
                 complete_graph=self.complete_graph,
@@ -228,7 +228,7 @@ class StmtStates:
                 def_stmt_id=node.stmt_id,
                 index=node_index,
                 node_id=node.state_id,
-                context=self.call_site,
+                context=self.context,
                 loader=self.loader,
                 complete_graph=self.complete_graph,
             )
@@ -242,7 +242,7 @@ class StmtStates:
                 def_stmt_id=node.stmt_id,
                 index=node_index,
                 node_id=node.symbol_id,
-                context=self.call_site,
+                context=self.context,
                 name=node.name,
                 loader=self.loader,
                 complete_graph=self.complete_graph,
@@ -259,7 +259,7 @@ class StmtStates:
                     def_stmt_id=node.stmt_id,
                     index=node_index,
                     node_id=node.symbol_id,
-                    context=self.call_site,
+                    context=self.context,
                     name=node.name,
                     loader=self.loader,
                     complete_graph=self.complete_graph,
@@ -278,7 +278,7 @@ class StmtStates:
                 def_stmt_id=node.stmt_id,
                 index=node_index,
                 node_id=node.state_id,
-                context=self.call_site,
+                context=self.context,
                 loader=self.loader,
                 complete_graph=self.complete_graph,
             )
@@ -358,7 +358,7 @@ class StmtStates:
                     node_id=parent_state.state_id,
                     loader=self.loader,
                     complete_graph=self.complete_graph,
-                    # context=self.call_site,
+                    # context=self.context,
                 ),
                 SFGNode(
                     node_type=SFG_NODE_KIND.STATE,
@@ -366,7 +366,7 @@ class StmtStates:
                     index=index,
                     node_id=item.state_id,
                     loader=self.loader,
-                    # context=self.call_site,
+                    # context=self.context,
                     complete_graph=self.complete_graph,
                 ),
                 SFGEdge(
@@ -387,7 +387,7 @@ class StmtStates:
                             node_id=arg.state_id,
                             loader=self.loader,
                             complete_graph=self.complete_graph,
-                            # context=self.call_site,
+                            # context=self.context,
                         ),
                         SFGNode(
                             node_type=SFG_NODE_KIND.STATE,
@@ -395,7 +395,7 @@ class StmtStates:
                             index=index,
                             node_id=item.state_id,
                             loader=self.loader,
-                            # context=self.call_site,
+                            # context=self.context,
                             complete_graph=self.complete_graph,
                         ),
                         SFGEdge(

@@ -1045,17 +1045,18 @@ class SFGNode:
         self.name = name
         # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
         # Hence it is call_site
-        self.context = -1
+        self.context_id = -1
         self.method_name=None
         self.module_name=None
         self.line_no=-1
         self.operation=None
         self.caller_name=None
         self.full_context = context
+
         if context:
-            self.context = context[1]
-        if context and context[0] != -1 and loader:
-            self.caller_name = loader.convert_method_id_to_method_name(context[0])
+            self.context_id = context.call_stmt_id
+            if context.caller_id != -1 and loader:
+                self.caller_name = loader.convert_method_id_to_method_name(context.caller_id)
         if complete_graph and def_stmt_id != -1:
             stmt = loader.get_stmt_gir(def_stmt_id)
             unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
@@ -1066,7 +1067,7 @@ class SFGNode:
             self.operation = stmt.operation
 
     def __hash__(self) -> int:
-        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context, self.name, self.method_name, self.module_name, self.line_no, self.operation))
+        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id, self.name, self.method_name, self.module_name, self.line_no, self.operation))
 
     def __eq__(self, other) -> bool:
         return (isinstance(other, SFGNode)
@@ -1074,7 +1075,7 @@ class SFGNode:
                 and self.def_stmt_id == other.def_stmt_id
                 and self.index == other.index
                 and self.node_id == other.node_id
-                and self.context == other.context
+                and self.context_id == other.context_id
                 and self.name == other.name)
 
     def __repr__(self) -> str:
@@ -1083,8 +1084,8 @@ class SFGNode:
         attrs = []
         if self.def_stmt_id >= 0:
             attrs.append(f"stmt_id={self.def_stmt_id}")
-        if self.context :
-            attrs.append(f"context={self.context}")
+        if self.context_id :
+            attrs.append(f"context={self.context_id}")
         if self.module_name :
             attrs.append(f"module_name={self.module_name}")
         if self.method_name :
@@ -1117,7 +1118,7 @@ class SFGNode:
             return {
                 "node_type"             : self.node_type,
                 "stmt_id"               : self.def_stmt_id,
-                "context"            : self.context,
+                "context"            : self.context_id,
             }
 
         return {
@@ -1125,7 +1126,7 @@ class SFGNode:
             "stmt_id"               : self.def_stmt_id,
             "index"                 : self.index,
             "internal_id"           : self.node_id,
-            "context"            : self.context,
+            "context"            : self.context_id,
         }
 
     def copy(self):
@@ -1134,7 +1135,7 @@ class SFGNode:
             def_stmt_id = self.def_stmt_id,
             index = self.index,
             node_id = self.node_id,
-            context = self.context,
+            context = self.context_id,
         )
 
     def to_tuple(self):
@@ -1143,11 +1144,11 @@ class SFGNode:
             self.def_stmt_id,
             self.index,
             self.node_id,
-            self.context,
+            self.context_id,
         )
 
     def from_tuple(self, tup):
-        self.node_type, self.def_stmt_id, self.index, self.node_id, self.context = tup
+        self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id = tup
         return self
 
 @dataclasses.dataclass
@@ -1520,7 +1521,7 @@ class MethodDefUseSummary:
 
 @dataclasses.dataclass
 class MethodSummaryTemplate:
-    method_id: int = -1
+    key: int = -1
     parameter_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
     defined_external_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
     used_external_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
@@ -1532,7 +1533,7 @@ class MethodSummaryTemplate:
 
     def copy(self):
         summary = MethodSummaryTemplate(
-            method_id = self.method_id,
+            key = self.key,
             parameter_symbols = copy.deepcopy(self.parameter_symbols),
             defined_external_symbols = copy.deepcopy(self.defined_external_symbols),
             used_external_symbols = copy.deepcopy(self.used_external_symbols),
@@ -1574,7 +1575,7 @@ class MethodSummaryTemplate:
 
     def to_dict(self):
         return {
-            "method_id": self.method_id,
+            "method_id": self.key,
             "parameter_symbols": self.convert_parameter_dict_to_list(self.parameter_symbols),
             "defined_external_symbols": self.convert_dict_to_list(self.defined_external_symbols),
             "used_external_symbols": self.convert_dict_to_list(self.used_external_symbols),
@@ -1586,7 +1587,7 @@ class MethodSummaryTemplate:
         }
 
     def __str__(self):
-        return  f"method_id={self.method_id}, " \
+        return  f"method_id={self.key}, " \
                 f"parameter_symbols={self.parameter_symbols}, " \
                 f"defined_external_symbols={self.defined_external_symbols}, " \
                 f"key_dynamic_content={self.key_dynamic_content}, " \
@@ -1651,13 +1652,13 @@ import dataclasses
 @dataclasses.dataclass
 class MethodSummaryInstance(MethodSummaryTemplate):
     def __post_init__(self):
-        self.call_site = self.method_id
-        self.caller_id = self.call_site[0]
-        self.call_stmt_id = self.call_site[1]
-        self.method_id = self.call_site[2]
+        self.call_site = self.key
+        self.caller_id = self.call_site.caller_id
+        self.call_stmt_id = self.call_site.call_stmt_id
+        self.method_id = self.call_site.callee_id
 
     def copy_template_to_instance(self, summary_template: MethodSummaryTemplate):
-        self.method_id = summary_template.method_id
+        self.key = summary_template.key
         # self.parameter_symbols = copy.deepcopy(summary_template.parameter_symbols)
         # self.defined_external_symbols = copy.deepcopy(summary_template.defined_external_symbols)
         self.used_external_symbols = copy.deepcopy(summary_template.used_external_symbols)
@@ -1850,7 +1851,7 @@ class ComputeFrame(MetaComputeFrame):
         self.method_id = method_id
         self.caller_id = caller_id
         self.call_stmt_id = call_stmt_id
-        self.call_site = (self.caller_id, self.call_stmt_id, self.method_id)
+        self.call_site = CallSite(self.caller_id, self.call_stmt_id, self.method_id)
 
         self.loader = loader
         self.lang = "unknown"
@@ -1916,6 +1917,9 @@ class ComputeFrame(MetaComputeFrame):
         self.callee_classes_of_method = []
         self.this_class_ids = this_class_ids
         self.callee_this_class_ids = []
+
+    def get_context(self):
+        return self.call_site
 
 class ComputeFrameStack:
     def __init__(self):

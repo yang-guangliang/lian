@@ -1187,7 +1187,7 @@ class MethodSummaryLoader:
         for row in df:
             if row.caller_id:
                 self.method_summary_records[(row.caller_id, row.call_stmt_id, row.method_id)] = MethodSummaryInstance(
-                    method_id = (row.caller_id, row.call_stmt_id, row.method_id),
+                    key = CallSite(row.caller_id, row.call_stmt_id, row.method_id),
                     parameter_symbols = self.convert_list_to_dict(row.parameter_symbols),
                     defined_external_symbols = self.convert_list_to_dict(row.defined_external_symbols),
                     used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids),
@@ -1198,7 +1198,7 @@ class MethodSummaryLoader:
                 )
             else:
                 self.method_summary_records[row.method_id] = MethodSummaryTemplate(
-                    method_id = row.method_id,
+                    key = row.method_id,
                     parameter_symbols = self.convert_list_to_dict(row.parameter_symbols),
                     defined_external_symbols = self.convert_list_to_dict(row.defined_external_symbols),
                     used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids),
@@ -3075,23 +3075,5 @@ class Loader:
                     parent_index=wt.parent_pos
                 ))
         return class_relevant_info
-
-    def save_graph_as_dot(self, graph, entry_point, phase_id):
-        if phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
-            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}.dot"
-        else:
-            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P2_DIR}/{entry_point}.dot"
-        try:
-            nx.drawing.nx_pydot.write_dot(graph, file_name)
-        except ImportError:
-            util.error("Pydot or PyGraphviz is not installed. Please install one of them to use write_dot.")
-            return
-        except Exception as e:
-            util.error(f"An error occurred: {e}")
-            return
-
-        util.replace_weight_to_label_in_dot(file_name)
-        if self.options.debug:
-            util.debug(">>> Write state flow graph to dot file: ", file_name)
 
 
