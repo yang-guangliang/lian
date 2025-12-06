@@ -594,10 +594,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.save_call_tree()
-        self.loader.save_global_call_path(self.path_manager.paths)
+        self.loader.save_global_call_paths(self.path_manager.paths)
 
         self.loader.export()
-        all_paths = self.loader.get_global_call_path()
+        #all_paths = self.loader.get_global_call_paths()
         # print("所有的APaths: ",all_paths)
 
     def is_decorated_by_app(self, method_id):

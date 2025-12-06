@@ -24,6 +24,7 @@ from lian.config.constants import (
 )
 from lian.common_structs import (
     BasicGraph,
+    CallSite,
     State,
     StateDefNode,
     Symbol,
@@ -1287,24 +1288,41 @@ class CallGraphLoader:
 class CallPathLoader:
     def __init__(self, file_path):
         self.path = file_path
-        self.all_paths = []
+        self.all_paths = set()
 
     def save(self, all_paths: set):
         self.all_paths = all_paths
 
-    def get(self):
-        # 防止该文件不存在第三阶段call_path从而读取报错
-        if not os.path.exists(self.path):
-            return {}
-        dm = DataModel().load(self.path)
-
+    def get_all(self):
         return self.all_paths
+
+    def restore(self):
+        df = DataModel().load(self.path)
+        for row in df:
+            path_tuple = row.call_path
+            callsite_list = []
+            if path_tuple:
+                for item in path_tuple:
+                    callsite_list.append(CallSite(item[0], item[1], item[2]))
+
+            path = CallPath(tuple(callsite_list))
+            self.all_paths.add(path)
 
     def export(self):
         if len(self.all_paths) == 0:
             return
-        all_pathTuples = [(index, ap.path) for index, ap in enumerate(self.all_paths)]
-        DataModel(all_pathTuples,columns=schema.call_path_schema).save(self.path)
+
+        dict_list = []
+        for index, path in enumerate(self.all_paths):
+            callsite_list = []
+            for callsite in path:
+                callsite_list.append(callsite.to_tuple())
+            dict_list.append({
+                "index": index,
+                "call_path": tuple(callsite_list)
+            })
+
+        DataModel(dict_list).save(self.path)
 
 class UniqueSymbolIDAssignerLoader:
     def __init__(self, path):
@@ -2706,10 +2724,10 @@ class Loader:
     def get_prelim_call_graph(self):
         return self._prelim_call_graph_loader.get()
 
-    def save_global_call_path(self, paths):
+    def save_global_call_paths(self, paths):
         return self._global_call_path_loader.save(paths)
-    def get_global_call_path(self):
-        return self._global_call_path_loader.get()
+    def get_global_call_paths(self):
+        return self._global_call_path_loader.get_all()
 
     def save_global_call_tree_by_entry_point(self, method_id,  call_tree):
         return self._call_tree_loader.save(method_id, call_tree)
