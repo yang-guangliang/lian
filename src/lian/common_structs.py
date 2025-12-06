@@ -2036,11 +2036,21 @@ class CallSite:
                 self.call_stmt_id == other.call_stmt_id and
                 self.callee_id == other.callee_id)
 
+    def __lt__(self, other):
+        # 确保比较的是同一个类的实例
+        if not isinstance(other, CallSite):
+            return NotImplemented
+        return (self.caller_id, self.call_stmt_id) < (other.caller_id, other.call_stmt_id)
+
     def __hash__(self):
         return hash((self.caller_id, self.call_stmt_id, self.callee_id))
 
     def __repr__(self):
         return f"CallSite({self.caller_id}, {self.call_stmt_id}, {self.callee_id})"
+
+    def to_tuple(self):
+        """将 CallSite 对象的核心属性转换为元组"""
+        return (self.caller_id, self.call_stmt_id, self.callee_id)
 
     def has_negative(self):
         return self.caller_id < 0 or self.call_stmt_id < 0 or self.callee_id < 0

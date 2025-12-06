@@ -1323,13 +1323,14 @@ class CallPathLoader:
             })
 
         DataModel(dict_list).save(self.path)
+
     def get_caller_by_id(self, method_id, entry_point = -1):
         caller = set()
         for path in self.all_paths:
             if entry_point != -1 and path[0].caller_id != entry_point:
                 continue
             for call_site in path:
-                if call_site.callee_id == method_id:
+                if call_site.callee_id == method_id and call_site.callee_id != 0:
                     caller.add(call_site.caller_id)
         return caller
 
@@ -1339,7 +1340,7 @@ class CallPathLoader:
             if entry_point != -1 and path[0].caller_id != entry_point:
                 continue
             for call_site in path:
-                if call_site.caller_id == method_id:
+                if call_site.caller_id == method_id and call_site.callee_id != 0:
                     callee.add(call_site.callee_id)
         return callee
 
@@ -2749,32 +2750,44 @@ class Loader:
     def get_global_call_paths(self):
         return self._global_call_path_loader.get_all()
 
-    def get_caller_by_id(self, method_id):
-        return self._global_call_path_loader.get_caller_by_id(method_id)
+    def get_caller_by_id(self, method_id, entry_point_id = -1):
+        return self._global_call_path_loader.get_caller_by_id(method_id, entry_point_id)
 
-    def get_callee_by_id(self, method_id):
-        return self._global_call_path_loader.get_callee_by_id(method_id)
+    def get_callee_by_id(self, method_id, entry_point_id = -1):
+        return self._global_call_path_loader.get_callee_by_id(method_id, entry_point_id)
 
-    def get_caller_by_name(self, method_name):
+    def get_caller_by_name(self, method_name, entry_point_name = None):
         method_ids = self.convert_method_name_to_method_ids(method_name)
+        entry_point_ids = self.convert_method_name_to_method_ids(entry_point_name)
         caller_ids = set()
         caller_names = set()
         for method_id in method_ids:
-            callers = self.get_caller_by_id(method_id)
-            caller_ids = caller_ids | callers
+            if entry_point_name:
+                for entry_point_id in entry_point_ids:
+                    callers = self.get_caller_by_id(method_id, entry_point_id)
+                    caller_ids = caller_ids | callers
+            else:
+                callers = self.get_caller_by_id(method_id)
+                caller_ids = caller_ids | callers
 
         for caller_id in caller_ids:
             caller_names.add(self.convert_method_id_to_method_name(caller_id))
 
         return caller_names
 
-    def get_callee_by_name(self, method_name):
+    def get_callee_by_name(self, method_name, entry_point_name = None):
         method_ids = self.convert_method_name_to_method_ids(method_name)
+        entry_point_ids = self.convert_method_name_to_method_ids(entry_point_name)
         callee_ids = set()
         callee_names = set()
         for method_id in method_ids:
-            callees = self.get_callee_by_id(method_id)
-            callee_ids = callee_ids | callees
+            if entry_point_name:
+                for entry_point_id in entry_point_ids:
+                    callees = self.get_callee_by_id(method_id, entry_point_id)
+                    callee_ids = callee_ids | callees
+            else:
+                callees = self.get_callee_by_id(method_id)
+                callee_ids = callee_ids | callees
 
         for callee_id in callee_ids:
             callee_names.add(self.convert_method_id_to_method_name(callee_id))
