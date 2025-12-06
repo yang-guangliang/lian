@@ -1323,6 +1323,26 @@ class CallPathLoader:
             })
 
         DataModel(dict_list).save(self.path)
+    def get_caller_by_id(self, method_id):
+        caller = set()
+        for path in self.all_paths:
+            for call_site in path:
+                if call_site.callee_id == method_id:
+                    caller.add(call_site.caller_id)
+        return caller
+
+    def get_callee_by_id(self, method_id):
+        callee = set()
+        for path in self.all_paths:
+            for call_site in path:
+                if call_site.caller_id == method_id:
+                    callee.add(call_site.callee_id)
+        return callee
+
+    def get_caller_by_name(self, method_name):
+        pass
+    def get_callee_by_name(self, method_name):
+        pass
 
 class UniqueSymbolIDAssignerLoader:
     def __init__(self, path):
@@ -2728,6 +2748,33 @@ class Loader:
         return self._global_call_path_loader.save(paths)
     def get_global_call_paths(self):
         return self._global_call_path_loader.get_all()
+
+    def get_caller_by_id(self, method_id):
+        return self._global_call_path_loader.get_caller_by_id(method_id)
+
+    def get_callee_by_id(self, method_id):
+        return self._global_call_path_loader.get_callee_by_id(method_id)
+
+    def get_caller_by_name(self, method_name):
+        method_ids = self.convert_method_name_to_method_ids(method_name)
+        caller_ids = set()
+        caller_names = set()
+        for method_id in method_ids:
+            callers = self.get_caller_by_id(method_id)
+            caller_ids = caller_ids | callers
+
+        for caller_id in caller_ids:
+            caller_names.add(self.convert_method_id_to_method_name(caller_id))
+
+        return caller_names
+
+    def get_callee_by_name(self, method_name):
+        method_ids = self.convert_method_name_to_method_ids(method_name)
+        callee_names = set()
+        for method_id in method_ids:
+            callees = self.get_callee_by_id(method_id)
+            callee_names = callee_names | callees
+        return self._global_call_path_loader.get_callee_by_name(method_name)
 
     def save_global_call_tree_by_entry_point(self, method_id,  call_tree):
         return self._call_tree_loader.save(method_id, call_tree)
