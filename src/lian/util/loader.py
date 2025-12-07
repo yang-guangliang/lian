@@ -2788,14 +2788,14 @@ class Loader:
     def get_classified_method_call(self):
         return self._classified_method_call_loader.get()
 
-    def save_prelim_call_graph(self, graph):
+    def save_call_graph_p2(self, graph):
         return self._prelim_call_graph_loader.save(graph)
-    def get_prelim_call_graph(self):
+    def get_call_graph_p2(self):
         return self._prelim_call_graph_loader.get()
 
-    def save_global_call_paths(self, paths):
+    def save_call_paths_p3(self, paths):
         return self._global_call_path_loader.save(paths)
-    def get_global_call_paths(self):
+    def get_call_paths_p3(self):
         return self._global_call_path_loader.get_all()
 
     def get_caller_by_id(self, method_id, entry_point_id = -1):

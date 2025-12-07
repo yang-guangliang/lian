@@ -116,9 +116,9 @@ METHOD_ID_TO_METHOD_NAME_PATH                                = "method_id_to_nam
 STMT_ID_TO_SCOPE_ID_PATH                                     = "stmt_id_to_scope_id"
 
 CALL_GRAPH_BUNDLE_PATH_P1                                    = "call_graph_p1"
-STATIC_CALL_GRAPH_BUNDLE_PATH_P2                             = "static_call_graph"
-GLOBAL_CALL_PATH_BUNDLE_PATH                                 = "global_call_path"
-GLOBAL_CALL_TREE_BUNDLE_PATH                                 = "global_call_tree"
+STATIC_CALL_GRAPH_BUNDLE_PATH_P2                             = "call_graph_p2"
+GLOBAL_CALL_PATH_BUNDLE_PATH                                 = "call_paths_p3"
+GLOBAL_CALL_TREE_BUNDLE_PATH                                 = "call_tree_p3"
 
 ENTRY_POINTS_PATH                                            = "entry_points"
 SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P1                     = "symbol_bit_vector_p1"

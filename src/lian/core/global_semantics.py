@@ -326,7 +326,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         break
                 if not children_done_flag:
                     continue
-
             else:
                 self.path_manager.add_path(frame_path)
                 context_id = frame.get_context_hash()
@@ -336,25 +335,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                     self.save_analysis_summary_and_space(frame, summary_instance.copy(), summary_compact_space.copy(), caller_frame)
                     frame_stack.pop()
                     continue
-
-                # gl:这都什么意思
-
-                # check if there is an available method summary
-                # p2_summary_template = self.loader.get_method_summary_template(frame.method_id)
-                # 如果没有summary->函数体为空->跳过
-                # if util.is_empty(p2_summary_template):
-                #     frame_stack.pop()
-                #     continue
-
-                #summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(frame.method_id)
-                #summary_template: MethodSummaryTemplate = p2_summary_template.copy()
-                # if not summary_template.dynamic_call_stmts:
-                #     if self.options.quiet:
-                #         util.debug(f"\t<method {frame.method_id}> does not need to be processed")
-
-                #     self.save_analysis_summary_and_space(frame, summary_template.copy(), summary_compact_space.copy(), caller_frame)
-                #     frame_stack.pop()
-                #     continue
 
                 if not frame.has_been_inited:
                     if self.init_compute_frame(frame, frame_stack, global_space) is None:
@@ -429,7 +409,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
         # gl: 为啥是0
         self.loader.save_symbol_state_space_p3(0, global_space)
-        self.loader.save_global_call_paths(self.path_manager.paths)
+        self.loader.save_call_paths_p3(self.path_manager.paths)
 
         self.loader.export()
 

@@ -128,7 +128,7 @@ class GlobalStmtStates(StmtStates):
             # 可能第二阶段没有这个caller->callee，因此该call的parameter_list可能是空的，在这个阶段还是需要生成一遍parameter_list
             parameters = self.prepare_parameters(each_callee_id)
             if config.DEBUG_FLAG:
-                util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
+                util.debug(f"parameters of callee <{each_callee_id}>: {parameters}")
             # current_parameter_mapping_list = self.loader.load_parameter_mapping(new_call_site)
             # if util.is_empty(current_parameter_mapping_list):
             current_parameter_mapping_list = []

@@ -150,6 +150,7 @@ class Lian:
         return self
 
     def semantic_analysis(self):
+        self.lang_analysis()
         BasicSemanticAnalysis(self).run()
         summary_generation = PrelimSemanticAnalysis(self).run()
         GlobalSemanticAnalysis(self, summary_generation.analyzed_method_list).run()

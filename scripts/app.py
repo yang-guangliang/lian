@@ -21,6 +21,7 @@ SUPPORTED_LANGUAGES = [
 # 分析类型选项
 ANALYSIS_COMMANDS = {
     "run": "污点分析 (Taint)",
+    "semantic": "语义分析 (Semantic)",
     "lang": "生成通用IR (GIR)",
 }
 
@@ -76,6 +77,11 @@ class Render:
                 flex-wrap: wrap;
                 row-gap: 0px;
             }
+
+            div[role="radiogroup"] {
+                flex-wrap: wrap;
+            }
+
             pre code {
                 white-space: pre-wrap !important;
                 word-break: break-all !important;
@@ -99,46 +105,34 @@ class Render:
             st.title("莲花代码分析 (LIAN)")
 
     def build_sidebar(self):
+        from_btn_flag = False
         with st.sidebar:
-            st.header("LIAN配置")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.header("配置")
+
             self.sub_command = st.radio(
                 "选择代码分析命令",
                 options=list(ANALYSIS_COMMANDS.keys()),
                 format_func=lambda x: ANALYSIS_COMMANDS[x]
             )
 
-            st.header("语言 (-l)")
+            #st.header("语言 (-l)")
             self.lang = st.multiselect(
-                "编程语言选择",
+                "语言 (-l)",
                 options=SUPPORTED_LANGUAGES,
                 default=[],
                 key="lang_sidebar"
             )
 
-            st.header("待分析路径 (in_path)")
-            path_option = st.radio("选择输入方式:", ["手动输入", "上传文件"], index=0)
-
-            self.uploaded_files = None
-            if path_option == "上传文件":
-                self.uploaded_files = st.file_uploader(
-                    "上传代码文件",
-                    accept_multiple_files=True,
-                    help="文件将被保存到临时目录进行分析"
-                )
-                if self.uploaded_files:
-                    if isinstance(self.uploaded_files, list):
-                        str_list = [file.name for file in self.uploaded_files]
-                        self.in_path = ",".join(str_list)
-                    else:
-                        self.in_path = self.uploaded_files.name
-            else:
-                in_path_input = st.text_input(
-                    "输入路径",
-                    value=self.in_path,
-                    help="要分析的代码路径，可以是文件或目录"
-                )
-                if in_path_input != self.in_path:
-                    self.in_path = in_path_input
+            #st.header("待分析路径 (in_path)")
+            in_path_input = st.text_input(
+                "待分析路径 (in_path)",
+                value=self.in_path,
+                help="要分析的代码路径，可以是文件或目录"
+            )
+            if in_path_input != self.in_path:
+                self.in_path = in_path_input
 
 
             st.header("其他配置")
@@ -153,7 +147,7 @@ class Render:
 
             self.print_stmts = st.checkbox("打印语句 (-p)", value=False)
             #self.android_mode = st.checkbox("Android 模式 (--android)", value=False)
-            self.strict_parse = st.checkbox("严格解析 (--strict-parse-mode)", value=False)
+            #self.strict_parse = st.checkbox("严格解析 (--strict-parse-mode)", value=False)
             self.incremental = st.checkbox("增量分析 (-inc)", value=False)
             self.noextern = st.checkbox("禁用外部处理 (--noextern)", value=True)
 
@@ -164,6 +158,15 @@ class Render:
             st.divider()
             st.markdown("查看[项目源代码](https://github.com/yang-guangliang/lian)")
             st.markdown("本项目由[复旦大学系统安全与可靠性研究组](https://gitee.com/fdu-ssr/)开发和维护")
+
+            with col2:
+                # 执行按钮
+                if st.button("运行", type="primary", width='stretch'):
+                    cmd_list = self.build_command()
+                    st.session_state.last_cmd = " ".join(cmd_list)
+                    from_btn_flag = True
+
+        return from_btn_flag
 
     def build_command(self):
         cmd = ["python", LIAN_PATH, self.sub_command]
@@ -177,7 +180,7 @@ class Render:
             ("-d", self.debug),
             ("-p", self.print_stmts),
             #("--android", self.android_mode),
-            ("--strict-parse-mode", self.strict_parse),
+            #("--strict-parse-mode", self.strict_parse),
             ("-inc", self.incremental),
             ("--noextern", self.noextern),
             ("--graph", self.output_graph),
@@ -231,10 +234,10 @@ class Render:
         result_status = "success"
 
         expander_flag = False
-        expander_str = f"⚙️ 分析控制台输出 (实时刷新，显示最近 {MAX_DISPLAY_LINES} 行)"
+        expander_str = f"⚙️ 控制台输出 (显示最近 {MAX_DISPLAY_LINES} 行)"
         if self.display_full_log:
             expander_flag = True
-            expander_str = f"⚙️ 分析控制台输出 (实时刷新)"
+            expander_str = f"⚙️ 控制台输出"
 
         with st.expander(expander_str, expanded=expander_flag):
             log_placeholder = st.empty()
@@ -451,6 +454,7 @@ class Render:
 
         file_path_str = files_with_names.get(selected_file, None)
         if not file_path_str:
+            self.build_footer()
             return
 
         file_path = Path(file_path_str)
@@ -481,14 +485,7 @@ def main():
     render.config_css()
     render.config_layout()
     render.config_title()
-    render.build_sidebar()
-
-    # 执行按钮
-    from_btn_flag = False
-    if st.button("开始分析", type="primary", width='stretch'):
-        cmd_list = render.build_command()
-        st.session_state.last_cmd = " ".join(cmd_list)
-        from_btn_flag = True
+    from_btn_flag = render.build_sidebar()
 
     if render.reset_tabs:
         for key in st.session_state.keys():
@@ -501,7 +498,7 @@ def main():
     # 执行并保存日志
     render.create_log_container_with_result(from_btn_flag)
     render.render_results()
-    render.build_footer()
+    #render.build_footer()
 
 if __name__ == "__main__":
     main()

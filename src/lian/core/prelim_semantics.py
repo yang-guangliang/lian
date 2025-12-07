@@ -1290,7 +1290,7 @@ class PrelimSemanticAnalysis:
         self.reset_max_analysis_round()
 
         # save all results here
-        self.loader.save_prelim_call_graph(self.call_graph)
+        self.loader.save_call_graph_p2(self.call_graph)
         self.loader.export()
         # self.print_count_stmt_def_states()
 

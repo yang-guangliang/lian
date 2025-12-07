@@ -1969,19 +1969,26 @@ class StmtStates:
             util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
 
         for each_callee_id in callee_method_ids:
+            if self.call_graph:
+                if not self.call_graph.has_specific_weight(self.frame.method_id, each_callee_id, stmt_id):
+                    self.call_graph.add_edge(int(self.frame.method_id), int(each_callee_id), int(stmt_id))
+
             if not (each_callee_id in self.analyzed_method_list or self.frame_stack.has_method_id(each_callee_id)):
                 callee_ids_to_be_analyzed.append(each_callee_id)
             # prepare callee parameters
             parameters = self.prepare_parameters(each_callee_id)
             if config.DEBUG_FLAG:
-                util.debug(f"parameters of callee <{each_callee_id}>: {parameters}\n")
+                util.debug(f"parameters of callee <{each_callee_id}>: {parameters}")
             new_call_site = (caller_id, stmt_id, each_callee_id)
-            callee_method_def_use_summary: MethodDefUseSummary = self.loader.get_method_def_use_summary(each_callee_id)
             parameter_mapping_list = self.loader.get_parameter_mapping_p2(new_call_site)
             # gl:为什么要判断是否为空
             if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
+
+        # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
+        # print(f"analyzed_method_list: {self.analyzed_method_list}")
+        # print(f"frame_stack.method_ids: {self.frame_stack.method_ids}")
 
         if len(callee_ids_to_be_analyzed) != 0:
             self.frame.stmts_with_symbol_update.add(stmt_id)
@@ -2039,11 +2046,6 @@ class StmtStates:
         #     util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
 
         for each_callee_id in callee_method_ids:
-            if self.call_graph:
-                if not self.call_graph.has_specific_weight(self.frame.method_id, each_callee_id, stmt_id):
-                    # print(f"add edge: {self.frame.method_id} -> {each_callee_id} @ {stmt_id}")
-                    self.call_graph.add_edge(int(self.frame.method_id), int(each_callee_id), int(stmt_id))
-
             # prepare callee summary template and compact space
             callee_summary = self.loader.get_method_summary_template(each_callee_id)
             if util.is_empty(callee_summary):
