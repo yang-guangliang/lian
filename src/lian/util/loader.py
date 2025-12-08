@@ -964,9 +964,42 @@ class MethodLevelAnalysisResultLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, _id, bundle_data):
         if type(_id) == tuple:
             flattened_item = bundle_data.query(bundle_data.hash_id.bundle_search(hash(_id)))
+        elif hasattr(_id, 'caller_id') and hasattr(_id, 'call_stmt_id') and hasattr(_id, 'callee_id'):
+            flattened_item = bundle_data.query(bundle_data.hash_id.bundle_search(hash(_id)))
         else:
             flattened_item = bundle_data.query(bundle_data.method_id.bundle_search(_id))
         return flattened_item
+
+    def export_indexing(self):
+        from lian.common_structs import CallSite
+        results = []
+        for (key, value) in self.item_id_to_bundle_id.items():
+            if isinstance(key, CallSite):
+                serializable_key = key.to_tuple()
+            else:
+                serializable_key = key
+            results.append([serializable_key, value])
+
+        DataModel(results, columns = schema.loader_indexing_schema).save(self.loader_indexing_path)
+
+    def restore_indexing(self):
+        from lian.common_structs import CallSite
+        if not os.path.exists(self.loader_indexing_path):
+            return
+
+        df = DataModel().load(self.loader_indexing_path)
+        for row in df:
+            data = row.raw_data()
+            key = data[0]
+            if isinstance(key, (tuple, list)) and len(key) == 3:
+                try:
+                    key = CallSite(key[0], key[1], key[2])
+                except (TypeError, IndexError):
+                    key = tuple(key) if isinstance(key, list) else key
+            elif isinstance(key, (tuple, list)):
+                key = tuple(key) if isinstance(key, list) else key
+            self.item_id_to_bundle_id[key] = data[1]
+            self.bundle_count = max(self.bundle_count, data[1] + 1)
 
 class BitVectorManagerLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, _id, flattened_item):
