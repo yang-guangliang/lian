@@ -733,9 +733,9 @@ class ParameterMapping:
     def to_dict(self, _id):
         return {
             "hash_id": hash(_id),
-            "caller_id": _id[0],
-            "call_stmt_id": _id[1],
-            "callee_id": _id[2],
+            "caller_id": _id.caller_id,
+            "call_stmt_id": _id.call_stmt_id,
+            "callee_id": _id.callee_id,
             "arg_index_in_space": self.arg_index_in_space,
             "arg_state_id": self.arg_state_id,
             "arg_source_symbol_id": self.arg_source_symbol_id,

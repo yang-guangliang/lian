@@ -325,6 +325,8 @@ class TaintAnalysis:
             if not parent_to_source or not parent_to_sink:
                 continue
             new_flow = Flow()
+            new_flow.source_stmt_id = source.def_stmt_id
+            new_flow.sink_stmt_id = sink.def_stmt_id
             new_flow.parent_to_source = parent_to_source
             new_flow.parent_to_sink = parent_to_sink
             flow_list.append(new_flow)
@@ -401,11 +403,35 @@ class TaintAnalysis:
     def print_flows(self, flows):
         for flow in flows:
             print("--------------------------------")
+            print("Found a Flow")
+            source_code = self.loader.get_stmt_source_code_with_comment(flow.source_stmt_id)
+            sink_code = self.loader.get_stmt_source_code_with_comment(flow.sink_stmt_id)
+            print("Source :", source_code[0].strip())
+            print("Sink :", sink_code[0].strip())
+            print()
+            print("Parent to Source Path:")
+            line_no = -1
+            for node in flow.parent_to_source:
+                if node.node_type == SFG_NODE_KIND.STMT:
+                    stmt_id = node.def_stmt_id
+                    stmt = self.loader.get_stmt_gir(stmt_id)
+                    if stmt.start_row == line_no:
+                        continue
+                    line_no = stmt.start_row
+                    code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
+                    print("-> ",code[0].strip(),"in line ", int(line_no))
+            print()
+            print("Parent to Sink Path:")
+            line_no = -1
             for node in flow.parent_to_sink:
-                stmt_id = node.def_stmt_id
-                stmt = self.loader.get_stmt_gir(stmt_id)
-                line_no = stmt.start_row
-                print(node,"in line ", line_no)
+                if node.node_type == SFG_NODE_KIND.STMT:
+                    stmt_id = node.def_stmt_id
+                    stmt = self.loader.get_stmt_gir(stmt_id)
+                    if stmt.start_row == line_no:
+                        continue
+                    line_no = stmt.start_row
+                    code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
+                    print("-> ", code[0].strip(),"in line ", int(line_no))
 
 def main():
     TaintAnalysis().run()

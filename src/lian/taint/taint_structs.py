@@ -31,6 +31,8 @@ class MethodTaintFrame:
 class Flow:
     parent_to_source:list = dataclasses.field(default_factory=list)
     parent_to_sink:list = dataclasses.field(default_factory=list)
+    source_stmt_id=-1
+    sink_stmt_id=-1
     
 @dataclasses.dataclass
 class StmtTaintStatus:
