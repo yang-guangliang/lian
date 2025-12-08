@@ -41,7 +41,6 @@ from lian.common_structs import (
     CallPath,
     StmtStatus,
     StateFlowGraph,
-    CallTree,
     CallSite,
 )
 from lian.basics.entry_points import EntryPointGenerator

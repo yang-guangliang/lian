@@ -1741,7 +1741,6 @@ class CallGraph(BasicGraph):
             if not has_weight:
                 super().add_edge(caller_id, callee_id, weight=call_stmt_id)
 
-
     def has_specific_weight(self, caller_id, callee_id, call_stmt_id):
         if self.graph.has_edge(caller_id, callee_id):
             edge_data = self.graph[caller_id][callee_id]
@@ -1782,27 +1781,6 @@ class CallGraph(BasicGraph):
 
     def export(self):
         pass
-
-class CallTree(CallGraph):
-    def __init__(self, method_id):
-        self.method_id = method_id
-        super().__init__()
-
-    def _add_one_edge(self, src_stmt_id, dst_stmt_id, weight):
-        if '-' in src_stmt_id :
-            return
-
-        self.graph.add_edge(src_stmt_id, dst_stmt_id, weight = weight)
-
-@dataclasses.dataclass
-class CallTreeNode:
-    caller_id: int = -1
-    call_stmt_id: int = -1
-    callee_id: int = -1
-
-    def __init__(self, method_id):
-        self.method_id = method_id
-        self.children = []
 
 @dataclasses.dataclass
 class CGNode:

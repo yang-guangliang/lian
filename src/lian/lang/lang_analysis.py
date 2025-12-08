@@ -374,7 +374,7 @@ class LangAnalysis:
             self.options,
             self.event_manager,
             self.loader,
-            os.path.join(self.options.workspace, config.BASIC_DIR)
+            os.path.join(self.options.workspace, config.FRONTEND_DIR)
         )
         all_units = self.loader.get_all_unit_info()
         #all_units = [unit for unit in all_units if unit.lang !='c' or (unit.lang == 'c' and unit.unit_ext == '.i')]

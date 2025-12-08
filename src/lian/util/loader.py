@@ -51,7 +51,6 @@ from lian.common_structs import (
     StateFlowGraph,
     SFGNode,
     SFGEdge,
-    CallTree,
 )
 
 class ModuleSymbolsLoader:
@@ -1831,40 +1830,16 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
         # print(edges)
         return edges
 
-class CallTreeLoader(MethodLevelAnalysisResultLoader):
-    def unflatten_item_dataframe_when_loading(self, method_id, item_df):
-        call_tree = CallTree(method_id)
-        for row in item_df:
-            call_tree.add_edge(
-                row.caller_id,
-                row.callee_id,
-                row.call_stmt_id
-            )
-        return call_tree.graph
-
-    def flatten_item_when_saving(self, method_id, call_tree):
-        edges = []
-        all_edges = call_tree.edges(data='weight', default=None)
-        for caller_id, callee_id, call_stmt_id in all_edges:
-            edges.append({
-                "caller_id": caller_id,
-                "callee_id": callee_id,
-                "call_stmt_id": call_stmt_id,
-            })
-        # print(edges)
-        return edges
-
 ############################################################
 
 class Loader:
     # This is our file system manager
     def __init__(self, options, event_handlers):
         self.options = options
-        self.basic_path = os.path.join(options.workspace, config.BASIC_DIR)
+        self.frontend_path = os.path.join(options.workspace, config.FRONTEND_DIR)
         self.semantic_path_p1 = os.path.join(options.workspace, config.SEMANTIC_DIR_P1)
         self.semantic_path_p2 = os.path.join(options.workspace, config.SEMANTIC_DIR_P2)
         self.semantic_path_p3 = os.path.join(options.workspace, config.SEMANTIC_DIR_P3)
-        self.call_tree_path = os.path.join(options.workspace, config.CALL_TREE_PATH)
         self.event_handlers = event_handlers
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
@@ -1876,23 +1851,23 @@ class Loader:
             options,
             # schema.gir_schema,
             [],
-            os.path.join(self.basic_path, config.GIR_BUNDLE_PATH),
+            os.path.join(self.frontend_path, config.GIR_BUNDLE_PATH),
             config.GIR_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
         self._unique_symbol_id_assigner_loader = UniqueSymbolIDAssignerLoader(
-            os.path.join(self.basic_path, config.UNIQUE_SYMBOL_IDS_PATH),
+            os.path.join(self.frontend_path, config.UNIQUE_SYMBOL_IDS_PATH),
         )
 
         self._external_symbol_id_collection_loader = ExternalSymbolIDCollectionLoader(
-            os.path.join(self.basic_path, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
+            os.path.join(self.frontend_path, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
         )
 
         self._cfg_loader: CFGLoader = CFGLoader(
             options,
             schema.control_flow_graph_schema,
-            os.path.join(self.basic_path, config.CFG_BUNDLE_PATH),
+            os.path.join(self.frontend_path, config.CFG_BUNDLE_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1926,7 +1901,7 @@ class Loader:
         )
 
         self._unit_id_to_stmt_id_loader = UnitIDToStmtIDLoader(
-            os.path.join(self.basic_path, config.UNIT_ID_TO_STMT_ID_PATH)
+            os.path.join(self.frontend_path, config.UNIT_ID_TO_STMT_ID_PATH)
         )
 
         self._unit_id_to_method_id_loader = UnitIDToMethodIDLoader(
@@ -1980,7 +1955,7 @@ class Loader:
         self._symbol_name_to_decl_ids_loader = SymbolNameToDeclIDsLoader(
             options,
             [],
-            os.path.join(self.basic_path, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
+            os.path.join(self.frontend_path, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2054,7 +2029,7 @@ class Loader:
         )
 
         self._stmt_id_to_scope_id_loader = StmtIDToScopeIDLoader(
-            os.path.join(self.basic_path, config.STMT_ID_TO_SCOPE_ID_PATH)
+            os.path.join(self.frontend_path, config.STMT_ID_TO_SCOPE_ID_PATH)
         )
 
         self._symbol_bit_vector_manager_p3_loader = BitVectorManagerLoader(
@@ -2264,14 +2239,6 @@ class Loader:
             options,
             schema.state_flow_graph_schema_p2,
             os.path.join(self.semantic_path_p3, config.SFG_BUNDLE_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
-            config.BUNDLE_CACHE_CAPACITY
-        )
-
-        self._call_tree_loader: CallTreeLoader = CallTreeLoader(
-            options,
-            schema.call_tree_schema,
-            os.path.join(self.call_tree_path, config.CALL_TREE_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2877,11 +2844,6 @@ class Loader:
 
     def get_lowest_common_ancestor(self, method_id1, method_id2, entry_point_id):
         return self._global_call_path_loader.get_lowest_common_ancestor(method_id1, method_id2, entry_point_id)
-
-    def save_global_call_tree_by_entry_point(self, method_id,  call_tree):
-        return self._call_tree_loader.save(method_id, call_tree)
-    def get_global_call_tree_by_entry_point(self, method_id):
-        return self._call_tree_loader.get(method_id)
 
     def get_method_defined_symbols(self, method_id):
         return self._defined_symbols_loader.get(method_id)

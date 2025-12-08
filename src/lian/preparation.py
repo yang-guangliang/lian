@@ -22,9 +22,9 @@ class WorkspaceBuilder:
         self.clang_installed = False
         self.c_like_extensions = LANG_EXTENSIONS.get('c', []) + LANG_EXTENSIONS.get('cpp', [])
         self.required_subdirs = [
-            config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.BASIC_DIR,
+            config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.FRONTEND_DIR,
             config.SEMANTIC_DIR_P1, config.SEMANTIC_DIR_P2, config.SEMANTIC_DIR_P3,
-            config.STATE_FLOW_GRAPH_P2_DIR, config.STATE_FLOW_GRAPH_P3_DIR,config.CALL_TREE_DIR
+            config.STATE_FLOW_GRAPH_P2_DIR, config.STATE_FLOW_GRAPH_P3_DIR,
         ]
         self.header_keywords = [
             "stdio.h", "stdlib.h", "string.h", "math.h", "ctype.h", "time.h",
