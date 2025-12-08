@@ -111,9 +111,8 @@ class GlobalStmtStates(StmtStates):
             self.caller_unknown_callee_edge[str(caller_id)] = unknown_callee_set
 
         for each_callee_id in callee_method_ids:
-            tmp_call_site = CallSite(caller_id, stmt_id, each_callee_id)
-            callee_path = self.frame.path.add_callsite(tmp_call_site)
-            new_call_site = (caller_id, stmt_id, each_callee_id)
+            new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
+            callee_path = self.frame.path.add_callsite(new_call_site)
             # TODO: 检查是否已经分析过
             if(
                 self.path_manager.path_exists(callee_path) or
@@ -169,7 +168,7 @@ class GlobalStmtStates(StmtStates):
             new_path = self.frame.path.add_call(caller_id, stmt_id, each_callee_id)
             if caller_id != each_callee_id:
                 self.path_manager.add_path(new_path)
-            new_call_site = (caller_id, stmt_id, each_callee_id)
+            new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
             # prepare callee summary instance and compact space
             if new_call_site in self.frame.summary_collection:
                 callee_summary = self.frame.summary_collection[new_call_site]
@@ -213,7 +212,6 @@ class GlobalStmtStates(StmtStates):
     #         # 放置到status中
     #         self.frame.callee_param = None
     #         pass
-    #     # TODO: JAVA CASE 处理java中 call this()的情况，应该去找它的构造函数
     #     if name_symbol.name == LianInternal.THIS:
     #         caller_id = self.frame.method_id
     #         class_id = self.loader.convert_method_id_to_class_id(caller_id)

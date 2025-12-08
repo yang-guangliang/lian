@@ -2040,7 +2040,6 @@ class CallSite:
                 self.callee_id == other.callee_id)
 
     def __lt__(self, other):
-        # 确保比较的是同一个类的实例
         if not isinstance(other, CallSite):
             return NotImplemented
         return (self.caller_id, self.call_stmt_id) < (other.caller_id, other.call_stmt_id)

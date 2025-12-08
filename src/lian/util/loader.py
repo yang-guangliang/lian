@@ -2717,10 +2717,10 @@ class Loader:
     def get_stmt_status_p2(self, method_id):
         return self._stmt_status_p2_loader.get(method_id)
 
-    def save_stmt_status_p3(self, method_id, status):
-        return self._stmt_status_p3_loader.save(method_id, status)
-    def get_stmt_status_p3(self, method_id):
-        return self._stmt_status_p3_loader.get(method_id)
+    def save_stmt_status_p3(self, context_id, status):
+        return self._stmt_status_p3_loader.save(context_id, status)
+    def get_stmt_status_p3(self, context_id):
+        return self._stmt_status_p3_loader.get(context_id)
 
     def save_symbol_state_space_p1(self, method_id, state_space):
         return self._symbol_state_space_p1_loader.save(method_id, state_space)
@@ -2742,10 +2742,10 @@ class Loader:
     def get_symbol_state_space_p3(self, method_id):
         return self._symbol_state_space_p3_loader.get(method_id)
 
-    def save_symbol_state_space_summary_p3(self, method_id, summary):
-        return self._symbol_state_space_summary_p3_loader.save(method_id, summary)
-    def get_symbol_state_space_summary_p3(self, method_id):
-        return self._symbol_state_space_summary_p3_loader.get(method_id)
+    def save_symbol_state_space_summary_p3(self, context_id, summary):
+        return self._symbol_state_space_summary_p3_loader.save(context_id, summary)
+    def get_symbol_state_space_summary_p3(self, context_id):
+        return self._symbol_state_space_summary_p3_loader.get(context_id)
 
     def save_method_internal_callees(self, method_id, callees):
         return self._method_internal_callees_loader.save(method_id, callees)
@@ -2860,10 +2860,10 @@ class Loader:
     def save_method_defined_symbols_p2(self, method_id, symbols):
         return self._defined_symbols_p2_loader.save(method_id, symbols)
 
-    def get_method_defined_symbols_p3(self, method_id):
-        return self._defined_symbols_p3_loader.get(method_id)
-    def save_method_defined_symbols_p3(self, method_id, symbols):
-        return self._defined_symbols_p3_loader.save(method_id, symbols)
+    def get_method_defined_symbols_p3(self, context_id):
+        return self._defined_symbols_p3_loader.get(context_id)
+    def save_method_defined_symbols_p3(self, context_id, symbols):
+        return self._defined_symbols_p3_loader.save(context_id, symbols)
 
     def get_method_defined_states_p1(self, method_id):
         return self._defined_states_p1_loader.get(method_id)
@@ -2906,20 +2906,20 @@ class Loader:
     def save_method_summary_template(self, method_id, template):
         return self._method_summary_template_loader.save(method_id, template)
 
-    def get_method_summary_instance(self, method_id):
-        return self._method_summary_template_instance.get(method_id)
-    def save_method_summary_instance(self, method_id, instance):
-        return self._method_summary_template_instance.save(method_id, instance)
+    def get_method_summary_instance(self, context_id):
+        return self._method_summary_template_instance.get(context_id)
+    def save_method_summary_instance(self, context_id, instance):
+        return self._method_summary_template_instance.save(context_id, instance)
 
-    def get_parameter_mapping_p2(self, method_id):
-        return self._callee_parameter_mapping_p2_loader.get(method_id)
-    def save_parameter_mapping_p2(self, method_id, mapping):
-        return self._callee_parameter_mapping_p2_loader.save(method_id, mapping)
+    def get_parameter_mapping_p2(self, call_site):
+        return self._callee_parameter_mapping_p2_loader.get(call_site)
+    def save_parameter_mapping_p2(self, call_site, mapping):
+        return self._callee_parameter_mapping_p2_loader.save(call_site, mapping)
 
-    def get_parameter_mapping_p3(self, method_id):
-        return self._callee_parameter_mapping_p3_loader.get(method_id)
-    def save_parameter_mapping_p3(self, method_id, mapping):
-        return self._callee_parameter_mapping_p3_loader.save(method_id, mapping)
+    def get_parameter_mapping_p3(self, call_site):
+        return self._callee_parameter_mapping_p3_loader.get(call_site)
+    def save_parameter_mapping_p3(self, call_site, mapping):
+        return self._callee_parameter_mapping_p3_loader.save(call_site, mapping)
 
     def convert_stmt_id_to_method_id(self, stmt_id):
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)

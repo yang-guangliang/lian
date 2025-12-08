@@ -16,7 +16,8 @@ from lian.common_structs import (
     StateDefNode,
     SymbolStateSpace,
     MetaComputeFrame,
-    DeferedIndexUpdate
+    DeferedIndexUpdate,
+    CallSite
 )
 from lian.config.constants import (
     EXPORT_NODE_TYPE,
@@ -727,7 +728,7 @@ class Resolver:
                 return
             # 收集初始的arg_indexes
             arg_state_indexes = set()
-            call_site = (caller_frame.method_id, stmt_id, callee_id)
+            call_site = CallSite(caller_frame.method_id, stmt_id, callee_id)
             parameter_mapping_list = self.loader.get_parameter_mapping_p2(call_site)
             if util.is_empty(parameter_mapping_list):
                 return

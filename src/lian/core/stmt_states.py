@@ -34,6 +34,7 @@ from lian.common_structs import (
     Symbol,
     State,
     CallGraph,
+    CallSite,
     AccessPoint,
     MethodCall,
     ComputeFrameStack,
@@ -1174,7 +1175,7 @@ class StmtStates:
             for each_parameter in rest_parameters:
                 parameter_symbol_id = each_parameter.symbol_id
                 default_value_symbol_id = None
-                callee_method_def_use_summary = self.loader.get_method_def_use_summary(call_site[2]).copy()
+                callee_method_def_use_summary = self.loader.get_method_def_use_summary(call_site.callee_id).copy()
                 for symbol_default_pair in callee_method_def_use_summary.parameter_symbol_ids:
                     if parameter_symbol_id == symbol_default_pair[0]:
                         default_value_symbol_id = symbol_default_pair[1]
@@ -1792,10 +1793,11 @@ class StmtStates:
         caller_id = self.frame.method_id
         call_stmt_id = stmt_id
         # print(f"load_parameter_mapping: {callee_id, caller_id, call_stmt_id}")
+        call_site = CallSite(caller_id, call_stmt_id, callee_id)
         if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
-            parameter_mapping_list = self.loader.get_parameter_mapping_p2((caller_id, call_stmt_id, callee_id))
+            parameter_mapping_list = self.loader.get_parameter_mapping_p2(call_site)
         else:
-            parameter_mapping_list = self.loader.get_parameter_mapping_p3((caller_id, call_stmt_id, callee_id))
+            parameter_mapping_list = self.loader.get_parameter_mapping_p3(call_site)
         # apply parameter's state in callee_summary to args
         self.apply_parameter_semantic_summary(
             stmt_id, callee_id, callee_summary, callee_compact_space, parameter_mapping_list
@@ -1979,7 +1981,7 @@ class StmtStates:
             parameters = self.prepare_parameters(each_callee_id)
             if config.DEBUG_FLAG:
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}")
-            new_call_site = (caller_id, stmt_id, each_callee_id)
+            new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
             parameter_mapping_list = self.loader.get_parameter_mapping_p2(new_call_site)
             # gl:为什么要判断是否为空
             if util.is_empty(parameter_mapping_list):
