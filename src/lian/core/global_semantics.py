@@ -112,7 +112,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         new_set.add(index + baseline_index)
                     each_item.fields[each_field] = new_set
             # ????
-            #each_item.call_site = frame.path[-1]
+            #each_item.call_site = frame.call_path[-1]
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
         frame.has_been_inited = True
@@ -169,8 +169,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
 
         if len(frame_stack) > 2:
-            frame.path = frame_stack[-2].path.add_callee(frame.call_stmt_id, frame.method_id)
-            self.path_manager.add_path(frame.path)
+            frame.call_path = frame_stack[-2].call_path.add_callee(frame.call_stmt_id, frame.method_id)
+            self.path_manager.add_path(frame.call_path)
 
         # avoid changing the content of the loader
         status = copy.deepcopy(self.loader.get_stmt_status_p2(method_id))
@@ -289,11 +289,11 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame_path = None
         while len(frame_stack) >= 2:
             # get current compute frame
-            # print(f"\frame_stack: {frame_stack._stack}")
             frame: ComputeFrame = frame_stack.peek()
-            # caller_id = frame.caller_id
-            # call_stmt_id = frame.call_stmt_id
             caller_frame = frame_stack[-2]
+
+            # The first frame is the meta frame, rather than a regular frame
+            # This means, this is the first frame; so add the call site to the path
             if not isinstance(caller_frame, ComputeFrame):
                 frame_path = CallPath().add_callsite(frame.call_site)
 
@@ -386,11 +386,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
         entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph=sfg)
-        entry_frame.path = CallPath().add_entry_point(entry_method_id)
-        self.path_manager.add_path(entry_frame.path)
+        entry_frame.call_path = CallPath().add_entry_point(entry_method_id)
+        #self.path_manager.add_path(entry_frame.call_path)
         frame_stack.add(entry_frame)
         return frame_stack
-
 
     def run(self):
         if not self.options.quiet:
@@ -398,31 +397,16 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
         global_space = SymbolStateSpace()
         for entry_point in self.loader.get_entry_points():
-            # for path in self.call_graph.find_paths(entry_point):
-            #     self.path_manager.add_path(path)
-            # print(f"all paths in II: {self.path_manager.paths}")
-
-            # 判断是否有@app装饰器
-            # if not self.is_decorated_by_app(entry_point):
-            #     continue
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
             self.save_graph_as_dot(sfg.graph, entry_point, self.analysis_phase_id)
+            self.loader.save_symbol_state_space_p3(entry_point, global_space)
 
-        # gl: 为啥是0
-        self.loader.save_symbol_state_space_p3(0, global_space)
         self.loader.save_call_paths_p3(self.path_manager.paths)
-
         self.loader.export()
 
         # if self.options.debug:
         #       all_paths = self.loader.get_global_call_paths()
         #       print("所有的APaths: ",all_paths)
-
-    def is_decorated_by_app(self, method_id):
-        source_code = self.loader.get_stmt_parent_method_source_code(method_id)
-        if "@.app" in source_code:
-            return True
-        return False

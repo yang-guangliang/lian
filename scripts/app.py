@@ -30,12 +30,11 @@ TXT_EXTENSIONS = [".txt", ".dot"]
 IGNORED_DIRS = ["externs", "src"]
 
 SORTED_DIRS = [
-    "initial",
+    "frontend",
     "semantic_p1",
     "semantic_p2",
     "semantic_p3"
 ]
-
 
 # 定义日志展示行数限制（防止浏览器卡死）
 MAX_DISPLAY_LINES = 40
@@ -134,12 +133,11 @@ class Render:
             if in_path_input != self.in_path:
                 self.in_path = in_path_input
 
-
             st.header("其他配置")
             self.workspace = st.text_input("工作空间路径 (-w)", value=self.workspace)
 
             self.display_full_log = st.checkbox("显示完整日志", value=False)
-            self.reset_tabs = st.checkbox("重置结果Tabs视图", value=False)
+            self.reset_tabs = st.checkbox("重置结果视图", value=False)
             self.force = st.checkbox("强制模式 (-f)", value=False)
             self.debug = st.checkbox("调试模式 (-d)", value=False)
             self.output_graph = st.checkbox("输出SFG图 (--graph)", value=False)

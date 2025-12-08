@@ -1844,7 +1844,7 @@ class Loader:
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
             options,
-            os.path.join(self.semantic_path_p1, config.MODULE_SYMBOLS_PATH),
+            os.path.join(self.frontend_path, config.MODULE_SYMBOLS_PATH),
         )
 
         self._gir_loader = UnitGIRLoader(
@@ -1857,17 +1857,17 @@ class Loader:
         )
 
         self._unique_symbol_id_assigner_loader = UniqueSymbolIDAssignerLoader(
-            os.path.join(self.frontend_path, config.UNIQUE_SYMBOL_IDS_PATH),
+            os.path.join(self.semantic_path_p1, config.UNIQUE_SYMBOL_IDS_PATH),
         )
 
         self._external_symbol_id_collection_loader = ExternalSymbolIDCollectionLoader(
-            os.path.join(self.frontend_path, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
+            os.path.join(self.semantic_path_p1, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
         )
 
         self._cfg_loader: CFGLoader = CFGLoader(
             options,
             schema.control_flow_graph_schema,
-            os.path.join(self.frontend_path, config.CFG_BUNDLE_PATH),
+            os.path.join(self.semantic_path_p1, config.CFG_BUNDLE_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1901,7 +1901,7 @@ class Loader:
         )
 
         self._unit_id_to_stmt_id_loader = UnitIDToStmtIDLoader(
-            os.path.join(self.frontend_path, config.UNIT_ID_TO_STMT_ID_PATH)
+            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_STMT_ID_PATH)
         )
 
         self._unit_id_to_method_id_loader = UnitIDToMethodIDLoader(
@@ -1955,7 +1955,7 @@ class Loader:
         self._symbol_name_to_decl_ids_loader = SymbolNameToDeclIDsLoader(
             options,
             [],
-            os.path.join(self.frontend_path, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
+            os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2029,7 +2029,7 @@ class Loader:
         )
 
         self._stmt_id_to_scope_id_loader = StmtIDToScopeIDLoader(
-            os.path.join(self.frontend_path, config.STMT_ID_TO_SCOPE_ID_PATH)
+            os.path.join(self.semantic_path_p1, config.STMT_ID_TO_SCOPE_ID_PATH)
         )
 
         self._symbol_bit_vector_manager_p3_loader = BitVectorManagerLoader(

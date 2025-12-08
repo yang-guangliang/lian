@@ -112,12 +112,13 @@ class GlobalStmtStates(StmtStates):
 
         for each_callee_id in callee_method_ids:
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
-            callee_path = self.frame.path.add_callsite(new_call_site)
+            callee_path = self.frame.call_path.add_callsite(new_call_site)
+
             # TODO: 检查是否已经分析过
             if(
                 self.path_manager.path_exists(callee_path) or
                 callee_path.count_cycles() > 1 or
-                each_callee_id in self.frame.path or
+                each_callee_id in self.frame.call_path or
                 new_call_site in self.frame.summary_collection
             ):
                 continue
@@ -139,9 +140,9 @@ class GlobalStmtStates(StmtStates):
             instance_state = self.frame.symbol_state_space[index]
             if isinstance(instance_state, State) and self.is_state_a_class_decl(instance_state):
                 classes_of_method.append(instance_state.value)
+
         if len(callee_ids_to_be_analyzed) != 0:
             # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
-
             this_class_ids = []
             name_symbol_index = status.used_symbols[0]
             name_symbol = self.frame.symbol_state_space[name_symbol_index]
@@ -165,7 +166,7 @@ class GlobalStmtStates(StmtStates):
             )
 
         for each_callee_id in callee_method_ids:
-            new_path = self.frame.path.add_call(caller_id, stmt_id, each_callee_id)
+            new_path = self.frame.call_path.add_call(caller_id, stmt_id, each_callee_id)
             if caller_id != each_callee_id:
                 self.path_manager.add_path(new_path)
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
@@ -188,75 +189,6 @@ class GlobalStmtStates(StmtStates):
 
         return P2ResultFlag()
 
-    # def call_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-    #     # pprint.pprint(status)
-    #     target_index = status.defined_symbol
-    #     target_symbol: Symbol = self.frame.symbol_state_space[target_index]
-
-    #     name_index = status.used_symbols[0]
-    #     name_symbol = self.frame.symbol_state_space[name_index]
-    #     name_states = self.read_used_states(name_index, in_states)
-    #     callee_method_ids = set()
-    #     callee_class_ids = set()
-    #     unsolved_callee_ids = set()
-
-    #     args = self.prepare_args(stmt_id, stmt, status, in_states)
-    #     if util.is_empty(callee_info):
-    #         result = self.trigger_extern_callee(
-    #             stmt_id, stmt, status, in_states, unsolved_callee_ids, name_symbol, defined_symbol, args
-    #         )
-    #         if util.is_available(result):
-    #             return result
-    #         return P2ResultFlag()
-    #     if self.frame.callee_param != None:
-    #         # 放置到status中
-    #         self.frame.callee_param = None
-    #         pass
-    #     if name_symbol.name == LianInternal.THIS:
-    #         caller_id = self.frame.method_id
-    #         class_id = self.loader.convert_method_id_to_class_id(caller_id)
-    #         class_name = self.loader.convert_class_id_to_class_name(class_id)
-    #         methods_in_class = self.loader.load_methods_in_class(class_id)
-    #         for each_method in methods_in_class:
-    #             if each_method.name == class_name:
-    #                 if each_method.stmt_id != caller_id: # 不加自己
-    #                     if callee_id := util.str_to_int(each_method.stmt_id):
-    #                         callee_method_ids.add(callee_id)
-
-    #     this_state_set = set()
-    #     for each_state_index in name_states:
-    #         each_state = self.frame.symbol_state_space[each_state_index]
-
-    #         if self.is_state_a_method_decl(each_state):
-    #             if each_state.value:
-    #                 source_state_id = each_state.source_state_id
-    #                 if source_state_id != each_state.state_id:
-    #                     this_state_set.update(
-    #                         self.resolver.obtain_parent_states(stmt_id, self.frame, status, each_state_index)
-    #                     )
-    #                 if callee_id := util.str_to_int(each_state.value):
-    #                     callee_method_ids.add(callee_id)
-
-    #         elif self.is_state_a_class_decl(each_state):
-    #             callee_class_ids.add(each_state.value)
-    #             return self.new_object_stmt_state(stmt_id, stmt, status, in_states)
-
-    #         else:
-    #             unsolved_callee_ids.add(each_state.value)
-
-    #     if len(callee_method_ids) == 0 and len(unsolved_callee_ids) != 0:
-    #         result = self.trigger_extern_callee(
-    #             stmt_id, stmt, status, in_states, unsolved_callee_ids, name_symbol, target_symbol, args
-    #         )
-    #         if util.is_available(result):
-    #             return result
-    #         return P2ResultFlag()
-
-    #     return self.compute_target_method_states(
-    #         stmt_id, stmt, status, in_states, callee_method_ids, target_symbol, args, this_state_set
-    #     )
-
-
     def parameter_decl_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         parameter_name_symbol = self.frame.symbol_state_space[status.defined_symbol]
         symbol_id = parameter_name_symbol.symbol_id
@@ -269,6 +201,7 @@ class GlobalStmtStates(StmtStates):
                     parameter_name_symbol.states.add(parameter_state_index)
                     status.defined_states.add(parameter_state_index)
                     self.add_arg_to_param_edge(each_pair, status, parameter_name_symbol)
+
             if len(status.used_symbols) > 0:
                 default_value_index = status.used_symbols[0]
                 default_value = self.frame.symbol_state_space[default_value_index]
@@ -292,6 +225,7 @@ class GlobalStmtStates(StmtStates):
             if child.node_type == SFG_NODE_KIND.STMT and self.loader.get_stmt_gir(child.def_stmt_id).operation == "call_stmt":
                 return True
         return False
+
     def add_arg_to_param_edge(self, each_pair, status, parameter_name_symbol):
         for node in self.sfg.graph.nodes:
             if self.node_is_state(node) and node.index == each_pair.arg_index_in_space:

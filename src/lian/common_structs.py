@@ -1886,7 +1886,7 @@ class ComputeFrame(MetaComputeFrame):
         self.used_external_symbol_id_to_state_id_set = {}
         self.initial_state_to_external_symbol = {}
         self.external_symbol_id_to_initial_state_index = {}
-        self.path: CallPath = CallPath()
+        self.call_path: CallPath = CallPath()
 
         self.args_list = None
         self.params_list = params_list
