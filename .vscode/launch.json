@@ -2,19 +2,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Attach to Python Process",
+            "name": "Debug LIAN Command",
             "type": "debugpy",
-            "request": "attach",
-            "connect": {
-                "host": "localhost",
-                "port": 5678
-            },
-            "pathMappings": [
-                {
-                    "localRoot": "${workspaceFolder}",
-                    "remoteRoot": "${workspaceFolder}"
-                }
-            ]
+            "request": "launch",
+            "program": "/home/guangliang/projects/lian/src/lian/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "semantic",
+                "-l", "python",
+                "-f",
+                "-d",
+                "--noextern",
+                "--graph",
+                "-w", "/tmp/lian_workspace",
+                "/home/guangliang/projects/lian/tests/dataflows/python/test_call_tree.py"
+            ],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

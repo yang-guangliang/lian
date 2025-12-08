@@ -1822,9 +1822,12 @@ class MetaComputeFrame:
     # K/V: <key> / {true, false}
     content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)
 
+    is_meta_frame:bool = True
+
 class ComputeFrame(MetaComputeFrame):
     def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = [], this_class_ids = [], state_flow_graph = None):
         super().__init__(method_id)
+        self.is_meta_frame = False
         self.has_been_inited = False
         self.method_id = method_id
         self.caller_id = caller_id

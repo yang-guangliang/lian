@@ -54,7 +54,7 @@ from lian.common_structs import (
 class GlobalStmtStates(StmtStates):
     def __init__(
         self, analysis_phase_id, event_manager, loader: Loader, resolver: Resolver, compute_frame: ComputeFrame,
-        path_manager: PathManager, analyzed_method_list: list, caller_unknown_callee_edge: dict, complete_graph=None
+        path_manager: PathManager, caller_unknown_callee_edge: dict, complete_graph=None
     ):
         super().__init__(
             analysis_phase_id=analysis_phase_id,
@@ -63,11 +63,9 @@ class GlobalStmtStates(StmtStates):
             resolver=resolver,
             compute_frame=compute_frame,
             call_graph=None,
-            analyzed_method_list=analyzed_method_list,
             complete_graph=complete_graph,
         )
         self.path_manager = path_manager
-        self.analyzed_method_list = analyzed_method_list
         self.caller_unknown_callee_edge = caller_unknown_callee_edge
 
     def get_method_summary(self, method_id):

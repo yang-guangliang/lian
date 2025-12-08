@@ -116,15 +116,18 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
         frame.has_been_inited = True
+        if frame.is_meta_frame:
+            return None
+
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
         frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
-            return
+            return None
 
         if util.is_empty(self.loader.get_symbol_state_space_p1(method_id)):
-            return
+            return None
 
         frame.stmt_state_analysis = GlobalStmtStates(
             analysis_phase_id = self.analysis_phase_id,
@@ -133,7 +136,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             resolver = self.resolver,
             compute_frame = frame,
             path_manager = self.path_manager,
-            analyzed_method_list = self.analyzed_method_list,
             caller_unknown_callee_edge = self.caller_unknown_callee_edge,
             complete_graph=self.options.complete_graph,
         )
@@ -286,38 +288,31 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         last_frame.summary_collection[key] = summary_data
 
     def analyze_frame_stack(self, frame_stack: ComputeFrameStack, global_space, sfg: StateFlowGraph):
-        frame_path = None
         while len(frame_stack) >= 2:
             # get current compute frame
             frame: ComputeFrame = frame_stack.peek()
-            caller_frame = frame_stack[-2]
+            if frame.is_meta_frame:
+                frame_stack.pop()
+                continue
 
-            # The first frame is the meta frame, rather than a regular frame
-            # This means, this is the first frame; so add the call site to the path
-            if not isinstance(caller_frame, ComputeFrame):
-                frame_path = CallPath().add_callsite(frame.call_site)
-
-            method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
-            if not self.options.quiet:
-                print(f"Analyzing <method {frame.method_id} name: {method_name}>")
+            if not frame.has_been_inited:
+                # Attempt to initialize the frame
+                if self.init_compute_frame(frame, frame_stack, global_space) is None:
+                    # Remove the frame from the stack in both cases
+                    frame_stack.pop()
+                    continue
 
             if frame.content_to_be_analyzed:
-                if self.options.debug:
-                    util.debug(f"\t<method {frame.method_id}> has content to be analyzed: {frame.content_to_be_analyzed}")
                 # check if all children have been analyzed
                 children_done_flag = True
                 for key in frame.content_to_be_analyzed:
                     value = frame.content_to_be_analyzed[key]
                     if not value:
                         frame.content_to_be_analyzed[key] = True
-                        if isinstance(key, CallSite):
-                            caller_id, call_stmt_id, callee_id = key.caller_id, key.call_stmt_id, key.callee_id
-                        else:
-                            caller_id, call_stmt_id, callee_id = key
                         new_frame = ComputeFrame(
-                            method_id = callee_id,
-                            caller_id = caller_id,
-                            call_stmt_id = call_stmt_id,
+                            method_id = key.callee_id,
+                            caller_id = key.caller_id,
+                            call_stmt_id = key.call_stmt_id,
                             loader = self.loader,
                             space = global_space,
                             params_list = frame.args_list,
@@ -329,22 +324,15 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         children_done_flag = False
                         break
                 if not children_done_flag:
+                    if self.options.debug:
+                        util.debug(f"\t<method {frame.method_id}> has content to be analyzed: {frame.content_to_be_analyzed}")
                     continue
-            else:
-                self.path_manager.add_path(frame_path)
-                context_id = frame.get_context_hash()
-                summary_instance: MethodSummaryInstance = self.loader.get_method_summary_instance(context_id)
-                summary_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p3(context_id)
-                if summary_instance and summary_compact_space:
-                    self.save_analysis_summary_and_space(frame, summary_instance.copy(), summary_compact_space.copy(), caller_frame)
-                    frame_stack.pop()
-                    continue
+                frame.content_to_be_analyzed = {}
 
-                if not frame.has_been_inited:
-                    if self.init_compute_frame(frame, frame_stack, global_space) is None:
-                        self.analyzed_method_list.add(frame.method_id)
-                        frame_stack.pop()
-                        continue
+            caller_frame = frame_stack[-2]
+            if not self.options.quiet:
+                method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
+                print(f"Analyzing <method {frame.method_id} name: {method_name}>")
 
             result: P2ResultFlag = self.analyze_stmts(frame)
             if util.is_available(result) and result.interruption_flag:
