@@ -42,6 +42,7 @@ from lian.common_structs import (
     StmtStatus,
     StateFlowGraph,
     CallTree,
+    CallSite,
 )
 from lian.basics.entry_points import EntryPointGenerator
 from lian.basics.control_flow import ControlFlowAnalysis
@@ -260,11 +261,12 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryInstance, compact_space: SymbolStateSpace, caller_frame: ComputeFrame = None):
         if not caller_frame:
             caller_frame: ComputeFrame = frame.frame_stack[-2]
-        key = frame.get_context_hash()
+        key = frame.get_context()
+        key_hash = frame.get_context_hash()
         caller_frame.summary_collection[key] = method_summary
         caller_frame.symbol_state_space_collection[key] = compact_space
-        self.loader.save_symbol_state_space_summary_p3(key, compact_space)
-        self.loader.save_method_summary_instance(key, method_summary)
+        self.loader.save_symbol_state_space_summary_p3(key_hash, compact_space)
+        self.loader.save_method_summary_instance(key_hash, method_summary)
         # print("method_summary_instance:")
         # pprint.pprint(method_summary)
         # print("compact_space:")
@@ -281,7 +283,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
     def save_result_to_last_frame_v3(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary_data):
         last_frame: MetaComputeFrame = frame_stack[-2]
-        key = (current_frame.caller_id, current_frame.call_stmt_id)
+        key = CallSite(current_frame.caller_id, current_frame.call_stmt_id, current_frame.method_id)
         last_frame.summary_collection[key] = summary_data
 
     def analyze_frame_stack(self, frame_stack: ComputeFrameStack, global_space, sfg: StateFlowGraph):
@@ -309,7 +311,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                     value = frame.content_to_be_analyzed[key]
                     if not value:
                         frame.content_to_be_analyzed[key] = True
-                        caller_id, call_stmt_id, callee_id = key
+                        if isinstance(key, CallSite):
+                            caller_id, call_stmt_id, callee_id = key.caller_id, key.call_stmt_id, key.callee_id
+                        else:
+                            caller_id, call_stmt_id, callee_id = key
                         new_frame = ComputeFrame(
                             method_id = callee_id,
                             caller_id = caller_id,
@@ -351,7 +356,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 frame.callee_classes_of_method = data.classes_of_method
                 frame.callee_this_class_ids = data.this_class_ids
                 for callee_id in data.callee_ids:
-                    key = (data.caller_id, data.call_stmt_id, callee_id)
+                    key = CallSite(data.caller_id, data.call_stmt_id, callee_id)
                     if key not in frame.content_to_be_analyzed:
                         frame.content_to_be_analyzed[key] = False
                         new_callee = True
