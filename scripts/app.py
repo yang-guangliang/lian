@@ -135,14 +135,24 @@ class Render:
             if in_path_input != self.in_path:
                 self.in_path = in_path_input
 
+            empty_line = True
             if os.path.sep in self.in_path:
-                st.markdown(
-                    f"<div style='color: silver; margin: 0; line-height: 0; '>"
-                    f"&nbsp&nbsp..{os.path.basename(self.in_path)}"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
-            else:
+                short_path_str = self.in_path
+                if self.in_path.endswith(os.path.sep):
+                    short_path_str = os.path.basename(self.in_path[:-1]) + "/"
+                else:
+                    short_path_str = os.path.basename(self.in_path)
+
+                if short_path_str:
+                    st.markdown(
+                        f"<div style='color: silver; margin: 0; line-height: 0; '>"
+                        f"&nbsp&nbsp..{short_path_str}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                    empty_line = False
+
+            if empty_line:
                 st.markdown(
                     f"<div style='color: lightgray; margin: 0; line-height: 0; '>"
                     f""
