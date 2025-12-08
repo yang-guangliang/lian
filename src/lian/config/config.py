@@ -54,6 +54,7 @@ GIR_CACHE_CAPACITY                                           = LRU_CACHE_CAPACIT
 METHOD_HEADER_CACHE_CAPABILITY                               = 10000
 METHOD_BODY_CACHE_CAPABILITY                                 = 1000
 STMT_SCOPE_CACHE_CAPABILITY                                  = 1000
+MAX_STMT_CACHE_CAPACITY                                      = 10000
 
 UNSOLVED_SYMBOL_NAME                                         = "%%%%unsolved_symbols"
 POSITIVE_GIR_INTERVAL                                        = 10000

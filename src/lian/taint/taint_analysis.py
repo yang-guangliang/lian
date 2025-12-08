@@ -311,15 +311,15 @@ class TaintAnalysis:
 
         flow_list = []
         for parent in parents:
-            sfgnode, dist = nearest_attr_ancestor(sfg, source, parent)
-            if not sfgnode:
+            sfg_node, dist = nearest_attr_ancestor(sfg, source, parent)
+            if not sfg_node:
                 continue
             try:
-                parent_to_source = nx.shortest_path(sfg, sfgnode, source)
+                parent_to_source = nx.shortest_path(sfg, sfg_node, source)
             except nx.NetworkXNoPath:
                 parent_to_source = None
             try:
-                parent_to_sink = nx.shortest_path(sfg, sfgnode, sink)
+                parent_to_sink = nx.shortest_path(sfg, sfg_node, sink)
             except nx.NetworkXNoPath:
                 parent_to_sink = None
             if not parent_to_source or not parent_to_sink:
@@ -332,7 +332,6 @@ class TaintAnalysis:
             flow_list.append(new_flow)
             #print(parent_to_source)
             #print(parent_to_sink)
-
 
         return flow_list
 
@@ -433,8 +432,3 @@ class TaintAnalysis:
                     code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
                     print("-> ", code[0].strip(),"in line ", int(line_no))
 
-def main():
-    TaintAnalysis().run()
-
-if __name__ == "__main__":
-    main()

@@ -1953,7 +1953,7 @@ class StmtStates:
         for stmt_id in callee_method_ids:
             stmt = self.loader.get_stmt_gir(stmt_id)
             # why stmt.attrs is nan
-            if isinstance(stmt.attrs, str) and 'abstractmethod' in stmt.attrs:
+            if isinstance(stmt.attrs, str) and 'abstract' in stmt.attrs:
                 return True
         return False
 

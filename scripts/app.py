@@ -128,10 +128,27 @@ class Render:
             in_path_input = st.text_input(
                 "待分析路径 (in_path)",
                 value=self.in_path,
-                help="要分析的代码路径，可以是文件或目录"
+                help="要分析的代码路径，可以是文件或目录",
+                width="stretch",
             )
+            in_path_input = in_path_input.strip()
             if in_path_input != self.in_path:
                 self.in_path = in_path_input
+
+            if os.path.sep in self.in_path:
+                st.markdown(
+                    f"<div style='color: silver; margin: 0; line-height: 0; '>"
+                    f"&nbsp&nbsp..{os.path.basename(self.in_path)}"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"<div style='color: lightgray; margin: 0; line-height: 0; '>"
+                    f""
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
 
             st.header("其他配置")
             self.workspace = st.text_input("工作空间路径 (-w)", value=self.workspace)
@@ -209,7 +226,7 @@ class Render:
 
     def create_log_container_with_result(self, from_btn_flag: bool = False):
         """执行命令并返回日志内容和状态，用于保存到 session_state"""
-        st.subheader(f"执行日志")
+        st.subheader("执行日志")
         if not from_btn_flag:
             if "full_log" in st.session_state:
                 #st.info("分析完毕")
@@ -297,23 +314,6 @@ class Render:
 
             # 如果日志的长度超过了允许显示的长度，那么提供查看选项
             st.session_state.full_log = "\n".join(full_log_content)
-            if not self.display_full_log and len(full_log_content) > MAX_DISPLAY_LINES:
-                # 创建两个按钮供用户选择
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    # 在新页面中查看完整日志
-                    st.button("📄 在新页面查看完整日志", width='stretch')
-
-                with col2:
-                    # 下载日志文件
-                    st.download_button(
-                        label="💾 下载日志文件",
-                        data="\n".join(full_log_content),
-                        file_name="lian_analysis.log",
-                        mime="text/plain",
-                        width='stretch'
-                    )
 
         log_str = "\n".join(log_buffer) if log_buffer else ""
         return log_str, result_status

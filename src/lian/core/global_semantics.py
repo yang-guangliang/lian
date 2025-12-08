@@ -171,7 +171,10 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
 
         if len(frame_stack) > 2:
-            frame.call_path = frame_stack[-2].call_path.add_callee(frame.call_stmt_id, frame.method_id)
+            last_frame = frame_stack[-2]
+            frame.call_path = last_frame.call_path.add_call(
+                last_frame.method_id, frame.call_stmt_id, frame.method_id
+            )
             self.path_manager.add_path(frame.call_path)
 
         # avoid changing the content of the loader
@@ -374,8 +377,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
         entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph=sfg)
-        entry_frame.call_path = CallPath().add_entry_point(entry_method_id)
-        #self.path_manager.add_path(entry_frame.call_path)
         frame_stack.add(entry_frame)
         return frame_stack
 

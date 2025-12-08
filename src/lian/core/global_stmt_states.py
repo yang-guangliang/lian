@@ -68,11 +68,11 @@ class GlobalStmtStates(StmtStates):
         self.path_manager = path_manager
         self.caller_unknown_callee_edge = caller_unknown_callee_edge
 
-    def get_method_summary(self, method_id):
-        pass
+    # def get_method_summary(self, method_id):
+    #     pass
 
-    def has_been_analyzed(self, method_id):
-        pass
+    # def has_been_analyzed(self, method_id):
+    #     pass
 
     def print_path(self, path: tuple):
         if not path:
@@ -217,22 +217,25 @@ class GlobalStmtStates(StmtStates):
                     parameter_name_symbol.states.add(default_value_index)
         return P2ResultFlag()
 
-    def is_used_in_call_stmt(self, node):
-        children = list(self.sfg.graph.successors(node))
+    def is_used_in_call_stmt(self, sfg_node):
+        children = list(self.sfg.graph.successors(sfg_node))
         for child in children:
-            if child.node_type == SFG_NODE_KIND.STMT and self.loader.get_stmt_gir(child.def_stmt_id).operation == "call_stmt":
+            if (
+                child.node_type == SFG_NODE_KIND.STMT
+                and self.loader.get_stmt_gir(child.def_stmt_id).operation == "call_stmt"
+            ):
                 return True
         return False
 
     def add_arg_to_param_edge(self, each_pair, status, parameter_name_symbol):
         for node in self.sfg.graph.nodes:
             if self.node_is_state(node) and node.index == each_pair.arg_index_in_space:
-                parents = list(self.sfg.graph.predecessors(node))
-                for parent in parents:
-                    if not self.is_used_in_call_stmt(parent):
+                all_parent_nodes = list(self.sfg.graph.predecessors(node))
+                for parent_node in all_parent_nodes:
+                    if not self.is_used_in_call_stmt(parent_node):
                         continue
                     self.sfg.add_edge(
-                        parent,
+                        parent_node,
                         SFGNode(
                             node_type=SFG_NODE_KIND.SYMBOL,
                             def_stmt_id=parameter_name_symbol.stmt_id,

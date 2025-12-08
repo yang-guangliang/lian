@@ -1842,6 +1842,8 @@ class Loader:
         self.semantic_path_p3 = os.path.join(options.workspace, config.SEMANTIC_DIR_P3)
         self.event_handlers = event_handlers
 
+        self.stmt_gir_cache = util.LRUCache(capacity = config.MAX_STMT_CACHE_CAPACITY)
+
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
             options,
             os.path.join(self.frontend_path, config.MODULE_SYMBOLS_PATH),
@@ -2369,9 +2371,14 @@ class Loader:
     def get_stmt_gir(self, stmt_id):
         if stmt_id <= 0:
             return None
+
+        if self.stmt_gir_cache.contain(stmt_id):
+            return self.stmt_gir_cache.get(stmt_id)
+
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
         unit_gir = self._gir_loader.get(unit_id)
         stmt_gir = unit_gir.query_first(unit_gir.stmt_id.eq(stmt_id))
+        self.stmt_gir_cache.put(stmt_id, stmt_gir)
         return stmt_gir
 
     def export(self):
@@ -2798,6 +2805,43 @@ class Loader:
     def get_call_paths_p3(self):
         return self._global_call_path_loader.get_all()
 
+    # gl: 给一个函数来查询函数调用路径吧
+    # 输入是两个函数，还是两个函数列表啊，感觉列表更合理一点
+    def get_call_path_between_two_methods(self, src_method, dst_method):
+        return None
+
+    # gl: 试了一下还是叫 get_callers/callees 更好
+    # 就是参数有点复杂
+    # 写的时候，根据条件分流到不同的函数吧
+    def get_callers(self, method, phase="p3", match="name", entry_point_id=-1):
+        if phase not in ("p2", "p3"):
+            raise ValueError("phase must be p2 or p3")
+        if match not in ("name", "id"):
+            raise ValueError("match must be name or id")
+
+        if match == "name":
+            if phase == "p2":
+                return None
+            else:
+                if entry_point_id > 0:
+                    pass
+                return None
+        else:
+            if phase == "p2":
+                return self.get_callers_by_method_name(method)
+            else:
+                if entry_point_id > 0:
+                    pass
+                return self.get_callers_by_method_name_p3(method)
+
+    def get_callees(self, method, phase="p3", match="name", entry_point_id=-1):
+        if phase not in ("p2", "p3"):
+            raise ValueError("phase must be p2 or p3")
+        if match not in ("name", "id"):
+            raise ValueError("match must be name or id")
+
+        return None
+
     def get_caller_by_id(self, method_id, entry_point_id = -1):
         return self._global_call_path_loader.get_caller_by_id(method_id, entry_point_id)
 
@@ -3058,7 +3102,6 @@ class Loader:
         class_name = self.convert_class_id_to_class_name(class_id)
         if util.is_empty(class_name):
             class_name = "None"
-        gir_stmt = self.get_stmt_gir(stmt_id)
 
         context = {
             'unit_path': unit_path,
