@@ -1417,7 +1417,7 @@ class CallPathLoader:
             parent_map[call_site.callee_id] = call_site.caller_id
             all_nodes.add(call_site.caller_id)
             all_nodes.add(call_site.callee_id)
-        print(parent_map)
+        #print(parent_map)
         # 如果输入的节点不在树中，直接返回 None
         if node1 not in all_nodes or node2 not in all_nodes:
             return None
@@ -1438,7 +1438,6 @@ class CallPathLoader:
             curr = parent_map.get(curr)
 
         return None  # 没有公共祖先（比如是两棵不连通的树）
-
 
 class UniqueSymbolIDAssignerLoader:
     def __init__(self, path):
@@ -2820,7 +2819,7 @@ class Loader:
     def get_call_paths_p3(self):
         return self._global_call_path_loader.get_all()
 
-    def get_callers_by_method_id_p2(self, method_id):
+    def get_callers_p2_by_method_id(self, method_id):
         caller_ids = set()
         call_graph = self.get_call_graph_p2().graph
         for edge in call_graph.edges:
@@ -2828,18 +2827,17 @@ class Loader:
                 caller_ids.add(edge[0])
         return caller_ids
 
-    def get_callers_by_method_name_p2(self, method_name):
+    def get_callers_p2_by_method_name(self, method_name):
         method_ids = self.convert_method_name_to_method_ids(method_name)
         caller_ids = set()
         caller_names = set()
         for method_id in method_ids:
-            caller_ids = caller_ids | self.get_callers_by_method_id_p2(method_id)
+            caller_ids = caller_ids | self.get_callers_p2_by_method_id(method_id)
         for caller_id in caller_ids:
             caller_names.add(self.convert_method_id_to_method_name(caller_id))
         return caller_names
 
-
-    def get_callees_by_method_id_p2(self, method_id):
+    def get_callees_p2_by_method_id(self, method_id):
         callee_ids = set()
         call_graph = self.get_call_graph_p2().graph
         for edge in call_graph.edges:
@@ -2847,78 +2845,25 @@ class Loader:
                 callee_ids.add(edge[1])
         return callee_ids
 
-    def get_callees_by_method_name_p2(self, method_name):
+    def get_callees_p2_by_method_name(self, method_name):
         method_ids = self.convert_method_name_to_method_ids(method_name)
         callee_ids = set()
         callee_names = set()
         for method_id in method_ids:
-            callee_ids = callee_ids | self.get_callees_by_method_id_p2(method_id)
+            callee_ids = callee_ids | self.get_callees_p2_by_method_id(method_id)
         for caller_id in callee_ids:
             callee_names.add(self.convert_method_id_to_method_name(caller_id))
         return callee_names
-    # gl: 给一个函数来查询函数调用路径吧
-    # 输入是两个函数，还是两个函数列表啊，感觉列表更合理一点
 
-    def get_call_path_between_two_methods(self, src_method, dst_method):
-        return self._global_call_path_loader.get_call_path_between_two_methods(src_method, dst_method)
-
-    # gl: 试了一下还是叫 get_callers/callees 更好
-    # 就是参数有点复杂
-    # 写的时候，根据条件分流到不同的函数吧
-    def get_callers(self, method, phase="p3", match="name", entry_point_id=-1):
-        if phase not in ("p2", "p3"):
-            raise ValueError("phase must be p2 or p3")
-        if match not in ("name", "id"):
-            raise ValueError("match must be name or id")
-
-        if match == "name":
-            if phase == "p2":
-                return self.get_callers_by_method_name_p2(method)
-            else:
-                if entry_point_id > 0:
-                    return self.get_callers_by_method_name_p3(method, entry_point_id)
-                return None
-        else:
-            if phase == "p2":
-                return self.get_callers_by_method_id_p2(method)
-            else:
-                if entry_point_id > 0:
-                    return self.get_callers_by_method_id_p3(method, entry_point_id)
-                return None
-
-    def get_callees(self, method, phase="p3", match="name", entry_point_id=-1):
-        if phase not in ("p2", "p3"):
-            raise ValueError("phase must be p2 or p3")
-        if match not in ("name", "id"):
-            raise ValueError("match must be name or id")
-
-        if match == "name":
-            if phase == "p2":
-                return self.get_callees_by_method_name_p2(method)
-            else:
-                if entry_point_id > 0:
-                    return self.get_callees_by_method_name_p3(method, entry_point_id)
-                return None
-        else:
-            if phase == "p2":
-                return self.get_callees_by_method_id_p2(method)
-            else:
-                if entry_point_id > 0:
-                    return self.get_callees_by_method_id_p3(method, entry_point_id)
-                return None
-
-    def get_callers_by_method_id_p3(self, method_id, entry_point_id = -1):
+    def get_callers_p3_by_method_id(self, method_id, entry_point_id = -1):
         return self._global_call_path_loader.get_callers_by_method_id(method_id, entry_point_id)
 
-    def get_callees_by_method_id_p3(self, method_id, entry_point_id = -1):
-        return self._global_call_path_loader.get_callees_by_method_id(method_id, entry_point_id)
-
-    def get_callers_by_method_name_p3(self, method_name, entry_point_id = -1):
+    def get_callers_p3_by_method_name(self, method_name, entry_point_id = -1):
         method_ids = self.convert_method_name_to_method_ids(method_name)
         caller_ids = set()
         caller_names = set()
         for method_id in method_ids:
-            callers = self.get_callers_by_method_id_p3(method_id, entry_point_id)
+            callers = self.get_callers_p3_by_method_id(method_id, entry_point_id)
             caller_ids = caller_ids | callers
 
         for caller_id in caller_ids:
@@ -2926,12 +2871,15 @@ class Loader:
 
         return caller_names
 
-    def get_callees_by_method_name_p3(self, method_name, entry_point_id = -1):
+    def get_callees_p3_by_method_id(self, method_id, entry_point_id = -1):
+        return self._global_call_path_loader.get_callees_by_method_id(method_id, entry_point_id)
+
+    def get_callees_p3_by_method_name(self, method_name, entry_point_id = -1):
         method_ids = self.convert_method_name_to_method_ids(method_name)
         callee_ids = set()
         callee_names = set()
         for method_id in method_ids:
-            callees = self.get_callees_by_method_id_p3(method_id, entry_point_id)
+            callees = self.get_callees_p3_by_method_id(method_id, entry_point_id)
             callee_ids = callee_ids | callees
 
         for callee_id in callee_ids:
@@ -2939,8 +2887,63 @@ class Loader:
 
         return callee_names
 
-    def get_lowest_common_ancestor(self, method_id1, method_id2, entry_point_id):
+    def get_lowest_common_ancestor_in_call_path(self, method_id1, method_id2, entry_point_id):
         return self._global_call_path_loader.get_lowest_common_ancestor(method_id1, method_id2, entry_point_id)
+
+    # gl: 给一个函数来查询函数调用路径吧
+    # 输入是两个函数，还是两个函数列表啊，感觉列表更合理一点
+    def get_call_path_between_two_methods(self, src_method, dst_method):
+        return self._global_call_path_loader.get_call_path_between_two_methods(src_method, dst_method)
+
+    # gl: 试了一下还是叫 get_callers/callees 更好
+    # 就是参数有点复杂
+    # 写的时候，根据条件分流到不同的函数吧
+    def get_callers(self, method, phase="p3", match_by="name", entry_point_id=-1):
+        if phase not in ("p2", "p3", "all"):
+            raise ValueError("phase must be p2, p3, or all")
+        if match_by not in ("name", "id"):
+            raise ValueError("match must be name or id")
+
+        if match_by == "name":
+            if phase == "p2":
+                return self.get_callers_p2_by_method_name(method)
+            elif phase == "p3":
+                if entry_point_id > 0:
+                    return self.get_callers_p3_by_method_name(method, entry_point_id)
+            else:
+                return None
+        else:
+            if phase == "p2":
+                return self.get_callers_p2_by_method_id(method)
+            elif phase == "p3":
+                if entry_point_id > 0:
+                    return self.get_callers_p3_by_method_id(method, entry_point_id)
+                else
+                    pass
+            else:
+                pass
+                return None
+
+    def get_callees(self, method, phase="p3", match="name", entry_point_id=-1):
+        if phase not in ("p2", "p3", "all"):
+            raise ValueError("phase must be p2 or p3")
+        if match not in ("name", "id"):
+            raise ValueError("match must be name or id")
+
+        if match == "name":
+            if phase == "p2":
+                return self.get_callees_p2_by_method_name(method)
+            else:
+                if entry_point_id > 0:
+                    return self.get_callees_p3_by_method_name(method, entry_point_id)
+                return None
+        else:
+            if phase == "p2":
+                return self.get_callees_p2_by_method_id(method)
+            else:
+                if entry_point_id > 0:
+                    return self.get_callees_p3_by_method_id(method, entry_point_id)
+                return None
 
     def get_method_defined_symbols(self, method_id):
         return self._defined_symbols_loader.get(method_id)
