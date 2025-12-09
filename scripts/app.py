@@ -41,7 +41,7 @@ MAX_DISPLAY_LINES = 40
 UPDATE_FREQ = 10
 DATAFRAME_HEIGHT = 600
 FOOTER_HEIGHT = 64
-MIN_FOOTER_HEIGHT = 0
+MIN_FOOTER_HEIGHT = 20
 MAX_FOOTER_HEIGHT = FOOTER_HEIGHT
 
 from dataclasses import dataclass
@@ -113,7 +113,7 @@ class Render:
     def build_sidebar(self):
         from_btn_flag = False
         with st.sidebar:
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 st.header("配置")
 
@@ -243,23 +243,23 @@ class Render:
             st.markdown("本项目由[复旦大学系统安全与可靠性研究组](https://gitee.com/fdu-ssr/)开发和维护")
 
             with col2:
-                # Add both "运行" and "停止" buttons
-                if not is_running:
-                    # Show "运行" button when no analysis is running
-                    if st.button("运行", type="primary", width='stretch'):
-                        cmd_list = self.build_command()
-                        st.session_state.last_cmd = cmd_list
-                        st.session_state.is_running = True  # Mark analysis as running
-                        from_btn_flag = True
-                        st.rerun()
-                else:
-                    # Show "停止" button when analysis is running
-                    if st.button("停止", type="secondary", width='stretch'):
-                        # Terminate the running process
-                        if "process" in st.session_state:
-                            st.session_state.process.terminate()
-                            st.session_state.is_running = False  # Reset running state
-                        from_btn_flag = False
+                # Show "运行" button when no analysis is running
+                if st.button("运行", type="primary", width='stretch', disabled=is_running):
+                    cmd_list = self.build_command()
+                    st.session_state.last_cmd = cmd_list
+                    st.session_state.is_running = True  # Mark analysis as running
+                    from_btn_flag = True
+                    st.rerun()
+
+            with col3:
+                # Show "停止" button when analysis is running
+                if st.button("停止", type="secondary", width='stretch', disabled=not is_running):
+                    # Terminate the running process
+                    if "process" in st.session_state:
+                        st.session_state.process.terminate()
+                    st.session_state.is_running = False  # Reset running state
+                    from_btn_flag = False
+                    st.rerun()
 
             return from_btn_flag
 
@@ -314,24 +314,25 @@ class Render:
     def create_log_container_with_result(self, from_btn_flag: bool = False):
         """执行命令并返回日志内容和状态，用于保存到 session_state"""
         st.subheader("执行日志")
-        if not st.session_state.get("is_running", False) and not from_btn_flag:
-            self.display_running_result(st.session_state.get("result_status", None))
+        if not st.session_state.get("is_running", False):
+            if not from_btn_flag:
+                self.display_running_result(st.session_state.get("result_status", None))
 
-            if "full_log" in st.session_state:
-                log_lines = st.session_state.full_log.splitlines()
-                recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
-                with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=True):
-                    st.code("\n".join(recent_lines), language="bash")
+                if "full_log" in st.session_state:
+                    log_lines = st.session_state.full_log.splitlines()
+                    recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
+                    with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=True):
+                        st.code("\n".join(recent_lines), language="bash")
 
-                    # Add a "Download Log" button for the full log
-                    if len(log_lines) > MAX_DISPLAY_LINES:
-                        st.download_button(
-                            label="下载完整日志",
-                            data=st.session_state.full_log.encode('utf-8'),
-                            file_name="full_log.txt",
-                            mime="text/plain"
-                        )
-            return
+                        # Add a "Download Log" button for the full log
+                        if len(log_lines) > MAX_DISPLAY_LINES:
+                            st.download_button(
+                                label="下载完整日志",
+                                data=st.session_state.full_log.encode('utf-8'),
+                                file_name="full_log.txt",
+                                mime="text/plain"
+                            )
+                return
 
         status_box = st.empty()
         status_box.info("准备开始分析...")
@@ -578,7 +579,7 @@ def main():
     # 执行并保存日志
     render.create_log_container_with_result(from_btn_flag)
     render.render_results()
-    #render.build_footer()
+    render.build_footer(MIN_FOOTER_HEIGHT)
 
 if __name__ == "__main__":
     main()

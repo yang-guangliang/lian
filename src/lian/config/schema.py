@@ -53,8 +53,8 @@ class_id_to_class_name_schema = [
 ]
 
 method_id_to_method_name_schema = [
+    "method_name",
     "method_id",
-    "method_name"
 ]
 
 class_id_to_method_id_schema = [
