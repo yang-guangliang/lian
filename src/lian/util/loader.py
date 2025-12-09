@@ -1356,7 +1356,7 @@ class CallPathLoader:
 
         DataModel(dict_list).save(self.path)
 
-    def get_callers_by_id(self, method_id, entry_point = -1):
+    def get_callers_by_method_id(self, method_id, entry_point = -1):
         caller = set()
         for path in self.all_paths:
             if entry_point != -1 and path[0].caller_id != entry_point:
@@ -1366,7 +1366,7 @@ class CallPathLoader:
                     caller.add(call_site.caller_id)
         return caller
 
-    def get_callees_by_id(self, method_id, entry_point = -1):
+    def get_callees_by_method_id(self, method_id, entry_point = -1):
         callee = set()
         for path in self.all_paths:
             if entry_point != -1 and path[0].caller_id != entry_point:
@@ -2883,7 +2883,7 @@ class Loader:
                 return self.get_callers_by_method_id_p2(method)
             else:
                 if entry_point_id > 0:
-                    return self.get_callers_by_id_p3(method, entry_point_id)
+                    return self.get_callers_by_method_id_p3(method, entry_point_id)
                 return None
 
     def get_callees(self, method, phase="p3", match="name", entry_point_id=-1):
@@ -2904,21 +2904,21 @@ class Loader:
                 return self.get_callees_by_method_id_p2(method)
             else:
                 if entry_point_id > 0:
-                    return self.get_callees_by_id_p3(method, entry_point_id)
+                    return self.get_callees_by_method_id_p3(method, entry_point_id)
                 return None
 
-    def get_callers_by_id_p3(self, method_id, entry_point_id = -1):
-        return self._global_call_path_loader.get_callers_by_id(method_id, entry_point_id)
+    def get_callers_by_method_id_p3(self, method_id, entry_point_id = -1):
+        return self._global_call_path_loader.get_callers_by_method_id(method_id, entry_point_id)
 
-    def get_callees_by_id_p3(self, method_id, entry_point_id = -1):
-        return self._global_call_path_loader.get_callees_by_id(method_id, entry_point_id)
+    def get_callees_by_method_id_p3(self, method_id, entry_point_id = -1):
+        return self._global_call_path_loader.get_callees_by_method_id(method_id, entry_point_id)
 
     def get_callers_by_method_name_p3(self, method_name, entry_point_id = -1):
         method_ids = self.convert_method_name_to_method_ids(method_name)
         caller_ids = set()
         caller_names = set()
         for method_id in method_ids:
-            callers = self.get_callers_by_id_p3(method_id, entry_point_id)
+            callers = self.get_callers_by_method_id_p3(method_id, entry_point_id)
             caller_ids = caller_ids | callers
 
         for caller_id in caller_ids:
@@ -2931,7 +2931,7 @@ class Loader:
         callee_ids = set()
         callee_names = set()
         for method_id in method_ids:
-            callees = self.get_callees_by_id_p3(method_id, entry_point_id)
+            callees = self.get_callees_by_method_id_p3(method_id, entry_point_id)
             callee_ids = callee_ids | callees
 
         for callee_id in callee_ids:
