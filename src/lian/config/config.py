@@ -64,6 +64,7 @@ MAX_TYPE_CAST_SOURCE_STATES                                  = 4
 MAX_ARRAY_ELEMENT_STATES                                     = 4
 
 TAINT_DIR                                                    = os.path.join(SRC_LIAN_DIR, "/taint")
+TAINT_OUTPUT_DIR                                             = os.path.join(SRC_LIAN_DIR, "/taint/output")
 MAX_METHOD_CALL_COUNT                                        = 30
 
 TAINT_SOURCE                                                 = os.path.join(DEFAULT_SETTINGS, "source.yaml")

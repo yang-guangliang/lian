@@ -526,7 +526,7 @@ class Parser(common_parser.Parser):
 
         name = self.find_child_by_field(node, "function")
         if name.type == "member_expression":
-           shadow_object, shadow_name = self.parse_field(node, statements)
+           shadow_object, shadow_name = self.parse_field(name, statements)
         else:
             shadow_name = self.parse(name, statements)
 

@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+import json
 import os,sys
 from collections import deque
 import lian.config.config as config
@@ -303,7 +304,7 @@ class TaintAnalysis:
 
                     # 满足属性即返回
                     method_id = self.loader.convert_stmt_id_to_method_id(p.def_stmt_id)
-                    if method_id == val:
+                    if method_id == val and p.node_type != SFG_NODE_KIND.STATE:
                         return p, dist + 1
 
                     queue.append((p, dist + 1))
@@ -394,32 +395,83 @@ class TaintAnalysis:
             print("Parent to Source Path:")
             line_no = -1
             for node in flow.parent_to_source:
-                if node.node_type == SFG_NODE_KIND.STMT:
-                    stmt_id = node.def_stmt_id
-                    stmt = self.loader.get_stmt_gir(stmt_id)
-                    if stmt.start_row == line_no:
-                        continue
-                    line_no = stmt.start_row
-                    code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
-                    print("-> ",code[0].strip(),"in line ", int(line_no))
+                stmt_id = node.def_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                if stmt.start_row == line_no:
+                    continue
+                line_no = stmt.start_row
+                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
+                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
+                method_name = self.loader.convert_method_id_to_method_name(method_id)
+                print("-> ",code[0].strip(),"in method", method_name, "line", int(line_no)+1)
             print()
             print("Parent to Sink Path:")
             line_no = -1
             for node in flow.parent_to_sink:
-                if node.node_type == SFG_NODE_KIND.STMT:
-                    stmt_id = node.def_stmt_id
-                    stmt = self.loader.get_stmt_gir(stmt_id)
-                    if stmt.start_row == line_no:
-                        continue
-                    line_no = stmt.start_row
-                    code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
-                    print("-> ", code[0].strip(),"in line ", int(line_no))
+                stmt_id = node.def_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                if stmt.start_row == line_no:
+                    continue
+                line_no = stmt.start_row
+                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
+                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
+                method_name = self.loader.convert_method_id_to_method_name(method_id)
+                print("-> ", code[0].strip(),"in method", method_name, "line", int(line_no)+1)
 
+    def flows_to_json(self, flows):
+        json_list = []
 
+        for flow in flows:
+            flow_dict = {
+                "source_stmt_id": flow.source_stmt_id,
+                "sink_stmt_id": flow.sink_stmt_id,
+                "source_code": self.loader.get_stmt_source_code_with_comment(flow.source_stmt_id)[0].strip(),
+                "sink_code": self.loader.get_stmt_source_code_with_comment(flow.sink_stmt_id)[0].strip(),
+                "parent_to_source": [],
+                "parent_to_sink": []
+            }
+
+            # parent_to_source
+            last_line = -1
+            for node in flow.parent_to_source:
+                stmt_id = node.def_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                if stmt.start_row == last_line:
+                    continue
+                last_line = stmt.start_row
+                code = self.loader.get_stmt_source_code_with_comment(stmt_id)[0].strip()
+                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
+                method_name = self.loader.convert_method_id_to_method_name(method_id)
+                flow_dict["parent_to_source"].append({
+                    "code": code,
+                    "method": method_name,
+                    "line": int(stmt.start_row) + 1
+                })
+
+            # parent_to_sink
+            last_line = -1
+            for node in flow.parent_to_sink:
+                stmt_id = node.def_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                if stmt.start_row == last_line:
+                    continue
+                last_line = stmt.start_row
+                code = self.loader.get_stmt_source_code_with_comment(stmt_id)[0].strip()
+                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
+                method_name = self.loader.convert_method_id_to_method_name(method_id)
+                flow_dict["parent_to_sink"].append({
+                    "code": code,
+                    "method": method_name,
+                    "line": int(stmt.start_row) + 1
+                })
+
+            json_list.append(flow_dict)
+
+        return json_list
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase IV: Taint Analysis # ##########")
-
+        all_flows_json = []
         for method_id in self.loader.get_all_method_ids():
             self.current_entry_point = method_id
             sfg = self.loader.get_global_sfg_by_entry_point(method_id)
@@ -429,8 +481,15 @@ class TaintAnalysis:
             sources = self.find_sources(sfg)
             sinks = self.find_sinks(sfg)
             flows = self.find_flows(sfg, method_id, sources, sinks)
-
+            # json_data = self.flows_to_json(flows)
+            # all_flows_json.extend(json_data)
             if self.options.debug:
                 # gl:麻烦进行美化
                 self.print_flows(flows)
+        #     # 按 method_id 输出不同的 json 文件
+        # output_file = f"taint_flows.json"
+        # with open(output_file, "w", encoding="utf-8") as f:
+        #     json.dump(all_flows_json, f, indent=4, ensure_ascii=False)
+
+
 
