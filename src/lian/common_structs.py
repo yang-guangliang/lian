@@ -1055,9 +1055,9 @@ class SFGNode:
 
         if stmt:
             self.line_no = stmt.start_row
-            self.operation = stmt.operation
+            # self.operation = stmt.operation
 
-        if complete_graph and def_stmt_id > 0:
+        if context and complete_graph and def_stmt_id > 0:
             self.context_id = context.call_stmt_id
             unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
             method_id = loader.convert_stmt_id_to_method_id(def_stmt_id)

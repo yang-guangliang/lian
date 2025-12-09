@@ -1356,7 +1356,7 @@ class CallPathLoader:
 
         DataModel(dict_list).save(self.path)
 
-    def get_caller_by_id(self, method_id, entry_point = -1):
+    def get_callers_by_id(self, method_id, entry_point = -1):
         caller = set()
         for path in self.all_paths:
             if entry_point != -1 and path[0].caller_id != entry_point:
@@ -1366,7 +1366,7 @@ class CallPathLoader:
                     caller.add(call_site.caller_id)
         return caller
 
-    def get_callee_by_id(self, method_id, entry_point = -1):
+    def get_callees_by_id(self, method_id, entry_point = -1):
         callee = set()
         for path in self.all_paths:
             if entry_point != -1 and path[0].caller_id != entry_point:
@@ -1375,6 +1375,21 @@ class CallPathLoader:
                 if call_site.caller_id == method_id and call_site.callee_id != 0:
                     callee.add(call_site.callee_id)
         return callee
+    def get_call_path_between_two_methods(self, src_method, dst_method):
+        call_paths_between_two_methods = []
+        for path in self.all_paths:
+            current_path = []
+            found_src = False
+            for call_site in path:
+                if call_site.caller_id == src_method:
+                    current_path.append(call_site)
+                    found_src = True
+                elif found_src:
+                    current_path.append(call_site)
+                    if call_site.callee_id == dst_method:
+                        call_paths_between_two_methods.append(current_path)
+                        break
+        return call_paths_between_two_methods
 
     def get_lowest_common_ancestor(self, node1, node2, entry_point):
         """
@@ -2805,10 +2820,47 @@ class Loader:
     def get_call_paths_p3(self):
         return self._global_call_path_loader.get_all()
 
+    def get_callers_by_method_id_p2(self, method_id):
+        caller_ids = set()
+        call_graph = self.get_call_graph_p2().graph
+        for edge in call_graph.edges:
+            if method_id == edge[1]:
+                caller_ids.add(edge[0])
+        return caller_ids
+
+    def get_callers_by_method_name_p2(self, method_name):
+        method_ids = self.convert_method_name_to_method_ids(method_name)
+        caller_ids = set()
+        caller_names = set()
+        for method_id in method_ids:
+            caller_ids = caller_ids | self.get_callers_by_method_id_p2(method_id)
+        for caller_id in caller_ids:
+            caller_names.add(self.convert_method_id_to_method_name(caller_id))
+        return caller_names
+
+
+    def get_callees_by_method_id_p2(self, method_id):
+        callee_ids = set()
+        call_graph = self.get_call_graph_p2().graph
+        for edge in call_graph.edges:
+            if method_id == edge[0]:
+                callee_ids.add(edge[1])
+        return callee_ids
+
+    def get_callees_by_method_name_p2(self, method_name):
+        method_ids = self.convert_method_name_to_method_ids(method_name)
+        callee_ids = set()
+        callee_names = set()
+        for method_id in method_ids:
+            callee_ids = callee_ids | self.get_callees_by_method_id_p2(method_id)
+        for caller_id in callee_ids:
+            callee_names.add(self.convert_method_id_to_method_name(caller_id))
+        return callee_names
     # gl: 给一个函数来查询函数调用路径吧
     # 输入是两个函数，还是两个函数列表啊，感觉列表更合理一点
+
     def get_call_path_between_two_methods(self, src_method, dst_method):
-        return None
+        return self._global_call_path_loader.get_call_path_between_two_methods(src_method, dst_method)
 
     # gl: 试了一下还是叫 get_callers/callees 更好
     # 就是参数有点复杂
@@ -2821,18 +2873,18 @@ class Loader:
 
         if match == "name":
             if phase == "p2":
-                return None
+                return self.get_callers_by_method_name_p2(method)
             else:
                 if entry_point_id > 0:
-                    pass
+                    return self.get_callers_by_method_name_p3(method, entry_point_id)
                 return None
         else:
             if phase == "p2":
-                return self.get_callers_by_method_name(method)
+                return self.get_callers_by_method_id_p2(method)
             else:
                 if entry_point_id > 0:
-                    pass
-                return self.get_callers_by_method_name_p3(method)
+                    return self.get_callers_by_id_p3(method, entry_point_id)
+                return None
 
     def get_callees(self, method, phase="p3", match="name", entry_point_id=-1):
         if phase not in ("p2", "p3"):
@@ -2840,46 +2892,47 @@ class Loader:
         if match not in ("name", "id"):
             raise ValueError("match must be name or id")
 
-        return None
+        if match == "name":
+            if phase == "p2":
+                return self.get_callees_by_method_name_p2(method)
+            else:
+                if entry_point_id > 0:
+                    return self.get_callees_by_method_name_p3(method, entry_point_id)
+                return None
+        else:
+            if phase == "p2":
+                return self.get_callees_by_method_id_p2(method)
+            else:
+                if entry_point_id > 0:
+                    return self.get_callees_by_id_p3(method, entry_point_id)
+                return None
 
-    def get_caller_by_id(self, method_id, entry_point_id = -1):
-        return self._global_call_path_loader.get_caller_by_id(method_id, entry_point_id)
+    def get_callers_by_id_p3(self, method_id, entry_point_id = -1):
+        return self._global_call_path_loader.get_callers_by_id(method_id, entry_point_id)
 
-    def get_callee_by_id(self, method_id, entry_point_id = -1):
-        return self._global_call_path_loader.get_callee_by_id(method_id, entry_point_id)
+    def get_callees_by_id_p3(self, method_id, entry_point_id = -1):
+        return self._global_call_path_loader.get_callees_by_id(method_id, entry_point_id)
 
-    def get_caller_by_name(self, method_name, entry_point_name = None):
+    def get_callers_by_method_name_p3(self, method_name, entry_point_id = -1):
         method_ids = self.convert_method_name_to_method_ids(method_name)
-        entry_point_ids = self.convert_method_name_to_method_ids(entry_point_name)
         caller_ids = set()
         caller_names = set()
         for method_id in method_ids:
-            if entry_point_name:
-                for entry_point_id in entry_point_ids:
-                    callers = self.get_caller_by_id(method_id, entry_point_id)
-                    caller_ids = caller_ids | callers
-            else:
-                callers = self.get_caller_by_id(method_id)
-                caller_ids = caller_ids | callers
+            callers = self.get_callers_by_id_p3(method_id, entry_point_id)
+            caller_ids = caller_ids | callers
 
         for caller_id in caller_ids:
             caller_names.add(self.convert_method_id_to_method_name(caller_id))
 
         return caller_names
 
-    def get_callee_by_name(self, method_name, entry_point_name = None):
+    def get_callees_by_method_name_p3(self, method_name, entry_point_id = -1):
         method_ids = self.convert_method_name_to_method_ids(method_name)
-        entry_point_ids = self.convert_method_name_to_method_ids(entry_point_name)
         callee_ids = set()
         callee_names = set()
         for method_id in method_ids:
-            if entry_point_name:
-                for entry_point_id in entry_point_ids:
-                    callees = self.get_callee_by_id(method_id, entry_point_id)
-                    callee_ids = callee_ids | callees
-            else:
-                callees = self.get_callee_by_id(method_id)
-                callee_ids = callee_ids | callees
+            callees = self.get_callees_by_id_p3(method_id, entry_point_id)
+            callee_ids = callee_ids | callees
 
         for callee_id in callee_ids:
             callee_names.add(self.convert_method_id_to_method_name(callee_id))

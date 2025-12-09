@@ -423,6 +423,7 @@ class PrelimSemanticAnalysis:
                         def_stmt_id=key.stmt_id,
                         node_id=key.symbol_id,
                         name=defined_symbol.name,
+                        context=frame.get_context(),
                         loader=self.loader,
                         complete_graph=self.complete_graph,
                         stmt=stmt

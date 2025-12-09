@@ -35,6 +35,7 @@ class TaintAnalysis:
         self.default_settings = options.default_settings
         self.taint_manager: TaintEnv = None
         self.rule_manager = RuleManager(options.default_settings)
+        self.current_entry_point = -1
 
     def read_rules(self, operation, source_rules):
         """从src.yaml文件中获取field_read语句类型的规则, 并根据每条规则创建taint_bv"""
@@ -64,7 +65,7 @@ class TaintAnalysis:
 
     def apply_rules_from_code(self, node, rules):
         stmt_id = node.def_stmt_id
-        space = self.loader.get_symbol_state_space_p3(0)
+        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
         context_key = hash(node.full_context) if node.full_context else 0
         status = self.loader.get_stmt_status_p3(context_key)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
@@ -118,7 +119,7 @@ class TaintAnalysis:
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-        space = self.loader.get_symbol_state_space_p3(0)
+        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
         context_key = hash(node.full_context) if node.full_context else 0
         status = self.loader.get_stmt_status_p3(context_key)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
@@ -173,7 +174,7 @@ class TaintAnalysis:
             return False
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-        space = self.loader.get_symbol_state_space_p3(0)
+        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
         context_key = hash(node.full_context) if node.full_context else 0
         status = self.loader.get_stmt_status_p3(context_key)[stmt_id]
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
@@ -381,24 +382,6 @@ class TaintAnalysis:
     #             break
     #
     #     return lca
-
-    def run(self):
-        if not self.options.quiet:
-            print("\n########### # Phase IV: Taint Analysis # ##########")
-
-        for method_id in self.loader.get_all_method_ids():
-            sfg = self.loader.get_global_sfg_by_entry_point(method_id)
-            if not sfg:
-                continue
-            self.taint_manager = TaintEnv()
-            sources = self.find_sources(sfg)
-            sinks = self.find_sinks(sfg)
-            flows = self.find_flows(sfg, method_id, sources, sinks)
-
-            if self.options.debug:
-                # gl:麻烦进行美化
-                self.print_flows(flows)
-
     def print_flows(self, flows):
         for flow in flows:
             print("--------------------------------")
@@ -431,4 +414,23 @@ class TaintAnalysis:
                     line_no = stmt.start_row
                     code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
                     print("-> ", code[0].strip(),"in line ", int(line_no))
+
+
+    def run(self):
+        if not self.options.quiet:
+            print("\n########### # Phase IV: Taint Analysis # ##########")
+
+        for method_id in self.loader.get_all_method_ids():
+            self.current_entry_point = method_id
+            sfg = self.loader.get_global_sfg_by_entry_point(method_id)
+            if not sfg:
+                continue
+            self.taint_manager = TaintEnv()
+            sources = self.find_sources(sfg)
+            sinks = self.find_sinks(sfg)
+            flows = self.find_flows(sfg, method_id, sources, sinks)
+
+            if self.options.debug:
+                # gl:麻烦进行美化
+                self.print_flows(flows)
 
