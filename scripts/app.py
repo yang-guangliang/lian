@@ -42,7 +42,7 @@ UPDATE_FREQ = 10
 DATAFRAME_HEIGHT = 600
 FOOTER_HEIGHT = 64
 MIN_FOOTER_HEIGHT = 20
-MAX_FOOTER_HEIGHT = FOOTER_HEIGHT
+MAX_FOOTER_HEIGHT = 200
 
 from dataclasses import dataclass
 
@@ -321,7 +321,7 @@ class Render:
                 if "full_log" in st.session_state:
                     log_lines = st.session_state.full_log.splitlines()
                     recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
-                    with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=True):
+                    with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=False):
                         st.code("\n".join(recent_lines), language="bash")
 
                         # Add a "Download Log" button for the full log
@@ -332,7 +332,7 @@ class Render:
                                 file_name="full_log.txt",
                                 mime="text/plain"
                             )
-                return
+            return
 
         status_box = st.empty()
         status_box.info("准备开始分析...")
@@ -343,7 +343,7 @@ class Render:
         result_status = None
 
         expander_str = f"⚙️ 控制台输出 (显示最近 {MAX_DISPLAY_LINES} 行)"
-        with st.expander(expander_str, expanded=True):
+        with st.expander(expander_str, expanded=False):
             log_placeholder = st.empty()
 
             try:
@@ -357,7 +357,6 @@ class Render:
                     text=True,
                     bufsize=1,
                     encoding='utf-8',
-                    errors='replace'
                 )
                 st.session_state.process = process  # Save process reference
 
@@ -523,6 +522,7 @@ class Render:
         file_names = sorted(list(files_with_names.keys()))
 
         if len(file_names) == 0:
+            self.build_footer()
             return
 
         # 文件选择组件
@@ -542,7 +542,6 @@ class Render:
 
         st.markdown(f"**文件路径**: `{file_path}`")
         self.config_layout(page_title=f"{tab_name}/{file_path.name}")
-
 
         with st.spinner(f"正在加载 {file_path.name} ({file_path.suffix.upper()})..."):
             if file_path.suffix.lower() in TXT_EXTENSIONS:
