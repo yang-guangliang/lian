@@ -2901,21 +2901,20 @@ class Loader:
             if phase == "p2":
                 return self.get_caller_names_by_name_in_p2(method)
             elif phase == "p3":
-                if entry_point_id > 0:
-                    return self.get_caller_names_by_name_in_p3(method, entry_point_id)
+                return self.get_caller_names_by_name_in_p3(method, entry_point_id)
             else:
-                return None
+                result_in_p2 = self.get_caller_names_by_name_in_p2(method)
+                result_in_p3 = self.get_caller_names_by_name_in_p3(method, entry_point_id)
+                return result_in_p2 | result_in_p3
         else:
             if phase == "p2":
                 return self.get_caller_ids_by_id_in_p2(method)
             elif phase == "p3":
-                if entry_point_id > 0:
-                    return self.get_caller_ids_by_id_in_p3(method, entry_point_id)
-                else:
-                    pass
+                return self.get_caller_ids_by_id_in_p3(method, entry_point_id)
             else:
-                pass
-                return None
+                result_in_p2 = self.get_caller_ids_by_id_in_p2(method)
+                result_in_p3 = self.get_caller_ids_by_id_in_p3(method, entry_point_id)
+                return result_in_p2 | result_in_p3
 
     def get_callees(self, method, phase="p3", match="name", entry_point_id=-1):
         if phase not in ("p2", "p3", "all"):
@@ -2926,17 +2925,21 @@ class Loader:
         if match == "name":
             if phase == "p2":
                 return self.get_callee_names_by_name_in_p2(method)
+            elif phase == "p3":
+                return self.get_callee_names_by_name_in_p3(method, entry_point_id)
             else:
-                if entry_point_id > 0:
-                    return self.get_callee_names_by_name_in_p3(method, entry_point_id)
-                return None
+                result_in_p2 = self.get_callee_names_by_name_in_p2(method)
+                result_in_p3 = self.get_callee_names_by_name_in_p3(method, entry_point_id)
+                return result_in_p2 | result_in_p3
         else:
             if phase == "p2":
                 return self.get_callee_ids_by_id_in_p2(method)
+            elif phase == "p3":
+                return self.get_callee_ids_by_id_in_p3(method, entry_point_id)
             else:
-                if entry_point_id > 0:
-                    return self.get_callee_ids_by_id_in_p3(method, entry_point_id)
-                return None
+                result_in_p2 = self.get_callee_ids_by_id_in_p2(method)
+                result_in_p3 = self.get_callee_ids_by_id_in_p3(method, entry_point_id)
+                return result_in_p2 | result_in_p3
 
     def get_method_defined_symbols(self, method_id):
         return self._defined_symbols_loader.get(method_id)
