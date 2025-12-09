@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 import json
 import os,sys
+import re
 from collections import deque
 import lian.config.config as config
 import networkx as nx
@@ -15,6 +16,7 @@ from lian.common_structs import (
     Symbol,
     ComputeFrameStack,
     SymbolStateSpace,
+    CallSite,
 )
 
 from lian.config.constants import (
@@ -275,7 +277,7 @@ class TaintAnalysis:
                 sink_method_id = self.loader.convert_stmt_id_to_method_id(sink.def_stmt_id)
 
                 # 这里只需要method_id
-                parent_method = self.loader.get_lowest_common_ancestor(source_method_id, sink_method_id, entry_point)
+                parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(source_method_id, sink_method_id, entry_point)
                 flow_list.extend(self.find_source_to_sink_path(sfg, source, sink, [parent_method]))
 
         return flow_list
@@ -468,6 +470,89 @@ class TaintAnalysis:
             json_list.append(flow_dict)
 
         return json_list
+    def print_call_path_flow(self, flows):
+        json_list = []
+        flow_id = "f1"
+        for flow in flows:
+            source_stmt_id = flow.source_stmt_id
+            sink_stmt_id = flow.sink_stmt_id
+            source_method_id = self.loader.convert_stmt_id_to_method_id(source_stmt_id)
+            sink_method_id = self.loader.convert_stmt_id_to_method_id(sink_stmt_id)
+            call_path = self.loader.get_call_path_between_two_methods_in_p3(source_method_id, sink_method_id)[0]
+            call_path.append(CallSite(sink_method_id, sink_stmt_id, -1))
+            current_flow = {
+                "id":flow_id,
+                "flow":[],
+            }
+            prefix, number = re.match(r"([a-zA-Z]+)(\d+)", flow_id).groups()
+            flow_id = f"{prefix}{int(number) + 1}"
+            previous_call_site = call_path[0]
+            for call_site in call_path[1:]:
+                print(call_site)
+                stmt_id = call_site.call_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
+                file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
+                method_signature = self.loader.get_stmt_source_code_with_comment(call_site.caller_id)[0].strip()
+                method_decl_stmt = self.loader.get_stmt_gir(call_site.caller_id)
+                start_line = method_decl_stmt.start_row + 1
+                end_line = method_decl_stmt.end_row + 1
+                code = self.loader.get_stmt_source_code_with_comment(stmt_id)[0].strip()
+                role = "propagation"
+                call_line = stmt.start_row + 1
+                taint = self.determine_taint(previous_call_site, call_site, flow)
+                if call_site.caller_id == source_method_id:
+                    taint = -1
+                    code = self.loader.get_stmt_source_code_with_comment(source_stmt_id)[0].strip()
+                    role = "source"
+                elif call_site.caller_id == sink_method_id:
+                    code = self.loader.get_stmt_source_code_with_comment(sink_stmt_id)[0].strip()
+                    role = "sink"
+
+                previous_call_site = call_site
+                flow_dict = {
+                    "file_path": file_path,
+                    "method_name": method_signature,
+                    "method_startline": start_line,
+                    "method_endline": end_line,
+                    "call_line": call_line,
+                    "code": code,
+                    "role": role,
+                    "taint": taint,
+                }
+                current_flow["flow"].append(flow_dict)
+            json_list.append(current_flow)
+        output_file = config.TAINT_OUTPUT_DIR
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(json_list, f, indent=4, ensure_ascii=False)
+
+
+
+    def determine_taint(self, previous_call_site, current_call_site, flow):
+        context_key = hash(previous_call_site) if previous_call_site else 0
+        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
+        status = self.loader.get_stmt_status_p3(context_key)[current_call_site.call_stmt_id]
+        index = 0
+        for used_symbol_index in status.used_symbols:
+            if index == 0:
+                index += 1
+                continue
+            symbol = space[used_symbol_index]
+            for state_index in symbol.states:
+                state = space[state_index]
+                if self.state_is_in_flow(state.state_id, flow):
+                    return index
+        return -1
+
+    def state_is_in_flow(self, state_id, flow):
+        for node in flow.parent_to_source:
+            if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
+                return True
+        for node in flow.parent_to_sink:
+            if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
+                return True
+        return False
+
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase IV: Taint Analysis # ##########")
@@ -485,7 +570,8 @@ class TaintAnalysis:
             # all_flows_json.extend(json_data)
             if self.options.debug:
                 # gl:麻烦进行美化
-                self.print_flows(flows)
+                # self.print_flows(flows)
+                self.print_call_path_flow(flows)
         #     # 按 method_id 输出不同的 json 文件
         # output_file = f"taint_flows.json"
         # with open(output_file, "w", encoding="utf-8") as f:

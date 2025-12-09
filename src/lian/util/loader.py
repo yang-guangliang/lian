@@ -1382,7 +1382,7 @@ class CallPathLoader:
             current_path = []
             found_src = False
             for call_site in path:
-                if call_site.caller_id == src_method:
+                if call_site.callee_id == src_method:
                     current_path.append(call_site)
                     found_src = True
                 elif found_src:

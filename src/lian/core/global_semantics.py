@@ -383,9 +383,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase III: Global (Top-down) Semantic Analysis ##########")
-
+        global_space = SymbolStateSpace()
         for entry_point in self.loader.get_entry_points():
-            global_space = SymbolStateSpace()
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
