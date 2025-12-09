@@ -318,5 +318,9 @@ results/
 *.bc
 *.ll
 
+/tests
 /tests/inc/
 /tests/incremental/
+.cache
+
+init_test
