@@ -2911,7 +2911,7 @@ class Loader:
             elif phase == "p3":
                 if entry_point_id > 0:
                     return self.get_caller_ids_by_id_in_p3(method, entry_point_id)
-                else
+                else:
                     pass
             else:
                 pass
