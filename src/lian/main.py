@@ -146,7 +146,7 @@ class Lian:
 
     def lang_analysis(self):
         LangAnalysis(self).run()
-        self.loader.export()
+        #self.loader.export()
         return self
 
     def semantic_analysis(self):

@@ -1874,7 +1874,7 @@ class Loader:
         )
 
         self._unique_symbol_id_assigner_loader = UniqueSymbolIDAssignerLoader(
-            os.path.join(self.semantic_path_p1, config.UNIQUE_SYMBOL_IDS_PATH),
+            os.path.join(self.frontend_path, config.UNIQUE_SYMBOL_IDS_PATH),
         )
 
         self._external_symbol_id_collection_loader = ExternalSymbolIDCollectionLoader(

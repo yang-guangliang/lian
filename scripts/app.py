@@ -579,7 +579,7 @@ def main():
     # 执行并保存日志
     render.create_log_container_with_result(from_btn_flag)
     render.render_results()
-    render.build_footer(MIN_FOOTER_HEIGHT)
+    render.build_footer()
 
 if __name__ == "__main__":
     main()
