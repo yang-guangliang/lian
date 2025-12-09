@@ -44,6 +44,13 @@ FOOTER_HEIGHT = 64
 MIN_FOOTER_HEIGHT = 0
 MAX_FOOTER_HEIGHT = FOOTER_HEIGHT
 
+from dataclasses import dataclass
+
+@dataclass
+class ReturnStatus:
+    status: str
+    message: str
+
 class Render:
     def __init__(self) -> None:
         self.workspace = DEFAULT_WORKSPACE
@@ -110,28 +117,34 @@ class Render:
             with col1:
                 st.header("配置")
 
+            # Disable widgets if analysis is running
+            is_running = st.session_state.get("is_running", False)
+
             self.sub_command = st.radio(
                 "选择代码分析命令",
                 options=list(ANALYSIS_COMMANDS.keys()),
-                format_func=lambda x: ANALYSIS_COMMANDS[x]
+                format_func=lambda x: ANALYSIS_COMMANDS[x],
+                disabled=is_running
             )
 
-            #st.header("语言 (-l)")
             self.lang = st.multiselect(
                 "语言 (-l)",
                 options=SUPPORTED_LANGUAGES,
                 default=[],
-                key="lang_sidebar"
+                key="lang_sidebar",
+                disabled=is_running
             )
 
-            #st.header("待分析路径 (in_path)")
             in_path_input = st.text_input(
                 "待分析路径 (in_path)",
                 value=self.in_path,
                 help="要分析的代码路径，可以是文件或目录",
                 width="stretch",
+                disabled=is_running
             )
             in_path_input = in_path_input.strip()
+            if in_path_input.startswith("~"):
+                in_path_input = os.path.expanduser(in_path_input)
             if in_path_input != self.in_path:
                 self.in_path = in_path_input
 
@@ -161,37 +174,94 @@ class Render:
                 )
 
             st.header("其他配置")
-            self.workspace = st.text_input("工作空间路径 (-w)", value=self.workspace)
+            self.workspace = st.text_input(
+                "工作空间路径 (-w)",
+                value=self.workspace,
+                disabled=is_running
+            )
 
-            self.display_full_log = st.checkbox("显示完整日志", value=False)
-            self.reset_tabs = st.checkbox("重置结果视图", value=False)
-            self.force = st.checkbox("强制模式 (-f)", value=False)
-            self.debug = st.checkbox("调试模式 (-d)", value=False)
-            self.output_graph = st.checkbox("输出SFG图 (--graph)", value=False)
-            self.complete_graph = st.checkbox("输出完整SFG (--complete-graph)", value=False)
+            self.reset_tabs = st.checkbox(
+                "重置结果视图",
+                value=False,
+                disabled=is_running
+            )
+            self.force = st.checkbox(
+                "强制模式 (-f)",
+                value=False,
+                disabled=is_running
+            )
+            self.debug = st.checkbox(
+                "调试模式 (-d)",
+                value=False,
+                disabled=is_running
+            )
+            self.output_graph = st.checkbox(
+                "输出SFG图 (--graph)",
+                value=False,
+                disabled=is_running
+            )
+            self.complete_graph = st.checkbox(
+                "输出完整SFG (--complete-graph)",
+                value=False,
+                disabled=is_running
+            )
 
-            self.print_stmts = st.checkbox("打印语句 (-p)", value=False)
-            #self.android_mode = st.checkbox("Android 模式 (--android)", value=False)
-            #self.strict_parse = st.checkbox("严格解析 (--strict-parse-mode)", value=False)
-            self.incremental = st.checkbox("增量分析 (-inc)", value=False)
-            self.noextern = st.checkbox("禁用外部处理 (--noextern)", value=True)
+            self.print_stmts = st.checkbox(
+                "打印语句 (-p)",
+                value=False,
+                disabled=is_running
+            )
+            self.incremental = st.checkbox(
+                "增量分析 (-inc)",
+                value=False,
+                disabled=is_running
+            )
+            self.noextern = st.checkbox(
+                "禁用外部处理 (--noextern)",
+                value=True,
+                disabled=is_running
+            )
 
-            self.event_handlers = st.text_input("事件处理器 (-e)", value="")
-            self.default_settings = st.text_input("默认设置 (--default-settings)", value="")
-            self.additional_settings = st.text_input("额外设置 (--additional-settings)", value="")
+            self.event_handlers = st.text_input(
+                "事件处理器 (-e)",
+                value="",
+                disabled=is_running
+            )
+            self.default_settings = st.text_input(
+                "默认设置 (--default-settings)",
+                value="",
+                disabled=is_running
+            )
+            self.additional_settings = st.text_input(
+                "额外设置 (--additional-settings)",
+                value="",
+                disabled=is_running
+            )
 
             st.divider()
             st.markdown("查看[项目源代码](https://github.com/yang-guangliang/lian)")
             st.markdown("本项目由[复旦大学系统安全与可靠性研究组](https://gitee.com/fdu-ssr/)开发和维护")
 
             with col2:
-                # 执行按钮
-                if st.button("运行", type="primary", width='stretch'):
-                    cmd_list = self.build_command()
-                    st.session_state.last_cmd = " ".join(cmd_list)
-                    from_btn_flag = True
+                # Add both "运行" and "停止" buttons
+                if not is_running:
+                    # Show "运行" button when no analysis is running
+                    if st.button("运行", type="primary", width='stretch'):
+                        cmd_list = self.build_command()
+                        st.session_state.last_cmd = cmd_list
+                        st.session_state.is_running = True  # Mark analysis as running
+                        from_btn_flag = True
+                        st.rerun()
+                else:
+                    # Show "停止" button when analysis is running
+                    if st.button("停止", type="secondary", width='stretch'):
+                        # Terminate the running process
+                        if "process" in st.session_state:
+                            st.session_state.process.terminate()
+                            st.session_state.is_running = False  # Reset running state
+                        from_btn_flag = False
 
-        return from_btn_flag
+            return from_btn_flag
 
     def build_command(self):
         cmd = ["python", LIAN_PATH, self.sub_command]
@@ -230,25 +300,38 @@ class Render:
 
         cmd.append(self.in_path)
 
-        self.cmd = cmd
-
         return cmd
+
+    def display_running_result(self, result_status: ReturnStatus, component=st):
+        if result_status is None:
+            return
+
+        if result_status.status == "success":
+            component.success(result_status.message)
+        else:
+            component.error(result_status.message)
 
     def create_log_container_with_result(self, from_btn_flag: bool = False):
         """执行命令并返回日志内容和状态，用于保存到 session_state"""
         st.subheader("执行日志")
-        if not from_btn_flag:
+        if not st.session_state.get("is_running", False) and not from_btn_flag:
+            self.display_running_result(st.session_state.get("result_status", None))
+
             if "full_log" in st.session_state:
-                #st.info("分析完毕")
-                with st.expander(f"⚙️ 日志记录", expanded=self.display_full_log):
-                    if self.display_full_log:
-                        st.code(st.session_state.full_log, language="bash")
-                    else:
-                        log_lines = st.session_state.full_log.splitlines()
-                        recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
-                        st.code("\n".join(recent_lines), language="bash")
-                        #del st.session_state.full_log
-            return "", ""
+                log_lines = st.session_state.full_log.splitlines()
+                recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
+                with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=True):
+                    st.code("\n".join(recent_lines), language="bash")
+
+                    # Add a "Download Log" button for the full log
+                    if len(log_lines) > MAX_DISPLAY_LINES:
+                        st.download_button(
+                            label="下载完整日志",
+                            data=st.session_state.full_log.encode('utf-8'),
+                            file_name="full_log.txt",
+                            mime="text/plain"
+                        )
+            return
 
         status_box = st.empty()
         status_box.info("准备开始分析...")
@@ -256,22 +339,18 @@ class Render:
         full_log_content = []
         log_buffer = collections.deque(maxlen=MAX_DISPLAY_LINES)
         line_counter = 0
-        result_status = "success"
+        result_status = None
 
-        expander_flag = False
         expander_str = f"⚙️ 控制台输出 (显示最近 {MAX_DISPLAY_LINES} 行)"
-        if self.display_full_log:
-            expander_flag = True
-            expander_str = f"⚙️ 控制台输出"
-
-        with st.expander(expander_str, expanded=expander_flag):
+        with st.expander(expander_str, expanded=True):
             log_placeholder = st.empty()
 
             try:
                 status_box.info("🚀 正在启动 LIAN 分析...")
 
+                # Store the subprocess in session state for termination
                 process = subprocess.Popen(
-                    self.cmd,
+                    st.session_state.last_cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
@@ -279,6 +358,7 @@ class Render:
                     encoding='utf-8',
                     errors='replace'
                 )
+                st.session_state.process = process  # Save process reference
 
                 while True:
                     line = process.stdout.readline()
@@ -295,38 +375,30 @@ class Render:
                         log_buffer.append(line)
 
                         if "######" in line:
-                            status_box.write(line)
+                            status_box.info(line)
 
                         line_counter += 1
                         if line_counter % UPDATE_FREQ == 0:
-                            if self.display_full_log:
-                                log_placeholder.code("\n".join(full_log_content), language="bash")
-                            else:
-                                log_placeholder.code("\n".join(log_buffer), language="bash")
+                            log_placeholder.code("\n".join(log_buffer), language="bash")
 
-                if self.display_full_log:
-                    log_placeholder.code("\n".join(full_log_content), language="bash")
-                else:
-                    log_placeholder.code("\n".join(log_buffer), language="bash")
+                log_placeholder.code("\n".join(log_buffer), language="bash")
 
                 return_code = process.wait()
 
                 if return_code == 0:
-                    status_box.success("✅ 分析完成！")
-                    result_status = "success"
+                    result_status = ReturnStatus("success", "✅ 分析完成！")
                 else:
-                    status_box.error(f"❌ 分析异常终止 (Exit Code: {return_code})")
-                    result_status = "error"
-
+                    result_status = ReturnStatus("error", f"❌ 分析异常终止 (Exit Code: {return_code})")
             except Exception as e:
-                status_box.error(f"❌ 执行错误: {str(e)}")
-                result_status = "error"
+                result_status = ReturnStatus("error", f"❌ 执行错误: {str(e)}")
 
-            # 如果日志的长度超过了允许显示的长度，那么提供查看选项
+            # Save the full log content to session state
             st.session_state.full_log = "\n".join(full_log_content)
 
-        log_str = "\n".join(log_buffer) if log_buffer else ""
-        return log_str, result_status
+        # Reset the running state
+        st.session_state.is_running = False
+        st.session_state.result_status = result_status
+        st.rerun()
 
     def read_dataframe(self, file_path: Path):
         return pd.read_feather(file_path)
@@ -501,7 +573,7 @@ def main():
                 st.session_state[key] = None
 
     if "last_cmd" in st.session_state:
-        st.code(st.session_state.last_cmd, language="bash")
+        st.code(" ".join(st.session_state.last_cmd), language="bash")
 
     # 执行并保存日志
     render.create_log_container_with_result(from_btn_flag)
