@@ -123,6 +123,12 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         method_id = frame.method_id
 
         frame.cfg = self.loader.get_method_cfg(method_id)
+        if len(frame_stack) > 2:
+            last_frame = frame_stack[-2]
+            frame.call_path = last_frame.call_path.add_call(
+                last_frame.method_id, frame.call_stmt_id, frame.method_id
+            )
+            self.path_manager.add_path(frame.call_path)
         if util.is_empty(frame.cfg):
             return None
 
@@ -169,13 +175,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
         frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
-
-        if len(frame_stack) > 2:
-            last_frame = frame_stack[-2]
-            frame.call_path = last_frame.call_path.add_call(
-                last_frame.method_id, frame.call_stmt_id, frame.method_id
-            )
-            self.path_manager.add_path(frame.call_path)
 
         # avoid changing the content of the loader
         status = copy.deepcopy(self.loader.get_stmt_status_p2(method_id))
