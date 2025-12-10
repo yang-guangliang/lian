@@ -39,6 +39,8 @@ class TaintAnalysis:
         self.taint_manager: TaintEnv = None
         self.rule_manager = RuleManager(options.default_settings)
         self.current_entry_point = -1
+        self.sfg = None
+        self.space = None
 
     def read_rules(self, operation, source_rules):
         """从src.yaml文件中获取field_read语句类型的规则, 并根据每条规则创建taint_bv"""
@@ -49,15 +51,15 @@ class TaintAnalysis:
                 rules.append(rule)
         return rules
 
-    def find_sources(self, sfg):
+    def find_sources(self):
         node_list = []
         # 应该包括所有的可能symbol和state节点作为sources
         # 这里应该应用source的规则
         # 遍历sfg
-        for node in sfg.nodes:
+        for node in self.sfg.nodes:
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "call_stmt":
                 if self.apply_call_stmt_source_rules(node):
-                    defined_symbol_node, defined_state_node = self.find_symbol_chain(sfg, node)
+                    defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
                     node_list.append(defined_state_node)
             elif node.node_type == SFG_NODE_KIND.STMT:
                 rules = self.rule_manager.all_sources_from_code
@@ -68,20 +70,17 @@ class TaintAnalysis:
 
     def apply_rules_from_code(self, node, rules):
         stmt_id = node.def_stmt_id
-        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
-        context_key = hash(node.full_context) if node.full_context else 0
-        status = self.loader.get_stmt_status_p3(context_key)[stmt_id]
+
+        status = self.get_stmt_status(node, stmt_id)
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
         for rule in rules:
-
             if str(stmt.start_row) != rule.line_num:
                 continue
-
             symbol_in_stmt = False
-            if space[status.defined_symbol].name == rule.symbol_name:
+            if self.space[status.defined_symbol].name == rule.symbol_name:
                 symbol_in_stmt = True
             for symbol_index in status.used_symbols:
-                symbol = space[symbol_index]
+                symbol = self.space[symbol_index]
                 if symbol.name == rule.symbol_name:
                     symbol_in_stmt = True
             if not symbol_in_stmt:
@@ -119,17 +118,36 @@ class TaintAnalysis:
         access_path = '.'.join(key_list)
         return access_path
 
-    def apply_call_stmt_source_rules(self, node):
-        stmt_id = node.def_stmt_id
-        method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
+    def get_stmt_status(self, node, stmt_id):
         context_key = hash(node.full_context) if node.full_context else 0
         status = self.loader.get_stmt_status_p3(context_key)[stmt_id]
+        return status
+
+    def apply_call_stmt_source_rules(self, node):
+        stmt_id = node.def_stmt_id
+
+        status = self.get_stmt_status(node, stmt_id)
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
-        method_symbol = space[status.used_symbols[0]]
-        tag_space_id = space[status.defined_symbol].symbol_id
+        # method_symbol_index = -1
+        # target_symbol_index = -1
+        # predecessors = list(self.sfg.predecessors(node))
+        #
+        # successors = list(self.sfg.successors(node))
+        # if len(predecessors) == 0 or len(successors) == 0:
+        #     return False
+        # for predecessor in predecessors:
+        #     edge = self.sfg.get_edge_data(predecessor, node)
+        #     if edge and edge[0]['weight'].pos == 0:
+        #         method_symbol_index = predecessor.index
+        #         break
+        # for successor in successors:
+        #     target_symbol_index = successor.index
+        #     break
+
+        method_symbol = self.space[status.used_symbols[0]]
+        tag_space_id = self.space[status.defined_symbol].symbol_id
         method_states = method_symbol.states
-        defined_symbol = space[status.defined_symbol]
+        defined_symbol = self.space[status.defined_symbol]
         apply_rule_flag = False
         for rule in self.rule_manager.all_sources:
             if rule.operation != "call_stmt":
@@ -137,9 +155,9 @@ class TaintAnalysis:
             tag_info = rule
             name = tag_info.name
             for state_index in method_states:
-                if not space[state_index] or space[state_index].symbol_or_state == 0:
+                if not self.space[state_index] or self.space[state_index].symbol_or_state == 0:
                     continue
-                state_access_path = space[state_index].access_path
+                state_access_path = self.space[state_index].access_path
                 if isinstance(state_access_path, str):
                     continue
                 access_path = self.access_path_formatter(state_access_path)
@@ -154,17 +172,17 @@ class TaintAnalysis:
                     # taint_status.out_taint[tag_space_id] = new_tag
                     self.taint_manager.set_symbols_tag([tag_space_id], new_tag)
                     for state_index in defined_symbol.states:
-                        if state:= space[state_index] :
+                        if state:= self.space[state_index] :
                             if isinstance(state, State):
                                 self.taint_manager.set_states_tag([state.state_id], new_tag)
 
         return apply_rule_flag
 
-    def find_sinks(self, sfg):
+    def find_sinks(self, ):
         # 找到所有的sink函数或者语句
         # 这里应该应用sink的规则
         node_list = []
-        for node in sfg.nodes:
+        for node in self.sfg.nodes:
             if self.should_apply_call_stmt_sink_rules(node):
                 node_list.append(node)
             rules = self.rule_manager.all_sinks_from_code
@@ -176,51 +194,47 @@ class TaintAnalysis:
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "call_stmt":
             return False
         stmt_id = node.def_stmt_id
-        method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
-        context_key = hash(node.full_context) if node.full_context else 0
-        status = self.loader.get_stmt_status_p3(context_key)[stmt_id]
+        status = self.get_stmt_status(node, stmt_id)
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
 
-        method_symbol = space[status.used_symbols[0]]
+        method_symbol = self.space[status.used_symbols[0]]
         used_symbols = status.used_symbols
         method_index = used_symbols[0]
-        method_symbol = space[method_index]
+        method_symbol = self.space[method_index]
 
         for rule in self.rule_manager.all_sinks:
             # todo 当规则较长时，则应该切成数组，倒序与state_access_path匹配
             # rule_access_path = rule.name.split('.')
             for state in method_symbol.states:
                 # 检查函数名是否符合规则
-                if self.check_method_name(rule.name, state, space):
+                if self.check_method_name(rule.name, state):
                     return True
-                    return self.check_tag(rule.target, used_symbols, space, self.taint_manager)
+                    return self.check_tag(rule.target, used_symbols, self.taint_manager)
                     # 检查参数是否携带tag
 
         return False
 
-    def check_method_name(self, rule_name, method_state, space):
+    def check_method_name(self, rule_name, method_state, ):
         apply_flag = True
-        if not isinstance(space[method_state], State):
+        if not isinstance(self.space[method_state], State):
             return False
 
-        state_access_path = space[method_state].access_path
-        access_path = self.access_path_formatter(state_access_path)
-        access_path = access_path.split('.')
+        state_access_path = self.space[method_state].access_path
+
         rule_name = rule_name.split('.')
-        if len(access_path) < len(rule_name):
+        if len(state_access_path) < len(rule_name):
             return False
         # name匹配上
         for i, item in enumerate(reversed(rule_name)):
             if item == TAG_KEYWORD.ANYNAME:
                 continue
-            if item != access_path[-i - 1]:
+            if item != state_access_path[-i - 1].key:
                 apply_flag = False
                 break
 
         return apply_flag
 
-    def check_tag(self, rule_tag, used_symbols, space, taint_state_manager):
+    def check_tag(self, rule_tag, used_symbols, taint_state_manager):
         # 暂时检测taint_env中的tag,且只考虑positional_args
         if len(rule_tag) == 0:
             return False
@@ -229,17 +243,17 @@ class TaintAnalysis:
             arg_index = int(target_arg[-1])
             if arg_index + 1 >= len(used_symbols):
                 continue
-            arg_symbol = space[used_symbols[arg_index + 1]]
+            arg_symbol = self.space[used_symbols[arg_index + 1]]
             arg_states = arg_symbol.states
 
             for state_index in arg_states:
-                return self.check_state_tag(state_index, space, taint_state_manager)
+                return self.check_state_tag(state_index, taint_state_manager)
         return False
 
-    def check_state_tag(self, state_index, space, taint_state_manager):
-        if space[state_index].symbol_or_state == 0:
+    def check_state_tag(self, state_index, taint_state_manager):
+        if self.space[state_index].symbol_or_state == 0:
             return False
-        state_id = space[state_index].state_id
+        state_id = self.space[state_index].state_id
         access_path_tag = config.NO_TAINT
         # if space[state_index].access_path:
         #     access_path = self.access_path_formatter(space[state_index].access_path)
@@ -256,17 +270,12 @@ class TaintAnalysis:
         #     print(f"access_path sink in {space[state_index].stmt_id}, tag: {access_path_tag}")
         #     return True
         #print(space[state_index].fields)
-        for value in space[state_index].fields.values():
+        for value in self.space[state_index].fields.values():
             for field_state_index in value:
-                return self.check_state_tag(field_state_index, space, taint_state_manager)
+                return self.check_state_tag(field_state_index, taint_state_manager)
         return False
 
-    def is_specified_method(self, method_id, node):
-        if method_id == node.split("#")[-1]:
-            return True
-        return False
-
-    def find_flows(self, sfg, entry_point, sources, sinks):
+    def find_flows(self, entry_point, sources, sinks):
         # 找到所有的taint flow
         # 这里需要应用图遍历算法对taint进行传播
         # 这里需要把taint管理器用起来，对symbol和state层面有污点的节点进行标记
@@ -278,11 +287,11 @@ class TaintAnalysis:
 
                 # 这里只需要method_id
                 parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(source_method_id, sink_method_id, entry_point)
-                flow_list.extend(self.find_source_to_sink_path(sfg, source, sink, [parent_method]))
+                flow_list.extend(self.find_source_to_sink_path( source, sink, [parent_method]))
 
         return flow_list
 
-    def find_source_to_sink_path(self, sfg, source, sink, parents):
+    def find_source_to_sink_path(self, source, sink, parents):
 
         def nearest_attr_ancestor(G, node, val):
             """
@@ -315,15 +324,15 @@ class TaintAnalysis:
 
         flow_list = []
         for parent in parents:
-            sfg_node, dist = nearest_attr_ancestor(sfg, source, parent)
+            sfg_node, dist = nearest_attr_ancestor(self.sfg, source, parent)
             if not sfg_node:
                 continue
             try:
-                parent_to_source = nx.shortest_path(sfg, sfg_node, source)
+                parent_to_source = nx.shortest_path(self.sfg, sfg_node, source)
             except nx.NetworkXNoPath:
                 parent_to_source = None
             try:
-                parent_to_sink = nx.shortest_path(sfg, sfg_node, sink)
+                parent_to_sink = nx.shortest_path(self.sfg, sfg_node, sink)
             except nx.NetworkXNoPath:
                 parent_to_sink = None
             if not parent_to_source or not parent_to_sink:
@@ -396,7 +405,7 @@ class TaintAnalysis:
             print()
             print("Parent to Source Path:")
             line_no = -1
-            for node in flow.parent_to_source:
+            for node in reversed(flow.parent_to_source):
                 stmt_id = node.def_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
                 if stmt.start_row == line_no:
@@ -405,7 +414,7 @@ class TaintAnalysis:
                 code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                print("-> ",code[0].strip(),"in method", method_name, "line", int(line_no)+1)
+                print("<-",code[0].strip(),"in method", method_name, "line", int(line_no)+1)
             print()
             print("Parent to Sink Path:")
             line_no = -1
@@ -488,7 +497,6 @@ class TaintAnalysis:
             flow_id = f"{prefix}{int(number) + 1}"
             previous_call_site = call_path[0]
             for call_site in call_path[1:]:
-                print(call_site)
                 stmt_id = call_site.call_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
@@ -522,7 +530,8 @@ class TaintAnalysis:
                 }
                 current_flow["flow"].append(flow_dict)
             json_list.append(current_flow)
-        output_file = config.TAINT_OUTPUT_DIR
+        output_dir = os.path.join(self.options.workspace, config.TAINT_OUTPUT_DIR)
+        output_file = os.path.join(output_dir, config.TAINT_FLOW_PATH)
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(json_list, f, indent=4, ensure_ascii=False)
 
@@ -530,16 +539,15 @@ class TaintAnalysis:
 
     def determine_taint(self, previous_call_site, current_call_site, flow):
         context_key = hash(previous_call_site) if previous_call_site else 0
-        space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
         status = self.loader.get_stmt_status_p3(context_key)[current_call_site.call_stmt_id]
         index = 0
         for used_symbol_index in status.used_symbols:
             if index == 0:
                 index += 1
                 continue
-            symbol = space[used_symbol_index]
+            symbol = self.space[used_symbol_index]
             for state_index in symbol.states:
-                state = space[state_index]
+                state = self.space[state_index]
                 if self.state_is_in_flow(state.state_id, flow):
                     return index
         return -1
@@ -559,23 +567,21 @@ class TaintAnalysis:
         all_flows_json = []
         for method_id in self.loader.get_all_method_ids():
             self.current_entry_point = method_id
-            sfg = self.loader.get_global_sfg_by_entry_point(method_id)
-            if not sfg:
+            self.sfg = self.loader.get_global_sfg_by_entry_point(method_id)
+            self.space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
+            if not self.sfg:
                 continue
             self.taint_manager = TaintEnv()
-            sources = self.find_sources(sfg)
-            sinks = self.find_sinks(sfg)
-            flows = self.find_flows(sfg, method_id, sources, sinks)
+            sources = self.find_sources()
+            sinks = self.find_sinks()
+            flows = self.find_flows(method_id, sources, sinks)
             # json_data = self.flows_to_json(flows)
             # all_flows_json.extend(json_data)
             if self.options.debug:
                 # gl:麻烦进行美化
                 # self.print_flows(flows)
                 self.print_call_path_flow(flows)
-        #     # 按 method_id 输出不同的 json 文件
-        # output_file = f"taint_flows.json"
-        # with open(output_file, "w", encoding="utf-8") as f:
-        #     json.dump(all_flows_json, f, indent=4, ensure_ascii=False)
+
 
 
 

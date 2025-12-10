@@ -55,8 +55,8 @@ class Lian:
         self.problem_monitor = None
         self.lang_table = lang_config.LANG_TABLE
         self.command_handler = {
-            "lang"           :     self.lang_analysis,
-            "semantic"       :     self.semantic_analysis,
+            "lang"           :     self.lang_cmd,
+            "semantic"       :     self.semantic_cmd,
             "taint"          :     self.taint_analysis,
             "run"            :     self.run_all,
         }
@@ -150,7 +150,6 @@ class Lian:
         return self
 
     def semantic_analysis(self):
-        self.lang_analysis()
         BasicSemanticAnalysis(self).run()
         summary_generation = PrelimSemanticAnalysis(self).run()
         GlobalSemanticAnalysis(self, summary_generation.analyzed_method_list).run()
@@ -160,11 +159,25 @@ class Lian:
     def taint_analysis(self):
         TaintAnalysis(self, self.options).run()
 
+    def lang_cmd(self):
+        self.lang_analysis()
+        return self
+
+    def semantic_cmd(self):
+        self.lang_analysis()
+        self.semantic_analysis()
+        return self
+
     def run_all(self):
         self.lang_analysis()
         self.semantic_analysis()
         self.taint_analysis()
         return self
+
+    # def run_all(self):
+    #     self.semantic_analysis()
+    #     self.taint_analysis()
+    #     return self
 
     def run(self):
         self.parse_cmds().init_submodules()

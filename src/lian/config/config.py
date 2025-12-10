@@ -31,6 +31,7 @@ FRONTEND_DIR                                                 = "frontend"
 SEMANTIC_DIR_P1                                              = "semantic_p1"
 SEMANTIC_DIR_P2                                              = "semantic_p2"
 SEMANTIC_DIR_P3                                              = "semantic_p3"
+TAINT_OUTPUT_DIR                                             = "taint_output"
 
 ROOT_DIR                                                     = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
@@ -64,7 +65,8 @@ MAX_TYPE_CAST_SOURCE_STATES                                  = 4
 MAX_ARRAY_ELEMENT_STATES                                     = 4
 
 TAINT_DIR                                                    = os.path.join(SRC_LIAN_DIR, "taint")
-TAINT_OUTPUT_DIR                                             = os.path.join(SRC_LIAN_DIR, "taint/output/taint_flows.json")
+TAINT_FLOW_PATH                                              = "taint_path.json"
+# TAINT_OUTPUT_DIR                                             = os.path.join(SRC_LIAN_DIR, "taint/output/taint_flows.json")
 
 MAX_METHOD_CALL_COUNT                                        = 30
 
