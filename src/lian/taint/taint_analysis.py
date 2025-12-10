@@ -278,7 +278,7 @@ class TaintAnalysis:
                 return self.check_state_tag(field_state_index, taint_state_manager)
         return False
 
-    def find_flows(self, entry_point, sources, sinks):
+    def find_flows(self, sources, sinks):
         # 找到所有的taint flow
         # 这里需要应用图遍历算法对taint进行传播
         # 这里需要把taint管理器用起来，对symbol和state层面有污点的节点进行标记
@@ -289,7 +289,7 @@ class TaintAnalysis:
                 sink_method_id = self.loader.convert_stmt_id_to_method_id(sink.def_stmt_id)
 
                 # 这里只需要method_id
-                parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(source_method_id, sink_method_id, entry_point)
+                parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(source_method_id, sink_method_id, self.current_entry_point)
                 flow_list.extend(self.find_source_to_sink_path( source, sink, [parent_method]))
 
         return flow_list
@@ -490,7 +490,12 @@ class TaintAnalysis:
             sink_stmt_id = flow.sink_stmt_id
             source_method_id = self.loader.convert_stmt_id_to_method_id(source_stmt_id)
             sink_method_id = self.loader.convert_stmt_id_to_method_id(sink_stmt_id)
-            call_path = self.loader.get_call_path_between_two_methods_in_p3(source_method_id, sink_method_id)[0]
+            parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(source_method_id, sink_method_id,
+                                                                                   self.current_entry_point)
+            if parent_method != source_method_id:
+                call_path = self.loader.get_call_path_between_two_methods_in_p3(parent_method, source_method_id)[0]
+            if parent_method != sink_method_id:
+                call_path = self.loader.get_call_path_between_two_methods_in_p3(parent_method, sink_method_id)[0]
             call_path.append(CallSite(sink_method_id, sink_stmt_id, -1))
             current_flow = {
                 "id":flow_id,
@@ -511,12 +516,15 @@ class TaintAnalysis:
                 code = self.loader.get_stmt_source_code_with_comment(stmt_id)[0].strip()
                 role = "propagation"
                 call_line = stmt.start_row + 1
+                for site in call_path:
+                    if site.callee_id == call_site.caller_id:
+                        previous_call_site = site
                 taint = self.determine_taint(previous_call_site, call_site, flow)
                 if call_site.caller_id == source_method_id:
                     taint = -1
                     code = self.loader.get_stmt_source_code_with_comment(source_stmt_id)[0].strip()
                     role = "source"
-                elif call_site.caller_id == sink_method_id:
+                elif call_site.caller_id == sink_method_id and call_site.call_stmt_id == sink_stmt_id:
                     code = self.loader.get_stmt_source_code_with_comment(sink_stmt_id)[0].strip()
                     role = "sink"
 
@@ -577,7 +585,7 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources()
             sinks = self.find_sinks()
-            flows = self.find_flows(method_id, sources, sinks)
+            flows = self.find_flows(sources, sinks)
             # json_data = self.flows_to_json(flows)
             # all_flows_json.extend(json_data)
             if self.options.debug:
