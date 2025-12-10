@@ -321,7 +321,7 @@ class Render:
                 if "full_log" in st.session_state:
                     log_lines = st.session_state.full_log.splitlines()
                     recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
-                    with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=False):
+                    with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=st.session_state.expander_open):
                         st.code("\n".join(recent_lines), language="bash")
 
                         # Add a "Download Log" button for the full log
@@ -342,8 +342,10 @@ class Render:
         line_counter = 0
         result_status = None
 
+        expander_entered = False
         expander_str = f"⚙️ 控制台输出 (显示最近 {MAX_DISPLAY_LINES} 行)"
-        with st.expander(expander_str, expanded=False):
+        with st.expander(expander_str, expanded=st.session_state.expander_open):
+            expander_entered = True
             log_placeholder = st.empty()
 
             try:
@@ -396,6 +398,7 @@ class Render:
             st.session_state.full_log = "\n".join(full_log_content)
 
         # Reset the running state
+        st.session_state.expander_open = expander_entered
         st.session_state.is_running = False
         st.session_state.result_status = result_status
         st.rerun()
@@ -567,6 +570,9 @@ def main():
     render.config_title()
     from_btn_flag = render.build_sidebar()
 
+    if "expander_open" not in st.session_state:
+        st.session_state.expander_open = False
+
     if render.reset_tabs:
         for key in st.session_state.keys():
             if key.startswith("file_select_"):
@@ -578,7 +584,7 @@ def main():
     # 执行并保存日志
     render.create_log_container_with_result(from_btn_flag)
     render.render_results()
-    render.build_footer()
+    render.build_footer(MIN_FOOTER_HEIGHT)
 
 if __name__ == "__main__":
     main()
