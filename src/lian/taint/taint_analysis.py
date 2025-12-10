@@ -3,6 +3,9 @@ import json
 import os,sys
 import re
 from collections import deque
+
+import yaml
+
 import lian.config.config as config
 import networkx as nx
 
@@ -480,7 +483,7 @@ class TaintAnalysis:
 
         return json_list
     def print_call_path_flow(self, flows):
-        json_list = []
+        yaml_list = []
         flow_id = "f1"
         for flow in flows:
             source_stmt_id = flow.source_stmt_id
@@ -529,11 +532,11 @@ class TaintAnalysis:
                     "taint": taint,
                 }
                 current_flow["flow"].append(flow_dict)
-            json_list.append(current_flow)
+            yaml_list.append(current_flow)
         output_dir = os.path.join(self.options.workspace, config.TAINT_OUTPUT_DIR)
         output_file = os.path.join(output_dir, config.TAINT_FLOW_PATH)
         with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(json_list, f, indent=4, ensure_ascii=False)
+            yaml.safe_dump(yaml_list, f, sort_keys=False, allow_unicode=True)
 
 
 
