@@ -582,10 +582,9 @@ class TaintAnalysis:
             flows = self.find_flows(sources, sinks)
             # 打印所有的污点流
             self.add_flows_to_json(flows, all_flows_json)
-
+            if not self.options.quiet:
+                self.print_flows(flows)
+            self.write_taint_flows(flows)
         if len(all_flows_json) == 0:
             print("No taint flows found.")
-        else:
-            if not self.options.quiet:
-                self.print_flows(all_flows_json)
-            self.write_taint_flows(all_flows_json)
+
