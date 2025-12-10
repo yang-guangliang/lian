@@ -1333,7 +1333,7 @@ class CallPathLoader:
         for row in df:
             path_tuple = row.call_path
             callsite_list = []
-            if path_tuple:
+            if util.is_available(path_tuple):
                 for item in path_tuple:
                     callsite_list.append(CallSite(item[0], item[1], item[2]))
 
