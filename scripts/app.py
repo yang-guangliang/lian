@@ -458,6 +458,8 @@ class Render:
 
         if not workspace_path.exists():
             st.info(f"等待分析完成... 工作空间 `{self.workspace}` 尚未找到。")
+
+            self.build_footer()
             return
 
         search_query = st.text_input(
@@ -492,6 +494,8 @@ class Render:
                  st.warning(f"在工作空间中未找到与关键词 '{search_query}' 匹配的文件。")
             else:
                  st.warning("工作空间中未发现任何文件。")
+
+            self.build_footer()
             return
 
         # 1. 目录层设计 (Tabs)
@@ -544,7 +548,7 @@ class Render:
         selected_file = st.selectbox(
             f"选择文件 ({len(file_names)} 个文件)",
             options=["请选择文件..."] + file_names,
-            key=f"file_select_{tab_name}",
+            key="file_select",
             index=1 if len(file_names) == 1 else 0
         )
 
@@ -566,7 +570,7 @@ class Render:
                     df = self.read_dataframe(file_path)
                     self.render_dataframe_with_search(df, f"{tab_name}_{file_path.name}")
                 except Exception as e:
-                    st.warning("尝试作为文本显示...")
+                    #st.warning("尝试作为文本显示...")
                     self.display_as_text(file_path)
 
     def build_footer(self, space_height=FOOTER_HEIGHT):
@@ -575,9 +579,8 @@ class Render:
         """, unsafe_allow_html=True)
 
     def reset_all_result_tabs(self):
-        for key in st.session_state.keys():
-            if key.startswith("file_select_"):
-                st.session_state[key] = None
+        if "file_select" in st.session_state:
+            st.session_state["file_select"] = None
 
 # --- 主界面逻辑 ---
 def main():
@@ -592,6 +595,7 @@ def main():
 
     if render.reset_tabs:
         render.reset_all_result_tabs()
+        render.reset_tabs = False
 
     if "last_cmd" in st.session_state:
         st.code(" ".join(st.session_state.last_cmd), language="bash")

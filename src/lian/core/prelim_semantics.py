@@ -269,10 +269,12 @@ class PrelimSemanticAnalysis:
             new_parent_stmt_ids = []
             for each_parent_stmt_id in parent_stmt_ids:
                 edge_weight = util.get_graph_edge_weight(frame.cfg, each_parent_stmt_id, stmt_id)
-                if frame.is_first_round[stmt_id] and edge_weight != CONTROL_FLOW_KIND.LOOP_BACK:
-                    new_parent_stmt_ids.append(each_parent_stmt_id)
-                elif not frame.is_first_round[stmt_id] and edge_weight == CONTROL_FLOW_KIND.LOOP_BACK:
-                    new_parent_stmt_ids.append(each_parent_stmt_id)
+                if frame.stmt_counters[stmt_id] == config.FIRST_ROUND:
+                    if edge_weight != CONTROL_FLOW_KIND.LOOP_BACK:
+                        new_parent_stmt_ids.append(each_parent_stmt_id)
+                else:
+                    if edge_weight == CONTROL_FLOW_KIND.LOOP_BACK:
+                        new_parent_stmt_ids.append(each_parent_stmt_id)
             parent_stmt_ids = new_parent_stmt_ids
 
         # collect in symbol bits
@@ -547,9 +549,9 @@ class PrelimSemanticAnalysis:
             new_parent_stmt_ids = []
             for each_parent_stmt_id in parent_stmt_ids:
                 edge_weight = util.get_graph_edge_weight(frame.cfg, each_parent_stmt_id, stmt_id)
-                if frame.is_first_round[stmt_id] and edge_weight != CONTROL_FLOW_KIND.LOOP_BACK:
+                if frame.stmt_counters[stmt_id] == config.FIRST_ROUND and edge_weight != CONTROL_FLOW_KIND.LOOP_BACK:
                     new_parent_stmt_ids.append(each_parent_stmt_id)
-                elif not frame.is_first_round[stmt_id] and edge_weight == CONTROL_FLOW_KIND.LOOP_BACK:
+                elif frame.stmt_counters[stmt_id] != config.FIRST_ROUND and edge_weight == CONTROL_FLOW_KIND.LOOP_BACK:
                     new_parent_stmt_ids.append(each_parent_stmt_id)
             parent_stmt_ids = new_parent_stmt_ids
 
@@ -560,7 +562,9 @@ class PrelimSemanticAnalysis:
         return in_state_bits
 
     #def group_in_states_and_obtain_newest_states(self, stmt_id, in_symbols, frame: ComputeFrame):
-    def group_in_states(self, stmt_id, in_symbol_indexes, frame: ComputeFrame, status):
+    def group_in_states(self, stmt_id, stmt, in_symbol_indexes, frame: ComputeFrame, status):
+        stmt_sfg_node = None
+
         # all_in_states are all states of used symbols
         # all_in_states -> align -> status.used_symbols
         symbol_id_to_state_index = {}
@@ -592,17 +596,18 @@ class PrelimSemanticAnalysis:
                         loader=self.loader,
                         complete_graph=self.options.complete_graph,
                     )
-                    stmt_node = SFGEdge(
+                    symbol_state_sfg_edge = SFGEdge(
                         edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
                         stmt_id=stmt_id,
                     )
-                    out_nodes = util.graph_successors(frame.state_flow_graph.graph, used_symbol_node)
-                    no_state_flag = True
-                    for each_node in out_nodes:
+                    used_symbol_out_nodes = util.graph_successors(frame.state_flow_graph.graph, used_symbol_node)
+                    contain_state_flag = False
+                    for each_node in used_symbol_out_nodes:
                         if each_node.node_type == SFG_NODE_KIND.STATE:
-                            no_state_flag = False
-                            break
-                    if no_state_flag:
+                            if each_node.index in latest_state_index_set:
+                                contain_state_flag = True
+                                break
+                    if not contain_state_flag:
                         for state_index in latest_state_index_set:
                             tmp_state = frame.symbol_state_space[state_index]
                             if not isinstance(tmp_state, State):
@@ -618,8 +623,39 @@ class PrelimSemanticAnalysis:
                                     loader=self.loader,
                                     complete_graph=self.options.complete_graph,
                                 ),
-                                stmt_node
+                                symbol_state_sfg_edge
                             )
+
+                    if stmt_sfg_node is None:
+                        stmt_sfg_node = SFGNode(
+                            node_type=SFG_NODE_KIND.STMT,
+                            def_stmt_id=stmt_id,
+                            name=stmt.operation,
+                            context=frame.get_context(),
+                            loader=self.loader,
+                            complete_graph=self.options.complete_graph,
+                            stmt=stmt
+                        )
+                    stmt_in_nodes = util.graph_predecessors(frame.state_flow_graph.graph, stmt_sfg_node)
+                    contain_used_symbol_flag = False
+                    for each_node in stmt_in_nodes:
+                        if each_node.node_type == SFG_NODE_KIND.SYMBOL:
+                            if each_node.index == each_in_symbol_index:
+                                contain_used_symbol_flag = True
+                                break
+                    if not contain_used_symbol_flag:
+                        for tmp_pos, tmp_used_symbol_index in enumerate(status.used_symbols + status.implicitly_used_symbols):
+                            tmp_used_symbol = frame.symbol_state_space[tmp_used_symbol_index]
+                            if tmp_used_symbol.symbol_id == used_symbol_node.node_id:
+                                frame.state_flow_graph.add_edge(
+                                    used_symbol_node,
+                                    stmt_sfg_node,
+                                    SFGEdge(
+                                        edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED,
+                                        stmt_id=stmt_id,
+                                        pos=tmp_pos,
+                                    )
+                                )
 
         # print("group_in_states@ symbol_id_to_state_index before fusion",symbol_id_to_state_index)
         for symbol_id, each_symbol_in_states in symbol_id_to_state_index.items():
@@ -954,7 +990,7 @@ class PrelimSemanticAnalysis:
         in_symbol_indexes = self.get_used_symbol_indexes(stmt_id, frame, status)
         used_symbol_id_to_indexes = self.group_used_symbol_id_to_indexes(in_symbol_indexes, frame)
         # print(f"in_symbols: {in_symbols}")
-        in_states = self.group_in_states(stmt_id, in_symbol_indexes, frame, status)
+        in_states = self.group_in_states(stmt_id, stmt, in_symbol_indexes, frame, status)
         # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
