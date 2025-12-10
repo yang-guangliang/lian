@@ -154,10 +154,12 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             for row in parameter_decls:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = round_number
+                frame.is_first_round[row.stmt_id] = True
         if util.is_available(method_body):
             for row in method_body:
                 frame.stmt_id_to_stmt[row.stmt_id] = row
                 frame.stmt_counters[row.stmt_id] = round_number
+                frame.is_first_round[row.stmt_id] = True
 
         if self.loader.get_method_defined_symbols_p2(method_id):
             frame.defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
@@ -209,7 +211,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         # key_dynamic_content = summary.key_dynamic_content
         # if self.options.debug:
         #     print(f"@enter collect_external_symbol_states: symbol_id {symbol_id}, old_key_states {old_key_state_indexes}")
-        if frame.stmt_counters[stmt_id] != config.FIRST_ROUND:
+        if not frame.is_first_round[stmt_id]:
             return old_key_state_indexes
 
         new_state_indexes = set()

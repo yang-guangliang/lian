@@ -397,16 +397,12 @@ class TaintAnalysis:
     #             break
     #
     #     return lca
+
     def print_flows(self, flows):
         for flow in flows:
-            print("--------------------------------")
-            print("Found a Flow")
+            print("------------ Taint Flow --------------------")
             source_code = self.loader.get_stmt_source_code_with_comment(flow.source_stmt_id)
-            sink_code = self.loader.get_stmt_source_code_with_comment(flow.sink_stmt_id)
             print("Source :", source_code[0].strip())
-            print("Sink :", sink_code[0].strip())
-            print()
-            print("Parent to Source Path:")
             line_no = -1
             for node in reversed(flow.parent_to_source):
                 stmt_id = node.def_stmt_id
@@ -418,8 +414,6 @@ class TaintAnalysis:
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
                 print("<-",code[0].strip(),"in method", method_name, "line", int(line_no)+1)
-            print()
-            print("Parent to Sink Path:")
             line_no = -1
             for node in flow.parent_to_sink:
                 stmt_id = node.def_stmt_id
@@ -430,7 +424,7 @@ class TaintAnalysis:
                 code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                print("-> ", code[0].strip(),"in method", method_name, "line", int(line_no)+1)
+                print("->", code[0].strip(),"in method", method_name, "line", int(line_no)+1)
 
     def flows_to_json(self, flows):
         json_list = []
@@ -482,7 +476,8 @@ class TaintAnalysis:
             json_list.append(flow_dict)
 
         return json_list
-    def print_call_path_flow(self, flows):
+
+    def write_taint_flows(self, flows):
         yaml_list = []
         flow_id = "f1"
         for flow in flows:
@@ -490,8 +485,11 @@ class TaintAnalysis:
             sink_stmt_id = flow.sink_stmt_id
             source_method_id = self.loader.convert_stmt_id_to_method_id(source_stmt_id)
             sink_method_id = self.loader.convert_stmt_id_to_method_id(sink_stmt_id)
-            parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(source_method_id, sink_method_id,
-                                                                                   self.current_entry_point)
+            parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(
+                source_method_id, sink_method_id, self.current_entry_point
+            )
+
+            call_path = []
             if parent_method != source_method_id:
                 call_path = self.loader.get_call_path_between_two_methods_in_p3(parent_method, source_method_id)[0]
             if parent_method != sink_method_id:
@@ -541,12 +539,9 @@ class TaintAnalysis:
                 }
                 current_flow["flow"].append(flow_dict)
             yaml_list.append(current_flow)
-        output_dir = os.path.join(self.options.workspace, config.TAINT_OUTPUT_DIR)
-        output_file = os.path.join(output_dir, config.TAINT_FLOW_PATH)
+        output_file = os.path.join(self.options.workspace, config.TAINT_OUTPUT_DIR, config.TAINT_FILE_NAME)
         with open(output_file, "w", encoding="utf-8") as f:
             yaml.safe_dump(yaml_list, f, sort_keys=False, allow_unicode=True)
-
-
 
     def determine_taint(self, previous_call_site, current_call_site, flow):
         context_key = hash(previous_call_site) if previous_call_site else 0
@@ -575,6 +570,7 @@ class TaintAnalysis:
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase IV: Taint Analysis # ##########")
+
         all_flows_json = []
         for method_id in self.loader.get_all_method_ids():
             self.current_entry_point = method_id
@@ -586,13 +582,12 @@ class TaintAnalysis:
             sources = self.find_sources()
             sinks = self.find_sinks()
             flows = self.find_flows(sources, sinks)
-            # json_data = self.flows_to_json(flows)
-            # all_flows_json.extend(json_data)
+            # 打印所有的污点流
+            if not self.options.quiet:
+                print(f"Total {len(flows)} Flows found in method {self.loader.convert_method_id_to_method_name(method_id)}")
+            json_data = self.flows_to_json(flows)
+            all_flows_json.extend(json_data)
             if self.options.debug:
-                # gl:麻烦进行美化
-                # self.print_flows(flows)
-                self.print_call_path_flow(flows)
+                self.print_flows(flows)
 
-
-
-
+        self.write_taint_flows(all_flows_json)

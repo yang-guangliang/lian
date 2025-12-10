@@ -1877,6 +1877,7 @@ class ComputeFrame(MetaComputeFrame):
         self.stmt_id_to_callee_info = {}
 
         self.stmt_counters = {}
+        self.is_first_round = {}
         self.loop_total_rounds = {}
         self.symbol_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.state_bit_vector_manager: BitVectorManager = BitVectorManager()

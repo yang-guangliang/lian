@@ -76,9 +76,11 @@ class StmtStates:
         self.sfg = self.frame.state_flow_graph
         self.used_symbol_id_to_indexes = {}
         self.complete_graph = complete_graph
+
+        # if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+        #     self.complete_graph = False
+
         self.context = None
-        if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
-            self.complete_graph = False
         if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
             self.context = self.frame.get_context()
 

@@ -31,7 +31,7 @@ FRONTEND_DIR                                                 = "frontend"
 SEMANTIC_DIR_P1                                              = "semantic_p1"
 SEMANTIC_DIR_P2                                              = "semantic_p2"
 SEMANTIC_DIR_P3                                              = "semantic_p3"
-TAINT_OUTPUT_DIR                                             = "taint_output"
+TAINT_OUTPUT_DIR                                             = "taint"
 
 ROOT_DIR                                                     = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
@@ -63,10 +63,6 @@ DEFAULT_MAX_GIR_ID                                           = 100000000
 
 MAX_TYPE_CAST_SOURCE_STATES                                  = 4
 MAX_ARRAY_ELEMENT_STATES                                     = 4
-
-TAINT_DIR                                                    = os.path.join(SRC_LIAN_DIR, "taint")
-TAINT_FLOW_PATH                                              = "taint_path.yaml"
-# TAINT_OUTPUT_DIR                                             = os.path.join(SRC_LIAN_DIR, "taint/output/taint_flows.json")
 
 MAX_METHOD_CALL_COUNT                                        = 30
 
@@ -165,4 +161,6 @@ CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3                      = "callee_parameter
 METHOD_DEF_USE_SUMMARY_PATH                                  = "method_def_use_summary"
 METHOD_SUMMARY_TEMPLATE_PATH                                 = "method_summary_template"
 METHOD_SUMMARY_INSTANCE_PATH                                 = "method_summary_instance"
+
+TAINT_FILE_NAME                                              = "taint_path.yaml"
 
