@@ -399,8 +399,8 @@ class TaintAnalysis:
     #     return lca
 
     def print_flows(self, flows):
+        print(f"Found {len(flows)} taint flows.")
         for flow in flows:
-            print("------------ Taint Flow --------------------")
             source_code = self.loader.get_stmt_source_code_with_comment(flow.source_stmt_id)
             print("Source :", source_code[0].strip())
             line_no = -1
@@ -426,9 +426,7 @@ class TaintAnalysis:
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
                 print("->", code[0].strip(),"in method", method_name, "line", int(line_no)+1)
 
-    def flows_to_json(self, flows):
-        json_list = []
-
+    def add_flows_to_json(self, flows, all_flows_json):
         for flow in flows:
             flow_dict = {
                 "source_stmt_id": flow.source_stmt_id,
@@ -473,9 +471,9 @@ class TaintAnalysis:
                     "line": int(stmt.start_row) + 1
                 })
 
-            json_list.append(flow_dict)
+            all_flows_json.append(flow_dict)
 
-        return json_list
+        return all_flows_json
 
     def write_taint_flows(self, flows):
         yaml_list = []
@@ -583,11 +581,11 @@ class TaintAnalysis:
             sinks = self.find_sinks()
             flows = self.find_flows(sources, sinks)
             # 打印所有的污点流
-            if not self.options.quiet:
-                print(f"Total {len(flows)} Flows found in method {self.loader.convert_method_id_to_method_name(method_id)}")
-            json_data = self.flows_to_json(flows)
-            all_flows_json.extend(json_data)
-            if self.options.debug:
-                self.print_flows(flows)
+            self.add_flows_to_json(flows, all_flows_json)
 
-        self.write_taint_flows(all_flows_json)
+        if len(all_flows_json) == 0:
+            print("No taint flows found.")
+        else:
+            if not self.options.quiet:
+                self.print_flows(all_flows_json)
+            self.write_taint_flows(all_flows_json)
