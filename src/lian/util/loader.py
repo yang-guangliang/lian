@@ -982,7 +982,6 @@ class MethodLevelAnalysisResultLoader(GeneralLoader):
         DataModel(results, columns = schema.loader_indexing_schema).save(self.loader_indexing_path)
 
     def restore_indexing(self):
-        from lian.common_structs import CallSite
         if not os.path.exists(self.loader_indexing_path):
             return
 
@@ -990,13 +989,13 @@ class MethodLevelAnalysisResultLoader(GeneralLoader):
         for row in df:
             data = row.raw_data()
             key = data[0]
-            if isinstance(key, (tuple, list)) and len(key) == 3:
+            if isinstance(key, list):
+                key = tuple(key)
+            if isinstance(key, tuple) and len(key) == 3:
                 try:
                     key = CallSite(key[0], key[1], key[2])
                 except (TypeError, IndexError):
-                    key = tuple(key) if isinstance(key, list) else key
-            elif isinstance(key, (tuple, list)):
-                key = tuple(key) if isinstance(key, list) else key
+                    pass
             self.item_id_to_bundle_id[key] = data[1]
             self.bundle_count = max(self.bundle_count, data[1] + 1)
 

@@ -516,11 +516,23 @@ class Render:
 
             tabs_map[tab_name] = d
 
+
         tab_names_list = list(tabs_map.keys())
-        tab_name = st.radio("目录", options=tab_names_list, index=0, horizontal=True)
+
+        if "selected_tab" not in st.session_state or st.session_state.selected_tab not in tab_names_list:
+            st.session_state.selected_tab = tab_names_list[0]
+
+        selected_tab = st.radio(
+            "目录",
+            options=tab_names_list,
+            index=tab_names_list.index(st.session_state.selected_tab),
+            horizontal=True,
+            key="tab_selection"
+        )
+        st.session_state.selected_tab = selected_tab
 
         # 2. 文件层设计：下拉选择 + 内容展示
-        dir_path = tabs_map[tab_name]
+        dir_path = tabs_map[selected_tab]
         files_with_names = {f.name: f for f in result_dirs_map[dir_path]}
         file_names = sorted(list(files_with_names.keys()))
 
@@ -562,6 +574,11 @@ class Render:
         <div style="min-height: {space_height}vh;"></div>
         """, unsafe_allow_html=True)
 
+    def reset_all_result_tabs(self):
+        for key in st.session_state.keys():
+            if key.startswith("file_select_"):
+                st.session_state[key] = None
+
 # --- 主界面逻辑 ---
 def main():
     render = Render()
@@ -574,9 +591,7 @@ def main():
         st.session_state.expander_open = False
 
     if render.reset_tabs:
-        for key in st.session_state.keys():
-            if key.startswith("file_select_"):
-                st.session_state[key] = None
+        render.reset_all_result_tabs()
 
     if "last_cmd" in st.session_state:
         st.code(" ".join(st.session_state.last_cmd), language="bash")
