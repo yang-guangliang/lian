@@ -1828,7 +1828,6 @@ class MetaComputeFrame:
     #       - call_stmt:    stmt_id, callee_id
     #       - other stmts:  stmt_id
     summary_collection: dict = dataclasses.field(default_factory=dict)
-    symbol_state_space_collection: dict = dataclasses.field(default_factory=dict)
 
     # K/V: <key> / {true, false}
     content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)

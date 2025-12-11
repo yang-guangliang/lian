@@ -266,15 +266,11 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         summary_data = SummaryData()
         return summary_data
 
-    def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryInstance, compact_space: SymbolStateSpace, caller_frame: ComputeFrame = None):
+    def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryInstance, caller_frame: ComputeFrame = None):
         if not caller_frame:
             caller_frame: ComputeFrame = frame.frame_stack[-2]
-        key = frame.get_context()
-        key_hash = frame.get_context_hash()
-        caller_frame.summary_collection[key] = method_summary
-        caller_frame.symbol_state_space_collection[key] = compact_space
-        self.loader.save_symbol_state_space_summary_p3(key_hash, compact_space)
-        self.loader.save_method_summary_instance(key_hash, method_summary)
+        caller_frame.summary_collection[frame.get_context()] = method_summary
+        self.loader.save_method_summary_instance(frame.get_context_hash(), method_summary)
 
     def save_result_to_last_frame_v1(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate):
         self.save_result_to_last_frame_v2(frame_stack, current_frame, summary, current_frame.space_summary)
@@ -354,8 +350,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # gl：为什么有的保存，有的不保存
             summary_data = self.generate_analysis_summary_and_s2space(frame)
             self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
-            summary, space = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
-            self.save_analysis_summary_and_space(frame, summary, space, caller_frame)
+            summary = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
+            self.save_analysis_summary_and_space(frame, summary, caller_frame)
             context_id = frame.get_context_hash()
             self.loader.save_stmt_status_p3(context_id, frame.stmt_id_to_status)
             self.loader.save_method_defined_symbols_p3(context_id, frame.defined_symbols)

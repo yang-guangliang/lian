@@ -1223,7 +1223,7 @@ class PrelimSemanticAnalysis:
         # adjust ids and save summary template
         method_summary.adjust_ids(compact_space.old_index_to_new_index)
         self.save_analysis_summary_and_space(frame, method_summary, compact_space)
-        return method_summary, compact_space
+        return method_summary
         # print(f"dynamic_call_stmts: {frame.method_summary_template.dynamic_call_stmts}")
 
     def analyze_stmts(self, frame: ComputeFrame):

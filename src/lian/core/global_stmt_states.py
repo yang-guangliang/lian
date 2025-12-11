@@ -175,14 +175,9 @@ class GlobalStmtStates(StmtStates):
                 continue
             callee_summary = callee_summary.copy()
 
-            if new_call_site in self.frame.symbol_state_space_collection:
-                callee_compact_space = self.frame.symbol_state_space_collection[new_call_site]
-            else:
-                continue
-            callee_compact_space = callee_compact_space.copy()
             self.apply_callee_semantic_summary(
                 stmt_id, each_callee_id, args, callee_summary,
-                callee_compact_space, this_state_set, new_object_flag
+                None, this_state_set, new_object_flag
             )
 
         return P2ResultFlag()
