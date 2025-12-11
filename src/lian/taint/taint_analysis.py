@@ -54,6 +54,41 @@ class TaintAnalysis:
                 rules.append(rule)
         return rules
 
+    def get_call_name_symbol_and_state(self, node):
+        if node.node_type != SFG_NODE_KIND.STMT:
+            return None, None
+        state_nodes = []
+        predecessors = list(self.sfg.predecessors(node))
+        name_symbol_node = None
+        if len(predecessors) == 0 :
+            return None, None
+        for predecessor in predecessors:
+            edge = self.sfg.get_edge_data(predecessor, node)
+            if edge and edge[0]['weight'].pos == 0:
+                name_symbol_node = predecessor
+        name_symbol_successors = list(self.sfg.successors(name_symbol_node))
+        for successor in name_symbol_successors:
+            if successor.node_type == SFG_NODE_KIND.STATE:
+                state_nodes.append(successor)
+        return name_symbol_node, state_nodes
+
+    def get_stmt_define_symbol_and_states_node(self, node):
+        if node.node_type != SFG_NODE_KIND.STMT:
+            return None, None
+        successors = list(self.sfg.successors(node))
+        define_symbol_node = None
+        for successor in successors:
+            edge = self.sfg.get_edge_data(node, successor)
+            if edge and edge[0]['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+                define_symbol_node = successor
+        define_symbol_successors = list(self.sfg.successors(define_symbol_node))
+        define_state_list = []
+        for successor in define_symbol_successors:
+            edge = self.sfg.get_edge_data(node, successor)
+            if edge and edge[0]['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                define_state_list.append(successor)
+        return define_symbol_node, define_state_list
+
     def find_sources(self):
         node_list = []
         # 应该包括所有的可能symbol和state节点作为sources
@@ -64,30 +99,31 @@ class TaintAnalysis:
                 if self.apply_call_stmt_source_rules(node):
                     defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
                     node_list.append(defined_state_node)
-            elif node.node_type == SFG_NODE_KIND.STMT:
-                rules = self.rule_manager.all_sources_from_code
-                if self.apply_rules_from_code(node, rules):
-                    node_list.append(node)
+            # 为了兼容codeql规则
+            # elif node.node_type == SFG_NODE_KIND.STMT:
+            #     rules = self.rule_manager.all_sources_from_code
+            #     if self.apply_rules_from_code(node, rules):
+            #         node_list.append(node)
 
         return node_list
 
-    def apply_rules_from_code(self, node, rules):
-        stmt_id = node.def_stmt_id
-
-        status = self.get_stmt_status(node, stmt_id)
-        stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
-        for rule in rules:
-            if str(stmt.start_row) != rule.line_num:
-                continue
-            symbol_in_stmt = False
-            if self.space[status.defined_symbol].name == rule.symbol_name:
-                symbol_in_stmt = True
-            for symbol_index in status.used_symbols:
-                symbol = self.space[symbol_index]
-                if symbol.name == rule.symbol_name:
-                    symbol_in_stmt = True
-            if not symbol_in_stmt:
-                continue
+    # def apply_rules_from_code(self, node, rules):
+    #     stmt_id = node.def_stmt_id
+    #
+    #     status = self.get_stmt_status(node, stmt_id)
+    #     stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
+    #     for rule in rules:
+    #         if str(stmt.start_row) != rule.line_num:
+    #             continue
+    #         symbol_in_stmt = False
+    #         if self.space[status.defined_symbol].name == rule.symbol_name:
+    #             symbol_in_stmt = True
+    #         for symbol_index in status.used_symbols:
+    #             symbol = self.space[symbol_index]
+    #             if symbol.name == rule.symbol_name:
+    #                 symbol_in_stmt = True
+    #         if not symbol_in_stmt:
+    #             continue
 
 
 
@@ -128,36 +164,21 @@ class TaintAnalysis:
 
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
-
-        status = self.get_stmt_status(node, stmt_id)
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
-        # method_symbol_index = -1
-        # target_symbol_index = -1
-        # predecessors = list(self.sfg.predecessors(node))
-        #
-        # successors = list(self.sfg.successors(node))
-        # if len(predecessors) == 0 or len(successors) == 0:
-        #     return False
-        # for predecessor in predecessors:
-        #     edge = self.sfg.get_edge_data(predecessor, node)
-        #     if edge and edge[0]['weight'].pos == 0:
-        #         method_symbol_index = predecessor.index
-        #         break
-        # for successor in successors:
-        #     target_symbol_index = successor.index
-        #     break
+        method_symbol_node, method_state_nodes = self.get_call_name_symbol_and_state(node)
+        defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+        if not method_symbol_node or not defined_symbol_node:
+            return False
 
-        method_symbol = self.space[status.used_symbols[0]]
-        tag_space_id = self.space[status.defined_symbol].symbol_id
-        method_states = method_symbol.states
-        defined_symbol = self.space[status.defined_symbol]
+        tag_space_id = defined_symbol_node.node_id
         apply_rule_flag = False
         for rule in self.rule_manager.all_sources:
             if rule.operation != "call_stmt":
                 continue
             tag_info = rule
             name = tag_info.name
-            for state_index in method_states:
+            for state_node in method_state_nodes:
+                state_index = state_node.index
                 if not self.space[state_index] or self.space[state_index].symbol_or_state == 0:
                     continue
                 state_access_path = self.space[state_index].access_path
@@ -174,10 +195,8 @@ class TaintAnalysis:
                     new_tag = self.taint_manager.add_and_update_tag_bv(tag_info=tag_info, current_taint=tag)
                     # taint_status.out_taint[tag_space_id] = new_tag
                     self.taint_manager.set_symbols_tag([tag_space_id], new_tag)
-                    for state_index in defined_symbol.states:
-                        if state:= self.space[state_index] :
-                            if isinstance(state, State):
-                                self.taint_manager.set_states_tag([state.state_id], new_tag)
+                    for defined_state_node in defined_state_nodes:
+                        self.taint_manager.set_states_tag([defined_state_node.node_id], new_tag)
 
         return apply_rule_flag
 
@@ -188,36 +207,31 @@ class TaintAnalysis:
         for node in self.sfg.nodes:
             if self.should_apply_call_stmt_sink_rules(node):
                 node_list.append(node)
-            rules = self.rule_manager.all_sinks_from_code
-            if node.node_type == SFG_NODE_KIND.STMT and self.apply_rules_from_code(node, rules):
-                node_list.append(node)
+            # 为了兼容codeql的规则
+            # rules = self.rule_manager.all_sinks_from_code
+            # if node.node_type == SFG_NODE_KIND.STMT and self.apply_rules_from_code(node, rules):
+            #     node_list.append(node)
         return node_list
 
     def should_apply_call_stmt_sink_rules(self, node):
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "call_stmt":
             return False
         stmt_id = node.def_stmt_id
-        status = self.get_stmt_status(node, stmt_id)
-        stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
-
-        method_symbol = self.space[status.used_symbols[0]]
-        used_symbols = status.used_symbols
-        method_index = used_symbols[0]
-        method_symbol = self.space[method_index]
+        method_symbol_node, method_state_nodes = self.get_call_name_symbol_and_state(node)
 
         for rule in self.rule_manager.all_sinks:
             # todo 当规则较长时，则应该切成数组，倒序与state_access_path匹配
             # rule_access_path = rule.name.split('.')
-            for state in method_symbol.states:
+            for state_node in method_state_nodes:
                 # 检查函数名是否符合规则
-                if self.check_method_name(rule.name, state):
+                if self.check_method_name(rule.name, state_node.index):
                     return True
                     return self.check_tag(rule.target, used_symbols, self.taint_manager)
                     # 检查参数是否携带tag
 
         return False
 
-    def check_method_name(self, rule_name, method_state, ):
+    def check_method_name(self, rule_name, method_state):
         apply_flag = True
         if not isinstance(self.space[method_state], State):
             return False
