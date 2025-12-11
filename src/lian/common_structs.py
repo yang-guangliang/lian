@@ -1033,7 +1033,7 @@ class SFGNode:
     value: the value of state node
     """
 
-    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, name="", loader=None, complete_graph=False, stmt=None):
+    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, name="", loader=None, complete_graph=False, stmt=None, access_path=[]):
         # 节点类型
         self.node_type = node_type
         # 这个节点被def的stmt_id
@@ -1052,6 +1052,7 @@ class SFGNode:
         self.operation=None
         self.caller_name=None
         self.full_context = context
+        self.access_path = access_path
 
         if stmt:
             self.line_no = stmt.start_row
@@ -1116,6 +1117,8 @@ class SFGNode:
                     attrs.append(f"name={self.name}")
             else:
                 attrs.append(f"state_id={self.node_id}")
+        if len(self.access_path) > 0:
+            attrs.append(f"access_path={util.access_path_formatter(self.access_path)}")
         result.append(",".join(attrs))
         result.append(")")
 

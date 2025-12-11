@@ -446,7 +446,8 @@ class PrelimSemanticAnalysis:
                         def_stmt_id=used_content.stmt_id,
                         node_id=used_content.state_id,
                         loader=self.loader,
-                        complete_graph=self.options.complete_graph
+                        complete_graph=self.options.complete_graph,
+                        access_path=used_content.access_path,
                     ),
                     SFGNode(
                         node_type=SFG_NODE_KIND.STMT,
@@ -622,6 +623,7 @@ class PrelimSemanticAnalysis:
                                     node_id=tmp_state.state_id,
                                     loader=self.loader,
                                     complete_graph=self.options.complete_graph,
+                                    access_path=tmp_state.access_path,
                                 ),
                                 symbol_state_sfg_edge
                             )
@@ -821,6 +823,7 @@ class PrelimSemanticAnalysis:
                                 node_id=tmp_state.state_id,
                                 loader=self.loader,
                                 complete_graph=self.options.complete_graph,
+                                access_path=tmp_state.access_path,
                             ),
                             stmt_node
                         )
@@ -949,6 +952,7 @@ class PrelimSemanticAnalysis:
                         node_id=state.state_id,
                         loader=self.loader,
                         complete_graph=self.options.complete_graph,
+                        access_path=state.access_path,
                     ),
                     SFGEdge(
                         edge_type=SFG_EDGE_KIND.SYMBOL_STATE,

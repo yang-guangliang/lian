@@ -234,6 +234,7 @@ class StmtStates:
                 context=self.context,
                 loader=self.loader,
                 complete_graph=self.complete_graph,
+                access_path=node.access_path,
             )
         return None
 
@@ -284,6 +285,7 @@ class StmtStates:
                 context=self.context,
                 loader=self.loader,
                 complete_graph=self.complete_graph,
+                access_path=node.access_path,
             )
         return None
 
@@ -297,6 +299,7 @@ class StmtStates:
                 node_id=node.state_id,
                 loader=self.loader,
                 complete_graph=self.complete_graph,
+                access_path=node.access_path,
             )
         return None
 
@@ -361,6 +364,7 @@ class StmtStates:
                     node_id=parent_state.state_id,
                     loader=self.loader,
                     complete_graph=self.complete_graph,
+                    access_path=parent_state.access_path,
                     # context=self.context,
                 ),
                 SFGNode(
@@ -371,6 +375,7 @@ class StmtStates:
                     loader=self.loader,
                     # context=self.context,
                     complete_graph=self.complete_graph,
+                    access_path=item.access_path,
                 ),
                 SFGEdge(
                     edge_type=SFG_EDGE_KIND.SYMBOL_STATE,

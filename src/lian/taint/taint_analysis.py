@@ -43,7 +43,6 @@ class TaintAnalysis:
         self.rule_manager = RuleManager(options.default_settings)
         self.current_entry_point = -1
         self.sfg = None
-        self.space = None
 
     def read_rules(self, operation, source_rules):
         """从src.yaml文件中获取field_read语句类型的规则, 并根据每条规则创建taint_bv"""
@@ -173,10 +172,10 @@ class TaintAnalysis:
             tag_info = rule
             name = tag_info.name
             for state_node in method_state_nodes:
-                state_index = state_node.index
-                if not self.space[state_index] or self.space[state_index].symbol_or_state == 0:
-                    continue
-                state_access_path = self.space[state_index].access_path
+                # state_index = state_node.index
+                # if not self.space[state_index] or self.space[state_index].symbol_or_state == 0:
+                #     continue
+                state_access_path = state_node.access_path
                 if isinstance(state_access_path, str):
                     continue
                 access_path = self.access_path_formatter(state_access_path)
@@ -219,7 +218,7 @@ class TaintAnalysis:
             # rule_access_path = rule.name.split('.')
             for state_node in method_state_nodes:
                 # 检查函数名是否符合规则
-                if self.check_method_name(rule.name, state_node.index):
+                if self.check_method_name(rule.name, state_node):
                     return True
                     return self.check_tag(rule.target, used_symbols, self.taint_manager)
                     # 检查参数是否携带tag
@@ -228,10 +227,8 @@ class TaintAnalysis:
 
     def check_method_name(self, rule_name, method_state):
         apply_flag = True
-        if not isinstance(self.space[method_state], State):
-            return False
 
-        state_access_path = self.space[method_state].access_path
+        state_access_path = method_state.access_path
 
         rule_name = rule_name.split('.')
         if len(state_access_path) < len(rule_name):
@@ -246,46 +243,46 @@ class TaintAnalysis:
 
         return apply_flag
 
-    def check_tag(self, rule_tag, used_symbols, taint_state_manager):
-        # 暂时检测taint_env中的tag,且只考虑positional_args
-        if len(rule_tag) == 0:
-            return False
-        for target_arg in rule_tag:
+    # def check_tag(self, rule_tag, used_symbols, taint_state_manager):
+    #     # 暂时检测taint_env中的tag,且只考虑positional_args
+    #     if len(rule_tag) == 0:
+    #         return False
+    #     for target_arg in rule_tag:
+    #
+    #         arg_index = int(target_arg[-1])
+    #         if arg_index + 1 >= len(used_symbols):
+    #             continue
+    #         arg_symbol = self.space[used_symbols[arg_index + 1]]
+    #         arg_states = arg_symbol.states
+    #
+    #         for state_index in arg_states:
+    #             return self.check_state_tag(state_index, taint_state_manager)
+    #     return False
 
-            arg_index = int(target_arg[-1])
-            if arg_index + 1 >= len(used_symbols):
-                continue
-            arg_symbol = self.space[used_symbols[arg_index + 1]]
-            arg_states = arg_symbol.states
-
-            for state_index in arg_states:
-                return self.check_state_tag(state_index, taint_state_manager)
-        return False
-
-    def check_state_tag(self, state_index, taint_state_manager):
-        if self.space[state_index].symbol_or_state == 0:
-            return False
-        state_id = self.space[state_index].state_id
-        access_path_tag = config.NO_TAINT
-        # if space[state_index].access_path:
-        #     access_path = self.access_path_formatter(space[state_index].access_path)
-        #     access_path_tag = taint_state_manager.get_access_path_tag_in_sink(access_path)
-
-        tag = self.taint_manager.get_state_tag(state_id)
-        if tag != config.NO_TAINT :
-            # 报告sink
-            #print(space[state_index])
-            #print(f"sink in {space[state_index].stmt_id}, tag: {tag}")
-            return True
-        # if access_path_tag != config.NO_TAINT:
-        #     # 报告sink
-        #     print(f"access_path sink in {space[state_index].stmt_id}, tag: {access_path_tag}")
-        #     return True
-        #print(space[state_index].fields)
-        for value in self.space[state_index].fields.values():
-            for field_state_index in value:
-                return self.check_state_tag(field_state_index, taint_state_manager)
-        return False
+    # def check_state_tag(self, state_index, taint_state_manager):
+    #     if self.space[state_index].symbol_or_state == 0:
+    #         return False
+    #     state_id = self.space[state_index].state_id
+    #     access_path_tag = config.NO_TAINT
+    #     # if space[state_index].access_path:
+    #     #     access_path = self.access_path_formatter(space[state_index].access_path)
+    #     #     access_path_tag = taint_state_manager.get_access_path_tag_in_sink(access_path)
+    #
+    #     tag = self.taint_manager.get_state_tag(state_id)
+    #     if tag != config.NO_TAINT :
+    #         # 报告sink
+    #         #print(space[state_index])
+    #         #print(f"sink in {space[state_index].stmt_id}, tag: {tag}")
+    #         return True
+    #     # if access_path_tag != config.NO_TAINT:
+    #     #     # 报告sink
+    #     #     print(f"access_path sink in {space[state_index].stmt_id}, tag: {access_path_tag}")
+    #     #     return True
+    #     #print(space[state_index].fields)
+    #     for value in self.space[state_index].fields.values():
+    #         for field_state_index in value:
+    #             return self.check_state_tag(field_state_index, taint_state_manager)
+    #     return False
 
     def find_flows(self, sources, sinks):
         # 找到所有的taint flow
@@ -581,7 +578,6 @@ class TaintAnalysis:
         for method_id in self.loader.get_all_method_ids():
             self.current_entry_point = method_id
             self.sfg = self.loader.get_global_sfg_by_entry_point(method_id)
-            self.space = self.loader.get_symbol_state_space_p3(self.current_entry_point)
             if not self.sfg:
                 continue
             self.taint_manager = TaintEnv()
