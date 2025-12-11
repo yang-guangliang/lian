@@ -189,9 +189,8 @@ class StmtStates:
         new_state.array = []
         new_state.fields = {}
 
-    def make_state_index_tangping_and_ensure_not_empty(self, new_state_index, status, stmt_id):
+    def make_state_index_tangping_and_ensure_not_empty(self, new_state_index, status, stmt_id, stmt):
         new_state = self.frame.symbol_state_space[new_state_index]
-        stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
         if not isinstance(new_state, State):
             return
 
@@ -2648,7 +2647,7 @@ class StmtStates:
                     for tmp_value_set in array_state.array:
                         defined_states.update(tmp_value_set)
                 else:
-                    self.make_state_index_tangping_and_ensure_not_empty(each_array_state_index, status, stmt_id)
+                    self.make_state_index_tangping_and_ensure_not_empty(each_array_state_index, status, stmt_id, stmt)
                     defined_states.update(array_state.tangping_elements)
 
         else:
@@ -2663,7 +2662,7 @@ class StmtStates:
                     defined_states.update(array_state.tangping_elements)
                     continue
                 if self.is_state_array_empty(array_state):
-                    self.make_state_index_tangping_and_ensure_not_empty(each_array_state_index, status, stmt_id)
+                    self.make_state_index_tangping_and_ensure_not_empty(each_array_state_index, status, stmt_id, stmt)
                     defined_states.update(array_state.tangping_elements)
                     continue
 
@@ -2687,7 +2686,7 @@ class StmtStates:
                             current_round_state_collection.add(element_symbol_index)
 
                 if len(current_round_state_collection) == 0:
-                    self.make_state_index_tangping_and_ensure_not_empty(each_array_state_index, status, stmt_id)
+                    self.make_state_index_tangping_and_ensure_not_empty(each_array_state_index, status, stmt_id, stmt)
                     current_round_state_collection.update(array_state.tangping_elements)
                 defined_states.update(current_round_state_collection)
 
@@ -3027,7 +3026,7 @@ class StmtStates:
 
         if (not field_name) or is_tangping:
             # self.make_state_tangping(new_receiver_state)
-            self.make_state_index_tangping_and_ensure_not_empty(receiver_state_index, status, stmt_id)
+            self.make_state_index_tangping_and_ensure_not_empty(receiver_state_index, status, stmt_id, stmt)
 
         if receiver_state.tangping_elements:
             defined_states.update(receiver_state.tangping_elements)

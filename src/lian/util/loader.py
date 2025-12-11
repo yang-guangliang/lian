@@ -3067,28 +3067,22 @@ class Loader:
         if stmt_id < 0:
             return []
         unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
-        stmt = self.convert_stmt_id_to_stmt(stmt_id)
+        stmt = self.get_stmt_gir(stmt_id)
         if stmt.operation == 'method_decl':
             return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row-1, end = stmt.end_row)
         return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
-
-    def convert_stmt_id_to_stmt(self, stmt_id):
-        unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        unit_gir = self.get_unit_gir(unit_id)
-        stmt_id_to_stmt = {}
-        for row in unit_gir:
-            stmt_id_to_stmt[row.stmt_id] = row
-        return stmt_id_to_stmt.get(stmt_id)
 
     def get_method_decl_source_code(self, method_id):
         """
             给定method_id，获取method_decl源代码(仅函数声明部分)
         """
-        method_decl_stmt = self.convert_stmt_id_to_stmt(method_id)
-        parameters_decl_id = getattr(method_decl_stmt, "parameters", None) + 1 # +1才是第一个parameter_decl的位置，不+1是block_start
+        method_decl_stmt = self.get_stmt_gir(method_id)
+        parameters_decl_id = None
+        if util.is_available(method_decl_stmt.parameters):
+            parameters_decl_id = int(method_decl_stmt.parameters) + 1 # +1才是第一个parameter_decl的位置，不+1是block_start
         unit_source_code = self.get_unit_source_code_by_stmt_id(method_id)
         if util.is_available(parameters_decl_id):
-            parameters_decl = self.convert_stmt_id_to_stmt(parameters_decl_id)
+            parameters_decl = self.get_stmt_gir(parameters_decl_id)
             return self._get_source_code_from_start_to_end(unit_source_code, parameters_decl.start_row, parameters_decl.end_row)
         else:
             method_decl_line_id = int(method_decl_stmt.start_row)

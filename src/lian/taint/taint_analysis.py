@@ -106,25 +106,23 @@ class TaintAnalysis:
 
         return node_list
 
-    # def apply_rules_from_code(self, node, rules):
-    #     stmt_id = node.def_stmt_id
-    #
-    #     status = self.get_stmt_status(node, stmt_id)
-    #     stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
-    #     for rule in rules:
-    #         if str(stmt.start_row) != rule.line_num:
-    #             continue
-    #         symbol_in_stmt = False
-    #         if self.space[status.defined_symbol].name == rule.symbol_name:
-    #             symbol_in_stmt = True
-    #         for symbol_index in status.used_symbols:
-    #             symbol = self.space[symbol_index]
-    #             if symbol.name == rule.symbol_name:
-    #                 symbol_in_stmt = True
-    #         if not symbol_in_stmt:
-    #             continue
+    def apply_rules_from_code(self, node, rules):
+        stmt_id = node.def_stmt_id
 
-
+        status = self.get_stmt_status(node, stmt_id)
+        stmt = self.loader.get_stmt_gir(stmt_id)
+        for rule in rules:
+            if str(stmt.start_row) != rule.line_num:
+                continue
+            symbol_in_stmt = False
+            if self.space[status.defined_symbol].name == rule.symbol_name:
+                symbol_in_stmt = True
+            for symbol_index in status.used_symbols:
+                symbol = self.space[symbol_index]
+                if symbol.name == rule.symbol_name:
+                    symbol_in_stmt = True
+            if not symbol_in_stmt:
+                continue
 
     def next_by_edge_type(self, G, src, edge_type):
         """返回从 src 出发、第一条边数据['type']==edge_type 的目标节点；无则 None"""
@@ -158,7 +156,7 @@ class TaintAnalysis:
 
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
-        stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
+        stmt = self.loader.get_stmt_gir(stmt_id)
         method_symbol_node, method_state_nodes = self.get_call_name_symbol_and_state(node)
         defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
         if not method_symbol_node or not defined_symbol_node:

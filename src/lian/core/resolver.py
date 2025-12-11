@@ -917,9 +917,8 @@ class Resolver:
                 if symbol_def_node.symbol_id not in _symbol_ids:
                     continue
 
-                def_stmt = self.loader.convert_stmt_id_to_stmt(symbol_def_node.stmt_id)
-
                 if ignore_field_read_def:
+                    def_stmt = frame.stmt_id_to_stmt[symbol_def_node.stmt_id]
                     if def_stmt.operation != "field_read":
                         result.add(symbol_def_node.stmt_id)
                     else:
@@ -939,7 +938,7 @@ class Resolver:
         symbol_ids.update(symbol_decl_stmt_ids)
         # import等语句(见def-use阶段)会修改defined_symbol的symbol_id，需要采集到修改后的symbol_id
         for decl_stmt_id in symbol_decl_stmt_ids:
-            decl_stmt = self.loader.convert_stmt_id_to_stmt(decl_stmt_id)
+            decl_stmt = frame.stmt_id_to_stmt[decl_stmt_id]
             if decl_stmt.operation in IMPORT_OPERATION:
                 decl_stmt_status = frame.stmt_id_to_status[decl_stmt_id]
                 new_symbol_id = frame.symbol_state_space[decl_stmt_status.defined_symbol].symbol_id
@@ -986,7 +985,7 @@ class Resolver:
         for edge_node_pair in edge_node_list:
             import_stmt_id = edge_node_pair.edge.get("site")
             if import_stmt_id != -1:
-                import_stmt = self.loader.convert_stmt_id_to_stmt(import_stmt_id)
+                import_stmt = self.loader.get_stmt_gir(import_stmt_id)
                 import_stmts.append(import_stmt)
         return import_stmts
 
