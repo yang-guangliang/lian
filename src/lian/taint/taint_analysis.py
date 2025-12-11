@@ -157,11 +157,6 @@ class TaintAnalysis:
         access_path = '.'.join(key_list)
         return access_path
 
-    def get_stmt_status(self, node, stmt_id):
-        context_key = hash(node.full_context) if node.full_context else 0
-        status = self.loader.get_stmt_status_p3(context_key)[stmt_id]
-        return status
-
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
         stmt = self.loader.convert_stmt_id_to_stmt(stmt_id)
@@ -529,7 +524,7 @@ class TaintAnalysis:
                 for site in call_path:
                     if site.callee_id == call_site.caller_id:
                         previous_call_site = site
-                taint = self.determine_taint(previous_call_site, call_site, flow)
+                # taint = self.determine_taint(previous_call_site, call_site, flow)
                 if call_site.caller_id == source_method_id:
                     taint = -1
                     code = self.loader.get_stmt_source_code_with_comment(source_stmt_id)[0].strip()
@@ -547,7 +542,6 @@ class TaintAnalysis:
                     "call_line": call_line,
                     "code": code,
                     "role": role,
-                    "taint": taint,
                 }
                 current_flow["flow"].append(flow_dict)
             yaml_list.append(current_flow)
@@ -555,20 +549,20 @@ class TaintAnalysis:
         with open(output_file, "w", encoding="utf-8") as f:
             yaml.safe_dump(yaml_list, f, sort_keys=False, allow_unicode=True)
 
-    def determine_taint(self, previous_call_site, current_call_site, flow):
-        context_key = hash(previous_call_site) if previous_call_site else 0
-        status = self.loader.get_stmt_status_p3(context_key)[current_call_site.call_stmt_id]
-        index = 0
-        for used_symbol_index in status.used_symbols:
-            if index == 0:
-                index += 1
-                continue
-            symbol = self.space[used_symbol_index]
-            for state_index in symbol.states:
-                state = self.space[state_index]
-                if self.state_is_in_flow(state.state_id, flow):
-                    return index
-        return -1
+    # def determine_taint(self, previous_call_site, current_call_site, flow):
+    #     context_key = hash(previous_call_site) if previous_call_site else 0
+    #     status = self.loader.get_stmt_status_p3(context_key)[current_call_site.call_stmt_id]
+    #     index = 0
+    #     for used_symbol_index in status.used_symbols:
+    #         if index == 0:
+    #             index += 1
+    #             continue
+    #         symbol = self.space[used_symbol_index]
+    #         for state_index in symbol.states:
+    #             state = self.space[state_index]
+    #             if self.state_is_in_flow(state.state_id, flow):
+    #                 return index
+    #     return -1
 
     def state_is_in_flow(self, state_id, flow):
         for node in flow.parent_to_source:
