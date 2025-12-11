@@ -51,7 +51,6 @@ from lian.common_structs import (
     ParameterMapping,
     PathManager,
     UnionFind,
-    IndexMapInSummary,
     SFGNode,
     SFGEdge,
 )
@@ -530,11 +529,11 @@ class StmtStates:
         status.defined_states.add(new_arg_state_index)
         return new_arg_state_index
 
-    def adjust_index_pairs(self, callee_space: SymbolStateSpace, index_pair_set):
+    def adjust_index_pairs(self, callee_space: SymbolStateSpace, callee_summary: MethodSummaryTemplate, index_set: set[int]):
         result_indexes = set()
         if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
-            for index_pair in index_pair_set:
-                new_index = index_pair.new_index
+            for index in index_set:
+                new_index = callee_summary.raw_to_new_index.get(index, index)
                 if new_index == -1:
                     continue
                 if new_index not in callee_space.old_index_to_new_index:
@@ -542,8 +541,7 @@ class StmtStates:
                 index_in_appended_space = callee_space.old_index_to_new_index[new_index]
                 result_indexes.add(index_in_appended_space)
         else:
-            for index_pair in index_pair_set:
-                result_indexes.add(index_pair.raw_index)
+            result_indexes = index_set.copy()
 
         return result_indexes
 
@@ -551,9 +549,9 @@ class StmtStates:
         last_state_indexes = set()
         parameter_symbol_id = mapping.parameter_symbol_id
         parameter_symbols = callee_summary.parameter_symbols
-        parameter_last_states = parameter_symbols.get(parameter_symbol_id, [])
+        parameter_last_states = parameter_symbols.get(parameter_symbol_id, set())
 
-        adjusted_indexes = self.adjust_index_pairs(callee_space, parameter_last_states)
+        adjusted_indexes = self.adjust_index_pairs(callee_space, callee_summary, parameter_last_states)
         for index_in_appended_space in adjusted_indexes:
             each_parameter_last_state = self.frame.symbol_state_space[index_in_appended_space]
             if not (each_parameter_last_state and isinstance(each_parameter_last_state, State)):
@@ -598,7 +596,7 @@ class StmtStates:
             key_dynamic_content = self.frame.method_summary_template.key_dynamic_content
             if symbol_id in key_dynamic_content:
                 values = key_dynamic_content[symbol_id]
-                values.discard(IndexMapInSummary(raw_index=state_index, new_index=-1))
+                values.discard(state_index)
 
         if stmt_id > 0:
             self.frame.method_summary_template.dynamic_call_stmts.discard(stmt_id)
@@ -612,7 +610,7 @@ class StmtStates:
         key_dynamic_content = self.frame.method_summary_template.key_dynamic_content
         # print("tag_key_state_flag@add_state_index",state_index)
         util.add_to_dict_with_default_set(
-            key_dynamic_content, symbol_id, IndexMapInSummary(raw_index=state_index, new_index=-1)
+            key_dynamic_content, symbol_id, state_index
         )
         self.frame.method_summary_template.dynamic_call_stmts.add(stmt_id)
 
@@ -1560,7 +1558,7 @@ class StmtStates:
             this_symbol_last_states = this_symbols.get(this_symbol_id, [])
             last_state_indexes = set()
 
-            last_state_indexes = self.adjust_index_pairs(callee_space, this_symbol_last_states)
+            last_state_indexes = self.adjust_index_pairs(callee_space, callee_summary, this_symbol_last_states)
 
             for instance_state_index_in_space in instance_state_indexes.copy():
                 # 将summary中的this_symbol_last_state应用到实际的instance_state上
@@ -1586,13 +1584,10 @@ class StmtStates:
                 states=new_this_states
             )
         )
-        index_pair_set = set()
-        for index in new_this_states:
-            index_pair_set.add(IndexMapInSummary(index, -1))
         util.add_to_dict_with_default_set(self.frame.method_summary_template.this_symbols, this_symbol_id,
-                                          index_pair_set)
+                                          new_this_states)
         util.add_to_dict_with_default_set(self.frame.method_summary_instance.this_symbols, this_symbol_id,
-                                          index_pair_set)
+                                          new_this_states)
         status.implicitly_defined_symbols.append(index_to_add)
 
     def apply_parameter_semantic_summary(
@@ -1658,8 +1653,8 @@ class StmtStates:
         last_state_indexes = set()
         default_value_state_type = STATE_TYPE_KIND.REGULAR
 
-        parameter_last_states = callee_summary.parameter_symbols.get(parameter_symbol_id, [])
-        adjusted_indexes = self.adjust_index_pairs(callee_space, parameter_last_states)
+        parameter_last_states = callee_summary.parameter_symbols.get(parameter_symbol_id, set())
+        adjusted_indexes = self.adjust_index_pairs(callee_space, callee_summary, parameter_last_states)
         for index_in_appended_space in adjusted_indexes:
             each_default_value_last_state = self.frame.symbol_state_space[index_in_appended_space]
             if not (each_default_value_last_state and isinstance(each_default_value_last_state, State)):
@@ -1694,8 +1689,9 @@ class StmtStates:
             util.add_to_dict_with_default_set(
                 self.frame.method_summary_template.defined_external_symbols,
                 default_value_symbol_id,
-                IndexMapInSummary(raw_index=new_default_value_state_index, new_index=-1),
+                {new_default_value_state_index},
             )
+            self.frame.method_summary_template.index_to_default_value[new_default_value_state_index] = default_value_symbol_id
 
         index_to_add = self.frame.symbol_state_space.add(
             Symbol(
@@ -1718,22 +1714,21 @@ class StmtStates:
 
         return_state_index_set = set()
         for _, return_states in callee_summary.return_symbols.items():
-            adjusted_indexes = self.adjust_index_pairs(callee_compact_space, return_states)
+            adjusted_indexes = self.adjust_index_pairs(callee_compact_space, callee_summary, return_states)
             return_state_index_set.update(adjusted_indexes)
 
         target_symbol.states.update(return_state_index_set)
         status.defined_states.update(return_state_index_set)
 
         for callee_defined_external_symbol_id, defined_external_states in callee_summary.defined_external_symbols.items():
-            new_defined_external_states = self.adjust_index_pairs(callee_compact_space, defined_external_states)
+            new_defined_external_states = self.adjust_index_pairs(callee_compact_space, callee_summary, defined_external_states)
 
             if callee_defined_external_symbol_id not in self.frame.all_local_symbol_ids:
-                for state_index in new_defined_external_states:
-                    util.add_to_dict_with_default_set(
-                        self.frame.method_summary_template.defined_external_symbols,
-                        callee_defined_external_symbol_id,
-                        IndexMapInSummary(raw_index=state_index, new_index=-1)
-                    )
+                util.add_to_dict_with_default_set(
+                    self.frame.method_summary_template.defined_external_symbols,
+                    callee_defined_external_symbol_id,
+                    new_defined_external_states
+                )
 
             index_to_add = self.frame.symbol_state_space.add(
                 Symbol(
@@ -1761,8 +1756,8 @@ class StmtStates:
             if util.is_empty(each_summary):
                 continue
             for symbol_id in each_summary:
-                index_pair_set = each_summary[symbol_id]
-                adjusted_indexes = self.adjust_index_pairs(callee_compact_space, index_pair_set)
+                index_set = each_summary[symbol_id]
+                adjusted_indexes = self.adjust_index_pairs(callee_compact_space, callee_summary, index_set)
                 top_state_index_set.update(adjusted_indexes)
 
         work_list = SimpleWorkList(top_state_index_set)
@@ -2247,11 +2242,11 @@ class StmtStates:
                     value_state_indexes = self.read_used_states(default_value_index, in_states)
                     for default_value_state_index in value_state_indexes:
                         # self.tag_key_state_flag(stmt_id, default_value.symbol_id, default_value_state_index)
-                        util.add_to_dict_with_default_set(
-                            self.frame.method_summary_template.used_external_symbols,
-                            default_value.symbol_id,
-                            IndexMapInSummary(default_value_state_index, -1)
-                        )
+                            util.add_to_dict_with_default_set(
+                                self.frame.method_summary_template.used_external_symbols,
+                                default_value.symbol_id,
+                                {default_value_state_index}
+                            )
                 else:
                     parameter_name_symbol.states.add(default_value_index)
 

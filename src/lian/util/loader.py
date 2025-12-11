@@ -42,7 +42,6 @@ from lian.common_structs import (
     SimplyGroupedMethodTypes,
     ParameterMapping,
     AccessPoint,
-    IndexMapInSummary,
     MethodSummaryInstance,
     MethodInClass,
     CallPath,
@@ -1189,7 +1188,7 @@ class MethodSummaryLoader:
     def save(self, _id, method_summary):
         self.method_summary_records[_id] = method_summary
 
-    def convert_list_to_dict(self, l):
+    def convert_list_to_dict(self, l, method_summary=None):
         if l is None:
             return {}
         if len(l) == 0:
@@ -1207,8 +1206,13 @@ class MethodSummaryLoader:
 
             if key not in results:
                 results[key] = set()
-            results[key].add(
-                IndexMapInSummary(raw_index = raw_index, new_index = new_index, default_value_symbol_id = default_value_symbol_id))
+            results[key].add(raw_index)
+            
+            if method_summary is not None:
+                if new_index != -1 and new_index != raw_index:
+                    method_summary.raw_to_new_index[raw_index] = new_index
+                if default_value_symbol_id != -1:
+                    method_summary.index_to_default_value[raw_index] = default_value_symbol_id
 
         return results
 
@@ -1217,27 +1221,41 @@ class MethodSummaryLoader:
         df = DataModel().load(self.path)
         for row in df:
             if row.caller_id:
-                self.method_summary_records[(row.caller_id, row.call_stmt_id, row.method_id)] = MethodSummaryInstance(
+                method_instance = MethodSummaryInstance(
                     key = CallSite(row.caller_id, row.call_stmt_id, row.method_id),
-                    parameter_symbols = self.convert_list_to_dict(row.parameter_symbols),
-                    defined_external_symbols = self.convert_list_to_dict(row.defined_external_symbols),
-                    used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids),
-                    return_symbols = self.convert_list_to_dict(row.return_symbols),
-                    key_dynamic_content = self.convert_list_to_dict(row.key_dynamic_content),
+                    parameter_symbols = {},
+                    defined_external_symbols = {},
+                    used_external_symbols = {},
+                    return_symbols = {},
+                    key_dynamic_content = {},
                     dynamic_call_stmts = row.dynamic_call_stmts,
-                    this_symbols = self.convert_list_to_dict(row.this_symbols)
+                    this_symbols = {}
                 )
+                method_instance.parameter_symbols = self.convert_list_to_dict(row.parameter_symbols, method_instance)
+                method_instance.defined_external_symbols = self.convert_list_to_dict(row.defined_external_symbols, method_instance)
+                method_instance.used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids, method_instance)
+                method_instance.return_symbols = self.convert_list_to_dict(row.return_symbols, method_instance)
+                method_instance.key_dynamic_content = self.convert_list_to_dict(row.key_dynamic_content, method_instance)
+                method_instance.this_symbols = self.convert_list_to_dict(row.this_symbols, method_instance)
+                self.method_summary_records[(row.caller_id, row.call_stmt_id, row.method_id)] = method_instance
             else:
-                self.method_summary_records[row.method_id] = MethodSummaryTemplate(
+                method_summary = MethodSummaryTemplate(
                     key = row.method_id,
-                    parameter_symbols = self.convert_list_to_dict(row.parameter_symbols),
-                    defined_external_symbols = self.convert_list_to_dict(row.defined_external_symbols),
-                    used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids),
-                    return_symbols = self.convert_list_to_dict(row.return_symbols),
-                    key_dynamic_content = self.convert_list_to_dict(row.key_dynamic_content),
+                    parameter_symbols = {},
+                    defined_external_symbols = {},
+                    used_external_symbols = {},
+                    return_symbols = {},
+                    key_dynamic_content = {},
                     dynamic_call_stmts = row.dynamic_call_stmts,
-                    this_symbols = self.convert_list_to_dict(row.this_symbols)
+                    this_symbols = {}
                 )
+                method_summary.parameter_symbols = self.convert_list_to_dict(row.parameter_symbols, method_summary)
+                method_summary.defined_external_symbols = self.convert_list_to_dict(row.defined_external_symbols, method_summary)
+                method_summary.used_external_symbols = self.convert_list_to_dict(row.used_external_symbol_ids, method_summary)
+                method_summary.return_symbols = self.convert_list_to_dict(row.return_symbols, method_summary)
+                method_summary.key_dynamic_content = self.convert_list_to_dict(row.key_dynamic_content, method_summary)
+                method_summary.this_symbols = self.convert_list_to_dict(row.this_symbols, method_summary)
+                self.method_summary_records[row.method_id] = method_summary
 
     def export(self):
         if len(self.method_summary_records) == 0:

@@ -35,7 +35,6 @@ from lian.common_structs import (
     BasicCallGraph,
     CallGraph,
     PathManager,
-    IndexMapInSummary,
     StateDefNode,
     MethodSummaryInstance,
     CallPath,
@@ -69,9 +68,11 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         return results
 
     def adjust_index_of_status_space(self, baseline_index, status, frame, space, defined_symbols, symbol_bit_vector, state_bit_vector, method_summary_template):
-        for IndexMapInSummarySet in method_summary_template.used_external_symbols.values():
-            for symbol in IndexMapInSummarySet:
-                symbol.raw_index += baseline_index
+        for symbol_id in method_summary_template.used_external_symbols:
+            new_index_set = set()
+            for index in method_summary_template.used_external_symbols[symbol_id]:
+                new_index_set.add(index + baseline_index)
+            method_summary_template.used_external_symbols[symbol_id] = new_index_set
 
         for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
             symbol_def_nodes.index += baseline_index

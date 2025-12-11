@@ -41,7 +41,6 @@ from lian.common_structs import (
     StmtStatus,
     SymbolDefNode,
     MethodSummaryTemplate,
-    IndexMapInSummary,
     SymbolStateSpace,
     LastSymbolDefNode,
     CountStmtDefStateNode,
@@ -731,16 +730,13 @@ class PrelimSemanticAnalysis:
         )
         status.defined_states.add(index)
 
-        index_pair = IndexMapInSummary(raw_index = index, new_index = -1)
-        return {index_pair}
+        return {index}
 
     def collect_external_symbol_states(self, frame, stmt_id, stmt, symbol_id, summary_template: MethodSummaryTemplate, old_key_state_indexes: set):
         if symbol_id in summary_template.key_dynamic_content:
             return old_key_state_indexes
 
-        return_indexes = set()
-        for index_pair in summary_template.used_external_symbols[symbol_id]:
-            return_indexes.add(index_pair.raw_index)
+        return_indexes = summary_template.used_external_symbols[symbol_id].copy()
         return return_indexes
 
     def complete_in_states_and_check_continue_flag(self, stmt_id, frame: ComputeFrame, stmt, status, in_states, method_summary: MethodSummaryTemplate):
@@ -802,8 +798,7 @@ class PrelimSemanticAnalysis:
                         edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
                         stmt_id=stmt_id,
                     )
-                    for each_index_map in state_indexes:
-                        state_index = each_index_map.raw_index
+                    for state_index in state_indexes:
                         tmp_state = frame.symbol_state_space[state_index]
                         if not isinstance(tmp_state, State):
                             continue
@@ -841,12 +836,11 @@ class PrelimSemanticAnalysis:
                         )
 
                 new_state_indexes = set()
-                for index_pair in method_summary.used_external_symbols[symbol_id]:
-                    new_state_indexes.add(index_pair.raw_index)
+                for index in method_summary.used_external_symbols[symbol_id]:
+                    new_state_indexes.add(index)
                 in_states[symbol_id] = new_state_indexes
                 used_symbol.states = new_state_indexes
 
-        # print("@in_states before", in_states)
         if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS and stmt.operation in ["call_stmt", "object_call"]:
             return True
         return change_flag
@@ -1167,9 +1161,8 @@ class PrelimSemanticAnalysis:
             # 逐条语句添加
             for summary_ids, content_record in lines_to_be_updated:
                 for symbol_id in content_record:
-                    state_index_pair_set = content_record[symbol_id]
-                    for state_index_pair in state_index_pair_set:
-                        all_indexes.add(state_index_pair.raw_index)
+                    state_index_set = content_record[symbol_id]
+                    all_indexes.update(state_index_set)
 
                 for symbol_id in summary_ids:
                     default_value_symbol_id = -1
@@ -1186,29 +1179,22 @@ class PrelimSemanticAnalysis:
                             util.add_to_dict_with_default_set(
                                 content_record,
                                 symbol_id,
-                                IndexMapInSummary(
-                                    raw_index = each_state_index,
-                                    new_index = -1,
-                                    default_value_symbol_id = default_value_symbol_id
-                                )
+                                {each_state_index}
                             )
                             all_indexes.add(each_state_index)
+                            if default_value_symbol_id != -1:
+                                method_summary.index_to_default_value[each_state_index] = default_value_symbol_id
 
             # 处理return
             new_return_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, returned_states, available_defined_states, state_index_old_to_new)
 
             if new_return_states:
-                for each_return_state in new_return_states:
-                    util.add_to_dict_with_default_set(
-                        method_summary.return_symbols,
-                        SUMMARY_GENERAL_SYMBOL_ID.RETURN_SYMBOL_ID,
-                        IndexMapInSummary(
-                            raw_index = each_return_state,
-                            new_index = -1,
-                            default_value_symbol_id = -1
-                        )
-                    )
-                    all_indexes.add(each_return_state)
+                util.add_to_dict_with_default_set(
+                    method_summary.return_symbols,
+                    SUMMARY_GENERAL_SYMBOL_ID.RETURN_SYMBOL_ID,
+                    new_return_states
+                )
+                all_indexes.update(new_return_states)
 
         method_summary.external_symbol_to_state = frame.external_symbol_id_to_initial_state_index
         # save space

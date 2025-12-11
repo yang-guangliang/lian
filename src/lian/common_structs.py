@@ -1328,25 +1328,6 @@ class StateDefNode:
             "stmt_id": self.stmt_id
         }
 
-@dataclasses.dataclass
-class IndexMapInSummary:
-    raw_index: int = -1
-    new_index: int = -1
-    default_value_symbol_id: int = -1
-
-    def __hash__(self) -> int:
-        return hash((self.raw_index, self.new_index))
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, IndexMapInSummary) and self.raw_index == other.raw_index and self.new_index == other.new_index
-
-    def to_dict(self, method_id):
-        return {
-            "method_id": method_id,
-            "raw_index": self.raw_index,
-            "new_index": self.new_index,
-            "default_value_symbol_id": self.default_value_symbol_id
-        }
 
 class BitVectorManager:
     def __init__(self):
@@ -1533,14 +1514,16 @@ class MethodDefUseSummary:
 @dataclasses.dataclass
 class MethodSummaryTemplate:
     key: int = -1
-    parameter_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
-    defined_external_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
-    used_external_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
-    return_symbols: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
-    key_dynamic_content: dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
+    parameter_symbols: dict[int, set[int]] = dataclasses.field(default_factory=dict)
+    defined_external_symbols: dict[int, set[int]] = dataclasses.field(default_factory=dict)
+    used_external_symbols: dict[int, set[int]] = dataclasses.field(default_factory=dict)
+    return_symbols: dict[int, set[int]] = dataclasses.field(default_factory=dict)
+    key_dynamic_content: dict[int, set[int]] = dataclasses.field(default_factory=dict)
     dynamic_call_stmts: set[int] = dataclasses.field(default_factory=set)
-    this_symbols : dict[int, set[IndexMapInSummary]] = dataclasses.field(default_factory=dict)
+    this_symbols : dict[int, set[int]] = dataclasses.field(default_factory=dict)
     external_symbol_to_state : dict[int, int] = dataclasses.field(default_factory=dict)
+    raw_to_new_index: dict[int, int] = dataclasses.field(default_factory=dict) # 完整space中的原始索引到compact space中新索引的映射
+    index_to_default_value: dict[int, int] = dataclasses.field(default_factory=dict) # index -> default_value_symbol_id 的映射
 
     def copy(self):
         summary = MethodSummaryTemplate(
@@ -1552,7 +1535,9 @@ class MethodSummaryTemplate:
             key_dynamic_content = copy.deepcopy(self.key_dynamic_content),
             dynamic_call_stmts = self.dynamic_call_stmts.copy(),
             this_symbols = copy.deepcopy(self.this_symbols),
-            external_symbol_to_state = self.external_symbol_to_state.copy()
+            external_symbol_to_state = self.external_symbol_to_state.copy(),
+            raw_to_new_index = self.raw_to_new_index.copy(),
+            index_to_default_value = self.index_to_default_value.copy()
         )
         return summary
 
@@ -1562,12 +1547,15 @@ class MethodSummaryTemplate:
 
         results = []
         for key in sorted(d.keys()):
-            value_pair_set = d[key]
-            for value_pair in value_pair_set:
-                if value_pair.default_value_symbol_id != -1:
-                    results.append((key, value_pair.raw_index, value_pair.new_index, value_pair.default_value_symbol_id))
+            index_set = d[key]
+            for index in index_set:
+                new_index = self.raw_to_new_index.get(index, index)
+                default_value_symbol_id = self.index_to_default_value.get(index, -1)
+                
+                if default_value_symbol_id != -1:
+                    results.append((key, index, new_index, default_value_symbol_id))
                 else:
-                    results.append((key, value_pair.raw_index, value_pair.new_index))
+                    results.append((key, index, new_index))
         return results
 
     def convert_dict_to_list(self, d: dict):
@@ -1579,9 +1567,10 @@ class MethodSummaryTemplate:
             if isinstance(d[key], (int, numpy.int64)):
                 results.append((key, d[key]))
                 continue
-            value_pair_set = d[key]
-            for value_pair in value_pair_set:
-                results.append((key, value_pair.raw_index, value_pair.new_index))
+            index_set = d[key]
+            for index in index_set:
+                new_index = self.raw_to_new_index.get(index, index)
+                results.append((key, index, new_index))
         return results
 
     def to_dict(self):
@@ -1614,26 +1603,19 @@ class MethodSummaryTemplate:
     def adjust_ids(self, old_index_to_new_index):
         for content_record in self.get_important_symbol_records():
             for symbol_id in content_record:
-                new_index_tuple_set = set()
-                for state_index_pair in content_record[symbol_id]:
-                    raw_index = state_index_pair.raw_index
+                new_index_set = set()
+                old_index_set = content_record[symbol_id].copy()
+                for raw_index in old_index_set:
                     new_index = util.map_index_to_new_index(
                         raw_index, old_index_to_new_index
                     )
-                    index_tuple = IndexMapInSummary(raw_index = raw_index, new_index = new_index)
-                    new_index_tuple_set.add(index_tuple)
+                    self.raw_to_new_index[raw_index] = new_index
+                    new_index_set.add(new_index)
+                    if raw_index in self.index_to_default_value:
+                        default_value_symbol_id = self.index_to_default_value[raw_index]
+                        self.index_to_default_value[new_index] = default_value_symbol_id
 
-                content_record[symbol_id] = new_index_tuple_set
-
-        # new_index_tuple_set = set()
-        # for state_index_pair in self.return_symbols:
-        #     raw_index = state_index_pair.raw_index
-        #     new_index = util.map_index_to_new_index(
-        #         raw_index, old_index_to_new_index
-        #     )
-        #     index_tuple = IndexMapInSummary(raw_index = raw_index, new_index = new_index)
-        #     new_index_tuple_set.add(index_tuple)
-        # self.return_symbols = new_index_tuple_set
+                content_record[symbol_id] = new_index_set
 
 @dataclasses.dataclass
 class DeferedIndexUpdate:
