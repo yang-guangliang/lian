@@ -577,33 +577,26 @@ class Resolver:
         # -find the corresponding states based on the bit vector
 
         state_symbol_id = state.source_symbol_id
-        # if self.options.debug:
-        #     print(f"\n\n进入resolve_symbol_states\nresolve_symbol_states@ state_symbol_id: {state_symbol_id} \nresolving_state: {state}\n")
         access_path = state.access_path.copy()
         data_type = state.data_type
-        current_space = None
-        new_space = None
-        new_indexes = set()
+        current_space = frame.symbol_state_space
         return_indexes = set()
         source_state_indexes = set()
 
         for current_frame_index in range(len(frame_stack) - 1, 0, -1):
             current_frame: ComputeFrame = frame_stack[current_frame_index]
-            current_space = frame.symbol_state_space
             # if self.options.debug:
                 # print(f"--current method id: {current_frame.method_id} state_symbol_id: {state_symbol_id} access_path: {access_path}")
             if len(current_frame.stmt_worklist) == 0:
                 continue
 
-            if data_type == LIAN_INTERNAL.THIS or state_symbol_id == frame.method_def_use_summary.this_symbol_id:
+            if data_type == LIAN_INTERNAL.THIS or state_symbol_id == current_frame.method_def_use_summary.this_symbol_id:
                 # if self.options.debug:
                 #     print("resolve_symbol_states 在找this")
                 caller_frame = frame_stack[current_frame_index - 1]
                 if not isinstance(caller_frame, ComputeFrame):
                     break
-                current_space = self.get_this_state(caller_frame, source_state_indexes)
-                # print(f"source_state_indexes before get_state_from_path: {source_state_indexes}")
-                # print(f"current_space:{current_space}")
+                source_state_indexes = 
 
             else:
                 if self.loader.is_method_decl(state_symbol_id):
@@ -643,20 +636,9 @@ class Resolver:
                     # 根据parameter找到对应的arg，并更新所在frame以及state_symbol_id。
                     (infered_symbol_id, source_states_related_space) = self.infer_arg_from_parameter(caller_frame, current_frame, state_symbol_id, access_path, source_state_indexes)
                     if source_state_indexes:
-                        current_space = source_states_related_space
                         break
                     state_symbol_id = infered_symbol_id
                     continue
-
-                # 获取source state所在的子space以及其在子space中的index
-                latest_source_state_indexes = self.get_latest_source_state_indexes(current_frame, state_symbol_id)
-                current_space = self.get_sub_space(current_frame, current_space, latest_source_state_indexes, source_state_indexes)
-
-            if util.is_available(current_space):
-                break
-
-        if util.is_empty(current_space):
-            return return_indexes
 
         # if self.options.debug:
         #     print(f"\nsource_state_indexes before get_state_from_path: {source_state_indexes}")
@@ -666,30 +648,6 @@ class Resolver:
         accessed_states = self.get_state_from_path(current_space, access_path, source_state_indexes)
         # if self.options.debug:
         #     print(f"source_state_indexes after get_state_from_path: {accessed_states}")
-        if not accessed_states:
-            return return_indexes
-
-        # if source_state_indexes:
-        #     states_need_to_be_extracted = accessed_states | source_state_indexes
-        # else:
-        #     states_need_to_be_extracted = accessed_states.copy()
-
-        new_space = current_space.extract_related_elements_to_new_space(accessed_states)
-        # new_space = current_space.extract_related_elements_to_new_space(states_need_to_be_extracted)
-        for tmp_index in accessed_states:
-            new_index = util.map_index_to_new_index(
-                tmp_index, new_space.old_index_to_new_index
-            )
-            new_indexes.add(new_index)
-
-        if new_space:
-            new_space_copy = new_space.copy()
-            if new_indexes:
-                frame.symbol_state_space.append_space_copy(new_space_copy)
-                for each_index in new_indexes:
-                    return_indexes.add(new_space_copy.old_index_to_new_index[each_index])
-        # print(f"source_state_indexes before get_state_from_path: {source_state_indexes}")
-        # print(f"current_space:{current_space}")
         return return_indexes
 
 
