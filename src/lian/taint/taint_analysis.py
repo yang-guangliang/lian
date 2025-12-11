@@ -406,8 +406,15 @@ class TaintAnalysis:
         print(f"Found {len(flows)} taint flows.")
         for flow in flows:
             source_code = self.loader.get_stmt_source_code_with_comment(flow.source_stmt_id)
-            print("Source :", source_code[0].strip())
+            source_method_id = self.loader.convert_stmt_id_to_method_id(flow.source_stmt_id)
+            source_method_code = self.loader.get_stmt_source_code_with_comment(source_method_id)
+            sink_code = self.loader.get_stmt_source_code_with_comment(flow.sink_stmt_id)
+            sink_stmt = self.loader.get_stmt_gir(flow.sink_stmt_id)
+            sink_line_no = int(sink_stmt.start_row)
+            print(f"Found a flow to sink {sink_code[0].strip()} on line {sink_line_no + 1}")
+            print("\tSource :", source_code[0].strip(), f"(in {source_method_code[0].strip()})")
             line_no = -1
+            path_parent_source_node_list = []
             for node in reversed(flow.parent_to_source):
                 stmt_id = node.def_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
@@ -417,8 +424,11 @@ class TaintAnalysis:
                 code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                print("<-",code[0].strip(),"in method", method_name, "line", int(line_no)+1)
+                path_node = code[0].strip() + " on line " + str(int(line_no) + 1)
+                path_parent_source_node_list.append(path_node)
+            # print("\t\tParent to Source", path_parent_source_node_list)
             line_no = -1
+            path_parent_sink_node_list = []
             for node in flow.parent_to_sink:
                 stmt_id = node.def_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
@@ -428,7 +438,14 @@ class TaintAnalysis:
                 code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                print("->", code[0].strip(),"in method", method_name, "line", int(line_no)+1)
+                path_node = code[0].strip() + " on line " + str(int(line_no) + 1)
+                path_parent_sink_node_list.append(path_node)
+            if not self.is_sublist(path_parent_source_node_list, path_parent_sink_node_list):
+                path_parent_sink_node_list = path_parent_source_node_list + path_parent_sink_node_list
+            print("\t\tData Flow:", path_parent_sink_node_list)
+
+    def is_sublist(self, sub, lst):
+        return str(sub)[1:-1] in str(lst)[1:-1]
 
     def add_flows_to_json(self, flows, all_flows_json):
         for flow in flows:
@@ -559,14 +576,14 @@ class TaintAnalysis:
     #                 return index
     #     return -1
 
-    def state_is_in_flow(self, state_id, flow):
-        for node in flow.parent_to_source:
-            if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
-                return True
-        for node in flow.parent_to_sink:
-            if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
-                return True
-        return False
+    # def state_is_in_flow(self, state_id, flow):
+    #     for node in flow.parent_to_source:
+    #         if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
+    #             return True
+    #     for node in flow.parent_to_sink:
+    #         if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
+    #             return True
+    #     return False
 
     def run(self):
         if not self.options.quiet:

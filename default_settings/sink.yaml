@@ -6,5 +6,8 @@ rules:
     name: sink
     target: [\%arg0]
   - operation: call_stmt
+    name: send
+    target: [\%arg0]
+  - operation: call_stmt
     name: web.FileResponse
     target: [\%arg0]
