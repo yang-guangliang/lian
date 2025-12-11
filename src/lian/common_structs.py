@@ -1850,7 +1850,7 @@ class ComputeFrame(MetaComputeFrame):
         if self.loader:
             self.unit_id = self.loader.convert_method_id_to_unit_id(method_id)
             self.lang = self.loader.convert_unit_id_to_lang_name(self.unit_id)
-            self.name = self.loader.convert_method_id_to_method_name(self.method_id)
+            self.method_name = self.loader.convert_method_id_to_method_name(self.method_id)
 
         self.method_decl_stmt = None
         self.frame_stack = None
@@ -1883,7 +1883,7 @@ class ComputeFrame(MetaComputeFrame):
         self.symbol_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.state_bit_vector_manager: BitVectorManager = BitVectorManager()
         self.symbol_graph = SymbolGraph(self.method_id)
-        self.state_flow_graph = state_flow_graph
+        self.state_flow_graph: StateFlowGraph = state_flow_graph
         if self.state_flow_graph is None:
             self.state_flow_graph = StateFlowGraph(self.method_id)
         self.method_summary_template: MethodSummaryTemplate = MethodSummaryTemplate(self.method_id)

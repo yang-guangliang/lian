@@ -30,6 +30,7 @@ from lian.common_structs import (
     Argument,
     MethodCallArguments,
     StateDefNode,
+    StateFlowGraph,
     StmtStatus,
     Symbol,
     State,
@@ -73,7 +74,7 @@ class StmtStates:
         self.unit_id = self.frame.unit_id
         self.lang = self.frame.lang
         self.analysis_phase_id = analysis_phase_id
-        self.sfg = self.frame.state_flow_graph
+        self.sfg: StateFlowGraph = self.frame.state_flow_graph
         self.used_symbol_id_to_indexes = {}
         self.complete_graph = complete_graph
 
@@ -3014,7 +3015,7 @@ class StmtStates:
         return True
 
     def change_field_read_receiver_state(
-        self, stmt_id, status, receiver_symbol_index, receiver_state_index, receiver_state,
+        self, stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, receiver_state,
         field_name, defined_states, is_tangping=False
     ):
         if receiver_state.tangping_elements:
@@ -3148,7 +3149,7 @@ class StmtStates:
 
                 elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     self.change_field_read_receiver_state(
-                        stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
+                        stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                         field_name, each_defined_states, is_tangping=True
                     )
                     continue
@@ -3255,7 +3256,7 @@ class StmtStates:
 
                 # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
                 self.change_field_read_receiver_state(
-                    stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
+                    stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                     field_name, each_defined_states, is_tangping=False
                 )
             defined_states |= each_defined_states
@@ -3349,7 +3350,7 @@ class StmtStates:
 
                 elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     self.change_field_read_receiver_state(
-                        stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
+                        stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                         field_name, each_defined_states, is_tangping=True
                     )
                     continue
@@ -3456,7 +3457,7 @@ class StmtStates:
 
                 # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
                 self.change_field_read_receiver_state(
-                    stmt_id, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
+                    stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                     field_name, each_defined_states, is_tangping=False
                 )
 

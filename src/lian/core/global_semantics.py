@@ -332,8 +332,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
 
             caller_frame = frame_stack[-2]
             if not self.options.quiet:
-                method_name = self.loader.convert_method_id_to_method_name(frame.method_id)
-                print(f"Analyzing <method {frame.method_id} name: {method_name}>")
+                print(f"Analyzing <method {frame.method_id} name: {frame.method_name}>")
 
             result: P2ResultFlag = self.analyze_stmts(frame)
             if util.is_available(result) and result.interruption_flag:
@@ -374,7 +373,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def init_frame_stack(self, entry_method_id, global_space, sfg):
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
-        entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph=sfg)
+        entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph = sfg)
         frame_stack.add(entry_frame)
         return frame_stack
 
