@@ -1079,7 +1079,6 @@ class PrelimSemanticAnalysis:
         self.loader.save_method_summary_template(frame.method_id, method_summary)
 
     def generate_and_save_analysis_summary(self, frame: ComputeFrame, method_summary: MethodSummaryTemplate):
-        # print(f"生成方法{frame.method_id}的summary")
         def_use_summary = frame.method_def_use_summary
         if util.is_empty(def_use_summary):
             return
