@@ -509,7 +509,6 @@ class PrelimSemanticAnalysis:
 
     def get_used_symbol_indexes(self, stmt_id, frame: ComputeFrame, status: StmtStatus):
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
-        # print(f"available_defs: {available_defs}")
         all_used_symbols = status.used_symbols + status.implicitly_used_symbols
         all_reachable_defs = set()
         for used_symbol_index in all_used_symbols:
@@ -519,7 +518,6 @@ class PrelimSemanticAnalysis:
             all_reachable_defs.update(
                 self.check_reachable_symbol_defs(stmt_id, frame, status, used_symbol_index, used_symbol, available_defs)
             )
-        # print(f"all_reachable_defs{all_reachable_defs}")
 
         available_indexes = set()
         for node in all_reachable_defs:
@@ -562,7 +560,6 @@ class PrelimSemanticAnalysis:
 
         return in_state_bits
 
-    #def group_in_states_and_obtain_newest_states(self, stmt_id, in_symbols, frame: ComputeFrame):
     def group_in_states(self, stmt_id, stmt, in_symbol_indexes, frame: ComputeFrame, status):
         stmt_sfg_node = None
 
@@ -576,12 +573,9 @@ class PrelimSemanticAnalysis:
 
             symbol_id = each_in_symbol.symbol_id
             available_state_defs = frame.state_bit_vector_manager.explain(status.in_state_bits)
-            # print("group_in_states@ available_state_defs",available_state_defs)
-            # print(f"group_in_states@ in_symbol {symbol_id}.states", each_in_symbol.states)
             latest_state_index_set = self.resolver.collect_newest_states_by_state_indexes(
                 frame, stmt_id, each_in_symbol.states, available_state_defs
             )
-            # print("group_in_states@ latest_state_index_set",latest_state_index_set)
             if latest_state_index_set:
                 util.add_to_dict_with_default_set(symbol_id_to_state_index, symbol_id, latest_state_index_set)
 
@@ -648,6 +642,8 @@ class PrelimSemanticAnalysis:
                     if not contain_used_symbol_flag:
                         for tmp_pos, tmp_used_symbol_index in enumerate(status.used_symbols + status.implicitly_used_symbols):
                             tmp_used_symbol = frame.symbol_state_space[tmp_used_symbol_index]
+                            if not isinstance(tmp_used_symbol, Symbol):
+                                continue
                             if tmp_used_symbol.symbol_id == used_symbol_node.node_id:
                                 frame.state_flow_graph.add_edge(
                                     used_symbol_node,
@@ -659,7 +655,6 @@ class PrelimSemanticAnalysis:
                                     )
                                 )
 
-        # print("group_in_states@ symbol_id_to_state_index before fusion",symbol_id_to_state_index)
         for symbol_id, each_symbol_in_states in symbol_id_to_state_index.items():
             # 对每个symbol的in_states按state_id合并一次，并将fusion_state添加到status.defined_states中
             state_id_to_indexes = self.group_states_with_state_ids(frame, each_symbol_in_states)
@@ -667,7 +662,6 @@ class PrelimSemanticAnalysis:
                 fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, status)
                 each_symbol_in_states -= states_with_same_id
                 each_symbol_in_states |= fusion_state
-        # print("group_in_states@ symbol_id_to_state_index after fusion",symbol_id_to_state_index)
         return symbol_id_to_state_index
 
     def generate_external_symbol_states(self, frame: ComputeFrame, stmt_id, symbol_id, used_symbol, method_summary):
