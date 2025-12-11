@@ -309,14 +309,14 @@ class Resolver:
                 self.obtain_parent_states(call_stmt_id, caller_frame, call_stmt_status, each_state_index)
             )
 
-        new_space = current_space.extract_related_elements_to_new_space(this_state_set)
-        for source_state_index in this_state_set:
-            new_index = util.map_index_to_new_index(
-                source_state_index, new_space.old_index_to_new_index
-            )
-            new_indexes.add(new_index)
+        # new_space = current_space.extract_related_elements_to_new_space(this_state_set)
+        # for source_state_index in this_state_set:
+        #     new_index = util.map_index_to_new_index(
+        #         source_state_index, new_space.old_index_to_new_index
+        #     )
+        #     new_indexes.add(new_index)
 
-        return new_space
+        # return new_space
 
     def infer_arg_from_parameter(self, caller_frame: ComputeFrame, callee_frame: ComputeFrame, state_symbol_id, arg_access_path: list, source_states: set):
         # 可能只找到arg的symbol id,也可能直接找到source state
@@ -328,7 +328,7 @@ class Resolver:
         # print("parameter_mapping_list")
         # pprint.pprint(parameter_mapping_list)
         if not parameter_mapping_list:
-            return (state_symbol_id, None)
+            return state_symbol_id
 
         arg_fields = {}
         arg_array = []
@@ -339,7 +339,7 @@ class Resolver:
 
             if each_mapping.is_default_value:
                 default_value_symbol_id = each_mapping.arg_state_id
-                return (default_value_symbol_id, None)
+                return default_value_symbol_id
 
             arg_source_symbol_id = each_mapping.arg_source_symbol_id
             # 实参不是symbol
@@ -361,7 +361,7 @@ class Resolver:
 
             # print(f"arg_source_symbol_id: {arg_source_symbol_id}")
             if arg_source_symbol_id not in caller_frame.defined_symbols:
-                return (arg_source_symbol_id, None)
+                return arg_source_symbol_id
 
             if each_mapping.parameter_type in (
                 LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER, LIAN_INTERNAL.PACKED_NAMED_PARAMETER
@@ -382,8 +382,8 @@ class Resolver:
 
             # current_frame = caller_frame
             # state_symbol_id = arg_source_symbol_id
-            arg_access_path = each_mapping.arg_access_path + arg_access_path
-            return (arg_source_symbol_id, None)
+            #arg_access_path = each_mapping.arg_access_path + arg_access_path
+            return arg_source_symbol_id
 
         if arg_fields or arg_array:
             item = State(
@@ -396,19 +396,19 @@ class Resolver:
             index = current_space.add(item)
             source_states.add(index)
 
-        if source_states:
-            new_indexes = set()
-            new_space = current_space.extract_related_elements_to_new_space(source_states)
-            for source_state_index in source_states:
-                new_index = util.map_index_to_new_index(
-                    source_state_index, new_space.old_index_to_new_index
-                )
-                new_indexes.add(new_index)
-            source_states.clear()
-            source_states.update(new_indexes)
-            return (state_symbol_id, new_space)
+        # if source_states:
+        #     new_indexes = set()
+        #     new_space = current_space.extract_related_elements_to_new_space(source_states)
+        #     for source_state_index in source_states:
+        #         new_index = util.map_index_to_new_index(
+        #             source_state_index, new_space.old_index_to_new_index
+        #         )
+        #         new_indexes.add(new_index)
+        #     source_states.clear()
+        #     source_states.update(new_indexes)
+        #     return (state_symbol_id, new_space)
 
-        return (state_symbol_id, None)
+        return state_symbol_id
 
     def get_latest_source_state_indexes(self, current_frame: ComputeFrame, state_symbol_id):
         # if self.options.debug:
@@ -451,24 +451,24 @@ class Resolver:
         # print(f"\nlatest_source_state_indexes in get_latest_source_state_indexes: {latest_source_state_indexes}")
         return latest_source_state_indexes
 
-    def get_sub_space(self, current_frame, current_space:SymbolStateSpace, latest_source_state_indexes, new_indexes):
-        if not isinstance(current_frame, ComputeFrame):
-            return None
+    # def get_sub_space(self, current_frame, current_space:SymbolStateSpace, latest_source_state_indexes, new_indexes):
+    #     if not isinstance(current_frame, ComputeFrame):
+    #         return None
 
-        if not current_space:
-            return None
+    #     if not current_space:
+    #         return None
 
-        new_space = current_space.extract_related_elements_to_new_space(latest_source_state_indexes)
-        for source_state_index in latest_source_state_indexes:
-            new_index = util.map_index_to_new_index(
-                source_state_index, new_space.old_index_to_new_index
-            )
-            new_indexes.add(new_index)
+    #     new_space = current_space.extract_related_elements_to_new_space(latest_source_state_indexes)
+    #     for source_state_index in latest_source_state_indexes:
+    #         new_index = util.map_index_to_new_index(
+    #             source_state_index, new_space.old_index_to_new_index
+    #         )
+    #         new_indexes.add(new_index)
 
-        # print(f"new_space in get_sub_space: {new_space}")
-        # print(f"new_indexes in get_sub_space: {new_indexes}\n")
+    #     # print(f"new_space in get_sub_space: {new_space}")
+    #     # print(f"new_indexes in get_sub_space: {new_indexes}\n")
 
-        return new_space
+    #     return new_space
 
     def retrieve_latest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
         return_indexes = set()
@@ -576,69 +576,90 @@ class Resolver:
         # -For each frame, check the bit vector of its last stmt;
         # -find the corresponding states based on the bit vector
 
-        state_symbol_id = state.source_symbol_id
+        source_symbol_id = state.source_symbol_id
+        # if self.options.debug:
+        #     print(f"\n\n进入resolve_symbol_states\nresolve_symbol_states@ state_symbol_id: {state_symbol_id} \nresolving_state: {state}\n")
         access_path = state.access_path.copy()
         data_type = state.data_type
-        current_space = frame.symbol_state_space
+        current_space = None
+        new_indexes = set()
         return_indexes = set()
         source_state_indexes = set()
+        current_frame = None
 
-        for current_frame_index in range(len(frame_stack) - 1, 0, -1):
+        for current_frame_index in range(len(frame_stack) - 1, 1, -1):
             current_frame: ComputeFrame = frame_stack[current_frame_index]
+            if current_frame.is_meta_frame:
+                break
+
             # if self.options.debug:
                 # print(f"--current method id: {current_frame.method_id} state_symbol_id: {state_symbol_id} access_path: {access_path}")
             if len(current_frame.stmt_worklist) == 0:
                 continue
 
-            if data_type == LIAN_INTERNAL.THIS or state_symbol_id == current_frame.method_def_use_summary.this_symbol_id:
+            if data_type == LIAN_INTERNAL.THIS or source_symbol_id == frame.method_def_use_summary.this_symbol_id:
                 # if self.options.debug:
                 #     print("resolve_symbol_states 在找this")
                 caller_frame = frame_stack[current_frame_index - 1]
-                if not isinstance(caller_frame, ComputeFrame):
+                if caller_frame.is_meta_frame:
                     break
-                source_state_indexes = 
+                # if not isinstance(caller_frame, ComputeFrame):
+                #     break
+                #current_space = self.get_this_state(caller_frame, source_state_indexes)
+
+                self.get_this_state(caller_frame, source_state_indexes)
+                # print(f"source_state_indexes before get_state_from_path: {source_state_indexes}")
 
             else:
-                if self.loader.is_method_decl(state_symbol_id):
+                if self.loader.is_method_decl(source_symbol_id):
                     # if self.options.debug:
                     #     print(f"state_source_symbol_id {state_symbol_id} is method_decl")
                     new_state = State(
                         stmt_id = stmt_id,
-                        source_symbol_id = state_symbol_id,
+                        source_symbol_id = source_symbol_id,
                         data_type = LIAN_INTERNAL.METHOD_DECL,
                         state_type = STATE_TYPE_KIND.REGULAR,
-                        value = state_symbol_id,
+                        value = source_symbol_id,
                     )
-                    return {frame_stack[-1].symbol_state_space.add(new_state)}
+                    return {current_space.add(new_state)}
 
-                elif self.loader.is_class_decl(state_symbol_id):
+                elif self.loader.is_class_decl(source_symbol_id):
                     # if self.options.debug:
                     #     print(f"state_source_symbol_id {state_symbol_id} is class_decl")
                     new_state = State(
                         stmt_id = stmt_id,
-                        source_symbol_id = state_symbol_id,
+                        source_symbol_id = source_symbol_id,
                         data_type = LIAN_INTERNAL.CLASS_DECL,
                         state_type = STATE_TYPE_KIND.REGULAR,
-                        value = state_symbol_id
+                        value = source_symbol_id
                     )
-                    return {frame_stack[-1].symbol_state_space.add(new_state)}
+                    return {current_space.add(new_state)}
 
-                if state_symbol_id not in current_frame.defined_symbols:
+                if source_symbol_id not in current_frame.defined_symbols:
                     # if self.options.debug:
                     #     print("state_symbol_id not in current_frame.defined_symbols")
                     continue
 
-                if self.loader.is_parameter_decl_of_method(state_symbol_id, current_frame.method_id):
+                if self.loader.is_parameter_decl_of_method(source_symbol_id, current_frame.method_id):
                     caller_frame = frame_stack[current_frame_index - 1]
-                    if not (caller_frame and isinstance(caller_frame, ComputeFrame)):
+                    if caller_frame.is_meta_frame:
                         continue
                     # print("From Parameter Decl")
                     # 根据parameter找到对应的arg，并更新所在frame以及state_symbol_id。
-                    (infered_symbol_id, source_states_related_space) = self.infer_arg_from_parameter(caller_frame, current_frame, state_symbol_id, access_path, source_state_indexes)
+                    #(inferred_symbol_id, source_states_related_space) = self.infer_arg_from_parameter(caller_frame, current_frame, source_symbol_id, access_path, source_state_indexes)
+                    inferred_symbol_id = self.infer_arg_from_parameter(caller_frame, current_frame, source_symbol_id, access_path, source_state_indexes)
                     if source_state_indexes:
+                        #current_space = source_states_related_space
                         break
-                    state_symbol_id = infered_symbol_id
+                    source_symbol_id = inferred_symbol_id
                     continue
+
+                # 获取source state所在的子space以及其在子space中的index
+                # latest_source_state_indexes = self.get_latest_source_state_indexes(current_frame, source_symbol_id)
+                # current_space = self.get_sub_space(current_frame, current_space, latest_source_state_indexes, source_state_indexes)
+
+        if current_frame.is_meta_frame:
+            return return_indexes
 
         # if self.options.debug:
         #     print(f"\nsource_state_indexes before get_state_from_path: {source_state_indexes}")
@@ -648,6 +669,30 @@ class Resolver:
         accessed_states = self.get_state_from_path(current_space, access_path, source_state_indexes)
         # if self.options.debug:
         #     print(f"source_state_indexes after get_state_from_path: {accessed_states}")
+        if not accessed_states:
+            return return_indexes
+
+        # if source_state_indexes:
+        #     states_need_to_be_extracted = accessed_states | source_state_indexes
+        # else:
+        #     states_need_to_be_extracted = accessed_states.copy()
+
+        # new_space = current_space.extract_related_elements_to_new_space(accessed_states)
+        # # new_space = current_space.extract_related_elements_to_new_space(states_need_to_be_extracted)
+        # for tmp_index in accessed_states:
+        #     new_index = util.map_index_to_new_index(
+        #         tmp_index, new_space.old_index_to_new_index
+        #     )
+        #     new_indexes.add(new_index)
+
+        # if new_space:
+        #     new_space_copy = new_space.copy()
+        #     if new_indexes:
+        #         frame.symbol_state_space.append_space_copy(new_space_copy)
+        #         for each_index in new_indexes:
+        #             return_indexes.add(new_space_copy.old_index_to_new_index[each_index])
+        # print(f"source_state_indexes before get_state_from_path: {source_state_indexes}")
+        # print(f"current_space:{current_space}")
         return return_indexes
 
 
