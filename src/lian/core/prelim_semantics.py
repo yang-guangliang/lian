@@ -1197,11 +1197,13 @@ class PrelimSemanticAnalysis:
                 all_indexes.update(new_return_states)
 
         method_summary.external_symbol_to_state = frame.external_symbol_id_to_initial_state_index
-        # save space
-        compact_space = frame.symbol_state_space.extract_related_elements_to_new_space(all_indexes)
-        # adjust ids and save summary template
-        method_summary.adjust_ids(compact_space.old_index_to_new_index)
-        self.save_analysis_summary_and_space(frame, method_summary, compact_space)
+
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+            # save space
+            compact_space = frame.symbol_state_space.extract_related_elements_to_new_space(all_indexes)
+            # adjust ids and save summary template
+            method_summary.adjust_ids(compact_space.old_index_to_new_index)
+            self.save_analysis_summary_and_space(frame, method_summary, compact_space)
         return method_summary
         # print(f"dynamic_call_stmts: {frame.method_summary_template.dynamic_call_stmts}")
 

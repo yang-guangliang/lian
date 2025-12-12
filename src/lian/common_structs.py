@@ -1551,7 +1551,7 @@ class MethodSummaryTemplate:
             for index in index_set:
                 new_index = self.raw_to_new_index.get(index, index)
                 default_value_symbol_id = self.index_to_default_value.get(index, -1)
-                
+
                 if default_value_symbol_id != -1:
                     results.append((key, index, new_index, default_value_symbol_id))
                 else:
@@ -1809,10 +1809,9 @@ class MetaComputeFrame:
     # <key> formats:
     #       - call_stmt:    stmt_id, callee_id
     #       - other stmts:  stmt_id
-    summary_collection: dict = dataclasses.field(default_factory=dict)
 
     # K/V: <key> / {true, false}
-    content_to_be_analyzed: dict = dataclasses.field(default_factory=dict)
+    content_already_analyzed: dict = dataclasses.field(default_factory=dict)
 
     is_meta_frame:bool = True
 
@@ -1874,7 +1873,7 @@ class ComputeFrame(MetaComputeFrame):
         self.named_args = None
         self.callee_list = []
         self.basic_callees = set()
-        self.content_to_be_analyzed = {}
+        self.content_already_analyzed = {}
         self.key_dynamic_content = {}
         self.all_local_symbol_ids = set()
         self.used_external_symbol_id_to_state_id_set = {}
@@ -1893,7 +1892,7 @@ class ComputeFrame(MetaComputeFrame):
     def get_context(self):
         return self.call_site
 
-    def get_context_hash(self):
+    def hash_context(self):
         return hash(self.call_site)
 
 class ComputeFrameStack:
@@ -2031,6 +2030,9 @@ class CallSite:
 
     def is_entry_point(self):
         return self.caller_id > 0 and self.call_stmt_id == 0 and self.callee_id == 0
+
+    def hash(self):
+        return self.__hash__()
 
 @dataclasses.dataclass(frozen=True)  # frozen=True 使其不可变
 class CallPath:

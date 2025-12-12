@@ -95,7 +95,6 @@ class GlobalStmtStates(StmtStates):
     ):
         callee_ids_to_be_analyzed = []
         caller_id = self.frame.method_id
-        call_stmt_id = stmt_id
         if config.DEBUG_FLAG:
             util.debug(f"positional_args of stmt <{stmt_id}>: {args.positional_args}")
             util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
@@ -112,12 +111,11 @@ class GlobalStmtStates(StmtStates):
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
             callee_path = self.frame.call_path.add_callsite(new_call_site)
 
-            # TODO: 检查是否已经分析过
             if(
                 self.path_manager.path_exists(callee_path) or
                 callee_path.count_cycles() > 1 or
                 each_callee_id in self.frame.call_path or
-                new_call_site in self.frame.summary_collection
+                self.frame.content_already_analyzed.get(new_call_site, True)
             ):
                 continue
 
@@ -164,21 +162,18 @@ class GlobalStmtStates(StmtStates):
             )
 
         for each_callee_id in callee_method_ids:
-            new_path = self.frame.call_path.add_call(caller_id, stmt_id, each_callee_id)
-            if caller_id != each_callee_id:
-                self.path_manager.add_path(new_path)
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
+            if caller_id != each_callee_id:
+                new_path = self.frame.call_path.add_callsite(new_call_site)
+                self.path_manager.add_path(new_path)
             # prepare callee summary instance and compact space
-            if new_call_site in self.frame.summary_collection:
-                callee_summary = self.frame.summary_collection[new_call_site]
-            else:
-                continue
-            callee_summary = callee_summary.copy()
-
-            self.apply_callee_semantic_summary(
-                stmt_id, each_callee_id, args, callee_summary,
-                None, this_state_set, new_object_flag
-            )
+            callee_summary = self.loader.get_method_summary_instance(new_call_site.hash())
+            if callee_summary:
+                callee_summary = callee_summary.copy()
+                self.apply_callee_semantic_summary(
+                    stmt_id, each_callee_id, args, callee_summary,
+                    self.frame.symbol_state_space, this_state_set, new_object_flag
+                )
 
         return P2ResultFlag()
 

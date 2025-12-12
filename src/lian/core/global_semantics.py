@@ -263,27 +263,21 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         #         print(f"@exit collect_external_symbol_states: stmt_id {stmt_id}, symbol_id {symbol_id}, {frame.symbol_state_space[index]}")
         return new_state_indexes
 
-    def generate_analysis_summary_and_s2space(self, frame: ComputeFrame):
-        summary_data = SummaryData()
-        return summary_data
+    # def generate_analysis_summary_and_s2space(self, frame: ComputeFrame):
+    #     summary_data = SummaryData()
+    #     return summary_data
 
-    def save_analysis_summary_and_space(self, frame: ComputeFrame, method_summary: MethodSummaryInstance, caller_frame: ComputeFrame = None):
-        if not caller_frame:
-            caller_frame: ComputeFrame = frame.frame_stack[-2]
-        caller_frame.summary_collection[frame.get_context()] = method_summary
-        self.loader.save_method_summary_instance(frame.get_context_hash(), method_summary)
+    # def save_result_to_last_frame_v1(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate):
+    #     self.save_result_to_last_frame_v2(frame_stack, current_frame, summary, current_frame.space_summary)
 
-    def save_result_to_last_frame_v1(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate):
-        self.save_result_to_last_frame_v2(frame_stack, current_frame, summary, current_frame.space_summary)
+    # def save_result_to_last_frame_v2(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate, s2space: SymbolStateSpace):
+    #     summary_data = SummaryData(summary, s2space)
+    #     self.save_result_to_last_frame_v3(frame_stack, current_frame, summary_data)
 
-    def save_result_to_last_frame_v2(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary: MethodSummaryTemplate, s2space: SymbolStateSpace):
-        summary_data = SummaryData(summary, s2space)
-        self.save_result_to_last_frame_v3(frame_stack, current_frame, summary_data)
-
-    def save_result_to_last_frame_v3(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary_data):
-        last_frame: MetaComputeFrame = frame_stack[-2]
-        key = CallSite(current_frame.caller_id, current_frame.call_stmt_id, current_frame.method_id)
-        last_frame.summary_collection[key] = summary_data
+    # def save_result_to_last_frame_v3(self, frame_stack: ComputeFrameStack, current_frame: ComputeFrame, summary_data):
+    #     last_frame: MetaComputeFrame = frame_stack[-2]
+    #     key = CallSite(current_frame.caller_id, current_frame.call_stmt_id, current_frame.method_id)
+    #     last_frame.summary_collection[key] = summary_data
 
     def analyze_frame_stack(self, frame_stack: ComputeFrameStack, global_space, sfg: StateFlowGraph):
         while len(frame_stack) >= 2:
@@ -300,13 +294,12 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                     frame_stack.pop()
                     continue
 
-            if frame.content_to_be_analyzed:
+            if frame.content_already_analyzed:
                 # check if all children have been analyzed
                 children_done_flag = True
-                for key in frame.content_to_be_analyzed:
-                    value = frame.content_to_be_analyzed[key]
-                    if not value:
-                        frame.content_to_be_analyzed[key] = True
+                for key, value in frame.content_already_analyzed.items():
+                    if not value: # false means not done
+                        frame.content_already_analyzed[key] = True
                         new_frame = ComputeFrame(
                             method_id = key.callee_id,
                             caller_id = key.caller_id,
@@ -323,11 +316,9 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                         break
                 if not children_done_flag:
                     if self.options.debug:
-                        util.debug(f"\t<method {frame.method_id}> has content to be analyzed: {frame.content_to_be_analyzed}")
+                        util.debug(f"\t<method {frame.method_id}> has content to be analyzed: {frame.content_already_analyzed}")
                     continue
-                frame.content_to_be_analyzed = {}
 
-            caller_frame = frame_stack[-2]
             if not self.options.quiet:
                 print(f"Analyzing <method {frame.method_id} name: {frame.method_name}>")
 
@@ -339,21 +330,22 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                 frame.args_list = data.args_list
                 frame.callee_classes_of_method = data.classes_of_method
                 frame.callee_this_class_ids = data.this_class_ids
+                frame.content_already_analyzed = {}
                 for callee_id in data.callee_ids:
                     key = CallSite(data.caller_id, data.call_stmt_id, callee_id)
-                    if key not in frame.content_to_be_analyzed:
-                        frame.content_to_be_analyzed[key] = False
+                    if key not in frame.content_already_analyzed:
+                        frame.content_already_analyzed[key] = False
                         new_callee = True
 
                 if new_callee:
                     continue
 
-            # gl：为什么有的保存，有的不保存
-            summary_data = self.generate_analysis_summary_and_s2space(frame)
-            self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
+            context_id = frame.hash_context()
+            # summary_data = self.generate_analysis_summary_and_s2space(frame)
+            # self.save_result_to_last_frame_v3(frame_stack, frame, summary_data)
             summary = self.generate_and_save_analysis_summary(frame, frame.method_summary_instance)
-            self.save_analysis_summary_and_space(frame, summary, caller_frame)
-            context_id = frame.get_context_hash()
+            # TODO: if there is already a summary for this context, we need to merge the two summaries
+            self.loader.save_method_summary_instance(context_id, summary)
             self.loader.save_stmt_status_p3(context_id, frame.stmt_id_to_status)
             self.loader.save_method_defined_symbols_p3(context_id, frame.defined_symbols)
             # self.loader.save_symbol_bit_vector_p3(context_id, frame.symbol_bit_vector_manager)
@@ -364,8 +356,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             if not self.options.quiet:
                 print(f"<method {frame.method_id}> is Done")
 
-        meta_frame: MetaComputeFrame = frame_stack[0]
-        return meta_frame.summary_collection
+        # meta_frame: MetaComputeFrame = frame_stack[0]
+        # return meta_frame.summary_collection
 
     def init_frame_stack(self, entry_method_id, global_space, sfg):
         frame_stack = ComputeFrameStack()
@@ -384,8 +376,8 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
             self.save_graph_as_dot(sfg.graph, entry_point, self.analysis_phase_id)
-            self.loader.save_symbol_state_space_p3(entry_point, global_space)
 
+        self.loader.save_symbol_state_space_p3(0, global_space)
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader.export()
 

@@ -64,7 +64,7 @@ class StmtStates:
         compute_frame: ComputeFrame, call_graph: CallGraph, analyzed_method_list=[], complete_graph=False
     ):
         self.event_manager = event_manager
-        self.loader = loader
+        self.loader:Loader = loader
         self.resolver: Resolver = resolver
         self.frame: ComputeFrame = compute_frame
         self.frame_stack: ComputeFrameStack = compute_frame.frame_stack

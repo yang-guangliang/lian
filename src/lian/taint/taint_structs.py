@@ -22,7 +22,7 @@ class MethodTaintFrame:
         self.symbol_state_space = None
         self.symbol_graph = None
         self.stmt_id_to_callees = None
-        self.content_to_be_analyzed = {}
+        self.content_already_analyzed = {}
         self.return_tag = None
         self.callee_return = None
         self.current_call_site = None
@@ -33,7 +33,7 @@ class Flow:
     parent_to_sink:list = dataclasses.field(default_factory=list)
     source_stmt_id=-1
     sink_stmt_id=-1
-    
+
 @dataclasses.dataclass
 class StmtTaintStatus:
     def __init__(self, stmt_id):
