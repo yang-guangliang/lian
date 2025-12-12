@@ -98,10 +98,11 @@ class GlobalStmtStates(StmtStates):
         if config.DEBUG_FLAG:
             util.debug(f"positional_args of stmt <{stmt_id}>: {args.positional_args}")
             util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
+            util.debug(f"callee_method_ids: {callee_method_ids}")
 
         parameter_mapping_list = []
 
-        if callee_method_ids == set():
+        if len(callee_method_ids) == 0:
             callee_name = self.resolver.recover_callee_name(stmt_id, self.loader)
             unknown_callee_set = self.caller_unknown_callee_edge.get(str(caller_id), set())
             unknown_callee_set.add((str(stmt_id), callee_name))
@@ -115,7 +116,7 @@ class GlobalStmtStates(StmtStates):
                 self.path_manager.path_exists(callee_path) or
                 callee_path.count_cycles() > 1 or
                 each_callee_id in self.frame.call_path or
-                self.frame.content_already_analyzed.get(new_call_site, True)
+                self.frame.content_already_analyzed.get(new_call_site, False)
             ):
                 continue
 

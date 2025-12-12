@@ -296,16 +296,14 @@ class Resolver:
         # 取出call_name_symbol的states
         call_stmt_status = caller_frame.stmt_id_to_status[call_stmt_id]
         call_name_symbol_index = call_stmt_status.used_symbols[0]
-        current_space = caller_frame.symbol_state_space
-        call_name_symbol = current_space[call_name_symbol_index]
-        if not (call_name_symbol and isinstance(call_name_symbol, Symbol)):
+        call_name_symbol = caller_frame.symbol_state_space[call_name_symbol_index]
+        if not isinstance(call_name_symbol, Symbol):
             return
         call_name_state_index_set = call_name_symbol.states
 
         # 获取call_name_states的parent_states，也就是this的states
-        this_state_set = set()
         for each_state_index in call_name_state_index_set:
-            this_state_set.update(
+            new_indexes.update(
                 self.obtain_parent_states(call_stmt_id, caller_frame, call_stmt_status, each_state_index)
             )
 

@@ -15,9 +15,8 @@
                 "--noextern",
                 "--graph",
                 "-w", "/tmp/lian_workspace",
-                "/home/guangliang/projects/lian/tests/dataflows/python/test_call_tree.py"
+                "/home/guangliang/projects/lian/tests/dataflows/python/alias_example_in_flowdroid.py"
             ],
             "cwd": "${workspaceFolder}"
-        }
-    ]
+        }    ]
 }

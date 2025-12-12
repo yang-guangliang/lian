@@ -1966,6 +1966,7 @@ class StmtStates:
         if config.DEBUG_FLAG:
             util.debug(f"positional_args of stmt <{stmt_id}>: {args.positional_args}")
             util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
+            util.debug(f"callee_method_ids: {callee_method_ids}")
 
         for each_callee_id in callee_method_ids:
             if self.call_graph:

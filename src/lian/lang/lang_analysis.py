@@ -148,7 +148,7 @@ class GIRProcessing:
                         block_id = self.flatten_block(myvalue, flattened_node["stmt_id"], dataframe)
                         flattened_node[mykey] = block_id
                         continue
-                    if myvalue == []:
+                    if len(myvalue) == 0:
                         flattened_node[mykey] = None
                     else:
                         flattened_node[mykey] = str(myvalue)
