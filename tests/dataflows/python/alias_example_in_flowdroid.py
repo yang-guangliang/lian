@@ -10,3 +10,4 @@ def foo(z):
     x.f = w
 
 main()
+

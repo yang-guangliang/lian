@@ -234,9 +234,6 @@ class GlobalStmtStates(StmtStates):
                             node_id=parameter_name_symbol.symbol_id,
                             name=parameter_name_symbol.name,
                             context=self.frame.get_context(),
-                            complete_graph=self.complete_graph,
-                            loader=self.loader,
-                            stmt=self.loader.get_stmt_gir(parameter_name_symbol.stmt_id),
                         ),
                         SFGEdge(
                             edge_type=SFG_EDGE_KIND.SYMBOL_FLOW,

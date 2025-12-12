@@ -375,7 +375,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
-            self.save_graph_as_dot(sfg.graph, entry_point, self.analysis_phase_id)
+            self.save_graph_to_dot(sfg.graph, entry_point, self.analysis_phase_id, global_space)
 
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.loader.save_call_paths_p3(self.path_manager.paths)

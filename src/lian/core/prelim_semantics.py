@@ -7,6 +7,7 @@ import numpy
 import networkx as nx
 
 from lian.config import type_table
+from lian.core.sfg_dumper import SFGDumper
 from lian.util import util
 from lian.config import config
 from lian.config.constants import (
@@ -311,8 +312,6 @@ class PrelimSemanticAnalysis:
                     def_stmt_id=stmt_id,
                     name=stmt.operation,
                     context=tmp_context,
-                    loader=self.loader,
-                    complete_graph=self.options.complete_graph,
                     stmt=stmt
                 ),
                 SFGNode(
@@ -322,9 +321,6 @@ class PrelimSemanticAnalysis:
                     node_id=key.symbol_id,
                     name=defined_symbol.name,
                     context=tmp_context,
-                    loader=self.loader,
-                    complete_graph=self.options.complete_graph,
-                    stmt=stmt
                     ),
                 SFGEdge(
                     edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED,
@@ -367,8 +363,6 @@ class PrelimSemanticAnalysis:
                     def_stmt_id=stmt_id,
                     name=stmt.operation,
                     context=tmp_context,
-                    loader=self.loader,
-                    complete_graph=self.complete_graph,
                     stmt=stmt
                 ),
                 SFGNode(
@@ -378,9 +372,6 @@ class PrelimSemanticAnalysis:
                     node_id=key.symbol_id,
                     name=defined_symbol.name,
                     context=tmp_context,
-                    loader=self.loader,
-                    complete_graph=self.complete_graph,
-                    stmt=stmt
                 ),
                 SFGEdge(
                     edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED,
@@ -444,17 +435,13 @@ class PrelimSemanticAnalysis:
                         index=used_symbol_index,
                         def_stmt_id=used_content.stmt_id,
                         node_id=used_content.state_id,
-                        loader=self.loader,
-                        complete_graph=self.options.complete_graph,
-                        access_path=used_content.access_path,
+                        access_path=used_content.access_path
                     ),
                     SFGNode(
                         node_type=SFG_NODE_KIND.STMT,
                         def_stmt_id=stmt_id,
                         name=stmt.operation,
                         context=frame.get_context(),
-                        loader=self.loader,
-                        complete_graph=self.options.complete_graph,
                         stmt=stmt
                     ),
                     SFGEdge(
@@ -487,16 +474,12 @@ class PrelimSemanticAnalysis:
                             node_id=tmp_key.symbol_id,
                             name=used_content.name,
                             context=tmp_context,
-                            loader=self.loader,
-                            complete_graph=self.options.complete_graph
                         ),
                         SFGNode(
                             node_type=SFG_NODE_KIND.STMT,
                             def_stmt_id=stmt_id,
                             name=stmt.operation,
                             context=tmp_context,
-                            loader=self.loader,
-                            complete_graph=self.options.complete_graph,
                             stmt=stmt
                         ),
                         SFGEdge(
@@ -587,8 +570,6 @@ class PrelimSemanticAnalysis:
                         node_id=each_in_symbol.symbol_id,
                         name=each_in_symbol.name,
                         context=tmp_context,
-                        loader=self.loader,
-                        complete_graph=self.options.complete_graph,
                     )
                     symbol_state_sfg_edge = SFGEdge(
                         edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
@@ -614,8 +595,6 @@ class PrelimSemanticAnalysis:
                                     def_stmt_id=tmp_state.stmt_id,
                                     index=state_index,
                                     node_id=tmp_state.state_id,
-                                    loader=self.loader,
-                                    complete_graph=self.options.complete_graph,
                                     access_path=tmp_state.access_path,
                                 ),
                                 symbol_state_sfg_edge
@@ -627,8 +606,6 @@ class PrelimSemanticAnalysis:
                             def_stmt_id=stmt_id,
                             name=stmt.operation,
                             context=frame.get_context(),
-                            loader=self.loader,
-                            complete_graph=self.options.complete_graph,
                             stmt=stmt
                         )
                     stmt_in_nodes = util.graph_predecessors(frame.state_flow_graph.graph, stmt_sfg_node)
@@ -791,8 +768,6 @@ class PrelimSemanticAnalysis:
                         node_id=used_symbol.symbol_id,
                         name=used_symbol.name,
                         context=tmp_context,
-                        loader=self.loader,
-                        complete_graph=self.options.complete_graph,
                     )
                     stmt_node = SFGEdge(
                         edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
@@ -810,8 +785,6 @@ class PrelimSemanticAnalysis:
                                 def_stmt_id=tmp_state.stmt_id,
                                 index=state_index,
                                 node_id=tmp_state.state_id,
-                                loader=self.loader,
-                                complete_graph=self.options.complete_graph,
                                 access_path=tmp_state.access_path,
                             ),
                             stmt_node
@@ -824,9 +797,6 @@ class PrelimSemanticAnalysis:
                                 def_stmt_id=stmt_id,
                                 name=stmt.operation,
                                 context=tmp_context,
-                                loader=self.loader,
-                                complete_graph=self.options.complete_graph,
-                                stmt=stmt
                             ),
                             SFGEdge(
                                 edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED,
@@ -929,17 +899,12 @@ class PrelimSemanticAnalysis:
                         index=each_symbol_index,
                         node_id=defined_symbol.symbol_id,
                         name=defined_symbol.name,
-                        context=tmp_context,
-                        loader=self.loader,
-                        complete_graph=self.options.complete_graph,
                     ),
                     SFGNode(
                         node_type=SFG_NODE_KIND.STATE,
                         def_stmt_id=state.stmt_id,
                         index=each_state_index,
                         node_id=state.state_id,
-                        loader=self.loader,
-                        complete_graph=self.options.complete_graph,
                         access_path=state.access_path,
                     ),
                     SFGEdge(
@@ -1265,69 +1230,31 @@ class PrelimSemanticAnalysis:
             frame.stmt_counters[stmt_id] += 1
             frame.is_first_round[stmt_id] = False
 
-    def stringify_sfg_node(self, node):
-        result = []
-        result.append(f"{SFG_NODE_KIND[node.node_type].lower()}(")
-        attrs = []
-        if node.def_stmt_id > 0:
-            attrs.append(f"stmt_id={node.def_stmt_id}")
-        if node.context_id > 0:
-            attrs.append(f"context={node.context_id}")
-        if node.module_name :
-            attrs.append(f"module_name={node.module_name}")
-        if node.method_name :
-            attrs.append(f"method={node.method_name}")
-        if node.caller_name :
-            attrs.append(f"caller={node.caller_name}")
-        if node.line_no > 0 :
-            attrs.append(f"line_no={node.line_no}")
-        if node.operation :
-            attrs.append(f"operation={node.operation}")
-        if node.node_type == SFG_NODE_KIND.STMT:
-             if node.name:
-                attrs.append(f"name={node.name}")
-        else:
-            if node.index >= 0:
-                attrs.append(f"index={node.index}")
-            if node.node_type == SFG_NODE_KIND.SYMBOL:
-                attrs.append(f"symbol_id={node.node_id}")
-                if node.name:
-                    attrs.append(f"name={node.name}")
-            else:
-                attrs.append(f"state_id={node.node_id}")
-        if len(node.access_path) > 0:
-            attrs.append(f"access_path={util.access_path_formatter(node.access_path)}")
-        result.append(",".join(attrs))
-        result.append(")")
-
-        return "".join(result)
-
-    def save_graph_as_dot(self, graph, entry_point, phase_id, symbol_state_space):
+    def save_graph_to_dot(self, graph, entry_point, phase_id, symbol_state_space):
         if not (self.options.graph or self.options.complete_graph):
+            print("1")
             return
+
         if graph is None or len(graph) == 0:
+            print("2")
             return
 
-        if phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
-            out_dir = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}"
-        else:
-            out_dir = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P2_DIR}"
-
-        os.makedirs(out_dir, exist_ok=True)
-        file_name = f"{out_dir}/{entry_point}.dot"
-
-        dumper = SFGDotDumper(
+        dumper = SFGDumper(
             loader=self.loader,
             options=self.options,
             phase_id=phase_id,
             entry_point=entry_point,
+            symbol_state_space=symbol_state_space,
+            graph=graph
         )
+
         try:
-            dumper.dump_to_file(graph, file_name)
+            file_name = dumper.dump_to_file()
             if self.options.debug:
                 util.debug(">>> Write state flow graph to dot file: ", file_name)
         except Exception:
-            if self.options.debug:
+            if not self.options.quiet:
+                util.error("An error occurred while writing state flow graph to dot file.")
                 traceback.print_exc()
 
     def analyze_method(self, method_id):
@@ -1381,7 +1308,7 @@ class PrelimSemanticAnalysis:
             self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
             self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
-            self.save_graph_as_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
+            self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
 
             frame_stack.pop()
 

@@ -221,8 +221,6 @@ class StmtStates:
                 node_id=node.symbol_id,
                 context=self.context,
                 name=node.name,
-                loader=self.loader,
-                complete_graph=self.complete_graph,
             )
         elif isinstance(node, State):
             return SFGNode(
@@ -231,8 +229,6 @@ class StmtStates:
                 index=node_index,
                 node_id=node.state_id,
                 context=self.context,
-                loader=self.loader,
-                complete_graph=self.complete_graph,
                 access_path=node.access_path,
             )
         return None
@@ -247,8 +243,6 @@ class StmtStates:
                 node_id=node.symbol_id,
                 context=self.context,
                 name=node.name,
-                loader=self.loader,
-                complete_graph=self.complete_graph,
             )
         return None
 
@@ -264,8 +258,6 @@ class StmtStates:
                     node_id=node.symbol_id,
                     context=self.context,
                     name=node.name,
-                    loader=self.loader,
-                    complete_graph=self.complete_graph,
                 )
             result = []
             for real_index in self.used_symbol_id_to_indexes[symbol_id]:
@@ -282,8 +274,6 @@ class StmtStates:
                 index=node_index,
                 node_id=node.state_id,
                 context=self.context,
-                loader=self.loader,
-                complete_graph=self.complete_graph,
                 access_path=node.access_path,
             )
         return None
@@ -296,8 +286,6 @@ class StmtStates:
                 def_stmt_id=node.stmt_id,
                 index=node_index,
                 node_id=node.state_id,
-                loader=self.loader,
-                complete_graph=self.complete_graph,
                 access_path=node.access_path,
             )
         return None
@@ -361,23 +349,19 @@ class StmtStates:
                     def_stmt_id=parent_state.stmt_id,
                     index=parent_state_index,
                     node_id=parent_state.state_id,
-                    loader=self.loader,
-                    complete_graph=self.complete_graph,
-                    access_path=parent_state.access_path,
                     # context=self.context,
+                    access_path=parent_state.access_path,
                 ),
                 SFGNode(
                     node_type=SFG_NODE_KIND.STATE,
                     def_stmt_id=item.stmt_id,
                     index=index,
                     node_id=item.state_id,
-                    loader=self.loader,
                     # context=self.context,
-                    complete_graph=self.complete_graph,
                     access_path=item.access_path,
                 ),
                 SFGEdge(
-                    edge_type=SFG_EDGE_KIND.SYMBOL_STATE,
+                    edge_type=SFG_EDGE_KIND.STATE_INCLUSION,
                     stmt_id=stmt_id
                 )
             )
@@ -392,18 +376,16 @@ class StmtStates:
                             def_stmt_id=arg_state.stmt_id,
                             index=arg.index_in_space,
                             node_id=arg.state_id,
-                            loader=self.loader,
-                            complete_graph=self.complete_graph,
                             # context=self.context,
+                            access_path=arg_state.access_path,
                         ),
                         SFGNode(
                             node_type=SFG_NODE_KIND.STATE,
                             def_stmt_id=item.stmt_id,
                             index=index,
                             node_id=item.state_id,
-                            loader=self.loader,
                             # context=self.context,
-                            complete_graph=self.complete_graph,
+                            access_path=item.access_path,
                         ),
                         SFGEdge(
                             edge_type=SFG_EDGE_KIND.STATE_INCLUSION,
@@ -529,20 +511,19 @@ class StmtStates:
         status.defined_states.add(new_arg_state_index)
         return new_arg_state_index
 
-    def adjust_index_pairs(self, callee_space: SymbolStateSpace, callee_summary: MethodSummaryTemplate, index_set: set[int]):
-        result_indexes = set()
-        if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
-            for index in index_set:
-                new_index = callee_summary.raw_to_new_index.get(index, index)
-                if new_index == -1:
-                    continue
-                if new_index not in callee_space.old_index_to_new_index:
-                    continue
-                index_in_appended_space = callee_space.old_index_to_new_index[new_index]
-                result_indexes.add(index_in_appended_space)
-        else:
-            result_indexes = index_set.copy()
+    def adjust_indexes(self, callee_space: SymbolStateSpace, callee_summary: MethodSummaryTemplate, index_set: set[int]):
+        if self.analysis_phase_id != ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+            return index_set.copy()
 
+        result_indexes = set()
+        for index in index_set:
+            new_index = callee_summary.raw_to_new_index.get(index, index)
+            if new_index == -1:
+                continue
+            if new_index not in callee_space.old_index_to_new_index:
+                continue
+            index_in_appended_space = callee_space.old_index_to_new_index[new_index]
+            result_indexes.add(index_in_appended_space)
         return result_indexes
 
     def extract_callee_param_last_states(self, mapping, callee_summary: MethodSummaryTemplate, callee_space: SymbolStateSpace):
@@ -551,7 +532,7 @@ class StmtStates:
         parameter_symbols = callee_summary.parameter_symbols
         parameter_last_states = parameter_symbols.get(parameter_symbol_id, set())
 
-        adjusted_indexes = self.adjust_index_pairs(callee_space, callee_summary, parameter_last_states)
+        adjusted_indexes = self.adjust_indexes(callee_space, callee_summary, parameter_last_states)
         for index_in_appended_space in adjusted_indexes:
             each_parameter_last_state = self.frame.symbol_state_space[index_in_appended_space]
             if not (each_parameter_last_state and isinstance(each_parameter_last_state, State)):
@@ -646,6 +627,8 @@ class StmtStates:
     def update_access_path_state_id(self, state_index):
         state = self.frame.symbol_state_space[state_index]
         if not isinstance(state, State):
+            return
+        if len(state.access_path) == 0:
             return
         state.access_path[-1].state_id = state.state_id
 
@@ -1272,13 +1255,14 @@ class StmtStates:
                             key=field_name
                         )
                     )
-                    current_arg_state_fields[field_name] = _recursively_collect_children_fields(stmt_id, status,
-                                                                                                summary_states_fields[
-                                                                                                    field_name],
-                                                                                                current_arg_state_fields[
-                                                                                                    field_name],
-                                                                                                source_symbol_id,
-                                                                                                new_access_path)
+                    current_arg_state_fields[field_name] = _recursively_collect_children_fields(
+                        stmt_id,
+                        status,
+                        summary_states_fields[field_name],
+                        current_arg_state_fields[field_name],
+                        source_symbol_id,
+                        new_access_path
+                    )
 
             return current_arg_state_fields
 
@@ -1367,12 +1351,14 @@ class StmtStates:
             # 只有单侧有字段时的处理
             if not arg_state_fields or not summary_states_fields:
                 if summary_states_fields:
-                    _set_attributes_on_states(states_with_diff_ids, summary_states_fields, state_type, source_symbol_id,
-                                              access_path)
+                    _set_attributes_on_states(
+                        states_with_diff_ids, summary_states_fields, state_type, source_symbol_id, access_path
+                    )
                     return_set.update(states_with_diff_ids)
                 elif arg_state_fields:
-                    _set_attributes_on_states(states_with_diff_ids, arg_state_fields, state_type, source_symbol_id,
-                                              access_path)
+                    _set_attributes_on_states(
+                        states_with_diff_ids, arg_state_fields, state_type, source_symbol_id, access_path
+                    )
                     return_set.update(states_with_diff_ids)
                 else:
                     if not return_set:
@@ -1387,8 +1373,10 @@ class StmtStates:
             cache[cache_key] = return_set
             return return_set
 
-        return _recursively_collect_children_fields(stmt_id, status, state_set_in_summary_field, state_set_in_arg_field,
-                                                    source_symbol_id, access_path)
+        return _recursively_collect_children_fields(
+            stmt_id, status, state_set_in_summary_field, state_set_in_arg_field,
+            source_symbol_id, access_path
+        )
 
     def apply_parameter_summary_to_args_states(
         self,
@@ -1556,14 +1544,12 @@ class StmtStates:
         # 收集callee_summary中this_symbols的last_states，并应用到实际传入的instance_state中。
         for this_symbol_id in this_symbols:
             this_symbol_last_states = this_symbols.get(this_symbol_id, [])
-            last_state_indexes = set()
-
-            last_state_indexes = self.adjust_index_pairs(callee_space, callee_summary, this_symbol_last_states)
-
+            last_state_indexes = self.adjust_indexes(callee_space, callee_summary, this_symbol_last_states)
             for instance_state_index_in_space in instance_state_indexes.copy():
                 # 将summary中的this_symbol_last_state应用到实际的instance_state上
-                self.apply_parameter_summary_to_args_states(stmt_id, status, last_state_indexes,
-                                                            instance_state_index_in_space, old_to_new_arg_state)
+                self.apply_parameter_summary_to_args_states(
+                    stmt_id, status, last_state_indexes, instance_state_index_in_space, old_to_new_arg_state
+                )
 
         # 如果caller是通过new_object_stmt调用到callee的，就不应该将以上对this的修改添加到caller的summary中
         if new_object_flag:
@@ -1654,7 +1640,7 @@ class StmtStates:
         default_value_state_type = STATE_TYPE_KIND.REGULAR
 
         parameter_last_states = callee_summary.parameter_symbols.get(parameter_symbol_id, set())
-        adjusted_indexes = self.adjust_index_pairs(callee_space, callee_summary, parameter_last_states)
+        adjusted_indexes = self.adjust_indexes(callee_space, callee_summary, parameter_last_states)
         for index_in_appended_space in adjusted_indexes:
             each_default_value_last_state = self.frame.symbol_state_space[index_in_appended_space]
             if not (each_default_value_last_state and isinstance(each_default_value_last_state, State)):
@@ -1714,15 +1700,14 @@ class StmtStates:
 
         return_state_index_set = set()
         for _, return_states in callee_summary.return_symbols.items():
-            adjusted_indexes = self.adjust_index_pairs(callee_compact_space, callee_summary, return_states)
+            adjusted_indexes = self.adjust_indexes(callee_compact_space, callee_summary, return_states)
             return_state_index_set.update(adjusted_indexes)
 
         target_symbol.states.update(return_state_index_set)
         status.defined_states.update(return_state_index_set)
 
         for callee_defined_external_symbol_id, defined_external_states in callee_summary.defined_external_symbols.items():
-            new_defined_external_states = self.adjust_index_pairs(callee_compact_space, callee_summary, defined_external_states)
-
+            new_defined_external_states = self.adjust_indexes(callee_compact_space, callee_summary, defined_external_states)
             if callee_defined_external_symbol_id not in self.frame.all_local_symbol_ids:
                 util.add_to_dict_with_default_set(
                     self.frame.method_summary_template.defined_external_symbols,
@@ -1747,17 +1732,21 @@ class StmtStates:
     ):
         status = self.frame.stmt_id_to_status[stmt_id]
         # append callee space to caller space
-        self.frame.symbol_state_space.append_space_copy(callee_compact_space)
+        if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+            self.frame.symbol_state_space.append_space_copy(callee_compact_space)
 
         # add necessary state in defined_states
         top_state_index_set = set()
-        for each_summary in [callee_summary.parameter_symbols, callee_summary.defined_external_symbols,
-                             callee_summary.return_symbols]:
+        for each_summary in [
+            callee_summary.parameter_symbols,
+            callee_summary.defined_external_symbols,
+            callee_summary.return_symbols
+        ]:
             if util.is_empty(each_summary):
                 continue
             for symbol_id in each_summary:
                 index_set = each_summary[symbol_id]
-                adjusted_indexes = self.adjust_index_pairs(callee_compact_space, callee_summary, index_set)
+                adjusted_indexes = self.adjust_indexes(callee_compact_space, callee_summary, index_set)
                 top_state_index_set.update(adjusted_indexes)
 
         work_list = SimpleWorkList(top_state_index_set)

@@ -402,65 +402,21 @@ class TaintAnalysis:
     #
     #     return lca
 
-    def print_flows(self, flows):
-        print(f"Found {len(flows)} taint flows.")
-        for flow in flows:
-            source_code = self.loader.get_stmt_source_code_with_comment(flow.source_stmt_id)
-            source_method_id = self.loader.convert_stmt_id_to_method_id(flow.source_stmt_id)
-            source_method_code = self.loader.get_stmt_source_code_with_comment(source_method_id)
-            sink_code = self.loader.get_stmt_source_code_with_comment(flow.sink_stmt_id)
-            sink_stmt = self.loader.get_stmt_gir(flow.sink_stmt_id)
-            sink_line_no = int(sink_stmt.start_row)
-            print(f"Found a flow to sink {sink_code[0].strip()} on line {sink_line_no + 1}")
-            print("\tSource :", source_code[0].strip(), f"(in {source_method_code[0].strip()})")
-            line_no = -1
-            path_parent_source_node_list = []
-            for node in reversed(flow.parent_to_source):
-                stmt_id = node.def_stmt_id
-                stmt = self.loader.get_stmt_gir(stmt_id)
-                if stmt.start_row == line_no:
-                    continue
-                line_no = stmt.start_row
-                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
-                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-                method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = code[0].strip() + " on line " + str(int(line_no) + 1)
-                path_parent_source_node_list.append(path_node)
-            # print("\t\tParent to Source", path_parent_source_node_list)
-            line_no = -1
-            path_parent_sink_node_list = []
-            for node in flow.parent_to_sink:
-                stmt_id = node.def_stmt_id
-                stmt = self.loader.get_stmt_gir(stmt_id)
-                if stmt.start_row == line_no:
-                    continue
-                line_no = stmt.start_row
-                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
-                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-                method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = code[0].strip() + " on line " + str(int(line_no) + 1)
-                path_parent_sink_node_list.append(path_node)
-            if not self.is_sublist(path_parent_source_node_list, path_parent_sink_node_list):
-                path_parent_sink_node_list = path_parent_source_node_list + path_parent_sink_node_list
-            print("\t\tData Flow:", path_parent_sink_node_list)
-
-    def is_sublist(self, sub, lst):
-        return str(sub)[1:-1] in str(lst)[1:-1]
-
-    def add_flows_to_json(self, flows, all_flows_json):
-        for flow in flows:
+    def add_flows_to_json(self, raw_flows):
+        flow_json = []
+        for each_flow in raw_flows:
             flow_dict = {
-                "source_stmt_id": flow.source_stmt_id,
-                "sink_stmt_id": flow.sink_stmt_id,
-                "source_code": self.loader.get_stmt_source_code_with_comment(flow.source_stmt_id)[0].strip(),
-                "sink_code": self.loader.get_stmt_source_code_with_comment(flow.sink_stmt_id)[0].strip(),
+                "source_stmt_id": each_flow.source_stmt_id,
+                "sink_stmt_id": each_flow.sink_stmt_id,
+                "source_code": self.loader.get_stmt_source_code_with_comment(each_flow.source_stmt_id)[0].strip(),
+                "sink_code": self.loader.get_stmt_source_code_with_comment(each_flow.sink_stmt_id)[0].strip(),
                 "parent_to_source": [],
                 "parent_to_sink": []
             }
 
             # parent_to_source
             last_line = -1
-            for node in flow.parent_to_source:
+            for node in each_flow.parent_to_source:
                 stmt_id = node.def_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
                 if stmt.start_row == last_line:
@@ -477,7 +433,7 @@ class TaintAnalysis:
 
             # parent_to_sink
             last_line = -1
-            for node in flow.parent_to_sink:
+            for node in each_flow.parent_to_sink:
                 stmt_id = node.def_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
                 if stmt.start_row == last_line:
@@ -492,9 +448,54 @@ class TaintAnalysis:
                     "line": int(stmt.start_row) + 1
                 })
 
-            all_flows_json.append(flow_dict)
+            flow_json.append(flow_dict)
+        return flow_json
 
-        return all_flows_json
+    def print_flows(self, flows):
+        print(f"Found {len(flows)} taint flows.")
+        # 打印所有的污点流
+        for each_flow in flows:
+            source_code = self.loader.get_stmt_source_code_with_comment(each_flow.source_stmt_id)
+            source_method_id = self.loader.convert_stmt_id_to_method_id(each_flow.source_stmt_id)
+            source_method_code = self.loader.get_stmt_source_code_with_comment(source_method_id)
+            sink_code = self.loader.get_stmt_source_code_with_comment(each_flow.sink_stmt_id)
+            sink_stmt = self.loader.get_stmt_gir(each_flow.sink_stmt_id)
+            sink_line_no = int(sink_stmt.start_row)
+            print(f"Found a flow to sink {sink_code[0].strip()} on line {sink_line_no + 1}")
+            print("\tSource :", source_code[0].strip(), f"(in {source_method_code[0].strip()})")
+            line_no = -1
+            path_parent_source_node_list = []
+            for node in reversed(each_flow.parent_to_source):
+                stmt_id = node.def_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                if stmt.start_row == line_no:
+                    continue
+                line_no = stmt.start_row
+                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
+                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
+                method_name = self.loader.convert_method_id_to_method_name(method_id)
+                path_node = code[0].strip() + " on line " + str(int(line_no) + 1)
+                path_parent_source_node_list.append(path_node)
+            # print("\t\tParent to Source", path_parent_source_node_list)
+            line_no = -1
+            path_parent_sink_node_list = []
+            for node in each_flow.parent_to_sink:
+                stmt_id = node.def_stmt_id
+                stmt = self.loader.get_stmt_gir(stmt_id)
+                if stmt.start_row == line_no:
+                    continue
+                line_no = stmt.start_row
+                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
+                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
+                method_name = self.loader.convert_method_id_to_method_name(method_id)
+                path_node = code[0].strip() + " on line " + str(int(line_no) + 1)
+                path_parent_sink_node_list.append(path_node)
+            if not self.is_sublist(path_parent_source_node_list, path_parent_sink_node_list):
+                path_parent_sink_node_list = path_parent_source_node_list + path_parent_sink_node_list
+            print("\t\tData Flow:", path_parent_sink_node_list)
+
+    def is_sublist(self, sub, lst):
+        return str(sub)[1:-1] in str(lst)[1:-1]
 
     def write_taint_flows(self, flows):
         yaml_list = []
@@ -589,7 +590,7 @@ class TaintAnalysis:
         if not self.options.quiet:
             print("\n########### # Phase IV: Taint Analysis # ##########")
 
-        all_flows_json = []
+        all_flows = []
         for method_id in self.loader.get_all_method_ids():
             self.current_entry_point = method_id
             self.sfg = self.loader.get_global_sfg_by_entry_point(method_id)
@@ -599,11 +600,12 @@ class TaintAnalysis:
             sources = self.find_sources()
             sinks = self.find_sinks()
             flows = self.find_flows(sources, sinks)
-            # 打印所有的污点流
-            self.add_flows_to_json(flows, all_flows_json)
-            if not self.options.quiet:
-                self.print_flows(flows)
-            self.write_taint_flows(flows)
-        if len(all_flows_json) == 0:
+            all_flows.extend(flows)
+
+        if len(all_flows) == 0:
             print("No taint flows found.")
+        else:
+            if not self.options.quiet:
+                self.print_flows(all_flows)
+            self.write_taint_flows(all_flows)
 

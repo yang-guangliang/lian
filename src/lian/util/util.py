@@ -594,16 +594,14 @@ def replace_weight_to_label_in_dot(file_name):
     with open(file_name, 'w') as file:
         file.writelines(lines)
 
-def access_path_formatter(state_access_path):
-    key_list = []
-    for item in state_access_path:
-        key = item.key
-        key = key if isinstance(key, str) else str(key)
-        if key != "":
-            key_list.append(key)
+def access_path_formatter(access_path):
+    if isinstance(access_path, str):
+        return access_path
 
-    # 使用点号连接所有 key 值
-    access_path = '.'.join(key_list)
-    return access_path
+    parts = []
+    for p in access_path:
+        key_value = getattr(p, 'key', p)
+        parts.append(str(key_value))
+    return ".".join(parts)
 
 

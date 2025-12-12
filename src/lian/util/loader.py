@@ -1207,7 +1207,7 @@ class MethodSummaryLoader:
             if key not in results:
                 results[key] = set()
             results[key].add(raw_index)
-            
+
             if method_summary is not None:
                 if new_index != -1 and new_index != raw_index:
                     method_summary.raw_to_new_index[raw_index] = new_index

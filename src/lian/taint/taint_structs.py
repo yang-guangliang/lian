@@ -129,12 +129,14 @@ class TaintStateManager:
         self.symbol_id_to_access_path = {} # {id:taintstate, id1:taintstate1}
 
     def add_path_to_tag(self, access_path, tag):
-
         self.access_path_to_tag[access_path] = tag
+
     def get_path_tag(self, access_path):
         return self.access_path_to_tag.get(access_path, config.NO_TAINT)
+
     def delete_path(self, access_path):
         self.access_path_to_tag.pop(access_path)
+
     def get_access_path_tag_in_sink(self, access_path):
         tag = config.NO_TAINT
         for key, value in self.access_path_to_tag.items():

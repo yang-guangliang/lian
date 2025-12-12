@@ -1033,7 +1033,7 @@ class SFGNode:
     value: the value of state node
     """
 
-    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, stmt=None, name=""):
+    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, stmt=None, name="", access_path=[]):
         # 节点类型
         self.node_type = node_type
         # 这个节点被def的stmt_id
@@ -1049,13 +1049,14 @@ class SFGNode:
         #self.method_name=None
         #self.module_name=None
         self.line_no=-1
-        self.operation=None
-        self.caller_name=None
-        self.full_context = context
+        self.access_path = access_path
+        # if access_path:
+        #     self.access_path = util.access_path_formatter(access_path)
 
         if stmt:
             self.line_no = stmt.start_row
-            self.operation = stmt.operation
+            if len(name) == 0:
+                self.name = stmt.operation
 
     def __hash__(self) -> int:
         return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id))
@@ -1135,21 +1136,6 @@ class SFGEdge:
     def __eq__(self, other) -> bool:
         return isinstance(other, SFGEdge) and self.edge_type == other.edge_type and self.stmt_id == other.stmt_id and self.round == other.round and self.pos == other.pos and self.name == other.name
 
-    def __repr__(self) -> str:
-        result = []
-        result.append(f"{SFG_EDGE_KIND[self.edge_type].lower()}(")
-        attrs = []
-        attrs.append(f"stmt_id={self.stmt_id}")
-        if self.round >= 0:
-            attrs.append(f"round={self.round}")
-        if self.pos >= 0:
-            attrs.append(f"pos={self.pos}")
-        if self.name:
-            attrs.append(f"name={self.name}")
-        result.append(",".join(attrs))
-        result.append(")")
-        return "".join(result)
-
     def copy(self):
         return SFGEdge(
             edge_type = self.edge_type,
@@ -1164,8 +1150,8 @@ class SFGEdge:
             f"{prefix}_edge_type"                       : self.edge_type,
             f"{prefix}_stmt_id"                         : self.stmt_id,
             f"{prefix}_round"                           : self.round,
-            #f"{prefix}_phase"                        : self.phase,
-            f"{prefix}_name"      : self.name,
+            #f"{prefix}_phase"                          : self.phase,
+            f"{prefix}_name"                            : self.name,
         }
 
     def to_dict(self):
@@ -1174,7 +1160,7 @@ class SFGEdge:
             "stmt_id"                                   : self.stmt_id,
             "round"                                     : self.round,
             #"phase"                                    : self.phase,
-            "name"                : self.name,
+            "name"                                      : self.name,
         }
 
     def to_tuple(self):
