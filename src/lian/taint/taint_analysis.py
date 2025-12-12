@@ -57,7 +57,7 @@ class TaintAnalysis:
         if node.node_type != SFG_NODE_KIND.STMT:
             return None, None
         state_nodes = []
-        predecessors = list(self.sfg.predecessors(node))
+        predecessors = list(util.graph_predecessors(self.sfg, node))
         name_symbol_node = None
         if len(predecessors) == 0 :
             return None, None
@@ -65,7 +65,7 @@ class TaintAnalysis:
             edge = self.sfg.get_edge_data(predecessor, node)
             if edge and edge[0]['weight'].pos == 0:
                 name_symbol_node = predecessor
-        name_symbol_successors = list(self.sfg.successors(name_symbol_node))
+        name_symbol_successors = list(util.graph_successors(self.sfg, name_symbol_node))
         for successor in name_symbol_successors:
             if successor.node_type == SFG_NODE_KIND.STATE:
                 state_nodes.append(successor)
@@ -74,13 +74,13 @@ class TaintAnalysis:
     def get_stmt_define_symbol_and_states_node(self, node):
         if node.node_type != SFG_NODE_KIND.STMT:
             return None, None
-        successors = list(self.sfg.successors(node))
+        successors = list(util.graph_successors(self.sfg, node))
         define_symbol_node = None
         for successor in successors:
             edge = self.sfg.get_edge_data(node, successor)
             if edge and edge[0]['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
                 define_symbol_node = successor
-        define_symbol_successors = list(self.sfg.successors(define_symbol_node))
+        define_symbol_successors = list(util.graph_successors(self.sfg, define_symbol_node))
         define_state_list = []
         for successor in define_symbol_successors:
             edge = self.sfg.get_edge_data(node, successor)
