@@ -14,8 +14,5 @@ line_profiler
 matplotlib
 # for configuration
 PyYAML
-# for visualization
-pydot
-graphviz
 # for web app UI
 streamlit

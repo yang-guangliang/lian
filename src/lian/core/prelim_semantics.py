@@ -1265,28 +1265,70 @@ class PrelimSemanticAnalysis:
             frame.stmt_counters[stmt_id] += 1
             frame.is_first_round[stmt_id] = False
 
-    def save_graph_as_dot(self, graph, entry_point, phase_id):
-        if not self.options.graph and not self.options.complete_graph:
-            return
-        file_name = f"{self.options.workspace}/{entry_point}.dot"
-        if phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
-            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}/{entry_point}.dot"
+    def stringify_sfg_node(self, node):
+        result = []
+        result.append(f"{SFG_NODE_KIND[node.node_type].lower()}(")
+        attrs = []
+        if node.def_stmt_id > 0:
+            attrs.append(f"stmt_id={node.def_stmt_id}")
+        if node.context_id > 0:
+            attrs.append(f"context={node.context_id}")
+        if node.module_name :
+            attrs.append(f"module_name={node.module_name}")
+        if node.method_name :
+            attrs.append(f"method={node.method_name}")
+        if node.caller_name :
+            attrs.append(f"caller={node.caller_name}")
+        if node.line_no > 0 :
+            attrs.append(f"line_no={node.line_no}")
+        if node.operation :
+            attrs.append(f"operation={node.operation}")
+        if node.node_type == SFG_NODE_KIND.STMT:
+             if node.name:
+                attrs.append(f"name={node.name}")
         else:
-            file_name = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P2_DIR}/{entry_point}.dot"
+            if node.index >= 0:
+                attrs.append(f"index={node.index}")
+            if node.node_type == SFG_NODE_KIND.SYMBOL:
+                attrs.append(f"symbol_id={node.node_id}")
+                if node.name:
+                    attrs.append(f"name={node.name}")
+            else:
+                attrs.append(f"state_id={node.node_id}")
+        if len(node.access_path) > 0:
+            attrs.append(f"access_path={util.access_path_formatter(node.access_path)}")
+        result.append(",".join(attrs))
+        result.append(")")
 
+        return "".join(result)
+
+    def save_graph_as_dot(self, graph, entry_point, phase_id, symbol_state_space):
+        if not (self.options.graph or self.options.complete_graph):
+            return
+        if graph is None or len(graph) == 0:
+            return
+
+        if phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+            out_dir = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P3_DIR}"
+        else:
+            out_dir = f"{self.options.workspace}/{config.STATE_FLOW_GRAPH_P2_DIR}"
+
+        os.makedirs(out_dir, exist_ok=True)
+        file_name = f"{out_dir}/{entry_point}.dot"
+
+        dumper = SFGDotDumper(
+            loader=self.loader,
+            options=self.options,
+            phase_id=phase_id,
+            entry_point=entry_point,
+        )
         try:
-            nx.drawing.nx_pydot.write_dot(graph, file_name)
-        except ImportError:
-            util.error("Pydot or PyGraphviz is not installed. Please install one of them to use write_dot.")
-            return
-        except Exception as e:
-            util.error(f"An error occurred: {e}")
-            return
-
-        util.replace_weight_to_label_in_dot(file_name)
-        if self.options.debug:
-            util.debug(">>> Write state flow graph to dot file: ", file_name)
-
+            dumper.dump_to_file(graph, file_name)
+            if self.options.debug:
+                util.debug(">>> Write state flow graph to dot file: ", file_name)
+        except Exception:
+            if self.options.debug:
+                traceback.print_exc()
 
     def analyze_method(self, method_id):
         current_frame = ComputeFrame(method_id=method_id, loader=self.loader)
@@ -1339,7 +1381,7 @@ class PrelimSemanticAnalysis:
             self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
             self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
-            self.save_graph_as_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id)
+            self.save_graph_as_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
 
             frame_stack.pop()
 

@@ -1033,7 +1033,7 @@ class SFGNode:
     value: the value of state node
     """
 
-    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, name="", loader=None, complete_graph=False, stmt=None, access_path=[]):
+    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, stmt=None, name=""):
         # 节点类型
         self.node_type = node_type
         # 这个节点被def的stmt_id
@@ -1046,35 +1046,19 @@ class SFGNode:
         # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
         # Hence it is call_site
         self.context_id = -1
-        self.method_name=None
-        self.module_name=None
+        #self.method_name=None
+        #self.module_name=None
         self.line_no=-1
         self.operation=None
         self.caller_name=None
         self.full_context = context
-        self.access_path = access_path
 
         if stmt:
             self.line_no = stmt.start_row
-            # self.operation = stmt.operation
-
-        if context and complete_graph and def_stmt_id > 0:
-            self.context_id = context.call_stmt_id
-            unit_id = loader.convert_stmt_id_to_unit_id(def_stmt_id)
-            method_id = loader.convert_stmt_id_to_method_id(def_stmt_id)
-            if context.caller_id > 0 and loader:
-                self.caller_name = loader.convert_method_id_to_method_name(context.caller_id)
-            self.method_name = loader.convert_method_id_to_method_name(method_id)
-            self.module_name = os.path.basename(loader.convert_module_id_to_module_info(unit_id).original_path)
-
-            if not stmt:
-                stmt = loader.get_stmt_gir(def_stmt_id)
-                if stmt:
-                    self.line_no = stmt.start_row
-                    self.operation = stmt.operation
+            self.operation = stmt.operation
 
     def __hash__(self) -> int:
-        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id, self.name))
+        return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id))
 
     def __eq__(self, other) -> bool:
         return (
@@ -1084,45 +1068,7 @@ class SFGNode:
             and self.index == other.index
             and self.node_id == other.node_id
             and self.context_id == other.context_id
-            and self.name == other.name
         )
-
-    def __repr__(self) -> str:
-        result = []
-        result.append(f"{SFG_NODE_KIND[self.node_type].lower()}(")
-        attrs = []
-        if self.def_stmt_id > 0:
-            attrs.append(f"stmt_id={self.def_stmt_id}")
-        if self.context_id > 0:
-            attrs.append(f"context={self.context_id}")
-        if self.module_name :
-            attrs.append(f"module_name={self.module_name}")
-        if self.method_name :
-            attrs.append(f"method={self.method_name}")
-        if self.caller_name :
-            attrs.append(f"caller={self.caller_name}")
-        if self.line_no > 0 :
-            attrs.append(f"line_no={self.line_no}")
-        if self.operation :
-            attrs.append(f"operation={self.operation}")
-        if self.node_type == SFG_NODE_KIND.STMT:
-             if self.name:
-                attrs.append(f"name={self.name}")
-        else:
-            if self.index >= 0:
-                attrs.append(f"index={self.index}")
-            if self.node_type == SFG_NODE_KIND.SYMBOL:
-                attrs.append(f"symbol_id={self.node_id}")
-                if self.name:
-                    attrs.append(f"name={self.name}")
-            else:
-                attrs.append(f"state_id={self.node_id}")
-        if len(self.access_path) > 0:
-            attrs.append(f"access_path={util.access_path_formatter(self.access_path)}")
-        result.append(",".join(attrs))
-        result.append(")")
-
-        return "".join(result)
 
     def to_dict(self):
         if self.node_type == SFG_NODE_KIND.STMT:

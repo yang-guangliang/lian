@@ -3581,10 +3581,6 @@ class StmtStates:
                 if not (each_field_state and isinstance(each_field_state, State)):
                     continue
 
-                if receiver_state.tangping_flag:
-                    tangping()
-                    continue
-
                 if len(str(each_field_state.value)) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     tangping()
                     continue
@@ -3604,14 +3600,6 @@ class StmtStates:
                     # if each_source_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     #     continue
 
-                    access_path = self.copy_and_extend_access_path(
-                        original_access_path=receiver_state.access_path,
-                        access_point=AccessPoint(
-                            kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
-                            key=each_field_state.value
-                        )
-                    )
-                    each_source_state.access_path = access_path
                     self.update_access_path_state_id(each_source_state_index)
                     self.sfg.add_edge(
                         self.make_state_sfg_node_with_no_context(new_receiver_state_index),
