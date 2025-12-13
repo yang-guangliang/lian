@@ -37,7 +37,7 @@ markdown_extensions:
   - toc:
       permalink: true
 
-copyright: <p/>Developed & Maintained by <a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;"> the System Security and Reliability Research group</a>, Fudan University<p/>
+copyright: <p/>2025-present, Developed & Maintained by <a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;"> the System Security and Reliability Research group</a>, Fudan University<p/>
 
 nav:
   - Home: index.md
