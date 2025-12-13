@@ -4,7 +4,7 @@
 
 The Lian framework consists of three core modules:
 
-- **General Intermediate Representation (GIR) Frontend**: Unlike traditional IR like LLVM, GIR supports the unified representation of both typed and untyped languages.
+- **GIR-based Language Frontend**: Unlike traditional IR like LLVM, GIR supports the unified representation of both typed and untyped languages.
 
 - **Semantic Analysis Engine**: Lian constructs context- and flow-sensitive points-to and data-flow analysis, and outputs a state-flow graph (SFG).
 
