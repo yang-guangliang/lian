@@ -4,11 +4,11 @@
 
 Lian框架包含三大核心模块：
 
-- **基于GIR语言前端**：与LLVM等传统中间语言不同，GIR支持对有类型与无类型语言的统一表达，兼顾动态语言的灵活性与静态语言的精确性。
+- **基于GIR语言前端**：与LLVM等传统中间语言不同，GIR支持对有类型与无类型语言的统一表达
 
-- **语义分析引擎**：基于GIR构建上下文敏感、流敏感的指针级语义模型，并输出状态流图SFG（State Flow Graph）作为程序语义的结构化表示。
+- **语义分析引擎**：基于GIR构建上下文敏感、流敏感的指针级语义模型，并输出状态流图SFG（State Flow Graph）作为程序语义的结构化表示
 
-- **污点分析模块**：在SFG上自动识别敏感源（source）与汇聚点（sink），并高效追踪从source到sink的数据流路径，支撑漏洞检测、隐私泄露分析等安全任务。
+- **污点分析模块**：在SFG上识别敏感源（source）与汇聚点（sink），高效追踪从source到sink的数据流路径，支撑漏洞检测、隐私泄露分析等安全任务
 
 ## 安装和使用
 
@@ -51,9 +51,7 @@ $ ./scripts/lian.sh -l <语言> <待分析代码路径>
 
 ## 文档和支持
 
-更多技术细节，请参考[Wiki（中文文档）](https://gitee.com/fdu-ssr/lian/wikis/pages)。
-
-欢迎通过[Issue](https://gitee.com/fdu-ssr/lian/issues)提交反馈和建议！
+更多技术细节，请参考[Wiki（中文文档）](https://gitee.com/fdu-ssr/lian/wikis/pages)。欢迎通过[Issue](https://gitee.com/fdu-ssr/lian/issues)提交反馈和建议！
 
 ## 关于我们
 
