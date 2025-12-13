@@ -1,0 +1,57 @@
+# -------------------------------------------------------------------
+# MkDocs Configuration for Chinese Version (/cn/)
+# -------------------------------------------------------------------
+site_name: 欢迎来到 LIAN (中文)
+site_url: https://yang-guangliang.github.io/lian/cn/
+repo_url: https://github.com/yang-guangliang/lian
+docs_dir: docs # 保持 docs 目录不变，但导航路径需要带上 'cn/' 前缀
+
+theme:
+  name: material
+  features:
+    - announce.dismiss
+    - navigation.sections
+    - toc.follow
+    - content.code.copy
+    - content.tabs.link
+
+extra:
+  generator: false
+
+plugins:
+  - tooltips
+  - search:
+      lang: zh
+
+markdown_extensions:
+  - pymdownx.highlight:
+      linenums: true
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - admonition
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+copyright: <p/>由<a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;">复旦系统安全与可靠性研究组</a>独立开发和维护<p/>
+
+# 导航栏配置 (路径相对于 docs_dir，文件路径需包含 'cn/')
+nav:
+  - 主页: cn/index.md
+  - 入门指南:
+      - 安装: cn/setup.md
+      - 示例: cn/examples.md
+  - 前端:
+      - 语言解析器: cn/lang_parser.md
+      - 通用IR - GIR: cn/gir.md
+  - 语义分析:
+      - 设计: cn/design.md
+      - 基本分析: cn/basic_analysis.md
+      - 摘要生成: cn/summary_generation.md
+      - 全局分析: cn/global_analysis.md
+  - 底层:
+      - 概述: cn/underlying.md

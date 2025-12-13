@@ -1,6 +1,10 @@
-site_name: Welcome to LIAN
-site_url: http://yang-guangliang.github.io/lian/en
+# -------------------------------------------------------------------
+# MkDocs Configuration for English Version (/en/)
+# -------------------------------------------------------------------
+site_name: Welcome to LIAN (English)
+site_url: https://yang-guangliang.github.io/lian/en/
 repo_url: https://github.com/yang-guangliang/lian
+docs_dir: docs # 保持 docs 目录不变，但导航路径需要带上 'en/' 前缀
 
 theme:
   name: material
@@ -8,27 +12,21 @@ theme:
     - announce.dismiss
     - navigation.sections
     - toc.follow
+    - content.code.copy
+    - content.tabs.link
 
 extra:
-#   alternate:
-#     - name: English
-#       link: /lian/en/
-#       lang: en
-#     - name: 中文
-#       link: /lian/cn/
-#       lang: zh
-
   generator: false
 
 plugins:
   - tooltips
-  - search
+  - search:
+      lang: en
 
 markdown_extensions:
   - pymdownx.highlight:
       linenums: true
       use_pygments: true
-
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
@@ -36,30 +34,24 @@ markdown_extensions:
   - admonition
   - pymdownx.tabbed:
       alternate_style: true
-
+  - toc:
+      permalink: true
 
 copyright: <p/>Developed & Maintained by <a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;"> the System Security and Reliability Research group</a>, Fudan University<p/>
 
-
+# 导航栏配置 (路径相对于 docs_dir，文件路径需包含 'en/')
 nav:
   - Home: en/index.md
   - Getting Started:
       - Setup: en/setup.md
       - Examples: en/examples.md
-
   - Frontends:
       - Language Parsers: en/lang_parser.md
       - General IR - GIR: en/gir.md
-
   - Semantic Analysis:
       - design: en/design.md
       - Basic Analysis: en/basic_analysis.md
       - Summary Generation: en/summary_generation.md
       - Global Analysis: en/global_analysis.md
-
-  # - Security Analysis:
-  #     - Todo
-
   - Underlying Layer:
       - Overview: en/underlying.md
-

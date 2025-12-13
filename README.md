@@ -1,6 +1,6 @@
-## Next-Generation Program Analysis Framework: Lian
+## Lian: Next-Generation Program Analysis Framework
 
-"Lian"is a next-generation program analysis framework. Lian applies the "all-in-one" design philosophy, converting languages into General Intermediate Representation (GIR) for unified semantic analysis and security detection. By simply adapting a lightweight frontend for a language, one can quickly achieve deep code analysis.
+"Lian" is a next-generation program analysis framework. Lian applies the "all-in-one" design philosophy, converting languages into General Intermediate Representation (GIR) for unified semantic analysis and security detection. By simply adapting a lightweight frontend for a language (~1,600 lines of code), one can achieve deep code analysis.
 
 The Lian framework consists of three core modules:
 
@@ -19,7 +19,7 @@ The Lian framework consists of three core modules:
 ### Installation:
 1. Clone the latest Lian repository:
 ```shell
-$ git clone https://gitee.com/fdu-ssr/lian.git
+$ git clone git@gitee.com:fdu-ssr/lian.git
 ````
 
 Alternatively, a stable version is available in [Release](https://github.com/yang-guangliang/lian/releases).
@@ -51,14 +51,14 @@ $ ./scripts/lian.sh -l <language> <path_to_code_to_analyze>
 
 ## Documentation and Support
 
-For more technical details, please refer to the [Documentation](https://yang-guangliang.github.io/lian/en).
+For more technical details, please refer to [Documentation](https://yang-guangliang.github.io/lian/en).
 
-Feel free to submit feedback and suggestions via [Issues](https://github.com/yang-guangliang/lian/issues)!
+Feel free to submit feedback and suggestions via [Issues](https://github.com/yang-guangliang/lian/issues),[Discussions](https://github.com/yang-guangliang/lian/discussions), and [Pull Requests](https://github.com/yang-guangliang/lian/pulls)!
 
 
 ## About Us
 
-Lian is independently developed by the [FUDAN-SSR (System Security and Reliability)](https://yang-guangliang.github.io/) research group at Fudan University. We are committed to building a scalable, high-precision, and multiple-language program security analysis infrastructure.
+Lian is independently developed by the [FDU-SSR (System Security and Reliability)](https://yang-guangliang.github.io/) research group at Fudan University. We are committed to building a scalable, high-precision, and multiple-language program security analysis infrastructure.
 
 
 

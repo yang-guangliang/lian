@@ -6,17 +6,31 @@ on:
 
 permissions:
   contents: write
-  
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # 定义环境，必须使用 github-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Install dependencies
         run: |
-          pip install mkdocs mkdocs-material mkdocs-tooltips 
-      - name: Deploy
-        run: mkdocs gh-deploy --force
+          pip install mkdocs mkdocs-material mkdocs-tooltips
+
+      - name: Build English docs
+        run: mkdocs build -f mkdocs_en.yml
+
+      - name: Build Chinese docs
+        run: mkdocs build -f mkdocs_cn.yml
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
