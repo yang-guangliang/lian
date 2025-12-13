@@ -1,4 +1,5 @@
-name: Deploy MkDocs to GitHub Pages
+name: 🚀 Deploy Dual-Language MkDocs to GitHub Pages
+
 on:
   push:
     branches:
@@ -10,28 +11,38 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
-    # 定义环境，必须使用 github-pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+
       - name: Install dependencies
         run: |
           pip install mkdocs mkdocs-material mkdocs-tooltips
 
-      - name: Build English docs
-        run: mkdocs build -f mkdocs_en.yml
+      - name: Build EN and CN sites
+        run: |
+          rm -rf site
+          mkdir -p site/en site/cn
 
-      - name: Build Chinese docs
-        run: mkdocs build -f mkdocs_cn.yml
+          mkdocs build -f mkdocs_en.yml --site-dir site/en
+          mkdocs build -f mkdocs_cn.yml --site-dir site/cn
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
 
       - name: Deploy to GitHub Pages
         id: deployment
