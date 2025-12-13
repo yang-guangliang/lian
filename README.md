@@ -6,9 +6,9 @@ The Lian framework consists of three core modules:
 
 - **GIR-based Language Frontend**: Unlike traditional IR like LLVM, GIR supports the unified representation of both typed and untyped languages.
 
-- **Semantic Analysis Engine**: Lian constructs context- and flow-sensitive points-to and data-flow analysis, and outputs a state-flow graph (SFG).
+- **Semantic Analysis Engine**: Lian constructs context- and flow-sensitive points-to and data-flow analysis, and outputs SFG (State Flow Graph) as a structured representation of program semantics.
 
-- **Taint Analysis**: On top of the SFG, this module automatically identifies sensitive sources and sinks, and efficiently tracks data flow paths, supporting security tasks such as vulnerability detection and privacy leakage analysis.
+- **Taint Analysis**: On top of SFG, Lian automatically identifies sensitive sources and sinks and efficiently tracks data flow paths, supporting security tasks such as vulnerability detection and privacy leakage analysis.
 
 ## Installation and Usage
 
@@ -58,7 +58,7 @@ Feel free to submit feedback and suggestions via [Issues](https://github.com/yan
 
 ## About Us
 
-Lian is independently developed by the [FUDAN-SSR (System Security and Reliability)](https://yang-guangliang.github.io/) research group at Fudan University. We are committed to building a scalable, high-precision, and multiple-language program analysis infrastructure.
+Lian is independently developed by the [FUDAN-SSR (System Security and Reliability)](https://yang-guangliang.github.io/) research group at Fudan University. We are committed to building a scalable, high-precision, and multiple-language program security analysis infrastructure.
 
 
 

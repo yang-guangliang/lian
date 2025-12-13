@@ -1,6 +1,6 @@
 ## 新一代程序分析框架：莲花（Lian）
 
-“莲花”Lian是新一代的程序分析框架，采用“多语言统一”的设计理念，将所支持的语言统一转换为通用中间表示GIR（General Intermediate Representation），并在此基础上进行统一的语义分析与安全检测。只需为新语言适配轻量级前端，即可快速实现上下文敏感、流敏感的指针级代码分析能力。
+“莲花”Lian是新一代的程序分析框架，其采用“多语言统一”的设计理念，将所支持的语言统一转换为通用中间表示GIR（General Intermediate Representation），并在此基础上进行统一的语义分析与安全检测。只需为新语言适配轻量级前端，即可快速实现上下文敏感、流敏感的指针级代码分析能力。
 
 Lian框架包含三大核心模块：
 
@@ -55,4 +55,4 @@ $ ./scripts/lian.sh -l <语言> <待分析代码路径>
 
 ## 关于我们
 
-Lian由复旦大学[FUDAN-SSR（System Security and Reliability）](https://gitee.com/fdu-ssr)研究组自主研发。我们致力于构建可扩展、高精度、多语言的程序分析基础设施。
+Lian由复旦大学[FUDAN-SSR（System Security and Reliability）](https://gitee.com/fdu-ssr)研究组自主研发。我们致力于构建可扩展、高精度、多语言的程序安全分析基础设施。
