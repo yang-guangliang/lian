@@ -5,7 +5,7 @@ set -e
 
 # 获取当前日期
 DATE=$(date +"%Y%m%d")
-TARGET_DIR="lian-0.1"
+TARGET_DIR="lian-v1.0.0"
 
 echo "开始创建压缩包: $TARGET_DIR.zip"
 
@@ -68,6 +68,8 @@ else
     echo "错误: zip命令未找到，请安装zip工具"
     exit 1
 fi
+
+rm -r "$TARGET_DIR"
 
 
 # Step 6: 显示结果
