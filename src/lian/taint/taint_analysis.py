@@ -503,7 +503,7 @@ class TaintAnalysis:
             sink_stmt = self.loader.get_stmt_gir(each_flow.sink_stmt_id)
             sink_line_no = int(sink_stmt.start_row)
             print(f"Found a flow to sink {sink_code[0].strip()} on line {sink_line_no + 1}")
-            print("\tSource :", source_code[0].strip(), f"(in {source_method_code[0].strip()})")
+            print("\tSource :", source_code[0].strip(), f"(in {source_method_code[1].strip()})")
             line_no = -1
             path_parent_source_node_list = []
             for node in reversed(each_flow.parent_to_source):
