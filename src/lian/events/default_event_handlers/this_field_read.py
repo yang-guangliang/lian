@@ -36,7 +36,7 @@ def resolve_this_field_method(data: EventData):
     field_states = in_data.field_states
     defined_symbol = in_data.defined_symbol
     stmt_id = in_data.stmt_id
-    state_analysis:StmtStateAnalysis = in_data.state_analysis
+    state_analysis:StmtStates = in_data.state_analysis
     loader:Loader = frame.loader
     defined_states = in_data.defined_states
     app_return = er.config_event_unprocessed()
@@ -127,14 +127,14 @@ def read_from_this_class(data: EventData):
     field_states = in_data.field_states
     defined_symbol = in_data.defined_symbol
     stmt_id = in_data.stmt_id
-    state_analysis:StmtStateAnalysis = in_data.state_analysis
+    state_analysis:StmtStates = in_data.state_analysis
     loader:Loader = frame.loader
     defined_states = in_data.defined_states
     app_return = er.config_event_unprocessed()
     resolver = state_analysis.resolver
 
     # 只在global_analysis的this_field_read开启
-    if not check_this_read(receiver_symbol,receiver_states,frame) or state_analysis.phase != 3:
+    if not check_this_read(receiver_symbol,receiver_states,frame) or state_analysis.analysis_phase_id != 3:
         data.out_data.receiver_states = receiver_states
         app_return = er.config_continue_event_processing(app_return)
         return app_return

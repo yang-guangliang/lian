@@ -97,7 +97,7 @@ class TaintAnalysis:
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "call_stmt":
                 if self.apply_call_stmt_source_rules(node):
                     defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
-                    node_list.append(defined_state_node)
+                    node_list.append(node)
             # 为了兼容codeql规则
             # elif node.node_type == SFG_NODE_KIND.STMT:
             #     rules = self.rule_manager.all_sources_from_code
@@ -197,13 +197,22 @@ class TaintAnalysis:
         # 这里应该应用sink的规则
         node_list = []
         for node in self.sfg.nodes:
-            if self.should_apply_call_stmt_sink_rules(node):
+            if self.should_apply_call_stmt_sink_rules(node) or self.should_apply_object_call_stmt_sink_rules(node):
                 node_list.append(node)
             # 为了兼容codeql的规则
             # rules = self.rule_manager.all_sinks_from_code
             # if node.node_type == SFG_NODE_KIND.STMT and self.apply_rules_from_code(node, rules):
             #     node_list.append(node)
         return node_list
+    def should_apply_object_call_stmt_sink_rules(self, node):
+        if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call":
+            return False
+        stmt = self.loader.get_stmt_gir(node.def_stmt_id)
+        name = stmt.receiver_object + '.' + stmt.field
+        for rule in self.rule_manager.all_sinks:
+            if rule.name == name:
+                return True
+        return False
 
     def should_apply_call_stmt_sink_rules(self, node):
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "call_stmt":
@@ -331,7 +340,8 @@ class TaintAnalysis:
 
         def shortest_paths_to_targets(G, start, targets):
             """
-            在无权有向图里，从 start 做一次 BFS，直到找到所有 targets（或遍历完可达子图）。
+            在无权“无向图视角”里，从 start 做一次 BFS，直到找到所有 targets（或遍历完可达子图）。
+            注：即使 G 是 DiGraph，也把边当作无向边处理（同时遍历 successors + predecessors）。
             只返回 targets 中能到达的节点的最短路径（包含起止点）。
             """
             if start not in G:
@@ -354,7 +364,8 @@ class TaintAnalysis:
 
             while q and remaining:
                 cur = q.popleft()
-                for nxt in G.successors(cur):
+                # Treat directed edges as undirected edges: neighbors are successors + predecessors.
+                for nxt in set(G.successors(cur)) | set(G.predecessors(cur)):
                     if nxt in pred:
                         continue
                     pred[nxt] = cur
@@ -379,7 +390,8 @@ class TaintAnalysis:
         for parent in parents:
             sfg_node, dist = nearest_attr_ancestor(self.sfg, source, parent)
             if not sfg_node:
-                continue
+                sfg_node = source
+
             found_paths = shortest_paths_to_targets(self.sfg, sfg_node, {source, sink})
             parent_to_source = found_paths.get(source)
             parent_to_sink = found_paths.get(sink)
@@ -393,7 +405,6 @@ class TaintAnalysis:
             flow_list.append(new_flow)
             #print(parent_to_source)
             #print(parent_to_sink)
-
         return flow_list
 
     # def find_method_parent_by_nodes(self, source_nodes, sink_nodes):
@@ -648,5 +659,5 @@ class TaintAnalysis:
         else:
             if not self.options.quiet:
                 self.print_flows(all_flows)
-            self.write_taint_flows(all_flows)
+            # self.write_taint_flows(all_flows)
 

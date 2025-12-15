@@ -1,13 +1,11 @@
 func0()
 def a():
     t = source()
-    t1 = source1()
-    t2 = t1.f
-    b(t, t2)
-def b(p, p1):
+
+    b(t)
+def b(p):
     g = p
-    m = p1.k
-    c(g, m)
+    sink(g)
 def c(p, p1):
     sink(p)
     send(p1)

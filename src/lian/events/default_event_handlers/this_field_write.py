@@ -37,7 +37,7 @@ def write_to_this_class(data: EventData):
     defined_symbol = in_data.defined_symbol
     stmt_id = in_data.stmt_id
     stmt = in_data.stmt
-    state_analysis:StmtStateAnalysis = in_data.state_analysis
+    state_analysis:StmtStates = in_data.state_analysis
     loader:Loader = frame.loader
     source_states = in_data.source_states
     defined_states = in_data.defined_states

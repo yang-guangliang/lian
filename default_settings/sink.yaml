@@ -11,3 +11,6 @@ rules:
   - operation: call_stmt
     name: web.FileResponse
     target: [\%arg0]
+  - operation: call_stmt
+    name: pickle.load
+    target: [\%arg0]

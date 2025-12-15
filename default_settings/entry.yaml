@@ -10,7 +10,7 @@
   method_list: ["from_pretrained", "file", "view_image", "worker_api_generate_stream", "invoke", "init_device", "delete_images_from_list",
                 "retrieve", "start", "_create_model_version", "get_model_version_artifact_handler", "add",
                 "create_chat_completion", "queue_join", "start", "predict", "_execute_action", "run_rpc_server",
-                "execute_graph_block", "make", "__init__", "generate_prompts", "_request_handler", "unpickle_object_from_file",  "a1"]
+                "execute_graph_block", "make", "generate_prompts", "_request_handler", "unpickle_object_from_file",  "a1", "%unit_init"]
 - lang: python
   method_list: ["nnn"]
   unit_path: "test1/david.py"
