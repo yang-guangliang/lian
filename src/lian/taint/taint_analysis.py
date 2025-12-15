@@ -329,19 +329,60 @@ class TaintAnalysis:
 
             return None, -1
 
+        def shortest_paths_to_targets(G, start, targets):
+            """
+            在无权有向图里，从 start 做一次 BFS，直到找到所有 targets（或遍历完可达子图）。
+            只返回 targets 中能到达的节点的最短路径（包含起止点）。
+            """
+            if start not in G:
+                return {}
+            if not targets:
+                return {}
+
+            remaining = set(targets)
+            paths = {}
+
+            # start 本身就是目标
+            if start in remaining:
+                paths[start] = [start]
+                remaining.remove(start)
+                if not remaining:
+                    return paths
+
+            pred = {start: None}
+            q = deque([start])
+
+            while q and remaining:
+                cur = q.popleft()
+                for nxt in G.successors(cur):
+                    if nxt in pred:
+                        continue
+                    pred[nxt] = cur
+
+                    if nxt in remaining:
+                        # reconstruct path start -> nxt
+                        rev = [nxt]
+                        p = cur
+                        while p is not None:
+                            rev.append(p)
+                            p = pred[p]
+                        paths[nxt] = list(reversed(rev))
+                        remaining.remove(nxt)
+                        if not remaining:
+                            break
+
+                    q.append(nxt)
+
+            return paths
+
         flow_list = []
         for parent in parents:
             sfg_node, dist = nearest_attr_ancestor(self.sfg, source, parent)
             if not sfg_node:
                 continue
-            try:
-                parent_to_source = nx.shortest_path(self.sfg, sfg_node, source)
-            except nx.NetworkXNoPath:
-                parent_to_source = None
-            try:
-                parent_to_sink = nx.shortest_path(self.sfg, sfg_node, sink)
-            except nx.NetworkXNoPath:
-                parent_to_sink = None
+            found_paths = shortest_paths_to_targets(self.sfg, sfg_node, {source, sink})
+            parent_to_source = found_paths.get(source)
+            parent_to_sink = found_paths.get(sink)
             if not parent_to_source or not parent_to_sink:
                 continue
             new_flow = Flow()
