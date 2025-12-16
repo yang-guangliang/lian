@@ -238,12 +238,25 @@ class GIRParser:
         if not lang:
             util.error_and_quit("Unsupported language: " + self.options.lang)
 
-        lib = cdll.LoadLibrary(lang.so_path)
-        lang_function = getattr(lib, "tree_sitter_%s" % lang_option)
-        lang_function.restype = c_void_p
-        lang_id = lang_function()
-        lang_inter = tree_sitter.Language(lang_id)
-        tree_sitter_parser = tree_sitter.Parser(lang_inter)
+        try:
+            lib = cdll.LoadLibrary(so_path)
+            lang_function = getattr(lib, "tree_sitter_%s" % function_name)
+            lang_function.restype = c_void_p
+            lang_id = lang_function()
+            lang_inter = tree_sitter.Language(lang_id)
+            tree_sitter_parser = tree_sitter.Parser(lang_inter)
+        except (OSError, ValueError, AttributeError) as e:
+            # 如果独立的 SO 文件失败，就使用到 langs_linux.so
+            so_path = config.LANG_SO_PATH
+            lib = cdll.LoadLibrary(so_path)
+            try:
+                lang_function = getattr(lib, "tree_sitter_%s" % function_name)
+            except AttributeError:
+                util.error_and_quit(f"Language {lang_option} not found in {so_path}")
+            lang_function.restype = c_void_p
+            lang_id = lang_function()
+            lang_inter = tree_sitter.Language(lang_id)
+            tree_sitter_parser = tree_sitter.Parser(lang_inter)
 
         code = None
         tree = None

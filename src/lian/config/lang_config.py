@@ -10,7 +10,9 @@ from lian.lang import (
     python_parser,
     ruby_parser,
     php_parser,
-    llvm_parser
+    llvm_parser,
+    smali_parser,
+    typescript_parser,
 )
 
 @dataclass
@@ -30,6 +32,8 @@ LANG_TABLE = [
     LangConfig(name = "python", extension = [".py"], parser = python_parser.Parser),
     LangConfig(name = "php", extension = [".php"], parser = php_parser.Parser),
     LangConfig(name = "ruby", extension = [".rb"], parser = ruby_parser.Parser),
+    LangConfig(name = "smali", extension = [".smali"], parser = smali_parser.Parser),
+    LangConfig(name = "typescript", extension = [".ts", ".tsx"], parser = typescript_parser.Parser),
     LangConfig(name = "llvm", extension = [".ll"], parser = llvm_parser.Parser),
 ]
 
