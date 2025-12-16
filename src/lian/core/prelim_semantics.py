@@ -1232,7 +1232,6 @@ class PrelimSemanticAnalysis:
 
     def save_graph_to_dot(self, graph, entry_point, phase_id, symbol_state_space):
         if not (self.options.graph or self.options.complete_graph):
-            print("1")
             return
 
         if graph is None or len(graph) == 0:
