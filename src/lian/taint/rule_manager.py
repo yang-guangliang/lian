@@ -50,6 +50,7 @@ class Rule:
     tag:list                = dataclasses.field(default_factory=list)
     src: list               = dataclasses.field(default_factory=list)
     dst: list               = dataclasses.field(default_factory=list)
+    attr: str               = ""
     unset:bool              = False
 
     # mock_path: str          = ""
@@ -122,7 +123,8 @@ class RuleManager:
                                 args=rule.get("args", None),
                                 tag=rule.get("tag", None), 
                                 src=rule.get("src", None), 
-                                dst=rule.get("dst", None), 
+                                dst=rule.get("dst", None),
+                                attr=rule.get("attr", None),
                                 unset=rule.get("unset", None))
                 self.all_sources.append(new_rule)
         with open(self.taint_sink, 'r') as file:

@@ -18,3 +18,6 @@ rules:
   - operation: call_stmt
     name: utils.abspath
     tag: [\%target]
+  - operation: parameter_decl
+    name: retriever_name_or_path
+    attr: classmethod

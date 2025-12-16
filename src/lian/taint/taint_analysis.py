@@ -98,6 +98,9 @@ class TaintAnalysis:
                 if self.apply_call_stmt_source_rules(node):
                     defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
                     node_list.append(node)
+            if node.node_type == SFG_NODE_KIND.STMT and node.name == "parameter_decl":
+                if self.apply_parameter_source_rules(node):
+                    node_list.append(node)
             # 为了兼容codeql规则
             # elif node.node_type == SFG_NODE_KIND.STMT:
             #     rules = self.rule_manager.all_sources_from_code
@@ -105,6 +108,23 @@ class TaintAnalysis:
             #         node_list.append(node)
 
         return node_list
+    def apply_parameter_source_rules(self, node):
+        stmt_id = node.def_stmt_id
+        method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
+
+        stmt = self.loader.get_stmt_gir(method_id)
+        if not stmt.attrs:
+            return False
+        attrs = stmt.attrs
+        parameter_symbol = list(util.graph_successors(self.sfg, node))[0]
+        for rule in self.rule_manager.all_sources:
+            if rule.operation != "parameter_decl":
+                continue
+            if rule.attr not in attrs:
+                continue
+            if rule.name == parameter_symbol.name:
+                return True
+        return False
 
     def apply_rules_from_code(self, node, rules):
         stmt_id = node.def_stmt_id
@@ -536,7 +556,7 @@ class TaintAnalysis:
                     code[i] = code[i].strip()
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = "".join(code) + " on line " + str(int(line_no) + 1)
+                path_node = "(" + "".join(code) + ")"+ " on line " + str(int(line_no) + 1)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {
@@ -562,7 +582,7 @@ class TaintAnalysis:
                     code[i] = code[i].strip()
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = "".join(code) + " on line " + str(int(line_no) + 1)
+                path_node = "(" + "".join(code) + ")"+ " on line " + str(int(line_no) + 1)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {

@@ -194,8 +194,8 @@ class Parser(common_parser.Parser):
             for decorator_node in decorator_nodes:
                 identifier_node = self.find_child_by_type(decorator_node, "identifier")
                 identifier = self.read_node_text(identifier_node)
-                if identifier == "abstractmethod":
-                    modifiers.append("abstract")
+
+                modifiers.append(identifier)
 
         if node.named_child_count > 0 and self.read_node_text(node.children[0]) == "async":
             modifiers.append("async")
