@@ -227,7 +227,7 @@ class TaintAnalysis:
             #     node_list.append(node)
         return node_list
     def should_apply_object_call_stmt_sink_rules(self, node):
-        if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call":
+        if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call_stmt":
             return False
         stmt = self.loader.get_stmt_gir(node.def_stmt_id)
         name = stmt.receiver_object + '.' + stmt.field

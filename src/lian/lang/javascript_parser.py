@@ -549,7 +549,7 @@ class Parser(common_parser.Parser):
 
         if name.type == "member_expression":
             self.append_stmts(statements, node, {
-                "object_call": {"target": tmp_return, "field": shadow_name, "receiver_object": shadow_object,
+                "object_call_stmt": {"target": tmp_return, "field": shadow_name, "receiver_object": shadow_object,
                                 "positional_args": positional_args,
                         "packed_positional_args": packed_positional_args,}})
         else:

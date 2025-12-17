@@ -129,7 +129,7 @@ class StmtStates:
 
             "assign_stmt": self.assign_stmt_state,
             "call_stmt": self.call_stmt_state,
-            "object_call":self.object_call_state,
+            "object_call_stmt":self.object_call_state,
             "global_stmt": self.global_stmt_state,
             "nonlocal_stmt": self.nonlocal_stmt_state,
             "type_cast_stmt": self.type_cast_stmt_state,

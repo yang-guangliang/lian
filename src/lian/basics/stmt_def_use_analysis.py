@@ -52,7 +52,7 @@ class StmtDefUseAnalysis:
             "package_stmt"                          : self.package_stmt_def_use,
             "assign_stmt"                           : self.assign_stmt_def_use,
             "call_stmt"                             : self.call_stmt_def_use,
-            "object_call"                           : self.object_call_def_use,
+            "object_call_stmt"                      : self.object_call_def_use,
             "echo_stmt"                             : self.echo_stmt_def_use,
             "exit_stmt"                             : self.exit_stmt_def_use,
             "return_stmt"                           : self.return_stmt_def_use,
@@ -376,7 +376,7 @@ class StmtDefUseAnalysis:
 
         used_symbols = status.used_symbols
         arg_symbol_list = used_symbols[1:]
-        if stmt.operation == "object_call":
+        if stmt.operation == "object_call_stmt":
             arg_symbol_list = used_symbols[2:]
         callee_name_symbol_index = used_symbols[0]
         callee_name_symbol = self.symbol_state_space[callee_name_symbol_index]
