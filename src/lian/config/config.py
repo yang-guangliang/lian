@@ -1,6 +1,5 @@
 
 import os
-import platform
 
 EMPTY                                                        = 0
 START_INDEX                                                  = 100
@@ -35,9 +34,7 @@ TAINT_OUTPUT_DIR                                             = "taint"
 
 ROOT_DIR                                                     = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
-DEFAULT_SO_PATH                                              = "lib/langs_linux.so"
-
-LANG_SO_PATH                                                 = os.path.join(ROOT_DIR, DEFAULT_SO_PATH)
+LANG_SO_DIR                                                  = os.path.join(ROOT_DIR, "lib")
 
 SRC_LIAN_DIR                                                 = os.path.join(ROOT_DIR, "src/lian")
 EXTERNS_MOCK_CODE_DIR                                        = os.path.join(SRC_LIAN_DIR, "externs/mock")

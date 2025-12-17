@@ -219,6 +219,15 @@ class GIRParser:
         self.max_rows = config.MAX_ROWS
         self.count = 0
 
+    def obtain_ast_parser(self, lang: lang_config.LangConfig):
+        lib = cdll.LoadLibrary(lang.so_path)
+        lang_function = getattr(lib, "tree_sitter_%s" % lang.name)
+        lang_function.restype = c_void_p
+        lang_id = lang_function()
+        lang_inter = tree_sitter.Language(lang_id)
+        tree_sitter_parser = tree_sitter.Parser(lang_inter)
+        return tree_sitter_parser
+
     def parse(self, unit_info, file_path, lang_option, lang_table):
         """
         解析源代码生成GIR：
@@ -234,29 +243,12 @@ class GIRParser:
             if language.name == lang_option:
                 lang = language
                 break
-
         if not lang:
             util.error_and_quit("Unsupported language: " + self.options.lang)
 
-        try:
-            lib = cdll.LoadLibrary(so_path)
-            lang_function = getattr(lib, "tree_sitter_%s" % function_name)
-            lang_function.restype = c_void_p
-            lang_id = lang_function()
-            lang_inter = tree_sitter.Language(lang_id)
-            tree_sitter_parser = tree_sitter.Parser(lang_inter)
-        except (OSError, ValueError, AttributeError) as e:
-            # 如果独立的 SO 文件失败，就使用到 langs_linux.so
-            so_path = config.LANG_SO_PATH
-            lib = cdll.LoadLibrary(so_path)
-            try:
-                lang_function = getattr(lib, "tree_sitter_%s" % function_name)
-            except AttributeError:
-                util.error_and_quit(f"Language {lang_option} not found in {so_path}")
-            lang_function.restype = c_void_p
-            lang_id = lang_function()
-            lang_inter = tree_sitter.Language(lang_id)
-            tree_sitter_parser = tree_sitter.Parser(lang_inter)
+        ast_parser = self.obtain_ast_parser(lang)
+        if not ast_parser:
+            util.error_and_quit("Failed to obtain AST parser for language: " + lang_option)
 
         code = None
         tree = None
@@ -281,7 +273,7 @@ class GIRParser:
             code = event.out_data
 
         try:
-            tree = tree_sitter_parser.parse(bytes(code, 'utf8'))
+            tree = ast_parser.parse(bytes(code, 'utf8'))
         except:
             util.error("Failed to parse AST:", file_path)
             return
