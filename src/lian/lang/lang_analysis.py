@@ -239,7 +239,6 @@ class GIRParser:
             util.error_and_quit("Unsupported language: " + self.options.lang)
 
         try:
-            lib = cdll.LoadLibrary(so_path)
             lang_function = getattr(lib, "tree_sitter_%s" % function_name)
             lang_function.restype = c_void_p
             lang_id = lang_function()
