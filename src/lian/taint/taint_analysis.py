@@ -115,6 +115,8 @@ class TaintAnalysis:
         stmt = self.loader.get_stmt_gir(method_id)
         if not stmt.attrs:
             return False
+        if not isinstance(stmt.attrs, str):
+            return False
         attrs = stmt.attrs
         parameter_symbol = list(util.graph_successors(self.sfg, node))[0]
         for rule in self.rule_manager.all_sources:
