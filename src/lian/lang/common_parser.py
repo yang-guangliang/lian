@@ -323,6 +323,8 @@ class Parser:
         size = len(node.named_children)
         for i in range(size):
             ret = self.parse(node.named_children[i], statements, replacement)
+            if node.type == "parenthesized_expression":
+                return ret
             if i + 1 == size:
                 return ret
 
