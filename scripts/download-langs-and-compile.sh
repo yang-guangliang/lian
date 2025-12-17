@@ -46,4 +46,6 @@ cd ..
 
 python3 compile_langs.py
 
-pip install tree-sitter
+#pip install tree-sitter
+
+./extract.grammar.js.sh
