@@ -1235,7 +1235,6 @@ class PrelimSemanticAnalysis:
             return
 
         if graph is None or len(graph) == 0:
-            print("2")
             return
 
         dumper = SFGDumper(
