@@ -57,6 +57,7 @@ class ArgsParser:
 
     def obtain_default_options(self):
         return types.SimpleNamespace(
+            quiet = False,
             event_handlers = [],
             lang = "",
             benchmark = False,
