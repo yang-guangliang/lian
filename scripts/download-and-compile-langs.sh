@@ -48,4 +48,4 @@ python3 compile_langs.py
 
 #pip install tree-sitter
 
-./extract.grammar.js.sh
+sh ./extract.grammar.js.sh
