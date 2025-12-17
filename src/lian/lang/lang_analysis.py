@@ -221,7 +221,8 @@ class GIRParser:
 
     def obtain_ast_parser(self, lang: lang_config.LangConfig):
         lib = cdll.LoadLibrary(lang.so_path)
-        lang_function = getattr(lib, "tree_sitter_%s" % lang.name)
+        function_name = lang.name if lang.name != "csharp" else "c_sharp"
+        lang_function = getattr(lib, f"tree_sitter_{function_name}")
         lang_function.restype = c_void_p
         lang_id = lang_function()
         lang_inter = tree_sitter.Language(lang_id)

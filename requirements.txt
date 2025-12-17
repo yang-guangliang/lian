@@ -1,6 +1,6 @@
 setuptools
 # the frontend for code parsing
-tree-sitter==0.24.0
+tree-sitter==0.25.2
 # for data storage and manipulation
 pandas
 pyarrow
