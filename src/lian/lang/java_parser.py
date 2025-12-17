@@ -937,7 +937,7 @@ class Parser(common_parser.Parser):
             # self.append_stmts(statements, node, {
             #     "field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": shadow_name}})
             # shadow_name = tmp_var
-            self.append_stmts(statements, node, {"object_call": {"target": tmp_return, "field": shadow_name, "receiver_object": shadow_object, "positional_args": args_list}})
+            self.append_stmts(statements, node, {"object_call_stmt": {"target": tmp_return, "field": shadow_name, "receiver_object": shadow_object, "positional_args": args_list}})
         else:
             self.append_stmts(statements, node, {"call_stmt": {"target": tmp_return, "name": shadow_name, "type_parameters": type_text, "positional_args": args_list}})
 
