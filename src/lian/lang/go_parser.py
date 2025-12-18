@@ -862,13 +862,18 @@ class Parser(common_parser.Parser):
 
     def call_expression(self, node, statements):
         function = self.find_child_by_field(node, "function")
-        shadow_function = self.parse(function, statements)
+        receiver_name = None
+        field_name = None
+        if function.type == "selector_expression":
+            receiver_name, field_name = self.parse_field(function, statements)
+        else:
+            shadow_function = self.parse(function, statements)
 
         args_list = []
         type_arguments = []
         args = self.find_child_by_field(node, "arguments")
 
-        if shadow_function not in ["new", "make"]:
+        if function.type == "selector_expression" or shadow_function not in ["new", "make"]:
             type_arguments_node = self.find_child_by_field(node, "type_arguments")
             if type_arguments_node:
                 for child in type_arguments_node.children[1:-1]:
@@ -895,7 +900,17 @@ class Parser(common_parser.Parser):
 
         tmp_var = self.tmp_variable()
         attrs = []
-        self.append_stmts(statements, node, {"call_stmt": {"attrs": attrs, "target": tmp_var, "name": shadow_function, "type_parameters": type_arguments, "args": args_list}})
+        if function.type == "selector_expression":
+            self.append_stmts(statements, node, {"object_call_stmt": {
+                "receiver_object":receiver_name,
+                "target": tmp_var,
+                "field": field_name,
+                "attrs": attrs,
+                "type_parameters": type_arguments,
+                "args": args_list,}
+            })
+        else:
+            self.append_stmts(statements, node, {"call_stmt": {"attrs": attrs, "target": tmp_var, "name": shadow_function, "type_parameters": type_arguments, "args": args_list}})
 
         return tmp_var
 
