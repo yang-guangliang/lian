@@ -180,35 +180,34 @@ class Parser(common_parser.Parser):
     def composite_literal(self, node, statements, replacement):
         type_node = self.find_child_by_field(node, "type")
         body_node = self.find_child_by_field(node, "body")
-
-        # 根据不同的类型节点解析具体类型
         type_info = self.simple_type(type_node, statements)
-
         body_content = []
-
-        # 解析 body 中的元素
         if body_node:
             self.literal_value(body_node, body_content)
-
         tmp_var = self.tmp_variable()
-        self.append_stmts(statements, node, {"composite_literal":{
-            "type": type_info,
-            "composite_body": body_content
-        }})
+
+        if type_node.type in ["array_type","slice_type"]:
+            self.append_stmts(statements, node, {"new_array": {"target": tmp_var}})
+            if len(body_content) > 0:
+                for index, item in enumerate(body_content):
+                    self.append_stmts(statements, node,
+                                      {"array_write": {"array": tmp_var, "index": str(index), "source": item}})
+        else:
+            self.append_stmts(statements, node, {"composite_literal":{
+                "type": type_info,
+                "composite_body": body_content
+            }})
 
         return tmp_var
 
     def literal_value(self, node, statements):
         for child in node.named_children:
-            elements = []
             if self.is_comment(child):
                 continue
-            self.parse_element(child, elements)
-            self.append_stmts(statements, node, elements)
+            self.parse_element(child, statements)
 
     def parse_element(self, node, statements):
         for child in node.named_children:
-
             if self.is_comment(child):
                 continue
             if child.type == "literal_value":
@@ -217,7 +216,7 @@ class Parser(common_parser.Parser):
                 self.parse_element(child, statements)
             else:
                 ret = self.parse(child, statements)
-                self.append_stmts(statements, node, ret)
+                statements.append(ret)
 
     def func_literal(self, node, statements, replacement):
         new_parameters = []
@@ -536,11 +535,12 @@ class Parser(common_parser.Parser):
 
     def inc_statement(self, node, statements):
         target = self.parse(node.named_children[0], statements)
-        self.append_stmts(statements, node, {"inc_stmt": {"target": target}})
+        self.append_stmts(statements, node, {"assign_stmt": {"target": target, "operator": '+', "operand": target, 'operand2': '1'}})
+
 
     def dec_statement(self, node, statements):
         target = self.parse(node.named_children[0], statements)
-        self.append_stmts(statements, node, {"dec_stmt": {"target": target}})
+        self.append_stmts(statements, node, {"assign_stmt": {"target": target, "operator": '-', "operand": target, 'operand2': '1'}})
 
     def short_var_declaration(self, node, statements):
         left = self.find_child_by_field(node, "left")
@@ -1324,24 +1324,22 @@ class Parser(common_parser.Parser):
 
             for_body = []
 
-            block = self.find_child_by_field(node, "body")
-            self.parse(block, for_body)
-
             if len(shadow_left) == 1:
                 self.append_stmts(statements, node, {"forin_stmt":
                                     {"name": shadow_left[0],
                                     "receiver": shadow_right,
                                     "body": for_body}})
             else:
-                init = []
                 tmp_var = self.tmp_variable()
                 for i, child in enumerate(shadow_left):
-                    init.append({"target": child, "array": tmp_var, "index": i})
+                    self.append_stmts(for_body, node, {"array_read": {"target": child, "array": tmp_var, "index": str(i)}})
                 self.append_stmts(statements, node, {"forin_stmt":
                                     {"name": tmp_var,
                                     "receiver": shadow_right,
-                                    "array_read": init,
                                     "body": for_body}})
+
+            block = self.find_child_by_field(node, "body")
+            self.parse(block, for_body)
 
         else:
             init_body = []
@@ -1390,12 +1388,13 @@ class Parser(common_parser.Parser):
             if _case.type == "expression_case":
                 value = self.find_child_by_field(_case, "value")
                 shadow_condition = self.parse(value, statements)
+                if not isinstance(shadow_condition, list):
+                    shadow_condition = [shadow_condition]
                 new_body = []
                 for child in _case.named_children[1:]:
                     if self.is_comment(child):
-                            continue
+                        continue
                     else:
-                        #self.sync_tmp_variable(statements, new_body)
                         self.parse(child, new_body)
                 for child in shadow_condition[:-1]:
                     switch_stmt_list.append({"case_stmt": {"condition": child}})
