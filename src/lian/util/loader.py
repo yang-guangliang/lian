@@ -3087,7 +3087,10 @@ class Loader:
         unit_source_code = self.get_unit_source_code_by_stmt_id(stmt_id)
         stmt = self.get_stmt_gir(stmt_id)
         if stmt.operation == 'method_decl':
-            return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row-1, end = stmt.end_row)
+            strat = stmt.start_row
+            if stmt.start_row <= 0:
+                start = 0
+            return self._get_source_code_from_start_to_end(unit_source_code, start = start, end = stmt.end_row)
         return self._get_source_code_from_start_to_end(unit_source_code, start = stmt.start_row, end = stmt.end_row)
 
     def get_method_decl_source_code(self, method_id):
