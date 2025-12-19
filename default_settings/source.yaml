@@ -21,3 +21,5 @@ rules:
   - operation: parameter_decl
     name: retriever_name_or_path
     attr: classmethod
+  - operation: parameter_decl
+    name: path_or_url

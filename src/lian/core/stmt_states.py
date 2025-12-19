@@ -112,8 +112,8 @@ class StmtStates:
             "case_stmt": self.control_flow_stmt_state,
             "default_stmt": self.control_flow_stmt_state,
             "switch_type_stmt": self.control_flow_stmt_state,
-            "break_stmt": self.control_flow_stmt_state,
-            "continue_stmt": self.control_flow_stmt_state,
+            "break_stmt": self.regular_stmt_state,
+            "continue_stmt": self.regular_stmt_state,
             "goto_stmt": self.control_flow_stmt_state,
             "block": self.control_flow_stmt_state,
             "block_start": self.control_flow_stmt_state,
@@ -668,7 +668,11 @@ class StmtStates:
             # 处理array
             elif receiver_state.array:
                 receiver_array = receiver_state.array
-                defined_symbol_states.update(receiver_array)
+                if isinstance(receiver_array, list):
+                    for element in receiver_array:
+                        defined_symbol_states.update(element)
+                else:
+                    defined_symbol_states.update(receiver_array)
             else:
                 if stmt.operation == "for_value_stmt":
                     if receiver_state.fields:

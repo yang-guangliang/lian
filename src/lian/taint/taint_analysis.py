@@ -120,9 +120,11 @@ class TaintAnalysis:
         attrs = stmt.attrs
         parameter_symbol = list(util.graph_successors(self.sfg, node))[0]
         for rule in self.rule_manager.all_sources:
+            if not rule.attr and rule.name == parameter_symbol.name:
+                return True
             if rule.operation != "parameter_decl":
                 continue
-            if rule.attr not in attrs:
+            if rule.attr and rule.attr not in attrs:
                 continue
             if rule.name == parameter_symbol.name:
                 return True
