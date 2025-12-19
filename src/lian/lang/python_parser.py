@@ -53,6 +53,7 @@ class Parser(common_parser.Parser):
             "dictionary"                        : self.dictionary,
             "subscript"                         : self.subscript,
             "attribute"                         : self.attribute,
+            "assignment"                        : self.assignment,
             "list_comprehension"                : self.list_set_dictionary_comprehension,
             "dictionary_comprehension"          : self.list_set_dictionary_comprehension,
             "set_comprehension"                 : self.list_set_dictionary_comprehension,
@@ -1765,6 +1766,213 @@ class Parser(common_parser.Parser):
                     self.append_stmts(statements, node, {"assign_stmt": {"target": shadow_left, "operand": shadow_right}})
                 else:
                     self.append_stmts(statements, node, {"assign_stmt": {"target": shadow_left, "operator": shadow_operator,
+                                                       "operand": shadow_left, "operand2": shadow_right}})
+                return shadow_left
+
+        if node.named_child_count > 0:
+            for child in node.named_children:
+                if child.type != "assignment" and child.type != "augmented_assignment":
+                    self.parse(child, statements)
+
+    def assignment(self, node: Node, statements: list):
+        assign = node
+        if assign is None:
+            assign = self.find_child_by_type(node, "augmented_assignment")
+        if assign:
+            left = self.find_child_by_field(assign, "left")
+            right = self.find_child_by_field(assign, "right")
+            type = self.find_child_by_field(assign, "type")
+            operator = self.find_child_by_field(assign, "operator")
+            shadow_operator = self.read_node_text(operator).replace("=", "")
+            shadow_right = self.parse(right, statements)
+            if type:
+                type = self.read_node_text(type)
+            else:
+                type = None
+            if left.type == "attribute":
+                shadow_object, field = self.parse_field(left, statements)
+                if not shadow_operator:
+                    self.append_stmts(statements, node,
+                                      {"field_write": {"receiver_object": shadow_object, "field": field,
+                                                       "source": shadow_right}})
+                    return shadow_right
+
+                tmp_var = self.tmp_variable()
+                self.append_stmts(statements, node, {
+                    "field_read": {"target": tmp_var, "receiver_object": shadow_object, "field": field, }})
+                tmp_var2 = self.tmp_variable()
+                self.append_stmts(statements, node, {"assign_stmt":
+                                                         {"target": tmp_var2, "operator": shadow_operator,
+                                                          "operand": tmp_var, "operand2": shadow_right}})
+                self.append_stmts(statements, node, {
+                    "field_write": {"receiver_object": shadow_object, "field": field, "source": tmp_var2}})
+
+                return tmp_var2
+
+            elif left.type == "subscript":
+                tmp_var = self.tmp_variable()
+                array = self.find_child_by_field(left, "value")
+                shadow_array = self.parse(array, statements)
+                subscripts = self.find_children_by_field(left, "subscript")
+                is_slice = False
+
+                if subscripts and len(subscripts) == 1:
+                    subscript = subscripts[0]
+                    if subscript.type == "slice":
+                        start, end, step = self.parse_slice(subscript)
+                        is_slice = True
+                    else:
+                        shadow_index = self.parse(subscript, statements)
+                else:
+                    for subscript in subscripts[:-1]:
+                        if subscript.type == "slice":
+                            tmp_slice = self.tmp_variable()
+                            start, end, step = self.parse_slice(subscript)
+                            self.append_stmts(statements, node, {
+                                "slice_read": {"target": tmp_slice, "array": shadow_array, "start": str(start),
+                                               "end": str(end), "step": str(step)}})
+                            shadow_array = tmp_slice
+                        else:
+                            tmp_array = self.tmp_variable()
+                            shadow_index = self.parse(subscript, statements)
+                            self.append_stmts(statements, node, {
+                                "array_read": {"target": tmp_array, "array": shadow_array, "index": shadow_index}})
+                            shadow_array = tmp_array
+                    last_subscript = subscripts[-1]
+                    if last_subscript.type == "slice":
+                        is_slice = True
+                        start, end, step = self.parse_slice(last_subscript)
+                    else:
+                        is_slice = False
+                        shadow_index = self.parse(last_subscript, statements)
+
+                if not shadow_operator:
+                    if is_slice:
+                        self.append_stmts(statements, node, {
+                            "slice_write": {"array": shadow_array, "source": shadow_right, "start": str(start),
+                                            "end": str(end), "step": str(step)}})
+                    else:
+                        self.append_stmts(statements, node, {
+                            "array_write": {"array": shadow_array, "index": shadow_index, "source": shadow_right}})
+                    return shadow_right
+
+                tmp_var = self.tmp_variable()
+                if is_slice:
+                    self.append_stmts(statements, node, {
+                        "slice_read": {"target": tmp_var, "array": shadow_array, "start": str(start), "end": str(end),
+                                       "step": str(step)}})
+                else:
+                    self.append_stmts(statements, node,
+                                      {"array_read": {"target": tmp_var, "array": shadow_array, "index": shadow_index}})
+                tmp_var2 = self.tmp_variable()
+                self.append_stmts(statements, node, {"assign_stmt":
+                                                         {"target": tmp_var2, "operator": shadow_operator,
+                                                          "operand": tmp_var, "operand2": shadow_right}})
+                if is_slice:
+                    self.append_stmts(statements, node, {
+                        "slice_write": {"array": shadow_array, "source": tmp_var2, "start": str(start), "end": str(end),
+                                        "step": str(step)}})
+                else:
+                    self.append_stmts(statements, node, {
+                        "array_write": {"array": shadow_array, "index": shadow_index, "source": tmp_var2}})
+
+                return tmp_var2
+
+            elif left.type == "tuple_pattern":
+                pattern_count = left.named_child_count
+                if not shadow_operator:
+                    for index in range(pattern_count):
+                        tmp_var = self.tmp_variable()
+                        self.append_stmts(statements, node, {
+                            "array_read": {"target": tmp_var, "array": shadow_right, "index": str(index), }})
+                        tmp_body = []
+                        pattern = self.parse(left.named_children[index], tmp_body)
+                        self.append_stmts(statements, node, {"variable_decl": {"data_type": type, "name": pattern}})
+                        statements.extend(tmp_body)
+                        self.append_stmts(statements, node, {"assign_stmt": {"target": pattern, "operand": tmp_var}})
+                    return shadow_right
+
+                tmp_var = self.tmp_variable()
+                for index in range(pattern_count):
+                    tmp_var = self.tmp_variable()
+                    self.append_stmts(statements, node,
+                                      {"array_read": {"target": tmp_var, "array": shadow_right, "index": str(index), }})
+                    pattern = self.parse(left.named_children[index])
+                    tmp_var2 = self.tmp_variable()
+                    self.append_stmts(statements, node, {"assign_stmt":
+                                                             {"target": tmp_var2, "operator": shadow_operator,
+                                                              "operand": pattern, "operand2": tmp_var}})
+                    self.append_stmts(statements, node, {"assign_stmt": {"target": pattern, "operand": tmp_var2}})
+                return shadow_right
+
+            elif left.type == "list_pattern" or left.type == "pattern_list":
+                pattern_count = left.named_child_count
+                has_splat = False
+                if not shadow_operator:
+                    for index in range(pattern_count):
+                        if left.named_children[index].type == "list_splat_pattern":
+                            has_splat = True
+                            tmp_var = self.tmp_variable()
+                            start = index
+                            end = -(pattern_count - index - 1)
+                            self.append_stmts(statements, node, {
+                                "slice_read": {"target": tmp_var, "array": shadow_right, "start": str(start),
+                                               "end": str(end), "step": "", }})
+                            pattern = self.parse(left.named_children[index])
+                            self.append_stmts(statements, node,
+                                              {"assign_stmt": {"target": pattern, "operand": tmp_var}})
+                            continue
+                        if has_splat:
+                            index = -(pattern_count - index)
+                        tmp_var = self.tmp_variable()
+                        self.append_stmts(statements, node, {
+                            "array_read": {"target": tmp_var, "array": shadow_right, "index": str(index), }})
+                        tmp_body = []
+                        pattern = self.parse(left.named_children[index], tmp_body)
+                        self.append_stmts(statements, node, {"variable_decl": {"data_type": type, "name": pattern}})
+                        statements.extend(tmp_body)
+                        self.append_stmts(statements, node, {"assign_stmt": {"target": pattern, "operand": tmp_var}})
+                    return shadow_right
+
+                tmp_var = self.tmp_variable()
+                for index in range(pattern_count):
+                    if left.named_children[index].type == "list_splat_pattern":
+                        has_splat = True
+                        tmp_var = self.tmp_variable()
+                        start = index
+                        end = -(pattern_count - index - 1)
+                        self.append_stmts(statements, node, {
+                            "slice_read": {"target": tmp_var, "array": shadow_right, "start": str(start),
+                                           "end": str(end), "step": "", }})
+                        tmp_var2 = self.tmp_variable()
+                        pattern = self.parse(left.named_children[index])
+                        self.append_stmts(statements, node, {"assign_stmt":
+                                                                 {"target": tmp_var2, "operator": shadow_operator,
+                                                                  "operand": pattern, "operand2": tmp_var}})
+                        self.append_stmts(statements, node, {"assign_stmt": {"target": pattern, "operand": tmp_var2}})
+                        continue
+
+                    if has_splat:
+                        index = -(pattern_count - index)
+                    tmp_var = self.tmp_variable()
+                    self.append_stmts(statements, node,
+                                      {"array_read": {"target": tmp_var, "array": shadow_right, "index": str(index), }})
+                    pattern = self.parse(left.named_children[index])
+                    tmp_var2 = self.tmp_variable()
+                    self.append_stmts(statements, node, {"assign_stmt":
+                                                             {"target": tmp_var2, "operator": shadow_operator,
+                                                              "operand": pattern, "operand2": tmp_var}})
+                    self.append_stmts(statements, node, {"assign_stmt": {"target": pattern, "operand": tmp_var2}})
+                return shadow_right
+            else:
+                shadow_left = self.read_node_text(left)
+                if not shadow_operator:
+                    self.append_stmts(statements, node, {"variable_decl": {"data_type": type, "name": shadow_left}})
+                    self.append_stmts(statements, node,
+                                      {"assign_stmt": {"target": shadow_left, "operand": shadow_right}})
+                else:
+                    self.append_stmts(statements, node,
+                                      {"assign_stmt": {"target": shadow_left, "operator": shadow_operator,
                                                        "operand": shadow_left, "operand2": shadow_right}})
                 return shadow_left
 

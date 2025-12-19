@@ -924,7 +924,7 @@ class PrelimSemanticAnalysis:
         in_states = {}
         symbol_graph = frame.symbol_graph.graph
 
-        if not symbol_graph.has_node(stmt_id):
+        if not symbol_graph.has_node(stmt_id) or stmt.operation == "continue_stmt":
             return P2ResultFlag()
 
         # 收集输入状态位

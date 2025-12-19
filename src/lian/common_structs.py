@@ -1260,6 +1260,8 @@ class StateDefNode:
             "stmt_id": self.stmt_id
         }
 
+# class BitVector:
+#
 
 class BitVectorManager:
     def __init__(self):
