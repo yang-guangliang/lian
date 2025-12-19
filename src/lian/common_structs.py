@@ -954,12 +954,12 @@ class StmtStatus:
     used_symbols: list[int] = dataclasses.field(default_factory=list)
     implicitly_defined_symbols: list[int] = dataclasses.field(default_factory=list)
     implicitly_used_symbols: list[int] = dataclasses.field(default_factory=list)
-    in_symbol_bits : int = 0
-    out_symbol_bits: int = 0
+    in_symbol_bits  = set()
+    out_symbol_bits = set()
 
     defined_states: set[int]= dataclasses.field(default_factory=set)
-    in_state_bits : int = 0
-    out_state_bits: int = 0
+    in_state_bits  = set()
+    out_state_bits = set()
 
     field_name: str = ""
 
@@ -986,11 +986,11 @@ class StmtStatus:
             "used_symbols"              : str(self.used_symbols),
             "implicitly_defined_symbols": str(self.implicitly_defined_symbols),
             "implicitly_used_symbols"   : str(self.implicitly_used_symbols),
-            "in_symbol_bits"            : repr(self.in_symbol_bits),
-            "out_symbol_bits"           : repr(self.out_symbol_bits),
+            "in_symbol_bits"            : str(self.in_symbol_bits),
+            "out_symbol_bits"           : str(self.out_symbol_bits),
             "defined_states"            : str(self.defined_states),
-            "in_state_bits"             : util.int_to_bytes(self.in_state_bits),
-            "out_state_bits"            : util.int_to_bytes(self.out_state_bits),
+            "in_state_bits"             : str(self.in_state_bits),
+            "out_state_bits"            : str(self.out_state_bits),
             "field"                     : self.field_name,
         }
 
@@ -1299,35 +1299,41 @@ class BitVectorManager:
 
     # find all 1s -> bit_id
     def explain(self, bit_vector):
-        results = set()
-        # still remain 1
-        while bit_vector:
-            # Brian Kernighan algorithm to find all 1
-            next_bit_vector = bit_vector & (bit_vector - 1)
-            rightmost_1_vector = bit_vector ^ next_bit_vector
-            bit_pos = rightmost_1_vector.bit_length() - 1
-            bit_id = self.bit_pos_to_id[bit_pos]
-            results.add(bit_id)
-            bit_vector = next_bit_vector
+        return bit_vector
+        # results = set()
+        # # still remain 1
+        # while bit_vector:
+        #     # Brian Kernighan algorithm to find all 1
+        #     next_bit_vector = bit_vector & (bit_vector - 1)
+        #     rightmost_1_vector = bit_vector ^ next_bit_vector
+        #     bit_pos = rightmost_1_vector.bit_length() - 1
+        #     bit_id = self.bit_pos_to_id[bit_pos]
+        #     results.add(bit_id)
+        #     bit_vector = next_bit_vector
         return results
 
     def kill_bit_ids(self, bit_vector, id_list):
         #killed_ids = []
+        # for bit_id in id_list:
+        #     bit_pos = self.id_to_bit_pos.get(bit_id)
+        #     if bit_pos is not None:
+        #         target_mask = (1 << bit_pos)
+        #         if bit_vector & target_mask != 0:
+        #             #killed_ids.append(bit_id)
+        #             bit_vector &= ~target_mask
+        # return bit_vector
         for bit_id in id_list:
-            bit_pos = self.id_to_bit_pos.get(bit_id)
-            if bit_pos is not None:
-                target_mask = (1 << bit_pos)
-                if bit_vector & target_mask != 0:
-                    #killed_ids.append(bit_id)
-                    bit_vector &= ~target_mask
+            if bit_id in bit_vector:
+                bit_vector.discard(bit_id)
         return bit_vector
         #return (bit_vector, killed_ids)
 
     def gen_bit_ids(self, bit_vector, id_list):
         for bit_id in id_list:
-            bit_pos = self.id_to_bit_pos.get(bit_id)
-            if bit_pos is not None:
-                bit_vector |= (1 << bit_pos)
+            # bit_pos = self.id_to_bit_pos.get(bit_id)
+            # if bit_pos is not None:
+            #     bit_vector |= (1 << bit_pos)
+            bit_vector.add(bit_id)
         return bit_vector
 
     def is_bit_id_available(self, bit_vector, bit_id):

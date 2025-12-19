@@ -180,8 +180,14 @@ class PrelimSemanticAnalysis:
             frame.defined_symbols[symbol_id].add(bit_id)
             frame.symbol_bit_vector_manager.add_bit_id(bit_id)
         all_def_stmts = frame.defined_symbols[symbol_id]
+        print(frame.symbol_bit_vector_manager.explain(current_bits))
+        print(55555555555)
+        print(all_def_stmts)
         current_bits = frame.symbol_bit_vector_manager.kill_bit_ids(current_bits, all_def_stmts)
         current_bits = frame.symbol_bit_vector_manager.gen_bit_ids(current_bits, [bit_id])
+        print(777777777)
+        print([bit_id])
+        print(frame.symbol_bit_vector_manager.explain(current_bits))
 
         return current_bits
 
@@ -261,7 +267,7 @@ class PrelimSemanticAnalysis:
         status = frame.stmt_id_to_status[stmt_id]
         old_out_symbol_bits = status.out_symbol_bits
         old_in_symbol_bits = status.in_symbol_bits
-        status.in_symbol_bits = 0
+        status.in_symbol_bits = set()
 
         # collect parent stmts
         parent_stmt_ids = util.graph_predecessors(frame.cfg, stmt_id)
@@ -417,6 +423,9 @@ class PrelimSemanticAnalysis:
     def update_used_symbols_to_symbol_graph(self, stmt_id, stmt, frame: ComputeFrame, only_implicitly_used_symbols=False):
         status = frame.stmt_id_to_status[stmt_id]
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
+        print(available_defs)
+        print(status.in_symbol_bits)
+        print(66666666666)
         all_used_symbols = []
         if only_implicitly_used_symbols:
             all_used_symbols = status.implicitly_used_symbols
@@ -524,7 +533,7 @@ class PrelimSemanticAnalysis:
         return result
 
     def collect_in_state_bits(self, stmt_id, stmt, frame: ComputeFrame):
-        in_state_bits = 0
+        in_state_bits = set()
         parent_stmt_ids = util.graph_predecessors(frame.cfg, stmt_id)
         if stmt.operation in LOOP_OPERATIONS:
             new_parent_stmt_ids = []
