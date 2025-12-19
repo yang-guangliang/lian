@@ -217,6 +217,8 @@ class SFGDumper:
             info.append(f"line={int(node.line_no)}")
         if node.context_id > 0:
             info.append(f"context={node.context_id}")
+        if node.operation:
+            info.append(f"operation={node.operation}")
 
         if self.options.complete_graph:
             unit_id = self.loader.convert_stmt_id_to_unit_id(node.def_stmt_id)
