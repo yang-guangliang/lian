@@ -91,6 +91,34 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                     stmt_status.implicitly_used_states[each_id] = value + baseline_index
             for each_id, value in enumerate(stmt_status.implicitly_defined_symbols):
                 stmt_status.implicitly_defined_symbols[each_id] = value + baseline_index
+
+            new_in_symbol_bits = set()
+            new_out_symbol_bits = set()
+            new_in_state_bits = set()
+            new_out_state_bits = set()
+
+            for symbol_def_node in stmt_status.in_symbol_bits:
+                symbol_def_node.index += baseline_index
+                new_in_symbol_bits.add(symbol_def_node.index)
+
+            for symbol_def_node in stmt_status.out_symbol_bits:
+                symbol_def_node.index += baseline_index
+                new_out_symbol_bits.add(symbol_def_node.index)
+
+            for state_def_node in stmt_status.in_state_bits:
+                state_def_node.index += baseline_index
+                new_in_state_bits.add(state_def_node.index)
+
+            for state_def_node in stmt_status.out_state_bits:
+                state_def_node.index += baseline_index
+                new_out_state_bits.add(state_def_node.index)
+
+
+            stmt_status.in_symbol_bits = new_in_symbol_bits
+            stmt_status.out_symbol_bits = new_out_symbol_bits
+            stmt_status.in_state_bits = new_in_state_bits
+            stmt_status.out_state_bits = new_out_state_bits
+
             stmt_status.defined_symbol += baseline_index
 
         for each_item in space:
