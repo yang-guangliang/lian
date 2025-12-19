@@ -11,6 +11,7 @@ import heapq
 from collections import Counter
 from itertools import count
 from collections import defaultdict
+from lian.util import readable_gir
 
 from lian.util import util
 from lian.config.constants import (
@@ -1052,11 +1053,14 @@ class SFGNode:
         self.access_path = access_path
         # if access_path:
         #     self.access_path = util.access_path_formatter(access_path)
+        self.operation = ""
 
         if stmt:
             self.line_no = stmt.start_row
             if len(name) == 0:
                 self.name = stmt.operation
+            
+            self.operation = readable_gir.get_gir_str(stmt)
 
     def __hash__(self) -> int:
         return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id))
