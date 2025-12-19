@@ -1320,16 +1320,7 @@ class BitVectorManager:
                 return True
         return False
 
-    def share(self, other):
-        old_length = other.counter
-        id2pos = self.id_to_bit_pos
-        id2pos = {k + old_length: v for k, v in id2pos.items()}
 
-        pos2id = self.bit_pos_to_id
-        pos2id = {k: v + old_length for k, v in pos2id.items()}
-
-        other.id_to_bit_pos.update(id2pos)
-        other.bit_pos_to_id.update(pos2id)
 
     def copy(self):
         bit_vector_manager = BitVectorManager()
