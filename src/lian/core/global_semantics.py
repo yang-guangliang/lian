@@ -98,20 +98,36 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             new_out_state_bits = set()
 
             for symbol_def_node in stmt_status.in_symbol_bits:
-                symbol_def_node.index += baseline_index
-                new_in_symbol_bits.add(symbol_def_node.index)
+                new_node = SymbolDefNode(
+                    index=symbol_def_node.index + baseline_index,
+                    symbol_id=symbol_def_node.symbol_id,
+                    stmt_id=symbol_def_node.stmt_id
+                )
+                new_in_symbol_bits.add(new_node)
 
             for symbol_def_node in stmt_status.out_symbol_bits:
-                symbol_def_node.index += baseline_index
-                new_out_symbol_bits.add(symbol_def_node.index)
+                new_node = SymbolDefNode(
+                    index=symbol_def_node.index + baseline_index,
+                    symbol_id=symbol_def_node.symbol_id,
+                    stmt_id=symbol_def_node.stmt_id
+                )
+                new_out_symbol_bits.add(new_node)
 
             for state_def_node in stmt_status.in_state_bits:
-                state_def_node.index += baseline_index
-                new_in_state_bits.add(state_def_node.index)
+                new_node = StateDefNode(
+                    index=state_def_node.index + baseline_index,
+                    state_id=state_def_node.state_id,
+                    stmt_id=state_def_node.stmt_id
+                )
+                new_in_state_bits.add(new_node)
 
             for state_def_node in stmt_status.out_state_bits:
-                state_def_node.index += baseline_index
-                new_out_state_bits.add(state_def_node.index)
+                new_node = StateDefNode(
+                    index=state_def_node.index + baseline_index,
+                    state_id=state_def_node.state_id,
+                    stmt_id=state_def_node.stmt_id
+                )
+                new_out_state_bits.add(new_node)
 
 
             stmt_status.in_symbol_bits = new_in_symbol_bits

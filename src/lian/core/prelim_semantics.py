@@ -180,14 +180,9 @@ class PrelimSemanticAnalysis:
             frame.defined_symbols[symbol_id].add(bit_id)
             frame.symbol_bit_vector_manager.add_bit_id(bit_id)
         all_def_stmts = frame.defined_symbols[symbol_id]
-        print(frame.symbol_bit_vector_manager.explain(current_bits))
-        print(55555555555)
-        print(all_def_stmts)
+
         current_bits = frame.symbol_bit_vector_manager.kill_bit_ids(current_bits, all_def_stmts)
         current_bits = frame.symbol_bit_vector_manager.gen_bit_ids(current_bits, [bit_id])
-        print(777777777)
-        print([bit_id])
-        print(frame.symbol_bit_vector_manager.explain(current_bits))
 
         return current_bits
 
@@ -292,7 +287,7 @@ class PrelimSemanticAnalysis:
             if not frame.is_first_round[stmt_id] and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
-        current_bits = status.in_symbol_bits
+        current_bits = status.in_symbol_bits.copy()
         all_defined_symbols = [status.defined_symbol] + status.implicitly_defined_symbols
         for tmp_counter, defined_symbol_index in enumerate(all_defined_symbols):
             defined_symbol = frame.symbol_state_space[defined_symbol_index]
@@ -423,9 +418,6 @@ class PrelimSemanticAnalysis:
     def update_used_symbols_to_symbol_graph(self, stmt_id, stmt, frame: ComputeFrame, only_implicitly_used_symbols=False):
         status = frame.stmt_id_to_status[stmt_id]
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
-        print(available_defs)
-        print(status.in_symbol_bits)
-        print(66666666666)
         all_used_symbols = []
         if only_implicitly_used_symbols:
             all_used_symbols = status.implicitly_used_symbols
@@ -933,7 +925,7 @@ class PrelimSemanticAnalysis:
         in_states = {}
         symbol_graph = frame.symbol_graph.graph
 
-        if not symbol_graph.has_node(stmt_id) or stmt.operation == "continue_stmt":
+        if not symbol_graph.has_node(stmt_id) :
             return P2ResultFlag()
 
         # 收集输入状态位
