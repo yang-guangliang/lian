@@ -180,6 +180,7 @@ class PrelimSemanticAnalysis:
             frame.defined_symbols[symbol_id].add(bit_id)
             frame.symbol_bit_vector_manager.add_bit_id(bit_id)
         all_def_stmts = frame.defined_symbols[symbol_id]
+
         current_bits = frame.symbol_bit_vector_manager.kill_bit_ids(current_bits, all_def_stmts)
         current_bits = frame.symbol_bit_vector_manager.gen_bit_ids(current_bits, [bit_id])
 
@@ -261,7 +262,7 @@ class PrelimSemanticAnalysis:
         status = frame.stmt_id_to_status[stmt_id]
         old_out_symbol_bits = status.out_symbol_bits
         old_in_symbol_bits = status.in_symbol_bits
-        status.in_symbol_bits = 0
+        status.in_symbol_bits = set()
 
         # collect parent stmts
         parent_stmt_ids = util.graph_predecessors(frame.cfg, stmt_id)
@@ -286,7 +287,7 @@ class PrelimSemanticAnalysis:
             if not frame.is_first_round[stmt_id] and status.in_symbol_bits == old_in_symbol_bits:
                 return
 
-        current_bits = status.in_symbol_bits
+        current_bits = status.in_symbol_bits.copy()
         all_defined_symbols = [status.defined_symbol] + status.implicitly_defined_symbols
         for tmp_counter, defined_symbol_index in enumerate(all_defined_symbols):
             defined_symbol = frame.symbol_state_space[defined_symbol_index]
@@ -524,7 +525,7 @@ class PrelimSemanticAnalysis:
         return result
 
     def collect_in_state_bits(self, stmt_id, stmt, frame: ComputeFrame):
-        in_state_bits = 0
+        in_state_bits = set()
         parent_stmt_ids = util.graph_predecessors(frame.cfg, stmt_id)
         if stmt.operation in LOOP_OPERATIONS:
             new_parent_stmt_ids = []
@@ -924,7 +925,7 @@ class PrelimSemanticAnalysis:
         in_states = {}
         symbol_graph = frame.symbol_graph.graph
 
-        if not symbol_graph.has_node(stmt_id) or stmt.operation == "continue_stmt":
+        if not symbol_graph.has_node(stmt_id) :
             return P2ResultFlag()
 
         # 收集输入状态位

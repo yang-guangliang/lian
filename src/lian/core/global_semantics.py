@@ -91,6 +91,50 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                     stmt_status.implicitly_used_states[each_id] = value + baseline_index
             for each_id, value in enumerate(stmt_status.implicitly_defined_symbols):
                 stmt_status.implicitly_defined_symbols[each_id] = value + baseline_index
+
+            new_in_symbol_bits = set()
+            new_out_symbol_bits = set()
+            new_in_state_bits = set()
+            new_out_state_bits = set()
+
+            for symbol_def_node in stmt_status.in_symbol_bits:
+                new_node = SymbolDefNode(
+                    index=symbol_def_node.index + baseline_index,
+                    symbol_id=symbol_def_node.symbol_id,
+                    stmt_id=symbol_def_node.stmt_id
+                )
+                new_in_symbol_bits.add(new_node)
+
+            for symbol_def_node in stmt_status.out_symbol_bits:
+                new_node = SymbolDefNode(
+                    index=symbol_def_node.index + baseline_index,
+                    symbol_id=symbol_def_node.symbol_id,
+                    stmt_id=symbol_def_node.stmt_id
+                )
+                new_out_symbol_bits.add(new_node)
+
+            for state_def_node in stmt_status.in_state_bits:
+                new_node = StateDefNode(
+                    index=state_def_node.index + baseline_index,
+                    state_id=state_def_node.state_id,
+                    stmt_id=state_def_node.stmt_id
+                )
+                new_in_state_bits.add(new_node)
+
+            for state_def_node in stmt_status.out_state_bits:
+                new_node = StateDefNode(
+                    index=state_def_node.index + baseline_index,
+                    state_id=state_def_node.state_id,
+                    stmt_id=state_def_node.stmt_id
+                )
+                new_out_state_bits.add(new_node)
+
+
+            stmt_status.in_symbol_bits = new_in_symbol_bits
+            stmt_status.out_symbol_bits = new_out_symbol_bits
+            stmt_status.in_state_bits = new_in_state_bits
+            stmt_status.out_state_bits = new_out_state_bits
+
             stmt_status.defined_symbol += baseline_index
 
         for each_item in space:
