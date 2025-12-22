@@ -11,6 +11,7 @@ import networkx as nx
 
 from lian.util.loader import Loader
 from lian.util import util
+from lian.util.readable_gir import get_gir_str
 from lian.taint.rule_manager import RuleManager
 from lian.common_structs import (
     CallPath,
@@ -97,7 +98,7 @@ class TaintAnalysis:
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "call_stmt":
                 if self.apply_call_stmt_source_rules(node):
                     defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
-                    node_list.append(node)
+                    node_list.append( defined_state_node)
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "parameter_decl":
                 if self.apply_parameter_source_rules(node):
                     node_list.append(node)
@@ -364,8 +365,7 @@ class TaintAnalysis:
 
         def shortest_paths_to_targets(G, start, targets):
             """
-            在无权“无向图视角”里，从 start 做一次 BFS，直到找到所有 targets（或遍历完可达子图）。
-            注：即使 G 是 DiGraph，也把边当作无向边处理（同时遍历 successors + predecessors）。
+            在无权有向图里，从 start 做一次 BFS，直到找到所有 targets（或遍历完可达子图）。
             只返回 targets 中能到达的节点的最短路径（包含起止点）。
             """
             if start not in G:
@@ -388,8 +388,22 @@ class TaintAnalysis:
 
             while q and remaining:
                 cur = q.popleft()
-                # Treat directed edges as undirected edges: neighbors are successors + predecessors.
-                for nxt in set(G.successors(cur)) | set(G.predecessors(cur)):
+                
+                # 默认只寻找有向图的继承者节点
+                neighbors = set(G.successors(cur))
+                
+                # 针对 %this 节点的特殊处理：将 symbol_state 边视为无向边（即允许回溯前驱节点）
+                for p_node in G.predecessors(cur):
+                    if cur.name == "%this" or p_node.name == "%this":
+                        edge_data = G.get_edge_data(p_node, cur)
+                        if edge_data:
+                            for data in edge_data.values():
+                                sfg_edge = data.get('weight')
+                                if sfg_edge and getattr(sfg_edge, 'name', '') == "symbol_state":
+                                    neighbors.add(p_node)
+                                    break
+
+                for nxt in neighbors:
                     if nxt in pred:
                         continue
                     pred[nxt] = cur
@@ -532,20 +546,24 @@ class TaintAnalysis:
         flow_json = []
         # 打印所有的污点流
         for each_flow in flows:
-            source_code = self.loader.get_stmt_source_code_with_comment(each_flow.source_stmt_id)
             source_stmt = self.loader.get_stmt_gir(each_flow.source_stmt_id)
+            source_gir = get_gir_str(source_stmt)
             source_method_id = self.loader.convert_stmt_id_to_method_id(each_flow.source_stmt_id)
-            source_method_code = self.loader.get_stmt_source_code_with_comment(source_method_id)
-            sink_code = self.loader.get_stmt_source_code_with_comment(each_flow.sink_stmt_id)
+            source_method_name = self.loader.convert_method_id_to_method_name(source_method_id)
+
             sink_stmt = self.loader.get_stmt_gir(each_flow.sink_stmt_id)
+            sink_gir = get_gir_str(sink_stmt)
             sink_line_no = int(sink_stmt.start_row)
             source_line_no = int(source_stmt.start_row)
+
             source_unit_id = self.loader.convert_stmt_id_to_unit_id(each_flow.source_stmt_id)
             source_file_path = self.loader.convert_unit_id_to_unit_path(source_unit_id)
             sink_unit_id = self.loader.convert_stmt_id_to_unit_id(each_flow.sink_stmt_id)
             sink_file_path = self.loader.convert_unit_id_to_unit_path(sink_unit_id)
-            print(f"Found a flow to sink {sink_code[0].strip()} on line {sink_line_no + 1}")
-            print("\tSource :", source_code[0].strip(), f"(in {source_method_code[1].strip()})")
+
+            print(f"Found a flow to sink {sink_gir} on line {sink_line_no + 1}")
+            print("\tSource :", source_gir, f"(in {source_method_name})")
+
             line_no = -1
             path_parent_source_node_list = []
             path_parent_source_file_node_list = []
@@ -555,23 +573,23 @@ class TaintAnalysis:
                 if stmt.start_row == line_no:
                     continue
                 line_no = stmt.start_row
-                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
-                for i in range(len(code)):
-                    code[i] = code[i].strip()
+                gir_str = get_gir_str(stmt)
+
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = "(" + "".join(code) + ")"+ " on line " + str(int(line_no) + 1)
+                path_node = "(" + gir_str + ")"+ " on line " + str(int(line_no) + 1)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {
                     "start_line": int(stmt.start_row + 1),
                     "end_line": int(stmt.end_row + 1),
                     "file_path": file_path,
-                    "source_code":"".join(code)
+                    "gir": gir_str,
+                    "stmt_id": stmt_id,
                 }
                 path_parent_source_node_list.append(path_node)
                 path_parent_source_file_node_list.append(path_node_in_file)
-            # print("\t\tParent to Source", path_parent_source_node_list)
+
             line_no = -1
             path_parent_sink_node_list = []
             path_parent_sink_file_node_list = []
@@ -581,37 +599,38 @@ class TaintAnalysis:
                 if stmt.start_row == line_no:
                     continue
                 line_no = stmt.start_row
-                code = self.loader.get_stmt_source_code_with_comment(node.def_stmt_id)
-                for i in range(len(code)):
-                    code[i] = code[i].strip()
+                gir_str = get_gir_str(stmt)
+
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = "(" + "".join(code) + ")"+ " on line " + str(int(line_no) + 1)
+                path_node = "(" + gir_str + ")"+ " on line " + str(int(line_no) + 1)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {
                     "start_line": int(stmt.start_row + 1),
                     "end_line": int(stmt.end_row + 1),
                     "file_path": file_path,
-                    "source_code":"".join(code)
+                    "gir": gir_str,
+                    "stmt_id": stmt_id,
                 }
                 path_parent_sink_node_list.append(path_node)
                 path_parent_sink_file_node_list.append(path_node_in_file)
+
             if not self.is_sublist(path_parent_source_node_list, path_parent_sink_node_list):
                 path_parent_sink_node_list = path_parent_source_node_list + path_parent_sink_node_list
             if not self.is_sublist(path_parent_source_file_node_list, path_parent_sink_file_node_list):
-                path_parent_sink_node_list = path_parent_source_file_node_list + path_parent_sink_file_node_list
+                path_parent_sink_file_node_list = path_parent_source_file_node_list + path_parent_sink_file_node_list
             print("\t\tData Flow:", path_parent_sink_node_list)
 
             flow_json.append({
                 "source_stmt_id": each_flow.source_stmt_id,
                 "sink_stmt_id": each_flow.sink_stmt_id,
-                "source": source_code[0].strip() if source_code else "",
-                "sink": sink_code[0].strip() if sink_code else "",
-                "source_line":source_line_no + 1,
+                "source": source_gir,
+                "sink": sink_gir,
+                "source_line": source_line_no + 1,
                 "sink_line": sink_line_no + 1,
                 "source_file_path": source_file_path,
-                "sink_file_path":sink_file_path,
+                "sink_file_path": sink_file_path,
                 "data_flow": path_parent_sink_file_node_list,
             })
 
@@ -656,11 +675,11 @@ class TaintAnalysis:
                 stmt = self.loader.get_stmt_gir(stmt_id)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
-                method_signature = self.loader.get_stmt_source_code_with_comment(call_site.caller_id)[0].strip()
                 method_decl_stmt = self.loader.get_stmt_gir(call_site.caller_id)
+                method_signature = get_gir_str(method_decl_stmt)
                 start_line = method_decl_stmt.start_row + 1
                 end_line = method_decl_stmt.end_row + 1
-                code = self.loader.get_stmt_source_code_with_comment(stmt_id)[0].strip()
+                code = get_gir_str(stmt)
                 role = "propagation"
                 call_line = stmt.start_row + 1
                 for site in call_path:
@@ -669,10 +688,12 @@ class TaintAnalysis:
                 # taint = self.determine_taint(previous_call_site, call_site, flow)
                 if call_site.caller_id == source_method_id:
                     taint = -1
-                    code = self.loader.get_stmt_source_code_with_comment(source_stmt_id)[0].strip()
+                    source_stmt = self.loader.get_stmt_gir(source_stmt_id)
+                    code = get_gir_str(source_stmt)
                     role = "source"
                 elif call_site.caller_id == sink_method_id and call_site.call_stmt_id == sink_stmt_id:
-                    code = self.loader.get_stmt_source_code_with_comment(sink_stmt_id)[0].strip()
+                    sink_stmt = self.loader.get_stmt_gir(sink_stmt_id)
+                    code = get_gir_str(sink_stmt)
                     role = "sink"
 
                 previous_call_site = call_site

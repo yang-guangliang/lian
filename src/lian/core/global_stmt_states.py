@@ -213,7 +213,7 @@ class GlobalStmtStates(StmtStates):
         for child in children:
             if (
                 child.node_type == SFG_NODE_KIND.STMT
-                and self.loader.get_stmt_gir(child.def_stmt_id).operation == "call_stmt"
+                and self.loader.get_stmt_gir(child.def_stmt_id).operation in ["call_stmt", "object_call_stmt"]
             ):
                 return True
         return False
