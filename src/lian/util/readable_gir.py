@@ -288,6 +288,17 @@ class ReadableGir:
             return handler(stmt)
         else:
             return f"Unknown statement: {op}"
+        
+    def object_call(self, stmt):
+        args_str = ""
+        if util.is_available(stmt.positional_args):
+            args_str = f"{stmt.positional_args}"
+        if util.is_available(stmt.named_args):
+            args_str = f"{args_str} {stmt.named_args}"
+
+        call_str = f"{stmt.target} = {stmt.receiver}.{stmt.name}({args_str})"
+
+        return call_str
 
 
 # ---------------------------
