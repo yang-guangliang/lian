@@ -1035,7 +1035,10 @@ class Resolver:
         method_id = loader.convert_stmt_id_to_method_id(stmt_id)
         stmt = loader.get_stmt_gir(stmt_id)
         if stmt.operation == "object_call_stmt":
-            return stmt.receiver_object + '.' + stmt.field
+            if stmt.receiver_object and not stmt.receiver_object.startswith("%vv"):
+                return stmt.receiver_object + '.' + stmt.field
+            else:
+                return stmt.field
         def access_path_formatter(state_access_path):
             key_list = []
 

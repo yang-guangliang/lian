@@ -960,7 +960,10 @@ class StmtStates:
         # deal with positional_args
         positional_args: list[set] = []
         if not util.isna(stmt.packed_positional_args):
-            item_index_set = self.read_used_states(status.used_symbols[1], in_states)
+            if stmt.operation == "object_call_stmt":
+                item_index_set = self.read_used_states(status.used_symbols[2], in_states)
+            else:
+                item_index_set = self.read_used_states(status.used_symbols[1], in_states)
             if util.is_available(item_index_set):
                 for each_item_index in item_index_set:
                     each_item = self.frame.symbol_state_space[each_item_index]
@@ -977,7 +980,10 @@ class StmtStates:
                         positional_args[array_index].update(each_item.array[array_index])
 
         elif not util.isna(stmt.positional_args):
-            for index in range(1, named_args_index):
+            start_index = 1
+            if stmt.operation == "object_call_stmt":
+                start_index = 2
+            for index in range(start_index, named_args_index):
                 each_arg = self.frame.symbol_state_space[status.used_symbols[index]]
                 if isinstance(each_arg, Symbol):
                     for each_state_index in each_arg.states:
