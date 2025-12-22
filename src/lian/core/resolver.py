@@ -711,21 +711,15 @@ class Resolver:
         new_indexes = set()
         source_state_indexes = set()
 
-        # print(f"\nresolve_anything_in_summary_generation@ state:{state_index}, access_path:{access_path}\nbegin----------")
-        # pprint.pprint(state)
-
         if self.loader.is_class_decl(state_symbol_id) or self.loader.is_method_decl(state_symbol_id):
             return
 
         if data_type == LIAN_INTERNAL.THIS or state_symbol_id == caller_frame.method_def_use_summary.this_symbol_id:
-            # print("resolve_anything_in_summary_generation@ 要找this")
             pass
-            # if isinstance(caller_frame, ComputeFrame):
-            #     current_space = self.get_this_state(caller_frame, source_state_indexes)
 
         # 若anything的source是callee参数。
         if self.loader.is_parameter_decl_of_method(state_symbol_id, callee_id):
-            if util.is_empty(set_to_update) or util.is_empty(deferred_index_updates):
+            if util.is_empty(set_to_update) or deferred_index_updates is None:
                 return
             # 收集初始的arg_indexes
             arg_state_indexes = set()
@@ -736,7 +730,6 @@ class Resolver:
             for each_mapping in parameter_mapping_list:
                 if each_mapping.parameter_symbol_id == state_symbol_id:
                     arg_state_indexes.add(each_mapping.arg_index_in_space)
-            # 需要记录对应的集合索引、access_path、arg_state_indexes、set_to_update(要将真正的state更新到哪个集合去)，最后从old_to_new_arg_state里去找就行
             deferred_index_update = DeferedIndexUpdate(
                 state_index = state_index, state_symbol_id = state_symbol_id, stmt_id = stmt_id,
                 arg_state_indexes = arg_state_indexes, access_path = access_path, set_to_update = set_to_update
@@ -746,16 +739,13 @@ class Resolver:
             if state_symbol_id != parameter_symbol_id:
                 set_to_update.discard(state_index)
                 return
-            # anything_state的src_symbol是parameter自身。说明是a.f=%v1或a.f=a.*的形式
             else:
-                # print(f"anything_state的src_symbol是parameter自身。说明是a.f=%v1或a.f=a.*的形式 {set_to_update} {id(set_to_update)}")
+                # anything_state的src_symbol是parameter自身。说明是a.f=%v1或a.f=a.*的形式
                 concrete_state_index = self.resolve_anything_with_same_src_symbol_in_summary_generation(
                     state_index, caller_frame, stmt_id, callee_id, parameter_symbol_id,
                     deferred_index_updates, set_to_update, arg_state_indexes
                 )
-                # print(f"concrete_state是{concrete_state_index} state是{state_index}, set_to_update {set_to_update} {id(set_to_update)}")
                 if concrete_state_index and concrete_state_index != state_index:
-                    # print(f"去resolve_same的concrete_state是<{concrete_state_index}>,更新到set_to_update中")
                     set_to_update.add(concrete_state_index)
                     set_to_update.discard(state_index)
                 return
@@ -764,7 +754,6 @@ class Resolver:
             source_state_indexes = self.get_latest_source_state_indexes(caller_frame, state_symbol_id)
 
         accessed_states = self.get_state_from_path(caller_symbol_state_space, access_path, source_state_indexes)
-        # print("resolve_anything_in_summary_generation@ accessed_states",accessed_states)
         if accessed_states:
             set_to_update.discard(state_index)
             set_to_update.update(accessed_states)
@@ -855,14 +844,13 @@ class Resolver:
 
     def update_deferred_index(self, old_to_new_index, deferred_index_updates, current_space):
         for deferred_index_update in deferred_index_updates:
-            deferred_index_update:DeferedIndexUpdate # 类型提示
+            deferred_index_update:DeferedIndexUpdate
             old_arg_indexes = deferred_index_update.arg_state_indexes
             access_path = deferred_index_update.access_path
             set_to_update = deferred_index_update.set_to_update
             # 从被callee_summary更新完的arg_states中找
-            updated_arg_indexes = {old_to_new_index[old_arg_index] for old_arg_index in old_arg_indexes}
+            updated_arg_indexes = {old_to_new_index.get(old_arg_index, old_arg_index) for old_arg_index in old_arg_indexes}
             concrete_states = self.get_state_from_path(current_space, access_path, updated_arg_indexes)
-            # print(f"update_deferred 最新arg为<{updated_arg_indexes}> access_path为<{access_path}>，找到的具体state {concrete_states}, set {set_to_update} {id(set_to_update)}")
             set_to_update.update(concrete_states)
 
     def are_states_identical(self, state_index1, state_index2, space1: SymbolStateSpace, space2: SymbolStateSpace):

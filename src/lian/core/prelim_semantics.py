@@ -947,12 +947,9 @@ class PrelimSemanticAnalysis:
 
         in_symbol_indexes = self.get_used_symbol_indexes(stmt_id, frame, status)
         used_symbol_id_to_indexes = self.group_used_symbol_id_to_indexes(in_symbol_indexes, frame)
-        # print(f"in_symbols: {in_symbols}")
         in_states = self.group_in_states(stmt_id, stmt, in_symbol_indexes, frame, status)
-        # print(f"in_states@before complete_in_states: {in_states}")
         method_summary = frame.method_summary_template
         continue_flag = self.complete_in_states_and_check_continue_flag(stmt_id, frame, stmt, status, in_states, method_summary)
-        # print(f"in_states@after complete_in_states: {in_states}")
         if not continue_flag:
             if status.in_state_bits != old_in_state_bits:
                 status.out_state_bits = status.in_state_bits
@@ -967,7 +964,6 @@ class PrelimSemanticAnalysis:
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
-        # print("new_out_states",new_out_states)
 
         if self.options.debug:
             self.collect_defined_states_amount_for_debug(stmt_id, stmt, len(new_out_states), in_states)
@@ -1199,7 +1195,6 @@ class PrelimSemanticAnalysis:
 
             if self.options.debug:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
-                # print("gir2: ",self.loader.load_stmt_gir(stmt_id))
 
             if frame.interruption_flag:
                 frame.interruption_flag = False
