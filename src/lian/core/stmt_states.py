@@ -1542,10 +1542,11 @@ class StmtStates:
                 )
 
     def apply_this_symbol_semantic_summary(
-        self, stmt_id, callee_summary: MethodSummaryTemplate,
+        self, stmt_id, callee_id, callee_summary: MethodSummaryTemplate,
         callee_space: SymbolStateSpace, instance_state_indexes: set[int],
         new_object_flag: bool
     ):
+        deferred_index_updates = set()
         if util.is_empty(instance_state_indexes):
             return
         status = self.frame.stmt_id_to_status[stmt_id]
@@ -1558,8 +1559,13 @@ class StmtStates:
             for instance_state_index_in_space in instance_state_indexes.copy():
                 # 将summary中的this_symbol_last_state应用到实际的instance_state上
                 self.apply_parameter_summary_to_args_states(
-                    stmt_id, status, last_state_indexes, instance_state_index_in_space, old_to_new_arg_state
+                    stmt_id, status, last_state_indexes, instance_state_index_in_space,
+                    old_to_new_arg_state, callee_id = callee_id, deferred_index_updates = deferred_index_updates
                 )
+
+        self.resolver.update_deferred_index(
+            old_to_new_arg_state, deferred_index_updates, self.frame.symbol_state_space
+        )
 
         # 如果caller是通过new_object_stmt调用到callee的，就不应该将以上对this的修改添加到caller的summary中
         if new_object_flag:
@@ -1801,7 +1807,7 @@ class StmtStates:
 
         # apply this_symbol's state in callee_summary to this_state_set
         self.apply_this_symbol_semantic_summary(
-            stmt_id, callee_summary, callee_compact_space, this_state_set, new_object_flag
+            stmt_id, callee_id, callee_summary, callee_compact_space, this_state_set, new_object_flag
         )
 
         # apply other callee_summary to args
@@ -3085,7 +3091,6 @@ class StmtStates:
         if not isinstance(receiver_symbol, Symbol):  # TODO: 暂时未处理<string>.format的形式
             return
         receiver_states = self.read_used_states(receiver_symbol_index, in_states)
-        # print("field_read经过插件之前的receiver_states",receiver_states)
         field_states = self.read_used_states(field_index, in_states)
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
@@ -3118,7 +3123,6 @@ class StmtStates:
             return P2ResultFlag()
         # else:
         # receiver_states = event.out_data.receiver_states
-        # print("field_read经过插件后的receiver_states是：",receiver_states)
 
         for receiver_state_index in receiver_states:
             each_defined_states = set()
