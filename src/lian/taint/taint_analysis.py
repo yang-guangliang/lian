@@ -9,6 +9,7 @@ import yaml
 import lian.config.config as config
 import networkx as nx
 
+from lian.events.default_event_handlers.this_field_write import access_path_formatter
 from lian.util.loader import Loader
 from lian.util import util
 from lian.util.readable_gir import get_gir_str
@@ -54,7 +55,7 @@ class TaintAnalysis:
                 rules.append(rule)
         return rules
 
-    def get_call_name_symbol_and_state(self, node):
+    def get_stmt_first_used_symbol_and_state(self, node):
         if node.node_type != SFG_NODE_KIND.STMT:
             return None, None
         state_nodes = []
@@ -84,7 +85,7 @@ class TaintAnalysis:
         define_symbol_successors = list(util.graph_successors(self.sfg, define_symbol_node))
         define_state_list = []
         for successor in define_symbol_successors:
-            edge = self.sfg.get_edge_data(node, successor)
+            edge = self.sfg.get_edge_data(define_symbol_node, successor)
             if edge and edge[0]['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
                 define_state_list.append(successor)
         return define_symbol_node, define_state_list
@@ -183,20 +184,28 @@ class TaintAnalysis:
         return access_path
 
     def apply_field_read_source_rules(self, node):
-        gir = node.operation
-        target = gir.split('=')[1].replace(" ", "")
+        # 找到类型为 symbol 的父节点，以及该 symbol 节点的类型为 state 的子节点
+        symbol_node, state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+        if not symbol_node or not state_nodes:
+            return False
+
         for rule in self.rule_manager.all_sources:
             if rule.operation != "field_read":
                 continue
-            if target == rule.target:
-                return True
+
+            for state_node in state_nodes:
+                # 格式化访问路径
+                access_path = access_path_formatter(state_node.access_path)
+                if access_path == rule.target:
+                    return True
+
         return False
 
 
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
         stmt = self.loader.get_stmt_gir(stmt_id)
-        method_symbol_node, method_state_nodes = self.get_call_name_symbol_and_state(node)
+        method_symbol_node, method_state_nodes = self.get_stmt_first_used_symbol_and_state(node)
         defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
         if not method_symbol_node or not defined_symbol_node:
             return False
@@ -257,7 +266,7 @@ class TaintAnalysis:
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "call_stmt":
             return False
         stmt_id = node.def_stmt_id
-        method_symbol_node, method_state_nodes = self.get_call_name_symbol_and_state(node)
+        method_symbol_node, method_state_nodes = self.get_stmt_first_used_symbol_and_state(node)
 
         for rule in self.rule_manager.all_sinks:
             # todo 当规则较长时，则应该切成数组，倒序与state_access_path匹配
