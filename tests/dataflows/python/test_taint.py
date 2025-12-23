@@ -13,6 +13,7 @@
 #     a()
 
 a = b.c
+hh = a.l
 
 gg = a
 sink(gg)
