@@ -23,3 +23,7 @@ rules:
     attr: classmethod
   - operation: parameter_decl
     name: path_or_url
+  - operation: field_read
+    target: request.query_string
+    tag: [\%target]
+

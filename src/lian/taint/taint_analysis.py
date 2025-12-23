@@ -98,9 +98,12 @@ class TaintAnalysis:
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "call_stmt":
                 if self.apply_call_stmt_source_rules(node):
                     defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
-                    node_list.append( defined_state_node)
+                    node_list.append( defined_symbol_node)
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "parameter_decl":
                 if self.apply_parameter_source_rules(node):
+                    node_list.append(node)
+            if node.node_type == SFG_NODE_KIND.STMT and node.name == "field_read":
+                if self.apply_field_read_source_rules(node):
                     node_list.append(node)
             # 为了兼容codeql规则
             # elif node.node_type == SFG_NODE_KIND.STMT:
@@ -178,6 +181,17 @@ class TaintAnalysis:
         # 使用点号连接所有 key 值
         access_path = '.'.join(key_list)
         return access_path
+
+    def apply_field_read_source_rules(self, node):
+        gir = node.operation
+        target = gir.split('=')[1].replace(" ", "")
+        for rule in self.rule_manager.all_sources:
+            if rule.operation != "field_read":
+                continue
+            if target == rule.target:
+                return True
+        return False
+
 
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
