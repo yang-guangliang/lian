@@ -3036,41 +3036,41 @@ class StmtStates:
 
         else:
             # [ah]
-            if receiver_symbol.name.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF):
-                source_index = self.create_state_and_add_space(
-                    status, stmt_id=stmt_id,
-                    source_symbol_id=receiver_state.source_symbol_id,
-                    source_state_id=receiver_state.source_state_id,
-                    state_type=STATE_TYPE_KIND.ANYTHING,
-                    access_path=self.copy_and_extend_access_path(
-                        original_access_path=receiver_state.access_path,
-                        access_point=AccessPoint(
-                            kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
-                            key=field_name
-                        )
-                    ),
-                    parent_state=receiver_state,
-                    parent_state_index=receiver_state_index,
-                    edge_name=field_name,
-                )
-            else:
-                source_index = self.create_state_and_add_space(
-                    status, stmt_id=stmt_id,
-                    source_symbol_id=receiver_state.source_symbol_id,
-                    source_state_id=receiver_state.source_state_id,
-                    state_type=STATE_TYPE_KIND.ANYTHING,
-                    access_path=[AccessPoint(
-                        kind=ACCESS_POINT_KIND.TOP_LEVEL,
-                        key=receiver_symbol.name
-                    ),
-                        AccessPoint(
-                            kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
-                            key=field_name
-                        )],
-                    parent_state=receiver_state,
-                    parent_state_index=receiver_state_index,
-                    edge_name=field_name,
-                )
+            # if receiver_symbol.name.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF):
+            #     source_index = self.create_state_and_add_space(
+            #         status, stmt_id=stmt_id,
+            #         source_symbol_id=receiver_state.source_symbol_id,
+            #         source_state_id=receiver_state.source_state_id,
+            #         state_type=STATE_TYPE_KIND.ANYTHING,
+            #         access_path=self.copy_and_extend_access_path(
+            #             original_access_path=receiver_state.access_path,
+            #             access_point=AccessPoint(
+            #                 kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
+            #                 key=field_name
+            #             )
+            #         ),
+            #         parent_state=receiver_state,
+            #         parent_state_index=receiver_state_index,
+            #         edge_name=field_name,
+            #     )
+            # else:
+            source_index = self.create_state_and_add_space(
+                status, stmt_id=stmt_id,
+                source_symbol_id=receiver_state.source_symbol_id,
+                source_state_id=receiver_state.source_state_id,
+                state_type=STATE_TYPE_KIND.ANYTHING,
+                access_path=[AccessPoint(
+                    kind=ACCESS_POINT_KIND.TOP_LEVEL,
+                    key=receiver_symbol.name
+                ),
+                    AccessPoint(
+                        kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
+                        key=field_name
+                    )],
+                parent_state=receiver_state,
+                parent_state_index=receiver_state_index,
+                edge_name=field_name,
+            )
             self.update_access_path_state_id(source_index)
 
             if receiver_state.tangping_flag:
