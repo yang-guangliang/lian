@@ -5,7 +5,8 @@ from lian.events.default_event_handlers import (
     js_handlers,
     init_new_file_and_object,
     this_field_read,
-    this_field_write
+    this_field_write,
+    add_var_decl
 )
 from lian.events.handler_template import (
     EventHandlerManager,
@@ -79,7 +80,7 @@ class DefaultEventHandlerManager(EventHandlerManager):
 
             EventHandler(
                 event = EVENT_KIND.UNFLATTENED_GIR_LIST_GENERATED,
-                handler = basic.adjust_variable_decls,
+                handler = add_var_decl.adjust_variable_decls,
                 langs = [
                     "python",
                     "javascript",
