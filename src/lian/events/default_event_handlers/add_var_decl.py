@@ -1,17 +1,17 @@
 import dataclasses
 import lian.events.event_return as er
 from lian import util
-
+from lian.events.handler_template import EventData
 
 
 @dataclasses.dataclass
-class Frame:
+class StackFrame:
     stmts: list
     variables: dict 
     in_block: bool  
     hoist_collector: list = None 
     index: int = 0
-    to_delete_indices: list = dataclasses.field(default_factory=list)
+    to_delete_indices: list = dataclasses.field(default_factory=list) 
 
 def adjust_variable_decls(data: EventData):
     out_data = data.in_data
@@ -19,7 +19,7 @@ def adjust_variable_decls(data: EventData):
     global_stmts_to_insert = []
 
     initial_hoist_collector = []
-    stack = [Frame(
+    stack = [StackFrame(
         stmts=out_data, 
         variables={}, 
         in_block=False, 
@@ -47,16 +47,15 @@ def adjust_variable_decls(data: EventData):
         value = stmt[key]
 
         # === 阶段 3: 处理语句逻辑 (生成子任务或处理变量) ===
-        
         sub_frames = []
         
         if key in ("class_decl", "interface_decl", "record_decl", "annotation_type_decl", "enum_decl", "struct_decl"):
             if key == "struct_decl" and "fields" in value:
-                sub_frames.append(Frame(value["fields"], {}, False, []))
+                sub_frames.append(StackFrame(value["fields"], {}, False, []))
             else:
                 for sub_key in ["methods", "fields", "nested"]:
                     if sub_key in value and value[sub_key]:
-                        sub_frames.append(Frame(value[sub_key], {}, False, []))
+                        sub_frames.append(StackFrame(value[sub_key], {}, False, []))
 
         elif key == "method_decl":
             method_vars = {}
@@ -68,8 +67,7 @@ def adjust_variable_decls(data: EventData):
                             method_vars[param[p_key]["name"]] = True
             
             if "body" in value and value["body"]:
-                sub_frames.append(Frame(value["body"], method_vars, False, []))
-
+                sub_frames.append(StackFrame(value["body"], method_vars, False, []))
  
         elif key == "variable_decl":
             process_variable_decl(frame, value, current_stmt_index, is_python_like, global_stmts_to_insert)
@@ -84,9 +82,8 @@ def adjust_variable_decls(data: EventData):
         elif key.endswith("_stmt"):
             for sub_key, sub_val in value.items():
                 if sub_key.endswith("body") and isinstance(sub_val, list) and sub_val:
-                    next_collector = frame.hoist_collector if is_python_like else []
-                    
-                    sub_frames.append(Frame(
+                    next_collector = frame.hoist_collector if is_python_like else []                   
+                    sub_frames.append(StackFrame(
                         stmts=sub_val, 
                         variables=frame.variables, 
                         in_block=True, 
@@ -107,7 +104,7 @@ def adjust_variable_decls(data: EventData):
     return er.EventHandlerReturnKind.SUCCESS
 
 
-def process_variable_decl(frame: Frame, value: dict, index: int, is_python_like: bool, global_stmts: list):
+def process_variable_decl(frame: StackFrame, value: dict, index: int, is_python_like: bool, global_stmts: list):
     """处理变量声明的核心逻辑：判断是否重复、是否需要提升、是否删除"""
     name = value.get("name")
     attrs = value.get("attrs", [])
@@ -147,7 +144,7 @@ def process_variable_decl(frame: Frame, value: dict, index: int, is_python_like:
                 frame.variables[name] = False
 
 
-def finalize_frame(frame: Frame, is_python_like: bool):
+def finalize_frame(frame: StackFrame, is_python_like: bool):
     """当前层级遍历结束后调用的清理函数"""
     stmts = frame.stmts
     
