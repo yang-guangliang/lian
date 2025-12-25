@@ -1,192 +1,176 @@
 import dataclasses
+import lian.events.event_return as er
+from lian import util
+
+
 
 @dataclasses.dataclass
-class ElementToBeDeleted:
-    index: int = -1
-    need_hoist: bool = False
-    is_global: bool = False
-
-@dataclasses.dataclass
-class StackFrame:
-    stmts: list = dataclasses.field(default_factory=list)
-    index: int = -1
-    variables: list = dataclasses.field(default_factory=list)
-    to_be_deleted: list = dataclasses.field(default_factory=list)
-    in_block: bool = False
+class Frame:
+    stmts: list
+    variables: dict 
+    in_block: bool  
+    hoist_collector: list = None 
+    index: int = 0
+    to_delete_indices: list = dataclasses.field(default_factory=list)
 
 def adjust_variable_decls(data: EventData):
     out_data = data.in_data
+    is_python_like = data.lang in ["python", "abc"] # 特殊处理 Python 和 ABC 语言
+    global_stmts_to_insert = []
 
-    stack = []
-    global_variable = []
-    python_variable_hoist = []
-
-    def add_stack(stmts, index, variables, to_be_deleted, in_block):
-        stack.append(StackFrame(stmts, index, variables, to_be_deleted, in_block))
-
-    add_stack(stmts = out_data, index = 0, variables = {}, to_be_deleted = [], in_block = False)
+    initial_hoist_collector = []
+    stack = [Frame(
+        stmts=out_data, 
+        variables={}, 
+        in_block=False, 
+        hoist_collector=initial_hoist_collector
+    )]
 
     while stack:
-        frame: StackFrame = stack.pop()
-        stmts = frame.stmts
-        stmts = [d for stmt in stmts for d in (stmt if isinstance(stmt, list) else [stmt])]
-        index = frame.index
-        available_variables = frame.variables
-        to_be_deleted = frame.to_be_deleted
-        in_block = frame.in_block
-        has_done = True
-        for child_index in range(index, len(stmts)):
-            stmt = stmts[child_index]
-            key = list(stmt.keys())[0]
-            value = stmt[key]
+        frame = stack[-1] 
 
-            if key == "variable_decl":
-                variable_name = value["name"]
-                if data.lang in ["python", "abc"]:
-                # if data.lang == "python" or data.lang == "abc":
-                    if variable_name in available_variables:
-                        to_be_deleted.append(ElementToBeDeleted(child_index, False, False))
-                    else:
+        # === 阶段 1: 检查当前帧是否处理完毕 ===
+        if frame.index >= len(frame.stmts):
+            stack.pop() # 移除当前帧
+            finalize_frame(frame, is_python_like)
+            continue
 
-                        if in_block:
-                            to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
-                        available_variables[variable_name] = True
+        # === 阶段 2: 获取当前语句并下移游标 ===
+        stmt = frame.stmts[frame.index]
+        current_stmt_index = frame.index
+        frame.index += 1 
 
-                        # to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
-                        # available_variables[variable_name] = True
-                else:
-                    attrs = value["attrs"]
-                    if "var" in attrs:
-                        if variable_name in available_variables:
-                            to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
-                        else:
-                            available_variables[variable_name] = True
-                            to_be_deleted.append(ElementToBeDeleted(child_index, True, False))
-                    elif "global" in attrs:
-                        if variable_name in available_variables:
-                            to_be_deleted.append(ElementToBeDeleted(child_index, False, False))
-                        else:
-                            available_variables[variable_name] = True
-                            to_be_deleted.append(ElementToBeDeleted(child_index, False, True))
-                    elif "let" in attrs or "const" in attrs:
-                        if variable_name in available_variables:
-                            to_be_deleted.append(ElementToBeDeleted(child_index, False, False))
-                        else:
-                            available_variables[variable_name] = False
+        if not isinstance(stmt, dict):
+            continue
+        
+        key = list(stmt.keys())[0]
+        value = stmt[key]
 
-            elif key in ("global_stmt", "nonlocal_stmt"):
-                if "name" in value:
-                    variable_name = value["name"]
-                    if variable_name in available_variables:
-                        util.error("global or nonlocal variable <%s> has defined!" % variable_name)
-                    else:
-                        available_variables[variable_name] = True
-
-            elif key in ("class_decl", "interface_decl", "record_decl", "annotation_type_decl", "enum_decl", "struct_decl"):
-                has_save_breakpoints = False
-                if "methods" in value and value["methods"]:
-                    if not has_save_breakpoints:
-                        has_save_breakpoints = True
-                        add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                    add_stack(value["methods"], 0, {}, [], False)
-                    has_done = False
-
-                if "fields" in value and value["fields"]:
-                    if not has_save_breakpoints:
-                        has_save_breakpoints = True
-                        add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                    add_stack(value["fields"], 0, {}, [], False)
-                    has_done = False
-
-                if "nested" in value and value["nested"]:
-                    if not has_save_breakpoints:
-                        has_save_breakpoints = True
-                        add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                    add_stack(value["nested"], 0, {}, [], False)
-                    has_done = False
-
-                if has_save_breakpoints:
-                    break
-
-            elif key == "struct_decl":
-                body = value["fields"]
-                if not body:
-                    continue
-                add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                add_stack(body, 0, {}, [], False)
-                has_done = False
-                break
-
-            elif key == "method_decl":
-                available_variables[value["name"]] = True
-                parameters = []
-                if "parameters" in value:
-                    parameters = value["parameters"]
-                method_available_variable_name_list = {}
-                if parameters:
-                    for parameter_stmt in parameters:
-                        parameter_key = list(parameter_stmt.keys())[0]
-                        parameter_value = parameter_stmt[parameter_key]
-                        if parameter_key == "parameter_decl":
-                            variable_name = parameter_value["name"]
-                            method_available_variable_name_list[variable_name] = True
-
-                body = value["body"]
-                if not body:
-                    continue
-
-                add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-                add_stack(body, 0, method_available_variable_name_list, [], False)
-                has_done = False
-                break
-
-            elif key.endswith("_stmt"):
-                has_save_breakpoints = False
-                for stmt_key, stmt_value in value.items():
-                    if stmt_key.endswith("body"):
-                        if not has_save_breakpoints:
-                            has_save_breakpoints = True
-                            add_stack(stmts, child_index + 1, available_variables, to_be_deleted, in_block)
-
-                        add_stack(stmt_value, 0, available_variables, [], True)
-                        has_done = False
-                if has_save_breakpoints:
-                    break
-
-        if has_done:
-            to_be_delete_index_sorted = sorted(to_be_deleted, key=lambda x: x.index, reverse=True)
-            if data.lang == "python":
-                for element in to_be_delete_index_sorted:
-                    if element.need_hoist:
-                        python_variable_hoist.append(stmts.pop(element.index))
-                    else:
-                        stmts.pop(element.index)
-
-                if not in_block:
-                    for stmt in python_variable_hoist:
-                        stmts.insert(0, stmt)
-                    python_variable_hoist = []
+        # === 阶段 3: 处理语句逻辑 (生成子任务或处理变量) ===
+        
+        sub_frames = []
+        
+        if key in ("class_decl", "interface_decl", "record_decl", "annotation_type_decl", "enum_decl", "struct_decl"):
+            if key == "struct_decl" and "fields" in value:
+                sub_frames.append(Frame(value["fields"], {}, False, []))
             else:
-                variable_hositing = []
-                for element in to_be_delete_index_sorted:
-                    if element.need_hoist:
-                        variable_hositing.append(stmts.pop(element.index))
-                    else:
-                        if element.is_global:
-                            global_variable.append(stmts.pop(element.index))
-                        else:
-                            stmts.pop(element.index)
-                for stmt in variable_hositing:
-                    stmts.insert(0, stmt)
+                for sub_key in ["methods", "fields", "nested"]:
+                    if sub_key in value and value[sub_key]:
+                        sub_frames.append(Frame(value[sub_key], {}, False, []))
 
-                keys = list(available_variables.keys())
-                for key in keys:
-                    if not available_variables[key]:
-                        del available_variables[key]
+        elif key == "method_decl":
+            method_vars = {}
+            if "parameters" in value:
+                for param in value["parameters"]:
+                    if isinstance(param, dict):
+                        p_key = list(param.keys())[0]
+                        if p_key == "parameter_decl":
+                            method_vars[param[p_key]["name"]] = True
+            
+            if "body" in value and value["body"]:
+                sub_frames.append(Frame(value["body"], method_vars, False, []))
 
-    for stmt in global_variable:
+ 
+        elif key == "variable_decl":
+            process_variable_decl(frame, value, current_stmt_index, is_python_like, global_stmts_to_insert)
+
+        elif key in ("global_stmt", "nonlocal_stmt"):
+            name = value.get("name")
+            if name in frame.variables:
+                util.error(f"global or nonlocal variable <{name}> has defined!")
+            else:
+                frame.variables[name] = True
+
+        elif key.endswith("_stmt"):
+            for sub_key, sub_val in value.items():
+                if sub_key.endswith("body") and isinstance(sub_val, list) and sub_val:
+                    next_collector = frame.hoist_collector if is_python_like else []
+                    
+                    sub_frames.append(Frame(
+                        stmts=sub_val, 
+                        variables=frame.variables, 
+                        in_block=True, 
+                        hoist_collector=next_collector
+                    ))
+
+        # === 阶段 4: 将子任务压栈 ===
+        if sub_frames:
+            # 倒序压栈，确保先处理第一个子任务
+            for sub_frame in reversed(sub_frames):
+                stack.append(sub_frame)
+
+    # 最后插入全局变量
+    for stmt in global_stmts_to_insert:
         out_data.insert(0, stmt)
 
     data.out_data = out_data
     return er.EventHandlerReturnKind.SUCCESS
 
+
+def process_variable_decl(frame: Frame, value: dict, index: int, is_python_like: bool, global_stmts: list):
+    """处理变量声明的核心逻辑：判断是否重复、是否需要提升、是否删除"""
+    name = value.get("name")
+    attrs = value.get("attrs", [])
+    
+    if is_python_like:
+        if name in frame.variables:
+            frame.to_delete_indices.append(index)
+        else:
+            frame.variables[name] = True
+            if frame.in_block:
+                frame.to_delete_indices.append(index)
+                if frame.hoist_collector is not None:
+                    frame.hoist_collector.append({"variable_decl": value})
+    else:
+        if "var" in attrs:
+            if name in frame.variables:
+                frame.to_delete_indices.append(index)
+            else:
+                frame.variables[name] = True
+                if frame.in_block:
+                    frame.to_delete_indices.append(index)
+                    if frame.hoist_collector is not None:
+                         frame.hoist_collector.append({"variable_decl": value})
+        
+        elif "global" in attrs:
+            if name in frame.variables:
+                frame.to_delete_indices.append(index)
+            else:
+                frame.variables[name] = True
+                frame.to_delete_indices.append(index)
+                global_stmts.append({"variable_decl": value})
+                
+        elif "let" in attrs or "const" in attrs:
+            if name in frame.variables and frame.variables.get(name) is False:
+                frame.to_delete_indices.append(index)
+            else:
+                frame.variables[name] = False
+
+
+def finalize_frame(frame: Frame, is_python_like: bool):
+    """当前层级遍历结束后调用的清理函数"""
+    stmts = frame.stmts
+    
+    # 1. 执行删除
+    for idx in sorted(frame.to_delete_indices, reverse=True):
+        if idx < len(stmts):
+            stmts.pop(idx)
+
+    # 2. 变量提升
+    if is_python_like:
+        # Python/ABC: 只有回到非 block 状态 (函数/类顶层) 才插入
+        if not frame.in_block and frame.hoist_collector:
+            for stmt in frame.hoist_collector:
+                stmts.insert(0, stmt)
+            frame.hoist_collector.clear()
+    else:
+        # Other: 每层结束都插入 (实现 Block 内置顶)
+        if frame.hoist_collector:
+            for stmt in frame.hoist_collector:
+                stmts.insert(0, stmt)
+    
+    # 3. block 结束，清理 let/const 变量
+    if not is_python_like and frame.in_block:
+        vars_to_remove = [k for k, v in frame.variables.items() if v is False]
+        for k in vars_to_remove:
+            del frame.variables[k]
