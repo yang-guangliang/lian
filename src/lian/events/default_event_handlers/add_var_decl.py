@@ -6,10 +6,11 @@ from lian.events.handler_template import EventData
 
 @dataclasses.dataclass
 class StackFrame:
+    # default_factory=dict/list，防止多个 StackFrame 共享同一个可变默认对象。
     stmts: list
-    variables: dict 
-    in_block: bool  
-    hoist_collector: list = None 
+    variables: dict = dataclasses.field(default_factory=dict)
+    in_block: bool = False
+    hoist_collector: list = dataclasses.field(default_factory=list) # 收集需要“提升/上移”的 variable_decl，最后在 每个层级遍历结束后插入到开头，如 Python/ABC 语言插入到开头，其他语言插入到block开头
     index: int = 0
     to_delete_indices: list = dataclasses.field(default_factory=list) 
 
@@ -18,13 +19,7 @@ def adjust_variable_decls(data: EventData):
     is_python_like = data.lang in ["python", "abc"] # 特殊处理 Python 和 ABC 语言
     global_stmts_to_insert = []
 
-    initial_hoist_collector = []
-    stack = [StackFrame(
-        stmts=out_data, 
-        variables={}, 
-        in_block=False, 
-        hoist_collector=initial_hoist_collector
-    )]
+    stack = [StackFrame(stmts=out_data)]
 
     while stack:
         frame = stack[-1] 
@@ -49,16 +44,19 @@ def adjust_variable_decls(data: EventData):
         # === 阶段 3: 处理语句逻辑 (生成子任务或处理变量) ===
         sub_frames = []
         
+        '''       
+         处理类型声明节点（class/interface/record/enum/struct...）时，由于这些节点本身不是一组可直接线性遍历的语句列表，
+         真正需要继续往下扫描的，是它们内部存放成员的几个列表字段，如methods/fields/nested。
+         这段代码的目的就是：把这些子列表变成新的 StackFrame(stmts=...) 压栈。
+         '''
         if key in ("class_decl", "interface_decl", "record_decl", "annotation_type_decl", "enum_decl", "struct_decl"):
-            if key == "struct_decl" and "fields" in value:
-                sub_frames.append(StackFrame(value["fields"], {}, False, []))
-            else:
-                for sub_key in ["methods", "fields", "nested"]:
-                    if sub_key in value and value[sub_key]:
-                        sub_frames.append(StackFrame(value[sub_key], {}, False, []))
+            for sub_key in ["methods", "fields", "nested"]:
+                if sub_key in value and value[sub_key]:
+                    sub_frames.append(StackFrame(stmts=value[sub_key]))
 
         elif key == "method_decl":
-            method_vars = {}
+            # method_vars 用于把 形参名 当作已声明变量，避免在函数体里重复声明。
+            method_vars: dict = {}
             if "parameters" in value:
                 for param in value["parameters"]:
                     if isinstance(param, dict):
@@ -67,7 +65,7 @@ def adjust_variable_decls(data: EventData):
                             method_vars[param[p_key]["name"]] = True
             
             if "body" in value and value["body"]:
-                sub_frames.append(StackFrame(value["body"], method_vars, False, []))
+                sub_frames.append(StackFrame(stmts=value["body"], variables=method_vars))
  
         elif key == "variable_decl":
             process_variable_decl(frame, value, current_stmt_index, is_python_like, global_stmts_to_insert)
@@ -82,7 +80,9 @@ def adjust_variable_decls(data: EventData):
         elif key.endswith("_stmt"):
             for sub_key, sub_val in value.items():
                 if sub_key.endswith("body") and isinstance(sub_val, list) and sub_val:
-                    next_collector = frame.hoist_collector if is_python_like else []                   
+                    # Python/ABC: block 内声明最终要提升到“函数/类顶层”，因此复用同一个 collector；
+                    # 其他语言: 每个 block 单独提升到该 block 的开头，因此新建 collector。
+                    next_collector = frame.hoist_collector if is_python_like else []
                     sub_frames.append(StackFrame(
                         stmts=sub_val, 
                         variables=frame.variables, 
@@ -96,7 +96,7 @@ def adjust_variable_decls(data: EventData):
             for sub_frame in reversed(sub_frames):
                 stack.append(sub_frame)
 
-    # 最后插入全局变量
+    # 插入全局变量
     for stmt in global_stmts_to_insert:
         out_data.insert(0, stmt)
 
@@ -127,7 +127,7 @@ def process_variable_decl(frame: StackFrame, value: dict, index: int, is_python_
                 if frame.in_block:
                     frame.to_delete_indices.append(index)
                     if frame.hoist_collector is not None:
-                         frame.hoist_collector.append({"variable_decl": value})
+                        frame.hoist_collector.append({"variable_decl": value})
         
         elif "global" in attrs:
             if name in frame.variables:
