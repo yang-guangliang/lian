@@ -2768,6 +2768,13 @@ class StmtStates:
 
                     self.make_state_tangping(new_array_state)
                     new_array_state.tangping_elements.update(source_states)
+                    for source_state in source_states:
+                        self.sfg.add_edge(
+                            self.make_state_sfg_node(new_array_state_index),
+                            self.make_state_sfg_node(source_state),
+                            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION,
+                                                    name=self.frame.stmt_id_to_stmt[stmt_id].operation)
+                        )
                     defined_states.add(new_array_state_index)
 
                 elif tmp_array != array_state.array:

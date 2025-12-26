@@ -948,6 +948,58 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
         another.new_index_to_old_index = copy_of_another.new_index_to_old_index
 
 @dataclasses.dataclass
+class StateDefNode:
+    index: int = -1
+    state_id: int = -1
+    stmt_id: int = -1
+
+    def __hash__(self) -> int:
+        return hash((self.index, self.state_id, self.stmt_id))
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, StateDefNode) and self.state_id == other.state_id and self.index == other.index and self.stmt_id == other.stmt_id
+
+    def to_dict(self, method_id, bit_pos):
+        return {
+            "method_id": method_id,
+            "bit_pos": bit_pos,
+            "index": self.index,
+            "state_id": self.state_id,
+            "stmt_id": self.stmt_id
+        }
+
+@dataclasses.dataclass
+class SymbolDefNode:
+    index: int = -1
+    symbol_id: int = -1
+    stmt_id: int = -1
+
+    def __hash__(self) -> int:
+        return hash((self.index, self.symbol_id, self.stmt_id))
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, SymbolDefNode) and self.index == other.index and self.symbol_id == other.symbol_id and self.stmt_id == other.stmt_id
+
+    def to_dict(self, method_id, bit_pos):
+        return {
+            "method_id": method_id,
+            "bit_pos": bit_pos,
+            "index": self.index,
+            "symbol_id": self.symbol_id,
+            "stmt_id": self.stmt_id
+        }
+
+    def to_tuple(self):
+        return (self.index, self.symbol_id, self.stmt_id,)
+
+    def to_dict_with_prefix(self, prefix):
+        return {
+            f"{prefix}_index": self.index,
+            f"{prefix}_symbol_id": self.symbol_id,
+            f"{prefix}_stmt_id": self.stmt_id
+        }
+
+@dataclasses.dataclass
 class StmtStatus:
     stmt_id: int = -1
 
@@ -955,12 +1007,12 @@ class StmtStatus:
     used_symbols: list[int] = dataclasses.field(default_factory=list)
     implicitly_defined_symbols: list[int] = dataclasses.field(default_factory=list)
     implicitly_used_symbols: list[int] = dataclasses.field(default_factory=list)
-    in_symbol_bits  = set()
-    out_symbol_bits = set()
+    in_symbol_bits: set[SymbolDefNode]   = dataclasses.field(default_factory=set)
+    out_symbol_bits: set[SymbolDefNode] = dataclasses.field(default_factory=set)
 
     defined_states: set[int]= dataclasses.field(default_factory=set)
-    in_state_bits  = set()
-    out_state_bits = set()
+    in_state_bits: set[StateDefNode]  = dataclasses.field(default_factory=set)
+    out_state_bits: set[StateDefNode] = dataclasses.field(default_factory=set)
 
     field_name: str = ""
 
@@ -994,7 +1046,6 @@ class StmtStatus:
             "out_state_bits"            : str(self.out_state_bits),
             "field"                     : self.field_name,
         }
-
 
 class SymbolGraph(BasicGraphWithSelfCircle):
     def __init__(self, method_id):
@@ -1059,7 +1110,7 @@ class SFGNode:
             self.line_no = stmt.start_row
             if len(name) == 0:
                 self.name = stmt.operation
-            
+
             self.operation = readable_gir.get_gir_str(stmt)
 
     def __hash__(self) -> int:
@@ -1200,36 +1251,7 @@ class MethodCall:
 
 # global_bit_vector_id = 0
 
-@dataclasses.dataclass
-class SymbolDefNode:
-    index: int = -1
-    symbol_id: int = -1
-    stmt_id: int = -1
 
-    def __hash__(self) -> int:
-        return hash((self.index, self.symbol_id, self.stmt_id))
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, SymbolDefNode) and self.index == other.index and self.symbol_id == other.symbol_id and self.stmt_id == other.stmt_id
-
-    def to_dict(self, method_id, bit_pos):
-        return {
-            "method_id": method_id,
-            "bit_pos": bit_pos,
-            "index": self.index,
-            "symbol_id": self.symbol_id,
-            "stmt_id": self.stmt_id
-        }
-
-    def to_tuple(self):
-        return (self.index, self.symbol_id, self.stmt_id,)
-
-    def to_dict_with_prefix(self, prefix):
-        return {
-            f"{prefix}_index": self.index,
-            f"{prefix}_symbol_id": self.symbol_id,
-            f"{prefix}_stmt_id": self.stmt_id
-        }
 
 @dataclasses.dataclass
 class LastSymbolDefNode:
@@ -1243,26 +1265,6 @@ class LastSymbolDefNode:
     def __eq__(self, other: object) -> bool:
         return isinstance(other, SymbolDefNode) and self.index == other.index and self.symbol_id == other.symbol_id and self.last_stmt_id == other.last_stmt_id
 
-@dataclasses.dataclass
-class StateDefNode:
-    index: int = -1
-    state_id: int = -1
-    stmt_id: int = -1
-
-    def __hash__(self) -> int:
-        return hash((self.index, self.state_id, self.stmt_id))
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, StateDefNode) and self.state_id == other.state_id and self.index == other.index and self.stmt_id == other.stmt_id
-
-    def to_dict(self, method_id, bit_pos):
-        return {
-            "method_id": method_id,
-            "bit_pos": bit_pos,
-            "index": self.index,
-            "state_id": self.state_id,
-            "stmt_id": self.stmt_id
-        }
 
 # class BitVector:
 #
