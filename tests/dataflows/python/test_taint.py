@@ -12,8 +12,15 @@
 # def func0():
 #     a()
 
-a = b.c
-hh = a.l
+# a = b.c
+# hh = a.l
+#
+# gg = a
+# sink(gg)
+def func1(p):
+    sink(p)
+a = source()
 
-gg = a
-sink(gg)
+b = a
+c = b
+func1(c)

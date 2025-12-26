@@ -13,7 +13,7 @@ from lian.events.default_event_handlers.this_field_write import access_path_form
 from lian.util.loader import Loader
 from lian.util import util
 from lian.util.readable_gir import get_gir_str
-from lian.taint.rule_manager import RuleManager
+from lian.taint.rule_manager import RuleManager, Rule
 from lian.common_structs import (
     CallPath,
     SimpleWorkList,
@@ -99,7 +99,7 @@ class TaintAnalysis:
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "call_stmt":
                 if self.apply_call_stmt_source_rules(node):
                     defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
-                    node_list.append( defined_symbol_node)
+                    node_list.append(defined_symbol_node)
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "parameter_decl":
                 if self.apply_parameter_source_rules(node):
                     node_list.append(node)
@@ -341,19 +341,187 @@ class TaintAnalysis:
 
     def find_flows(self, sources, sinks):
         # 找到所有的taint flow
-        # 这里需要应用图遍历算法对taint进行传播
-        # 这里需要把taint管理器用起来，对symbol和state层面有污点的节点进行标记
+        # 每次处理一个 source 和 一个 sink 的组合
         flow_list = []
+        
         for source in sources:
             for sink in sinks:
-                source_method_id = self.loader.convert_stmt_id_to_method_id(source.def_stmt_id)
-                sink_method_id = self.loader.convert_stmt_id_to_method_id(sink.def_stmt_id)
+                # 1. 污点传播 (针对单一 Source)
+                # 为每一次 (source, sink) 组合使用独立的污点管理器，确保隔离
+                original_manager = self.taint_manager
+                self.taint_manager = TaintEnv()
+                
+                # 为当前 source 分配一个独立的 tag
+                tag_info = Rule(name=f"Source_{source.def_stmt_id}", operation="source_propagation", rule_id=id(source))
+                tag = self.taint_manager.add_and_update_tag_bv(tag_info, 0)
+                
+                worklist = deque()
+                if source.node_type == SFG_NODE_KIND.SYMBOL:
+                    self.taint_manager.set_symbol_tag(source.node_id, tag)
+                    worklist.append(source)
+                    # 同时污染其初始 state 节点
+                    for v in self.sfg.successors(source):
+                        edge_data = self.sfg.get_edge_data(source, v)
+                        if edge_data:
+                            for data in edge_data.values():
+                                if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                                    self.taint_manager.set_states_tag([v.node_id], tag)
+                                    if v not in worklist:
+                                        worklist.append(v)
+                elif source.node_type == SFG_NODE_KIND.STATE:
+                    self.taint_manager.set_states_tag([source.node_id], tag)
+                    worklist.append(source)
+                elif source.node_type == SFG_NODE_KIND.STMT:
+                    worklist.append(source)
 
-                # 这里只需要method_id
-                parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(source_method_id, sink_method_id, self.current_entry_point)
-                flow_list.extend(self.find_source_to_sink_path( source, sink, [parent_method]))
+                # BFS 传播
+                while worklist:
+                    u = worklist.popleft()
+                    u_tag = 0
+                    if u.node_type == SFG_NODE_KIND.SYMBOL:
+                        u_tag = self.taint_manager.get_symbol_tag(u.node_id)
+                    elif u.node_type == SFG_NODE_KIND.STATE:
+                        u_tag = self.taint_manager.get_state_tag(u.node_id)
+                    elif u.node_type == SFG_NODE_KIND.STMT:
+                        for pred in self.sfg.predecessors(u):
+                            edge_data = self.sfg.get_edge_data(pred, u)
+                            if edge_data:
+                                for data in edge_data.values():
+                                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                                        u_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
+                    
+                    if u_tag == 0:
+                        continue
+
+                    if u.node_type == SFG_NODE_KIND.SYMBOL:
+                        for v in self.sfg.successors(u):
+                            edge_data = self.sfg.get_edge_data(u, v)
+                            if edge_data:
+                                for data in edge_data.values():
+                                    etype = data.get('weight').edge_type
+                                    if etype == SFG_EDGE_KIND.SYMBOL_STATE:
+                                        v_tag = self.taint_manager.get_state_tag(v.node_id)
+                                        if (u_tag | v_tag) != v_tag:
+                                            self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
+                                            worklist.append(v)
+                                    elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                                        worklist.append(v)
+                    elif u.node_type == SFG_NODE_KIND.STATE:
+                        for v in self.sfg.predecessors(u):
+                            edge_data = self.sfg.get_edge_data(v, u)
+                            if edge_data:
+                                for data in edge_data.values():
+                                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                                        if (u_tag | v_tag) != v_tag:
+                                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                                            worklist.append(v)
+                    elif u.node_type == SFG_NODE_KIND.STMT:
+                        for v in self.sfg.successors(u):
+                            edge_data = self.sfg.get_edge_data(u, v)
+                            if edge_data:
+                                for data in edge_data.values():
+                                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+                                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                                        if (u_tag | v_tag) != v_tag:
+                                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                                            worklist.append(v)
+
+                # 2. Sink 检查 (针对单一 Sink)
+                sink_tag = 0
+                for pred in self.sfg.predecessors(sink):
+                    edge_data = self.sfg.get_edge_data(pred, sink)
+                    if edge_data:
+                        for data in edge_data.values():
+                            if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                                # 检查 symbol 节点的污点
+                                sink_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
+                                
+                                # 同时也检查 symbol 所指向的 state 节点的污点
+                                for v in self.sfg.successors(pred):
+                                    v_edge_data = self.sfg.get_edge_data(pred, v)
+                                    if v_edge_data:
+                                        for v_data in v_edge_data.values():
+                                            if v_data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                                                sink_tag |= self.taint_manager.get_state_tag(v.node_id)
+                
+                if (sink_tag & tag) != 0:
+                    print("found taint sink")
+                    flow = self.reconstruct_define_use_path(source, sink)
+                    flow_list.append(flow)
+                
+                # 恢复管理器
+                self.taint_manager = original_manager
 
         return flow_list
+
+    def reconstruct_define_use_path(self, source, sink):
+        """
+        采用深度优先的方式从 source 开始遍历 SFG 来寻找路径。
+        当遍历到 sink_stmt 时，则找到路径；
+        如果遍历完整个可达子图都没有遇到 sink，则选一条遍历过程中产生的路径，并加上 sink_stmt。
+        """
+        visited = set()
+        longest_path = []
+
+        def dfs(u, path_stmts):
+            nonlocal longest_path
+            if u in visited:
+                return None
+            visited.add(u)
+
+            # 如果当前节点是语句，加入路径
+            new_path = list(path_stmts)
+            if u.node_type == SFG_NODE_KIND.STMT:
+                if not new_path or new_path[-1] != u:
+                    new_path.append(u)
+
+            # 记录遍历过程中最长的一条路径作为备选
+            if len(new_path) >= len(longest_path):
+                longest_path = new_path
+
+            # 到达终点
+            if u == sink:
+                return new_path
+
+            # 深度优先遍历继承者
+            for v in self.sfg.successors(u):
+                # 这里可以根据需要过滤边类型，但根据要求我们遍历整个 SFG
+                result = dfs(v, new_path)
+                if result:
+                    return result
+            
+            return None
+
+        # 执行 DFS，初始路径根据 source 类型决定
+        initial_stmts = []
+        # if source.node_type == SFG_NODE_KIND.STMT:
+        #     initial_stmts = [source]
+            
+        final_path = dfs(source, initial_stmts)
+
+        if final_path is None:
+            # 如果没找到 sink，选一条遍历到的路径并强行加上 sink
+            if not longest_path or longest_path[-1] != sink:
+                final_path = longest_path + [sink]
+            else:
+                final_path = longest_path
+        
+        flow = Flow()
+        flow.source_stmt_id = source.def_stmt_id
+        flow.sink_stmt_id = sink.def_stmt_id
+        flow.parent_to_sink = final_path
+        return flow
+
+        # 如果没有通过 define-use 链找到 sink，则手动将 sink 存入
+        if found_stmts is None:
+            found_stmts = [sink]
+        
+        flow = Flow()
+        flow.source_stmt_id = source.def_stmt_id
+        flow.sink_stmt_id = sink.def_stmt_id
+        flow.parent_to_sink = found_stmts
+        return flow
 
     def find_source_to_sink_path(self, source, sink, parents):
 
@@ -772,6 +940,7 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources()
             sinks = self.find_sinks()
+            
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 
