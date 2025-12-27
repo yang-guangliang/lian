@@ -18,9 +18,13 @@
 # gg = a
 # sink(gg)
 def func1(p):
+    return source()
     sink(p)
-a = source()
-
+# gg = P()
+# a = source()
+# gg.f = a
+# sink(gg)
 b = a
 c = b
-func1(c)
+pp = func1(c)
+sink(pp)

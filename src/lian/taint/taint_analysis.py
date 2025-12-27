@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 import json
-import os,sys
+import os, sys
 import re
 from collections import deque
 
@@ -61,7 +61,7 @@ class TaintAnalysis:
         state_nodes = []
         predecessors = list(util.graph_predecessors(self.sfg, node))
         name_symbol_node = None
-        if len(predecessors) == 0 :
+        if len(predecessors) == 0:
             return None, None
         for predecessor in predecessors:
             edge = self.sfg.get_edge_data(predecessor, node)
@@ -102,10 +102,12 @@ class TaintAnalysis:
                     node_list.append(defined_symbol_node)
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "parameter_decl":
                 if self.apply_parameter_source_rules(node):
-                    node_list.append(node)
+                    defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
+                    node_list.append(defined_symbol_node)
             if node.node_type == SFG_NODE_KIND.STMT and node.name == "field_read":
                 if self.apply_field_read_source_rules(node):
-                    node_list.append(node)
+                    defined_symbol_node, defined_state_node = self.find_symbol_chain(self.sfg, node)
+                    node_list.append(defined_symbol_node)
             # 为了兼容codeql规则
             # elif node.node_type == SFG_NODE_KIND.STMT:
             #     rules = self.rule_manager.all_sources_from_code
@@ -113,6 +115,7 @@ class TaintAnalysis:
             #         node_list.append(node)
 
         return node_list
+
     def apply_parameter_source_rules(self, node):
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
@@ -201,6 +204,141 @@ class TaintAnalysis:
 
         return False
 
+    def apply_propagation_rules(self, node):
+        stmt_id = node.def_stmt_id
+        stmt = self.loader.get_stmt_gir(stmt_id)
+        operation = node.name
+
+        # 默认认为赋值语句传播污点
+        if operation == "assign_stmt":
+            return True
+
+        for rule in self.rule_manager.all_propagations:
+            if rule.operation != operation:
+                continue
+
+            if operation == "field_read":
+                # 1. 检查字段名列表 (field: [split, next, ...])
+                if hasattr(stmt, 'field') and rule.field:
+                    if stmt.field in rule.field:
+                        return True
+                # 2. 检查特定 target (target: request.query_string)
+                # 使用之前定义的 apply_field_read_source_rules 中的逻辑
+                symbol_node, state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+                if state_nodes:
+                    for state_node in state_nodes:
+                        access_path = access_path_formatter(state_node.access_path)
+                        if access_path == rule.target:
+                            return True
+                # 3. 简单的 src/dst 规则 (如 src: receiver)
+                if not rule.field and not rule.target:
+                    return True
+
+            elif operation == "call_stmt":
+                # 检查函数名是否符合规则
+                method_symbol_node, method_state_nodes = self.get_stmt_first_used_symbol_and_state(node)
+                if method_state_nodes:
+                    for state_node in method_state_nodes:
+                        if self.check_method_name(rule.name, state_node):
+                            return True
+                # 如果都没有匹配上，但规则确实是 call_stmt 且没有指定 name（较少见），可以返回 True
+                if not rule.name:
+                    return True
+
+        return False
+
+    def get_sink_tag_by_rules(self, node):
+        sink_tag = 0
+        if node.node_type != SFG_NODE_KIND.STMT:
+            return sink_tag
+
+        stmt_id = node.def_stmt_id
+        stmt = self.loader.get_stmt_gir(stmt_id)
+        operation = node.name
+
+        # 1. 寻找匹配的 sink 规则
+        matching_rules = []
+        if operation == "call_stmt":
+            _, method_state_nodes = self.get_stmt_first_used_symbol_and_state(node)
+            for rule in self.rule_manager.all_sinks:
+                if rule.operation != "call_stmt":
+                    continue
+                if not method_state_nodes:
+                    if rule.name == stmt.name:
+                        matching_rules.append(rule)
+                    continue
+                for state_node in method_state_nodes:
+                    if self.check_method_name(rule.name, state_node):
+                        matching_rules.append(rule)
+                        break
+        elif operation == "object_call_stmt":
+            name = stmt.receiver_object + '.' + stmt.field
+            for rule in self.rule_manager.all_sinks:
+                if rule.name == name:
+                    matching_rules.append(rule)
+
+        # 2. 根据规则检查对应的 symbol 和 state
+        for rule in matching_rules:
+            targets = rule.target if isinstance(rule.target, list) else [rule.target]
+            for target in targets:
+                target_pos = -1
+                if target == TAG_KEYWORD.ARG0:
+                    target_pos = 1
+                elif target == TAG_KEYWORD.ARG1:
+                    target_pos = 2
+                elif target == TAG_KEYWORD.ARG2:
+                    target_pos = 3
+                elif target == TAG_KEYWORD.ARG3:
+                    target_pos = 4
+                elif target == TAG_KEYWORD.ARG4:
+                    target_pos = 5
+                elif target == TAG_KEYWORD.RECEIVER:
+                    target_pos = 0
+
+                for pred in self.sfg.predecessors(node):
+                    edge_data = self.sfg.get_edge_data(pred, node)
+                    if not edge_data: continue
+                    for data in edge_data.values():
+                        weight = data.get('weight')
+                        if weight.edge_type != SFG_EDGE_KIND.SYMBOL_IS_USED:
+                            continue
+                        weight_pos = weight.pos
+                        if operation == "object_call_stmt":
+                            weight_pos -= 1
+                        # 匹配位置或者目标是通配符
+                        if (target_pos != -1 and weight.pos == target_pos) or \
+                            (target == TAG_KEYWORD.TARGET) or \
+                            (not target):
+
+                            # 检查 symbol 污点
+                            sink_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
+                            # 同时也检查 symbol 所指向的 state 节点及其包含的子 state 节点的污点
+                            for v in self.sfg.successors(pred):
+                                v_edge_data = self.sfg.get_edge_data(pred, v)
+                                if v_edge_data:
+                                    for v_data in v_edge_data.values():
+                                        if v_data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                                            # 递归或遍历检查 state_inclusion 链
+                                            state_worklist = deque([v])
+                                            state_visited = {v}
+                                            while state_worklist:
+                                                curr_state = state_worklist.popleft()
+                                                sink_tag |= self.taint_manager.get_state_tag(curr_state.node_id)
+
+                                                for next_state in self.sfg.successors(curr_state):
+                                                    if next_state.node_type == SFG_NODE_KIND.STATE and next_state not in state_visited:
+                                                        s_edge_data = self.sfg.get_edge_data(curr_state, next_state)
+                                                        if s_edge_data:
+                                                            for s_data in s_edge_data.values():
+                                                                if s_data.get('weight').edge_type in (
+                                                                        SFG_EDGE_KIND.STATE_INCLUSION,
+                                                                        SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
+                                                                    state_visited.add(next_state)
+                                                                    state_worklist.append(next_state)
+                                                                    break
+
+
+        return sink_tag
 
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
@@ -252,6 +390,7 @@ class TaintAnalysis:
             # if node.node_type == SFG_NODE_KIND.STMT and self.apply_rules_from_code(node, rules):
             #     node_list.append(node)
         return node_list
+
     def should_apply_object_call_stmt_sink_rules(self, node):
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call_stmt":
             return False
@@ -275,8 +414,6 @@ class TaintAnalysis:
                 # 检查函数名是否符合规则
                 if self.check_method_name(rule.name, state_node):
                     return True
-                    return self.check_tag(rule.target, used_symbols, self.taint_manager)
-                    # 检查参数是否携带tag
 
         return False
 
@@ -298,162 +435,117 @@ class TaintAnalysis:
 
         return apply_flag
 
-    # def check_tag(self, rule_tag, used_symbols, taint_state_manager):
-    #     # 暂时检测taint_env中的tag,且只考虑positional_args
-    #     if len(rule_tag) == 0:
-    #         return False
-    #     for target_arg in rule_tag:
-    #
-    #         arg_index = int(target_arg[-1])
-    #         if arg_index + 1 >= len(used_symbols):
-    #             continue
-    #         arg_symbol = self.space[used_symbols[arg_index + 1]]
-    #         arg_states = arg_symbol.states
-    #
-    #         for state_index in arg_states:
-    #             return self.check_state_tag(state_index, taint_state_manager)
-    #     return False
-
-    # def check_state_tag(self, state_index, taint_state_manager):
-    #     if self.space[state_index].symbol_or_state == 0:
-    #         return False
-    #     state_id = self.space[state_index].state_id
-    #     access_path_tag = config.NO_TAINT
-    #     # if space[state_index].access_path:
-    #     #     access_path = self.access_path_formatter(space[state_index].access_path)
-    #     #     access_path_tag = taint_state_manager.get_access_path_tag_in_sink(access_path)
-    #
-    #     tag = self.taint_manager.get_state_tag(state_id)
-    #     if tag != config.NO_TAINT :
-    #         # 报告sink
-    #         #print(space[state_index])
-    #         #print(f"sink in {space[state_index].stmt_id}, tag: {tag}")
-    #         return True
-    #     # if access_path_tag != config.NO_TAINT:
-    #     #     # 报告sink
-    #     #     print(f"access_path sink in {space[state_index].stmt_id}, tag: {access_path_tag}")
-    #     #     return True
-    #     #print(space[state_index].fields)
-    #     for value in self.space[state_index].fields.values():
-    #         for field_state_index in value:
-    #             return self.check_state_tag(field_state_index, taint_state_manager)
-    #     return False
-
     def find_flows(self, sources, sinks):
         # 找到所有的taint flow
         # 每次处理一个 source 和 一个 sink 的组合
         flow_list = []
-        
+
         for source in sources:
             for sink in sinks:
                 # 1. 污点传播 (针对单一 Source)
                 # 为每一次 (source, sink) 组合使用独立的污点管理器，确保隔离
                 original_manager = self.taint_manager
                 self.taint_manager = TaintEnv()
-                
-                # 为当前 source 分配一个独立的 tag
-                tag_info = Rule(name=f"Source_{source.def_stmt_id}", operation="source_propagation", rule_id=id(source))
-                tag = self.taint_manager.add_and_update_tag_bv(tag_info, 0)
-                
-                worklist = deque()
-                if source.node_type == SFG_NODE_KIND.SYMBOL:
-                    self.taint_manager.set_symbol_tag(source.node_id, tag)
-                    worklist.append(source)
-                    # 同时污染其初始 state 节点
-                    for v in self.sfg.successors(source):
-                        edge_data = self.sfg.get_edge_data(source, v)
-                        if edge_data:
-                            for data in edge_data.values():
-                                if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
-                                    self.taint_manager.set_states_tag([v.node_id], tag)
-                                    if v not in worklist:
-                                        worklist.append(v)
-                elif source.node_type == SFG_NODE_KIND.STATE:
-                    self.taint_manager.set_states_tag([source.node_id], tag)
-                    worklist.append(source)
-                elif source.node_type == SFG_NODE_KIND.STMT:
-                    worklist.append(source)
 
-                # BFS 传播
-                while worklist:
-                    u = worklist.popleft()
-                    u_tag = 0
-                    if u.node_type == SFG_NODE_KIND.SYMBOL:
-                        u_tag = self.taint_manager.get_symbol_tag(u.node_id)
-                    elif u.node_type == SFG_NODE_KIND.STATE:
-                        u_tag = self.taint_manager.get_state_tag(u.node_id)
-                    elif u.node_type == SFG_NODE_KIND.STMT:
-                        for pred in self.sfg.predecessors(u):
-                            edge_data = self.sfg.get_edge_data(pred, u)
-                            if edge_data:
-                                for data in edge_data.values():
-                                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
-                                        u_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
-                    
-                    if u_tag == 0:
-                        continue
-
-                    if u.node_type == SFG_NODE_KIND.SYMBOL:
-                        for v in self.sfg.successors(u):
-                            edge_data = self.sfg.get_edge_data(u, v)
-                            if edge_data:
-                                for data in edge_data.values():
-                                    etype = data.get('weight').edge_type
-                                    if etype == SFG_EDGE_KIND.SYMBOL_STATE:
-                                        v_tag = self.taint_manager.get_state_tag(v.node_id)
-                                        if (u_tag | v_tag) != v_tag:
-                                            self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
-                                            worklist.append(v)
-                                    elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
-                                        worklist.append(v)
-                    elif u.node_type == SFG_NODE_KIND.STATE:
-                        for v in self.sfg.predecessors(u):
-                            edge_data = self.sfg.get_edge_data(v, u)
-                            if edge_data:
-                                for data in edge_data.values():
-                                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
-                                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
-                                        if (u_tag | v_tag) != v_tag:
-                                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                                            worklist.append(v)
-                    elif u.node_type == SFG_NODE_KIND.STMT:
-                        for v in self.sfg.successors(u):
-                            edge_data = self.sfg.get_edge_data(u, v)
-                            if edge_data:
-                                for data in edge_data.values():
-                                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
-                                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
-                                        if (u_tag | v_tag) != v_tag:
-                                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                                            worklist.append(v)
+                # 执行污点传播并获取该 source 的 tag
+                tag = self.propagate_taint(source)
 
                 # 2. Sink 检查 (针对单一 Sink)
-                sink_tag = 0
-                for pred in self.sfg.predecessors(sink):
-                    edge_data = self.sfg.get_edge_data(pred, sink)
-                    if edge_data:
-                        for data in edge_data.values():
-                            if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
-                                # 检查 symbol 节点的污点
-                                sink_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
-                                
-                                # 同时也检查 symbol 所指向的 state 节点的污点
-                                for v in self.sfg.successors(pred):
-                                    v_edge_data = self.sfg.get_edge_data(pred, v)
-                                    if v_edge_data:
-                                        for v_data in v_edge_data.values():
-                                            if v_data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
-                                                sink_tag |= self.taint_manager.get_state_tag(v.node_id)
-                
+                sink_tag = self.get_sink_tag_by_rules(sink)
+
                 if (sink_tag & tag) != 0:
                     print("found taint sink")
                     flow = self.reconstruct_define_use_path(source, sink)
                     flow_list.append(flow)
-                
+
                 # 恢复管理器
                 self.taint_manager = original_manager
 
         return flow_list
+
+    def propagate_taint(self, source):
+        """
+        从给定的 source 开始在 SFG 中传播污点。
+        返回为该 source 分配的位标记 (tag)。
+        """
+        # 为当前 source 分配一个独立的 tag
+        tag_info = Rule(name=f"Source_{source.def_stmt_id}", operation="source_propagation", rule_id=id(source))
+        tag = self.taint_manager.add_and_update_tag_bv(tag_info, 0)
+
+        worklist = deque()
+        if source.node_type == SFG_NODE_KIND.SYMBOL:
+            self.taint_manager.set_symbol_tag(source.node_id, tag)
+            worklist.append(source)
+            # 同时污染其初始 state 节点
+            for v in self.sfg.successors(source):
+                edge_data = self.sfg.get_edge_data(source, v)
+                if edge_data:
+                    for data in edge_data.values():
+                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                            self.taint_manager.set_states_tag([v.node_id], tag)
+                            if v not in worklist:
+                                worklist.append(v)
+        elif source.node_type == SFG_NODE_KIND.STATE:
+            self.taint_manager.set_states_tag([source.node_id], tag)
+            worklist.append(source)
+        elif source.node_type == SFG_NODE_KIND.STMT:
+            worklist.append(source)
+
+        # BFS 传播
+        while worklist:
+            u = worklist.popleft()
+            u_tag = 0
+            if u.node_type == SFG_NODE_KIND.SYMBOL:
+                u_tag = self.taint_manager.get_symbol_tag(u.node_id)
+            elif u.node_type == SFG_NODE_KIND.STATE:
+                u_tag = self.taint_manager.get_state_tag(u.node_id)
+            elif u.node_type == SFG_NODE_KIND.STMT:
+                for pred in self.sfg.predecessors(u):
+                    edge_data = self.sfg.get_edge_data(pred, u)
+                    if edge_data:
+                        for data in edge_data.values():
+                            if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                                u_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
+
+            if u_tag == 0:
+                continue
+
+            if u.node_type == SFG_NODE_KIND.SYMBOL:
+                for v in self.sfg.successors(u):
+                    edge_data = self.sfg.get_edge_data(u, v)
+                    if edge_data:
+                        for data in edge_data.values():
+                            etype = data.get('weight').edge_type
+                            if etype == SFG_EDGE_KIND.SYMBOL_STATE:
+                                v_tag = self.taint_manager.get_state_tag(v.node_id)
+                                if (u_tag | v_tag) != v_tag:
+                                    self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
+                                    worklist.append(v)
+                            elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                                worklist.append(v)
+            elif u.node_type == SFG_NODE_KIND.STATE:
+                for v in self.sfg.predecessors(u):
+                    edge_data = self.sfg.get_edge_data(v, u)
+                    if edge_data:
+                        for data in edge_data.values():
+                            if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                                v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                                if (u_tag | v_tag) != v_tag:
+                                    self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                                    worklist.append(v)
+            elif u.node_type == SFG_NODE_KIND.STMT:
+                # 根据规则判断语句是否传播污点
+                # if self.apply_propagation_rules(u):
+                for v in self.sfg.successors(u):
+                    edge_data = self.sfg.get_edge_data(u, v)
+                    if edge_data:
+                        for data in edge_data.values():
+                            if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+                                v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                                if (u_tag | v_tag) != v_tag:
+                                    self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                                    worklist.append(v)
+        return tag
 
     def reconstruct_define_use_path(self, source, sink):
         """
@@ -490,14 +582,14 @@ class TaintAnalysis:
                 result = dfs(v, new_path)
                 if result:
                     return result
-            
+
             return None
 
         # 执行 DFS，初始路径根据 source 类型决定
         initial_stmts = []
         # if source.node_type == SFG_NODE_KIND.STMT:
         #     initial_stmts = [source]
-            
+
         final_path = dfs(source, initial_stmts)
 
         if final_path is None:
@@ -506,231 +598,117 @@ class TaintAnalysis:
                 final_path = longest_path + [sink]
             else:
                 final_path = longest_path
-        
+
         flow = Flow()
         flow.source_stmt_id = source.def_stmt_id
         flow.sink_stmt_id = sink.def_stmt_id
         flow.parent_to_sink = final_path
         return flow
 
-        # 如果没有通过 define-use 链找到 sink，则手动将 sink 存入
-        if found_stmts is None:
-            found_stmts = [sink]
-        
-        flow = Flow()
-        flow.source_stmt_id = source.def_stmt_id
-        flow.sink_stmt_id = sink.def_stmt_id
-        flow.parent_to_sink = found_stmts
-        return flow
+    def get_all_forward_nodes(self, source):
+        """
+        从 source 开始，遍历 SFG 返回所有与 taint 有关的 symbol、state、stmt 节点。
+        遵循传播逻辑：
+        - SYMBOL -> STATE (SYMBOL_STATE), SYMBOL -> STMT (SYMBOL_IS_USED), SYMBOL -> SYMBOL (SYMBOL_FLOW)
+        - STATE -> SYMBOL (逆向 SYMBOL_STATE), STATE -> STATE (STATE_INCLUSION/COPY)
+        - STMT -> SYMBOL (SYMBOL_IS_DEFINED)
+        """
+        worklist = deque([source])
+        visited = {source}
 
-    def find_source_to_sink_path(self, source, sink, parents):
+        while worklist:
+            u = worklist.popleft()
 
-        def nearest_attr_ancestor(G, node, val):
-            """
-            返回 (祖先节点, 最短距离) 其中祖先的 G.nodes[ancestor][attr] == val；
-            若无满足条件的祖先，返回 (None, -1)。
-            """
-            if node not in G:
-                return None, -1
-
-            queue = deque([(node, 0)])  # (当前节点, 距离)
-            seen = {node}
-
-            while queue:
-                cur, dist = queue.popleft()
-
-                # 看父节点
-                for p in G.predecessors(cur):
-                    if p in seen:
-                        continue
-                    seen.add(p)
-
-                    # 满足属性即返回
-                    method_id = self.loader.convert_stmt_id_to_method_id(p.def_stmt_id)
-                    if method_id == val and p.node_type != SFG_NODE_KIND.STATE:
-                        return p, dist + 1
-
-                    queue.append((p, dist + 1))
-
-            return None, -1
-
-        def shortest_paths_to_targets(G, start, targets):
-            """
-            在无权有向图里，从 start 做一次 BFS，直到找到所有 targets（或遍历完可达子图）。
-            只返回 targets 中能到达的节点的最短路径（包含起止点）。
-            """
-            if start not in G:
-                return {}
-            if not targets:
-                return {}
-
-            remaining = set(targets)
-            paths = {}
-
-            # start 本身就是目标
-            if start in remaining:
-                paths[start] = [start]
-                remaining.remove(start)
-                if not remaining:
-                    return paths
-
-            pred = {start: None}
-            q = deque([start])
-
-            while q and remaining:
-                cur = q.popleft()
-                
-                # 默认只寻找有向图的继承者节点
-                neighbors = set(G.successors(cur))
-                
-                # 针对 %this 节点的特殊处理：将 symbol_state 边视为无向边（即允许回溯前驱节点）
-                for p_node in G.predecessors(cur):
-                    if cur.name == "%this" or p_node.name == "%this":
-                        edge_data = G.get_edge_data(p_node, cur)
-                        if edge_data:
-                            for data in edge_data.values():
-                                sfg_edge = data.get('weight')
-                                if sfg_edge and getattr(sfg_edge, 'name', '') == "symbol_state":
-                                    neighbors.add(p_node)
-                                    break
-
-                for nxt in neighbors:
-                    if nxt in pred:
-                        continue
-                    pred[nxt] = cur
-
-                    if nxt in remaining:
-                        # reconstruct path start -> nxt
-                        rev = [nxt]
-                        p = cur
-                        while p is not None:
-                            rev.append(p)
-                            p = pred[p]
-                        paths[nxt] = list(reversed(rev))
-                        remaining.remove(nxt)
-                        if not remaining:
+            if u.node_type == SFG_NODE_KIND.SYMBOL:
+                # 1. 向下传播到 STATE, STMT, 或其他 SYMBOL
+                for v in self.sfg.successors(u):
+                    if v in visited: continue
+                    edge_data = self.sfg.get_edge_data(u, v)
+                    if not edge_data: continue
+                    for data in edge_data.values():
+                        etype = data.get('weight').edge_type
+                        if etype in (SFG_EDGE_KIND.SYMBOL_STATE, SFG_EDGE_KIND.SYMBOL_IS_USED,
+                                     SFG_EDGE_KIND.SYMBOL_FLOW, SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW):
+                            visited.add(v)
+                            worklist.append(v)
                             break
 
-                    q.append(nxt)
+            elif u.node_type == SFG_NODE_KIND.STATE:
+                # 1. 找到该值所属的所有 SYMBOL (逆着 SYMBOL_STATE 边)
+                for v in self.sfg.predecessors(u):
+                    if v in visited: continue
+                    edge_data = self.sfg.get_edge_data(v, u)
+                    if not edge_data: continue
+                    for data in edge_data.values():
+                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                            visited.add(v)
+                            worklist.append(v)
+                            break
+                # 2. 向下传播到包含的子状态
+                for v in self.sfg.successors(u):
+                    if v in visited: continue
+                    edge_data = self.sfg.get_edge_data(u, v)
+                    if not edge_data: continue
+                    for data in edge_data.values():
+                        etype = data.get('weight').edge_type
+                        if etype in (SFG_EDGE_KIND.STATE_INCLUSION, SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION,
+                                     SFG_EDGE_KIND.STATE_COPY):
+                            visited.add(v)
+                            worklist.append(v)
+                            break
 
-            return paths
+            elif u.node_type == SFG_NODE_KIND.STMT:
+                # 1. 语句定义的变量受到污染
+                for v in self.sfg.successors(u):
+                    if v in visited: continue
+                    edge_data = self.sfg.get_edge_data(u, v)
+                    if not edge_data: continue
+                    for data in edge_data.values():
+                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+                            visited.add(v)
+                            worklist.append(v)
+                            break
+        return visited
 
-        flow_list = []
-        for parent in parents:
-            sfg_node, dist = nearest_attr_ancestor(self.sfg, source, parent)
-            if not sfg_node:
-                sfg_node = source
+    def get_all_backward_nodes(self, sink_symbol):
+        """
+        从 sink 的 symbol 开始，逆着 def_use 链遍历 SFG，返回所有与 sink symbol 有关的 symbol、stmt 节点。
+        """
+        if sink_symbol.node_type != SFG_NODE_KIND.SYMBOL:
+            return set()
 
-            found_paths = shortest_paths_to_targets(self.sfg, sfg_node, {source, sink})
-            parent_to_source = found_paths.get(source)
-            parent_to_sink = found_paths.get(sink)
-            if not parent_to_source or not parent_to_sink:
-                continue
-            new_flow = Flow()
-            new_flow.source_stmt_id = source.def_stmt_id
-            new_flow.sink_stmt_id = sink.def_stmt_id
-            new_flow.parent_to_source = parent_to_source
-            new_flow.parent_to_sink = parent_to_sink
-            flow_list.append(new_flow)
-            #print(parent_to_source)
-            #print(parent_to_sink)
-        return flow_list
+        worklist = deque([sink_symbol])
+        visited = {sink_symbol}
 
-    # def find_method_parent_by_nodes(self, source_nodes, sink_nodes):
-    #     if not sink_nodes or len(sink_nodes) == 0:
-    #         return []
-    #     if not source_nodes or len(source_nodes) == 0:
-    #         return []
-    #     parents = []
-    #     for source_node in source_nodes:
-    #         for sink_node in sink_nodes:
-    #             parent = self.find_method_parent_by_node(ct, source_node, sink_node)
-    #             if source_node == sink_node:
-    #                 parent = source_node
-    #             if not parent:
-    #                 continue
-    #             parents.append(parent.split("#")[-1])
-    #     return parents
-    #
-    # def find_method_parent_by_node(self, sfg, node1, node2):
-    #
-    #     if node1 not in sfg or node2 not in sfg:
-    #         return None
-    #
-    #
-    #     reversed_tree = sfg.reverse()
-    #
-    #     roots = [n for n, d in reversed_tree.out_degree() if d == 0]
-    #
-    #     def root_path(node):
-    #         if node in roots:  # 自己就是根
-    #             return [node]
-    #         # 任取一条到根的最短路径即可
-    #         for r in roots:
-    #             if nx.has_path(reversed_tree, node, r):
-    #                 return nx.shortest_path(reversed_tree, node, r)
-    #         return [node]  # 孤立节点
-    #
-    #     path_u = root_path(node1)
-    #     path_v = root_path(node2)
-    #
-    #     lca = None
-    #     for p, q in zip(reversed(path_u), reversed(path_v)):
-    #         if p == q:
-    #             lca = p
-    #         else:
-    #             break
-    #
-    #     return lca
+        while worklist:
+            u = worklist.popleft()
 
-    def add_flows_to_json(self, raw_flows):
-        flow_json = []
-        for each_flow in raw_flows:
-            flow_dict = {
-                "source_stmt_id": each_flow.source_stmt_id,
-                "sink_stmt_id": each_flow.sink_stmt_id,
-                "source_code": self.loader.get_stmt_source_code_with_comment(each_flow.source_stmt_id)[0].strip(),
-                "sink_code": self.loader.get_stmt_source_code_with_comment(each_flow.sink_stmt_id)[0].strip(),
-                "parent_to_source": [],
-                "parent_to_sink": []
-            }
+            # 逆着数据流方向查找前驱
+            for v in self.sfg.predecessors(u):
+                if v in visited: continue
+                edge_data = self.sfg.get_edge_data(v, u)
+                if not edge_data: continue
 
-            # parent_to_source
-            last_line = -1
-            for node in each_flow.parent_to_source:
-                stmt_id = node.def_stmt_id
-                stmt = self.loader.get_stmt_gir(stmt_id)
-                if stmt.start_row == last_line:
-                    continue
-                last_line = stmt.start_row
-                code = self.loader.get_stmt_source_code_with_comment(stmt_id)[0].strip()
-                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-                method_name = self.loader.convert_method_id_to_method_name(method_id)
-                flow_dict["parent_to_source"].append({
-                    "code": code,
-                    "method": method_name,
-                    "line": int(stmt.start_row) + 1
-                })
+                is_related = False
+                for data in edge_data.values():
+                    etype = data.get('weight').edge_type
+                    if u.node_type == SFG_NODE_KIND.SYMBOL:
+                        # SYMBOL 是被谁定义的 (STMT -> SYMBOL) 或 从哪个 SYMBOL 流过来的 (SYMBOL -> SYMBOL)
+                        if etype in (SFG_EDGE_KIND.SYMBOL_IS_DEFINED,
+                                     SFG_EDGE_KIND.SYMBOL_FLOW, SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW):
+                            is_related = True
+                    elif u.node_type == SFG_NODE_KIND.STMT:
+                        # STMT 使用了哪个 SYMBOL (SYMBOL -> STMT)
+                        if etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                            is_related = True
 
-            # parent_to_sink
-            last_line = -1
-            for node in each_flow.parent_to_sink:
-                stmt_id = node.def_stmt_id
-                stmt = self.loader.get_stmt_gir(stmt_id)
-                if stmt.start_row == last_line:
-                    continue
-                last_line = stmt.start_row
-                code = self.loader.get_stmt_source_code_with_comment(stmt_id)[0].strip()
-                method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-                method_name = self.loader.convert_method_id_to_method_name(method_id)
-                flow_dict["parent_to_sink"].append({
-                    "code": code,
-                    "method": method_name,
-                    "line": int(stmt.start_row) + 1
-                })
-
-            flow_json.append(flow_dict)
-        return flow_json
+                    if is_related:
+                        # 后向遍历仅关注 SYMBOL 和 STMT
+                        if v.node_type in (SFG_NODE_KIND.SYMBOL, SFG_NODE_KIND.STMT):
+                            visited.add(v)
+                            worklist.append(v)
+                        break
+        return visited
 
     def print_and_write_flows(self, flows):
         print(f"Found {len(flows)} taint flows.")
@@ -768,7 +746,7 @@ class TaintAnalysis:
 
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = "(" + gir_str + ")"+ " on line " + str(int(line_no) + 1)
+                path_node = "(" + gir_str + ")" + " on line " + str(int(line_no) + 1)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {
@@ -794,7 +772,7 @@ class TaintAnalysis:
 
                 method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
                 method_name = self.loader.convert_method_id_to_method_name(method_id)
-                path_node = "(" + gir_str + ")"+ " on line " + str(int(line_no) + 1)
+                path_node = "(" + gir_str + ")" + " on line " + str(int(line_no) + 1)
                 unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {
@@ -835,98 +813,6 @@ class TaintAnalysis:
     def is_sublist(self, sub, lst):
         return str(sub)[1:-1] in str(lst)[1:-1]
 
-    def write_taint_flows(self, flows):
-        yaml_list = []
-        flow_id = "f1"
-        for flow in flows:
-            source_stmt_id = flow.source_stmt_id
-            sink_stmt_id = flow.sink_stmt_id
-            source_method_id = self.loader.convert_stmt_id_to_method_id(source_stmt_id)
-            sink_method_id = self.loader.convert_stmt_id_to_method_id(sink_stmt_id)
-            parent_method = self.loader.get_lowest_common_ancestor_in_call_path_p3(
-                source_method_id, sink_method_id, self.current_entry_point
-            )
-
-            call_path = []
-
-            if parent_method != source_method_id:
-                call_path = self.loader.get_call_path_between_two_methods_in_p3(parent_method, source_method_id)[0]
-            if parent_method != sink_method_id:
-                call_path = self.loader.get_call_path_between_two_methods_in_p3(parent_method, sink_method_id)[0]
-            call_path.append(CallSite(sink_method_id, sink_stmt_id, -1))
-            current_flow = {
-                "id":flow_id,
-                "flow":[],
-            }
-            prefix, number = re.match(r"([a-zA-Z]+)(\d+)", flow_id).groups()
-            flow_id = f"{prefix}{int(number) + 1}"
-            previous_call_site = call_path[0]
-            for call_site in call_path[1:]:
-                stmt_id = call_site.call_stmt_id
-                stmt = self.loader.get_stmt_gir(stmt_id)
-                unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
-                file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
-                method_decl_stmt = self.loader.get_stmt_gir(call_site.caller_id)
-                method_signature = get_gir_str(method_decl_stmt)
-                start_line = method_decl_stmt.start_row + 1
-                end_line = method_decl_stmt.end_row + 1
-                code = get_gir_str(stmt)
-                role = "propagation"
-                call_line = stmt.start_row + 1
-                for site in call_path:
-                    if site.callee_id == call_site.caller_id:
-                        previous_call_site = site
-                # taint = self.determine_taint(previous_call_site, call_site, flow)
-                if call_site.caller_id == source_method_id:
-                    taint = -1
-                    source_stmt = self.loader.get_stmt_gir(source_stmt_id)
-                    code = get_gir_str(source_stmt)
-                    role = "source"
-                elif call_site.caller_id == sink_method_id and call_site.call_stmt_id == sink_stmt_id:
-                    sink_stmt = self.loader.get_stmt_gir(sink_stmt_id)
-                    code = get_gir_str(sink_stmt)
-                    role = "sink"
-
-                previous_call_site = call_site
-                flow_dict = {
-                    "file_path": file_path,
-                    "method_name": method_signature,
-                    "method_startline": start_line,
-                    "method_endline": end_line,
-                    "call_line": call_line,
-                    "code": code,
-                    "role": role,
-                }
-                current_flow["flow"].append(flow_dict)
-            yaml_list.append(current_flow)
-        output_file = os.path.join(self.options.workspace, config.TAINT_OUTPUT_DIR, config.TAINT_FILE_NAME)
-        with open(output_file, "w", encoding="utf-8") as f:
-            yaml.safe_dump(yaml_list, f, sort_keys=False, allow_unicode=True)
-
-    # def determine_taint(self, previous_call_site, current_call_site, flow):
-    #     context_key = hash(previous_call_site) if previous_call_site else 0
-    #     status = self.loader.get_stmt_status_p3(context_key)[current_call_site.call_stmt_id]
-    #     index = 0
-    #     for used_symbol_index in status.used_symbols:
-    #         if index == 0:
-    #             index += 1
-    #             continue
-    #         symbol = self.space[used_symbol_index]
-    #         for state_index in symbol.states:
-    #             state = self.space[state_index]
-    #             if self.state_is_in_flow(state.state_id, flow):
-    #                 return index
-    #     return -1
-
-    # def state_is_in_flow(self, state_id, flow):
-    #     for node in flow.parent_to_source:
-    #         if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
-    #             return True
-    #     for node in flow.parent_to_sink:
-    #         if node.node_type == SFG_NODE_KIND.STATE and node.node_id == state_id:
-    #             return True
-    #     return False
-
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase IV: Taint Analysis # ##########")
@@ -949,5 +835,4 @@ class TaintAnalysis:
         else:
             if not self.options.quiet:
                 self.print_and_write_flows(all_flows)
-            # self.write_taint_flows(all_flows)
 
