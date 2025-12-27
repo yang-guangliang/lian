@@ -43,7 +43,7 @@
 * **触发**：Stmt 引用了脏 Symbol 或脏 State。
 * **动作**：根据 Stmt 类型规则，标记其 Def 的 Symbol/State 为脏。支持自定义规则（如：，若  脏，则  脏）。
 
-### Rule L2-4: Symbol → State (物理回流 - 选做)
+### Rule L2-4: Symbol → State (物理回流)
 
 * **触发**：Symbol 脏且进入了新的赋值点。
 * **动作**：将污染同步给新生成的 State，重新激活物理轨精确分析。
