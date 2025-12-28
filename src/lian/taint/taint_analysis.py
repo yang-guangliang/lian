@@ -107,7 +107,8 @@ class TaintRuleApplier:
                 if access_path == name:
                     apply_rule_flag = True
                     tag = self.taint_analysis.taint_manager.get_symbol_tag(tag_space_id)
-                    new_tag = self.taint_analysis.taint_manager.add_and_update_tag_bv(tag_info=tag_info, current_taint=tag)
+                    new_tag = self.taint_analysis.taint_manager.add_and_update_tag_bv(tag_info=tag_info,
+                                                                                      current_taint=tag)
                     self.taint_analysis.taint_manager.set_symbols_tag([tag_space_id], new_tag)
                     for defined_state_node in defined_state_nodes:
                         self.taint_analysis.taint_manager.set_states_tag([defined_state_node.node_id], new_tag)
@@ -255,8 +256,8 @@ class TaintRuleApplier:
 
                         # 匹配位置或者目标是通配符
                         if (target_pos != -1 and weight_pos == target_pos) or \
-                                (target == TAG_KEYWORD.TARGET) or \
-                                (not target):
+                            (target == TAG_KEYWORD.TARGET) or \
+                            (not target):
                             sink_tag |= self.taint_analysis.get_symbol_with_states_tag(pred)
 
         return sink_tag
@@ -385,7 +386,8 @@ class TaintAnalysis:
         # 这里应该应用sink的规则
         node_list = []
         for node in self.sfg.nodes:
-            if self.rule_applier.should_apply_call_stmt_sink_rules(node) or self.rule_applier.should_apply_object_call_stmt_sink_rules(node):
+            if self.rule_applier.should_apply_call_stmt_sink_rules(
+                node) or self.rule_applier.should_apply_object_call_stmt_sink_rules(node):
                 node_list.append(node)
         return node_list
 
@@ -495,17 +497,16 @@ class TaintAnalysis:
                         weight = data.get('weight')
                         if weight.edge_type != SFG_EDGE_KIND.SYMBOL_IS_USED:
                             continue
-                        
+
                         weight_pos = weight.pos
                         if operation == "object_call_stmt":
                             weight_pos -= 1
-                            
+
                         # 匹配位置或者目标是通配符
                         if (target_pos != -1 and weight_pos == target_pos) or \
                             (target == TAG_KEYWORD.TARGET) or \
                             (not target):
                             sink_tag |= self.get_symbol_with_states_tag(pred)
-
 
         return sink_tag
 
@@ -602,14 +603,15 @@ class TaintAnalysis:
                         if (u_tag | v_tag) != v_tag:
                             self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
                             worklist.append(v)
-        
+
         # 2. 传播到其包含的子状态 (inclusion)
         for v in self.sfg.successors(u):
             if v.node_type == SFG_NODE_KIND.STATE:
                 edge_data = self.sfg.get_edge_data(u, v)
                 if edge_data:
                     for data in edge_data.values():
-                        if data.get('weight').edge_type in (SFG_EDGE_KIND.STATE_INCLUSION, SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
+                        if data.get('weight').edge_type in (SFG_EDGE_KIND.STATE_INCLUSION,
+                                                            SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
                             v_tag = self.taint_manager.get_state_tag(v.node_id)
                             if (u_tag | v_tag) != v_tag:
                                 self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
@@ -628,7 +630,7 @@ class TaintAnalysis:
                             v_tag = self.taint_manager.get_symbol_tag(v.node_id)
                             if (u_tag | v_tag) != v_tag:
                                 self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                                worklist.append(v)
+                            worklist.append(v)
 
     def propagate_taint(self, source):
         """
