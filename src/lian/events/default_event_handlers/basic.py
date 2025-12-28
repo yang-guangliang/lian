@@ -343,42 +343,6 @@ def add_main_func(data: EventData):
     data.out_data = out_data
     return er.EventHandlerReturnKind.SUCCESS
 
-def remove_unnecessary_tmp_variables(data: EventData):
-    in_data = data.in_data
-    i = 1
-    length = len(in_data)
-
-    key_stmts = (
-        "array_read",
-        "assign_stmt",
-        "call_stmt",
-        "addr_of",
-        "field_read",
-        "asm_stmt",
-        "mem_read",
-        "type_cast_stmt",
-        "new_object"
-    )
-
-    while i < length:
-        pre_stmt = in_data[i - 1]
-        stmt = in_data[i]
-        if (
-            stmt["operation"] == "assign_stmt"
-            and not stmt.get("operand2", "")
-            and pre_stmt.get("target")
-            and not stmt.get("operator", None)
-            and pre_stmt["operation"] in key_stmts
-            and pre_stmt["target"].startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF)
-            and (stmt["operand"] == pre_stmt["target"])
-        ):
-            pre_stmt["target"] = stmt["target"]
-            del in_data[i]
-            length -= 1
-
-        i += 1
-
-    data.out_data = in_data
 
 def unify_data_type(data: EventData):
     code = data.in_data

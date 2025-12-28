@@ -90,11 +90,11 @@ class DefaultEventHandlerManager(EventHandlerManager):
                 ]
             ),
 
-            EventHandler(
-                event = EVENT_KIND.GIR_LIST_GENERATED,
-                handler = basic.remove_unnecessary_tmp_variables,
-                langs = [config.ANY_LANG]
-            ),
+            # EventHandler(
+            #     event = EVENT_KIND.GIR_LIST_GENERATED,
+            #     handler = basic.remove_unnecessary_tmp_variables,
+            #     langs = [config.ANY_LANG]
+            # ),
 
             EventHandler(
                 event = EVENT_KIND.GIR_LIST_GENERATED,

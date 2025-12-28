@@ -1,20 +1,131 @@
 import dataclasses
 import lian.events.event_return as er
-from lian import util
+from lian.util import util
 from lian.events.handler_template import EventData
+from lian.config.constants import LIAN_INTERNAL
 
 
 @dataclasses.dataclass
 class StackFrame:
-    # default_factory=dict/list，防止多个 StackFrame 共享同一个可变默认对象。
+    # default_factory=dict/list，防止多个StackFrame共享同一个可变默认对象。
     stmts: list
     variables: dict = dataclasses.field(default_factory=dict)
     in_block: bool = False
-    hoist_collector: list = dataclasses.field(default_factory=list) # 收集需要“提升/上移”的 variable_decl，最后在 每个层级遍历结束后插入到开头，如 Python/ABC 语言插入到开头，其他语言插入到block开头
+    hoist_collector: list = dataclasses.field(default_factory=list) # 收集需要提升位置的variable_decl，在层级遍历结束后插入到开头（Python/ABC插入到函数/类开头，其他语言插入到 block 开头）
     index: int = 0
     to_delete_indices: list = dataclasses.field(default_factory=list) 
 
+def remove_unnecessary_tmp_variables(data: EventData):
+    """
+    移除不必要的临时变量。
+    在UNFLATTENED_GIR_LIST_GENERATED阶段，GIR还是树状结构（未扁平化），
+    因此需要通过递归遍历所有层级的列表来执行优化。
+    """
+    in_data = data.in_data
+    recursive_remove_tmp_vars(in_data)
+    data.out_data = in_data
+
+def recursive_remove_tmp_vars(obj):
+    """
+    递归遍历GIR对象，在所有列表层级执行临时变量消除。
+    对于列表：先处理当前层级的优化，再递归处理子元素。
+    对于字典：递归处理所有值。
+    """
+    if isinstance(obj, list):
+        # 先处理当前列表层级的消除逻辑
+        remove_unnecessary_tmp_variables_in_list(obj)
+        # 然后递归深入子元素
+        for item in obj:
+            recursive_remove_tmp_vars(item)
+    elif isinstance(obj, dict):
+        # 如果是字典，递归处理其所有值
+        for value in obj.values():
+            recursive_remove_tmp_vars(value)
+
+def extract_stmt_info(stmt_dict):
+    """
+    从GIR语句字典中提取操作类型和内容。
+    在UNFLATTENED阶段，GIR 格式为: {"操作类型": {内容}}
+    例如: {"assign_stmt": {"target": "x", "operand": "y"}}
+    Returns:
+        tuple: (操作类型, 内容字典)，如果格式不正确则返回 (None, None)
+    """
+    if not isinstance(stmt_dict, dict) or not stmt_dict:
+        return None, None
+    op = list(stmt_dict.keys())[0]
+    content = stmt_dict[op]
+    return (op, content) if isinstance(content, dict) else (None, None)
+
+def remove_unnecessary_tmp_variables_in_list(stmts: list):
+    """
+    在语句列表中消除冗余的临时变量赋值。
+    
+    优化目标：
+      将 %v1 = expr; ...; d = %v1 合并为 d = expr; ...
+    
+    实现步骤为三步：
+      1. 从后往前遍历语句列表，定位 d = %v1 形式的赋值语句。
+      2. 锁定目标后，向回滑动搜索定义 %v1 的语句。
+      3. 搜索过程中：
+         - 若遇到 variable_decl，跳过（视为不影响数据流的元数据）。
+         - 若找到定义 %v1 的语句且操作类型允许优化，则执行合并并删除原赋值语句。
+         - 若遇到其他阻断语句（数据流不连续），停止搜索，确保语义安全。
+    """
+    if len(stmts) < 2:
+        return
+    
+    # 能产生临时变量的语句类型
+    CAN_OPTIMIZE_OPS = {
+        "array_read", "assign_stmt", "call_stmt", "addr_of", 
+        "field_read", "asm_stmt", "mem_read", "type_cast_stmt", "new_object"
+    }
+    
+    # 从后往前遍历，这样删除元素不会影响前面的索引
+    for i in range(len(stmts) - 1, 0, -1):
+        curr_op, curr_content = extract_stmt_info(stmts[i])
+        if (curr_op != "assign_stmt" 
+            or not curr_content 
+            or curr_content.get("operand2") 
+            or curr_content.get("operator")):
+            continue
+        
+        final_target = curr_content.get("target")
+        temp_var = curr_content.get("operand")
+        
+        if (not temp_var or not temp_var.startswith(LIAN_INTERNAL.VARIABLE_DECL_PREF)):
+            continue
+
+        """
+        将 %v1 = expr; ...; d = %v1 合并为 d = expr; ...
+        目前通过实验发现冗余赋值语句之间都是0条语句或者1条语句隔开的，为了避免存在更复杂的情况并考虑到性能，将回溯的步数设为3。
+        """
+        LOOKBACK_LIMIT = 3
+        search_limit = max(-1, i - 1 - LOOKBACK_LIMIT)
+        found_optimization = False
+        
+        for k in range(i - 1, search_limit, -1):
+            prev_op, prev_content = extract_stmt_info(stmts[k])
+            if not prev_op:
+                break 
+            if prev_op == "variable_decl":
+                continue
+            prev_target = prev_content.get("target")
+            if (prev_target == temp_var 
+                and prev_op in CAN_OPTIMIZE_OPS):
+                prev_content["target"] = final_target
+                del stmts[i]
+                found_optimization = True
+                break
+            break #遇到了非定义和非冗余处理的语句，说明数据流被打断了，就停止搜索。
+
+
 def adjust_variable_decls(data: EventData):
+    """
+    调整变量声明：先清理临时变量，再处理变量声明的提升和去重。
+    """
+    # 第一步：先执行临时变量清理，优化 GIR 结构
+    remove_unnecessary_tmp_variables(data)
+    
     out_data = data.in_data
     is_python_like = data.lang in ["python", "abc"] # 特殊处理 Python 和 ABC 语言
     global_stmts_to_insert = []
@@ -80,8 +191,8 @@ def adjust_variable_decls(data: EventData):
         elif key.endswith("_stmt"):
             for sub_key, sub_val in value.items():
                 if sub_key.endswith("body") and isinstance(sub_val, list) and sub_val:
-                    # Python/ABC: block 内声明最终要提升到“函数/类顶层”，因此复用同一个 collector；
-                    # 其他语言: 每个 block 单独提升到该 block 的开头，因此新建 collector。
+                    # Python/ABC: block内声明最终要提升到“函数/类顶层”，因此复用同一个collector；
+                    # 其他语言: 每个block单独提升到该block的开头，因此新建collector。
                     next_collector = frame.hoist_collector if is_python_like else []
                     sub_frames.append(StackFrame(
                         stmts=sub_val, 
@@ -114,20 +225,19 @@ def process_variable_decl(frame: StackFrame, value: dict, index: int, is_python_
             frame.to_delete_indices.append(index)
         else:
             frame.variables[name] = True
-            if frame.in_block:
-                frame.to_delete_indices.append(index)
-                if frame.hoist_collector is not None:
-                    frame.hoist_collector.append({"variable_decl": value})
+            # Python/ABC: 总是提升变量声明 (包括 block 外)
+            frame.to_delete_indices.append(index)
+            if frame.hoist_collector is not None:
+                frame.hoist_collector.append({"variable_decl": value})
     else:
         if "var" in attrs:
             if name in frame.variables:
                 frame.to_delete_indices.append(index)
             else:
                 frame.variables[name] = True
-                if frame.in_block:
-                    frame.to_delete_indices.append(index)
-                    if frame.hoist_collector is not None:
-                        frame.hoist_collector.append({"variable_decl": value})
+                frame.to_delete_indices.append(index)
+                if frame.hoist_collector is not None:
+                    frame.hoist_collector.append({"variable_decl": value})
         
         elif "global" in attrs:
             if name in frame.variables:
