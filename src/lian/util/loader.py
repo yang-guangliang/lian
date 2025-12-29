@@ -3298,7 +3298,7 @@ class Loader:
 
     def get_yaml_info(self, unit_path: str, line_num: int):
         module_symbol_table = self.get_module_symbol_table()
-        method_id = set()
+        method_ids = set()
         for module_symbol in module_symbol_table:
             if module_symbol.original_path == unit_path:
                 unit_id = module_symbol.unit_id
