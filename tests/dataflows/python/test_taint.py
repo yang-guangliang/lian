@@ -17,14 +17,14 @@
 #
 # gg = a
 # sink(gg)
-def func1(p):
-    return source()
-    sink(p)
+# def func1(p):
+#     return source()
+#     sink(p)
 # gg = P()
-# a = source()
+a = source()
 # gg.f = a
 # sink(gg)
 b = a
 c = b
-pp = func1(c)
-sink(pp)
+# pp = func1(c)
+sink(c)

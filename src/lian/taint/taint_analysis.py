@@ -10,7 +10,6 @@ import lian.config.config as config
 import networkx as nx
 
 from lian.events.default_event_handlers.this_field_write import access_path_formatter
-from lian.util.loader import Loader
 from lian.util import util
 from lian.util.readable_gir import get_gir_str
 from lian.taint.rule_manager import RuleManager, Rule
@@ -45,7 +44,8 @@ class TaintRuleApplier:
     def apply_parameter_source_rules(self, node):
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
-
+        unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
+        unit_path = self.loader.convert_unit_id_to_unit_path(unit_id)
         stmt = self.loader.get_stmt_gir(method_id)
         if not stmt.attrs:
             return False
@@ -54,6 +54,10 @@ class TaintRuleApplier:
         attrs = stmt.attrs
         parameter_symbol = list(util.graph_successors(self.sfg, node))[0]
         for rule in self.rule_manager.all_sources:
+            if rule.unit_path and rule.unit_path != unit_path:
+                continue
+            if rule.line_num and rule.line_num != str(stmt.line_no):
+                continue
             if not rule.attr and rule.name == parameter_symbol.name:
                 return True
             if rule.operation != "parameter_decl":
@@ -84,6 +88,8 @@ class TaintRuleApplier:
 
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
+        unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
+        unit_path = self.loader.convert_unit_id_to_unit_path(unit_id)
         method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_first_used_symbol_and_state(node)
         defined_symbol_node, defined_state_nodes = self.taint_analysis.get_stmt_define_symbol_and_states_node(node)
         if not method_symbol_node or not defined_symbol_node:
@@ -92,6 +98,10 @@ class TaintRuleApplier:
         tag_space_id = defined_symbol_node.node_id
         apply_rule_flag = False
         for rule in self.rule_manager.all_sources:
+            if rule.unit_path and rule.unit_path != unit_path:
+                continue
+            if rule.line_num and rule.line_num != int(node.line_no+1):
+                continue
             if rule.operation != "call_stmt":
                 continue
             tag_info = rule
