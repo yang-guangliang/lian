@@ -34,6 +34,202 @@ from lian.taint.taint_structs import (
     Flow,
 )
 
+
+class PathFinder:
+    """
+    负责污点传播与路径重建的辅助类。
+    将传播逻辑和路径查找从 TaintAnalysis 中拆分出来，保持主流程简洁。
+    """
+
+    def __init__(self, taint_analysis):
+        self.ta = taint_analysis
+
+    @property
+    def sfg(self):
+        return self.ta.sfg
+
+    @property
+    def taint_manager(self):
+        return self.ta.taint_manager
+
+    @property
+    def rule_applier(self):
+        return self.ta.rule_applier
+
+    def _get_node_tag(self, u):
+        """获取节点的污点标记。对于 STMT 节点，其标记来源于它所使用的 SYMBOL。"""
+        if u.node_type == SFG_NODE_KIND.SYMBOL:
+            return self.taint_manager.get_symbol_tag(u.node_id)
+        elif u.node_type == SFG_NODE_KIND.STATE:
+            return self.taint_manager.get_state_tag(u.node_id)
+        elif u.node_type == SFG_NODE_KIND.STMT:
+            u_tag = 0
+            for pred in self.sfg.predecessors(u):
+                edge_data = self.sfg.get_edge_data(pred, u)
+                if edge_data:
+                    for data in edge_data.values():
+                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                            u_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
+            return u_tag
+        return 0
+
+    def _init_source_contamination(self, source, tag, worklist):
+        """对初始 source 节点进行污染标记"""
+        if source.node_type == SFG_NODE_KIND.SYMBOL:
+            self.taint_manager.set_symbol_tag(source.node_id, tag)
+            worklist.append(source)
+            # 污染变量对应的初始状态
+            for v in self.sfg.successors(source):
+                edge_data = self.sfg.get_edge_data(source, v)
+                if edge_data:
+                    for data in edge_data.values():
+                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                            self.taint_manager.set_states_tag([v.node_id], tag)
+                            if v not in worklist:
+                                worklist.append(v)
+        elif source.node_type == SFG_NODE_KIND.STATE:
+            self.taint_manager.set_states_tag([source.node_id], tag)
+            worklist.append(source)
+        elif source.node_type == SFG_NODE_KIND.STMT:
+            worklist.append(source)
+
+    def _propagate_from_symbol(self, u, u_tag, worklist):
+        """处理从 SYMBOL 节点向下的传播"""
+        for v in self.sfg.successors(u):
+            edge_data = self.sfg.get_edge_data(u, v)
+            if edge_data:
+                for data in edge_data.values():
+                    etype = data.get('weight').edge_type
+                    # 传播到状态或使用该变量的语句
+                    if etype == SFG_EDGE_KIND.SYMBOL_STATE:
+                        v_tag = self.taint_manager.get_state_tag(v.node_id)
+                        if (u_tag | v_tag) != v_tag:
+                            self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
+                            worklist.append(v)
+                    elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                        worklist.append(v)
+
+    def _propagate_from_state(self, u, u_tag, worklist):
+        """处理从 STATE 节点向下的传播"""
+        # 1. 传播到指向该值的变量 (逆向回溯)
+        for v in self.sfg.predecessors(u):
+            edge_data = self.sfg.get_edge_data(v, u)
+            if edge_data:
+                for data in edge_data.values():
+                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                        if (u_tag | v_tag) != v_tag:
+                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                            worklist.append(v)
+
+        # 2. 传播到其包含的子状态 (inclusion)
+        for v in self.sfg.successors(u):
+            if v.node_type == SFG_NODE_KIND.STATE:
+                edge_data = self.sfg.get_edge_data(u, v)
+                if edge_data:
+                    for data in edge_data.values():
+                        if data.get('weight').edge_type in (SFG_EDGE_KIND.STATE_INCLUSION,
+                                                            SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
+                            v_tag = self.taint_manager.get_state_tag(v.node_id)
+                            if (u_tag | v_tag) != v_tag:
+                                self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
+                                worklist.append(v)
+
+    def _propagate_from_stmt(self, u, u_tag, worklist):
+        """处理从 STMT 节点向下的传播"""
+        # 根据规则判断语句是否传播污点
+        if self.rule_applier.apply_propagation_rules(u):
+            for v in self.sfg.successors(u):
+                edge_data = self.sfg.get_edge_data(u, v)
+                if edge_data:
+                    for data in edge_data.values():
+                        # 传播到该语句定义的变量
+                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+                            v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                            if (u_tag | v_tag) != v_tag:
+                                self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                            worklist.append(v)
+
+    def propagate_taint(self, source):
+        """
+        从给定的 source 开始在 SFG 中传播污点。
+        返回为该 source 分配的位标记 (tag)。
+        """
+        tag_info = Rule(name=f"Source_{source.def_stmt_id}", operation="source_propagation", rule_id=id(source))
+        tag = self.taint_manager.add_and_update_tag_bv(tag_info, 0)
+
+        worklist = deque()
+        self._init_source_contamination(source, tag, worklist)
+
+        # BFS 传播
+        while worklist:
+            u = worklist.popleft()
+            u_tag = self._get_node_tag(u)
+
+            if u_tag == 0:
+                continue
+
+            if u.node_type == SFG_NODE_KIND.SYMBOL:
+                self._propagate_from_symbol(u, u_tag, worklist)
+            elif u.node_type == SFG_NODE_KIND.STATE:
+                self._propagate_from_state(u, u_tag, worklist)
+            elif u.node_type == SFG_NODE_KIND.STMT:
+                self._propagate_from_stmt(u, u_tag, worklist)
+        return tag
+
+    def reconstruct_define_use_path(self, source, sink):
+        """
+        采用深度优先的方式从 source 开始遍历 SFG 来寻找路径。
+        当遍历到 sink_stmt 时，则找到路径；
+        如果遍历完整个可达子图都没有遇到 sink，则选一条遍历过程中产生的路径，并加上 sink_stmt。
+        """
+        visited = set()
+        longest_path = []
+
+        def dfs(u, path_stmts):
+            nonlocal longest_path
+            if u in visited:
+                return None
+            visited.add(u)
+
+            # 如果当前节点是语句，加入路径
+            new_path = list(path_stmts)
+            if u.node_type == SFG_NODE_KIND.STMT:
+                if not new_path or new_path[-1] != u:
+                    new_path.append(u)
+
+            # 记录遍历过程中最长的一条路径作为备选
+            if len(new_path) >= len(longest_path):
+                longest_path = new_path
+
+            # 到达终点
+            if u == sink:
+                return new_path
+
+            # 深度优先遍历继承者
+            for v in self.sfg.successors(u):
+                result = dfs(v, new_path)
+                if result:
+                    return result
+
+            return None
+
+        final_path = dfs(source, [])
+
+        if final_path is None:
+            # 如果没找到 sink，选一条遍历到的路径并强行加上 sink
+            if not longest_path or longest_path[-1] != sink:
+                final_path = longest_path + [sink]
+            else:
+                final_path = longest_path
+
+        flow = Flow()
+        flow.source_stmt_id = source.def_stmt_id
+        flow.sink_stmt_id = sink.def_stmt_id
+        flow.parent_to_sink = final_path
+        return flow
+
+
 class TaintRuleApplier:
     def __init__(self, taint_analysis):
         self.taint_analysis = taint_analysis
@@ -102,7 +298,7 @@ class TaintRuleApplier:
         for rule in self.rule_manager.all_sources:
             if rule.unit_path and rule.unit_path != unit_path:
                 continue
-            if rule.line_num and rule.line_num != int(node.line_no+1):
+            if rule.line_num and rule.line_num != int(node.line_no + 1):
                 continue
             if rule.operation != "call_stmt":
                 continue
@@ -286,10 +482,12 @@ class TaintAnalysis:
         self.current_entry_point = -1
         self.sfg = None
         self.rule_applier = TaintRuleApplier(self)
+        self.path_finder = PathFinder(self)
 
     def _update_sfg(self, sfg):
         self.sfg = sfg
         self.rule_applier.sfg = sfg
+        self.path_finder.ta = self
 
     def read_rules(self, operation, source_rules):
         """从src.yaml文件中获取field_read语句类型的规则, 并根据每条规则创建taint_bv"""
@@ -535,201 +733,20 @@ class TaintAnalysis:
                 self.taint_manager = TaintEnv()
 
                 # 执行污点传播并获取该 source 的 tag
-                tag = self.propagate_taint(source)
+                tag = self.path_finder.propagate_taint(source)
 
                 # 2. Sink 检查 (针对单一 Sink)
                 sink_tag = self.rule_applier.get_sink_tag_by_rules(sink)
 
                 if (sink_tag & tag) != 0:
                     print("found taint sink")
-                    flow = self.reconstruct_define_use_path(source, sink)
+                    flow = self.path_finder.reconstruct_define_use_path(source, sink)
                     flow_list.append(flow)
 
                 # 恢复管理器
                 self.taint_manager = original_manager
 
         return flow_list
-
-    def _get_node_tag(self, u):
-        """获取节点的污点标记。对于 STMT 节点，其标记来源于它所使用的 SYMBOL。"""
-        if u.node_type == SFG_NODE_KIND.SYMBOL:
-            return self.taint_manager.get_symbol_tag(u.node_id)
-        elif u.node_type == SFG_NODE_KIND.STATE:
-            return self.taint_manager.get_state_tag(u.node_id)
-        elif u.node_type == SFG_NODE_KIND.STMT:
-            u_tag = 0
-            for pred in self.sfg.predecessors(u):
-                edge_data = self.sfg.get_edge_data(pred, u)
-                if edge_data:
-                    for data in edge_data.values():
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
-                            u_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
-            return u_tag
-        return 0
-
-    def _init_source_contamination(self, source, tag, worklist):
-        """对初始 source 节点进行污染标记"""
-        if source.node_type == SFG_NODE_KIND.SYMBOL:
-            self.taint_manager.set_symbol_tag(source.node_id, tag)
-            worklist.append(source)
-            # 污染变量对应的初始状态
-            for v in self.sfg.successors(source):
-                edge_data = self.sfg.get_edge_data(source, v)
-                if edge_data:
-                    for data in edge_data.values():
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
-                            self.taint_manager.set_states_tag([v.node_id], tag)
-                            if v not in worklist:
-                                worklist.append(v)
-        elif source.node_type == SFG_NODE_KIND.STATE:
-            self.taint_manager.set_states_tag([source.node_id], tag)
-            worklist.append(source)
-        elif source.node_type == SFG_NODE_KIND.STMT:
-            worklist.append(source)
-
-    def _propagate_from_symbol(self, u, u_tag, worklist):
-        """处理从 SYMBOL 节点向下的传播"""
-        for v in self.sfg.successors(u):
-            edge_data = self.sfg.get_edge_data(u, v)
-            if edge_data:
-                for data in edge_data.values():
-                    etype = data.get('weight').edge_type
-                    # 传播到状态或使用该变量的语句
-                    if etype == SFG_EDGE_KIND.SYMBOL_STATE:
-                        v_tag = self.taint_manager.get_state_tag(v.node_id)
-                        if (u_tag | v_tag) != v_tag:
-                            self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
-                            worklist.append(v)
-                    elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
-                        worklist.append(v)
-
-    def _propagate_from_state(self, u, u_tag, worklist):
-        """处理从 STATE 节点向下的传播"""
-        # 1. 传播到指向该值的变量 (逆向回溯)
-        for v in self.sfg.predecessors(u):
-            edge_data = self.sfg.get_edge_data(v, u)
-            if edge_data:
-                for data in edge_data.values():
-                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
-                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
-                        if (u_tag | v_tag) != v_tag:
-                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                            worklist.append(v)
-
-        # 2. 传播到其包含的子状态 (inclusion)
-        for v in self.sfg.successors(u):
-            if v.node_type == SFG_NODE_KIND.STATE:
-                edge_data = self.sfg.get_edge_data(u, v)
-                if edge_data:
-                    for data in edge_data.values():
-                        if data.get('weight').edge_type in (SFG_EDGE_KIND.STATE_INCLUSION,
-                                                            SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
-                            v_tag = self.taint_manager.get_state_tag(v.node_id)
-                            if (u_tag | v_tag) != v_tag:
-                                self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
-                                worklist.append(v)
-
-    def _propagate_from_stmt(self, u, u_tag, worklist):
-        """处理从 STMT 节点向下的传播"""
-        # 根据规则判断语句是否传播污点
-        if self.rule_applier.apply_propagation_rules(u):
-            for v in self.sfg.successors(u):
-                edge_data = self.sfg.get_edge_data(u, v)
-                if edge_data:
-                    for data in edge_data.values():
-                        # 传播到该语句定义的变量
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
-                            v_tag = self.taint_manager.get_symbol_tag(v.node_id)
-                            if (u_tag | v_tag) != v_tag:
-                                self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                            worklist.append(v)
-
-    def propagate_taint(self, source):
-        """
-        从给定的 source 开始在 SFG 中传播污点。
-        返回为该 source 分配的位标记 (tag)。
-        """
-        # 为当前 source 分配一个独立的 tag
-        tag_info = Rule(name=f"Source_{source.def_stmt_id}", operation="source_propagation", rule_id=id(source))
-        tag = self.taint_manager.add_and_update_tag_bv(tag_info, 0)
-
-        worklist = deque()
-        self._init_source_contamination(source, tag, worklist)
-
-        # BFS 传播
-        while worklist:
-            u = worklist.popleft()
-            u_tag = self._get_node_tag(u)
-            
-            if u_tag == 0:
-                continue
-
-            if u.node_type == SFG_NODE_KIND.SYMBOL:
-                self._propagate_from_symbol(u, u_tag, worklist)
-            elif u.node_type == SFG_NODE_KIND.STATE:
-                self._propagate_from_state(u, u_tag, worklist)
-            elif u.node_type == SFG_NODE_KIND.STMT:
-                self._propagate_from_stmt(u, u_tag, worklist)
-        return tag
-        return tag
-
-    def reconstruct_define_use_path(self, source, sink):
-        """
-        采用深度优先的方式从 source 开始遍历 SFG 来寻找路径。
-        当遍历到 sink_stmt 时，则找到路径；
-        如果遍历完整个可达子图都没有遇到 sink，则选一条遍历过程中产生的路径，并加上 sink_stmt。
-        """
-        visited = set()
-        longest_path = []
-
-        def dfs(u, path_stmts):
-            nonlocal longest_path
-            if u in visited:
-                return None
-            visited.add(u)
-
-            # 如果当前节点是语句，加入路径
-            new_path = list(path_stmts)
-            if u.node_type == SFG_NODE_KIND.STMT:
-                if not new_path or new_path[-1] != u:
-                    new_path.append(u)
-
-            # 记录遍历过程中最长的一条路径作为备选
-            if len(new_path) >= len(longest_path):
-                longest_path = new_path
-
-            # 到达终点
-            if u == sink:
-                return new_path
-
-            # 深度优先遍历继承者
-            for v in self.sfg.successors(u):
-                # 这里可以根据需要过滤边类型，但根据要求我们遍历整个 SFG
-                result = dfs(v, new_path)
-                if result:
-                    return result
-
-            return None
-
-        # 执行 DFS，初始路径根据 source 类型决定
-        initial_stmts = []
-        # if source.node_type == SFG_NODE_KIND.STMT:
-        #     initial_stmts = [source]
-
-        final_path = dfs(source, initial_stmts)
-
-        if final_path is None:
-            # 如果没找到 sink，选一条遍历到的路径并强行加上 sink
-            if not longest_path or longest_path[-1] != sink:
-                final_path = longest_path + [sink]
-            else:
-                final_path = longest_path
-
-        flow = Flow()
-        flow.source_stmt_id = source.def_stmt_id
-        flow.sink_stmt_id = sink.def_stmt_id
-        flow.parent_to_sink = final_path
-        return flow
 
     def get_all_forward_nodes(self, source):
         """
@@ -953,7 +970,7 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources()
             sinks = self.find_sinks()
-            
+
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 
