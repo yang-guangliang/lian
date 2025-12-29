@@ -45,7 +45,8 @@ class TaintRuleApplier:
         stmt_id = node.def_stmt_id
         method_id = self.loader.convert_stmt_id_to_method_id(stmt_id)
         unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
-        unit_path = self.loader.convert_unit_id_to_unit_path(unit_id)
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+        unit_path = unit_info.original_path
         stmt = self.loader.get_stmt_gir(method_id)
         if not stmt.attrs:
             return False
@@ -89,7 +90,8 @@ class TaintRuleApplier:
     def apply_call_stmt_source_rules(self, node):
         stmt_id = node.def_stmt_id
         unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
-        unit_path = self.loader.convert_unit_id_to_unit_path(unit_id)
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+        unit_path = unit_info.original_path
         method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_first_used_symbol_and_state(node)
         defined_symbol_node, defined_state_nodes = self.taint_analysis.get_stmt_define_symbol_and_states_node(node)
         if not method_symbol_node or not defined_symbol_node:
