@@ -12,6 +12,10 @@
 # def func0():
 #     a()
 
+def aaa():
+    g = 5
+    h = 6
+    u = 78
 a = b.c
 hh = a.l
 

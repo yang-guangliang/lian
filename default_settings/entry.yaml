@@ -1,7 +1,7 @@
 - method_list: ["%unit_init"]
 
-- lang: java
-  method_list: ["channelRead0"]
+#- lang: java
+#  method_list: ["channelRead0"]
 
 - lang: abc
   method_list: ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]
@@ -14,4 +14,8 @@
 - lang: python
   method_list: ["nnn"]
   unit_path: "test1/david.py"
+
+- lang: java
+  method_list: [ "channelRead0" ]
+  unit_name: "HttpRequestHandler.java"
 
