@@ -3296,4 +3296,25 @@ class Loader:
                 ))
         return class_relevant_info
 
+    def get_yaml_info(self, unit_path: str, line_num: int):
+        module_symbol_table = self.get_module_symbol_table()
+        method_id = set()
+        for module_symbol in module_symbol_table:
+            if module_symbol.original_path == unit_path:
+                unit_id = module_symbol.unit_id
+                method_ids = self.convert_unit_id_to_method_ids(unit_id)
+
+        for method_id in method_ids:
+            method_stmt = self.get_stmt_gir(method_id)
+            start_row = method_stmt.start_row + 1
+            end_row = method_stmt.end_row + 1
+
+            if start_row <= line_num <= end_row:
+                method_source_code = self.get_method_decl_source_code(method_id)
+                return {
+                    "method_signature": method_source_code,
+                    "method_startline": start_row,
+                    "method_endline": end_row,
+                }
+        return {}
 
