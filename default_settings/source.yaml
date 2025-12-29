@@ -11,22 +11,23 @@ rules:
   #   tag:  [\%receiver, \%target]
   - operation: call_stmt
     name: source
+    line_num: 24
     tag: [\%target]
-  - operation: call_stmt
-    name: source1
-    tag: [ \%target ]
-  - operation: call_stmt
-    name: utils.abspath
-    tag: [\%target]
-  - operation: parameter_decl
-    name: retriever_name_or_path
-    attr: classmethod
-  - operation: parameter_decl
-    name: path_or_url
-  - operation: field_read
-    target: request.query_string
-    tag: [\%target]
-  - operation: field_read
-    target: b.c
-    tag: [\%target]
+#  - operation: call_stmt
+#    name: source1
+#    tag: [ \%target ]
+#  - operation: call_stmt
+#    name: utils.abspath
+#    tag: [\%target]
+#  - operation: parameter_decl
+#    name: retriever_name_or_path
+#    attr: classmethod
+#  - operation: parameter_decl
+#    name: path_or_url
+#  - operation: field_read
+#    target: request.query_string
+#    tag: [\%target]
+#  - operation: field_read
+#    target: b.c
+#    tag: [\%target]
 
