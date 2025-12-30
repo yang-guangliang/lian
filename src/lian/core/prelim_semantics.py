@@ -307,27 +307,28 @@ class PrelimSemanticAnalysis:
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                 tmp_context = frame.get_context()
 
-            frame.state_flow_graph.add_edge(
-                SFGNode(
-                    node_type=SFG_NODE_KIND.STMT,
-                    def_stmt_id=stmt_id,
-                    name=stmt.operation,
-                    context=tmp_context,
-                    stmt=stmt
-                ),
-                SFGNode(
-                    node_type=SFG_NODE_KIND.SYMBOL,
-                    index=key.index,
-                    def_stmt_id=key.stmt_id,
-                    node_id=key.symbol_id,
-                    name=defined_symbol.name,
-                    context=tmp_context,
+            if stmt.operation != "variable_decl":
+                frame.state_flow_graph.add_edge(
+                    SFGNode(
+                        node_type=SFG_NODE_KIND.STMT,
+                        def_stmt_id=stmt_id,
+                        name=stmt.operation,
+                        context=tmp_context,
+                        stmt=stmt
                     ),
-                SFGEdge(
-                    edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED,
-                    stmt_id=stmt_id
+                    SFGNode(
+                        node_type=SFG_NODE_KIND.SYMBOL,
+                        index=key.index,
+                        def_stmt_id=key.stmt_id,
+                        node_id=key.symbol_id,
+                        name=defined_symbol.name,
+                        context=tmp_context,
+                        ),
+                    SFGEdge(
+                        edge_type=SFG_EDGE_KIND.SYMBOL_IS_DEFINED,
+                        stmt_id=stmt_id
+                    )
                 )
-            )
 
         status.out_symbol_bits = current_bits
 
@@ -876,6 +877,8 @@ class PrelimSemanticAnalysis:
         status.defined_states = adjusted_states
 
     def add_sfg_edge_of_defined_symbol_to_state(self, stmt_id, stmt, status, frame:ComputeFrame, old_defined_symbol_states):
+        if stmt.operation == "variable_decl":
+            return
         for each_symbol_index in [status.defined_symbol, *status.implicitly_defined_symbols]:
             defined_symbol = frame.symbol_state_space[each_symbol_index]
             if not isinstance(defined_symbol, Symbol):
