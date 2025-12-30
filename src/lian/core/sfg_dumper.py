@@ -85,13 +85,16 @@ class SFGDumper:
     Each node is an SFGNode with three types: symbol, state, stmt.
     """
 
-    def __init__(self, loader, options, phase_id, entry_point, symbol_state_space, graph):
+    def __init__(self, loader, options, phase_id, entry_point, symbol_state_space, graph, taint_manager=None):
         self.loader: Loader = loader
         self.options = options
         self.phase_id = phase_id
         self.entry_point = entry_point
         self.symbol_state_space = symbol_state_space
         self.graph = graph
+        # Optional: used to highlight tainted nodes in DOT.
+        # Expect interface: get_symbol_tag(symbol_id) / get_state_tag(state_id)
+        self.taint_manager = taint_manager
 
         # Pre-allocate results list
         self.results: List[str] = []
@@ -254,6 +257,28 @@ class SFGDumper:
             label = f"State({self.get_state_label(node)})"
         else:
             label = "UNKNOWN"
+
+        # Highlight tainted SYMBOL/STATE nodes with special color.
+        if self.taint_manager is not None:
+            try:
+                if node_type == SFG_NODE_KIND.SYMBOL:
+                    tag = self.taint_manager.get_symbol_tag(node.node_id)
+                    if tag:
+                        attrs["fillcolor"] = "#FDEDEC"
+                        attrs["color"] = "#C0392B"
+                        attrs["penwidth"] = "2.2"
+                        attrs["style"] = "filled,bold"
+                elif node_type == SFG_NODE_KIND.STATE:
+                    tag = self.taint_manager.get_state_tag(node.node_id)
+                    if tag:
+                        attrs["fillcolor"] = "#FDEDEC"
+                        attrs["color"] = "#C0392B"
+                        attrs["penwidth"] = "2.2"
+                        # keep dashed state style, but make it bold
+                        attrs["style"] = "filled,dashed,bold"
+            except Exception:
+                # Best-effort highlighting; never break dumping.
+                pass
 
         attrs["label"] = self.dot_escape(label)
 
