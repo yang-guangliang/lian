@@ -1239,7 +1239,8 @@ class PrelimSemanticAnalysis:
             phase_id=phase_id,
             entry_point=entry_point,
             symbol_state_space=symbol_state_space,
-            graph=graph
+            graph=graph,
+            taint_manager=None
         )
 
         try:

@@ -1,10 +1,7 @@
 #! /usr/bin/env python3
 import json
 import os, sys
-import re
 from collections import deque
-
-import yaml
 
 import lian.config.config as config
 import networkx as nx
@@ -13,27 +10,18 @@ from lian.events.default_event_handlers.this_field_write import access_path_form
 from lian.util import util
 from lian.util.readable_gir import get_gir_str
 from lian.taint.rule_manager import RuleManager, Rule
-from lian.common_structs import (
-    CallPath,
-    SimpleWorkList,
-    State,
-    Symbol,
-    ComputeFrameStack,
-    SymbolStateSpace,
-    CallSite,
-)
-
+from lian.core.sfg_dumper import SFGDumper
 from lian.config.constants import (
+    ANALYSIS_PHASE_ID,
     SFG_NODE_KIND,
     SFG_EDGE_KIND,
     TAG_KEYWORD
 )
-
 from lian.taint.taint_structs import (
     TaintEnv,
     Flow,
 )
-
+import traceback
 
 class PathFinder:
     """
@@ -656,6 +644,7 @@ class TaintAnalysis:
         # 找到所有的taint flow
         # 每次处理一个 source 和 一个 sink 的组合
         flow_list = []
+        dumped_sources = set()
 
         for source in sources:
             for sink in sinks:
@@ -666,6 +655,18 @@ class TaintAnalysis:
 
                 # 执行污点传播并获取该 source 的 tag
                 tag = self.path_finder.propagate_taint(source)
+
+                # 传播完成后，taint_manager 已包含污染的 SYMBOL/STATE；
+                # 导出标色后的 SFG（同一个 source 的传播结果不依赖 sink，避免重复导出）。
+                source_key = (self.current_entry_point, source.node_type, source.node_id, source.def_stmt_id)
+                if source_key not in dumped_sources:
+                    dumped_sources.add(source_key)
+                    self.save_graph_to_dot(
+                        graph=self.sfg,
+                        entry_point=f"{self.current_entry_point}_taint_{source.def_stmt_id}",
+                        phase_id=ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS,
+                        taint_manager=self.taint_manager
+                    )
 
                 # 2. Sink 检查 (针对单一 Sink)
                 sink_tag = self.rule_applier.get_sink_tag_by_rules(sink)
@@ -679,6 +680,30 @@ class TaintAnalysis:
                 self.taint_manager = original_manager
 
         return flow_list
+    def save_graph_to_dot(self, graph, entry_point, phase_id, taint_manager=None):
+
+
+        if graph is None or len(graph) == 0:
+            return
+
+        dumper = SFGDumper(
+            loader=self.loader,
+            options=self.options,
+            phase_id=phase_id,
+            entry_point=entry_point,
+            symbol_state_space=None,
+            graph=graph,
+            taint_manager=taint_manager
+        )
+
+        try:
+            file_name = dumper.dump_to_file()
+            if self.options.debug:
+                util.debug(">>> Write state flow graph to dot file: ", file_name)
+        except Exception:
+            if not self.options.quiet:
+                util.error("An error occurred while writing state flow graph to dot file.")
+                traceback.print_exc()
 
     def get_all_forward_nodes(self, source):
         """
