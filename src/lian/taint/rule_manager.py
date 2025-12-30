@@ -54,6 +54,7 @@ class Rule:
     attr: str = ""
     unset: bool = False
     unit_path: str = ""
+    unit_name: str = ""
     line_num: str = ""
 
     # mock_path: str          = ""
@@ -79,6 +80,7 @@ class Rule:
             "dst": self.dst,
             "unset": self.unset,
             "unit_path": self.unit_path,
+            "unit_name": self.unit_name,
             "line_num": self.line_num,
         }
 
@@ -131,6 +133,7 @@ class RuleManager:
                                 dst=rule.get("dst", None),
                                 attr=rule.get("attr", None),
                                 unit_path=rule.get("unit_path", None),
+                                unit_name=rule.get("unit_name", None),
                                 line_num=rule.get("line_num", None),
                                 unset=rule.get("unset", None))
                 self.all_sources.append(new_rule)
@@ -153,6 +156,7 @@ class RuleManager:
                                 src=rule.get("src", None),
                                 dst=rule.get("dst", None),
                                 unit_path=rule.get("unit_path", None),
+                                unit_name=rule.get("unit_name", None),
                                 line_num=rule.get("line_num", None),
                                 unset=rule.get("unset", None))
                 self.all_sinks.append(new_rule)
@@ -175,6 +179,7 @@ class RuleManager:
                                 src=rule.get("src", None),
                                 dst=rule.get("dst", None),
                                 unit_path=rule.get("unit_path", None),
+                                unit_name=rule.get("unit_name", None),
                                 line_num=rule.get("line_num", None),
                                 unset=rule.get("unset", None))
                 self.all_propagations.append(new_rule)
