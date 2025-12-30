@@ -11,6 +11,8 @@ rules:
   #   tag:  [\%receiver, \%target]
   - operation: call_stmt
     name: source
+    line_num: 16
+    unit_name: test_taint.py
     tag: [\%target]
 #  - operation: call_stmt
 #    name: source1
