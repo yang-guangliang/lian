@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import math
 import os
 import ast
 from collections import namedtuple
@@ -3308,4 +3308,42 @@ class Loader:
             if int(start_row) <= line_num <= int(end_row):
                 return method_id
         return -1
+
+    def get_rule_method(self, rule):
+        method_ids = set()
+        module_symbol_table = self.get_module_symbol_table()
+
+        if not rule.line_num :
+            return -1
+        if not rule.unit_path and not rule.unit_name:
+            return -1
+        if rule.unit_path:
+            for module_symbol in module_symbol_table:
+                if module_symbol.original_path == rule.unit_path:
+                    unit_id = module_symbol.unit_id
+                    method_ids = self.convert_unit_id_to_method_ids(unit_id)
+        elif rule.unit_name:
+            for module_symbol in module_symbol_table:
+                if os.path.basename(module_symbol.original_path) == rule.unit_name:
+                    unit_id = module_symbol.unit_id
+                    method_ids.update(self.convert_unit_id_to_method_ids(unit_id))
+        for method_id in method_ids:
+            method_stmt = self.get_stmt_gir(method_id)
+            start_row = method_stmt.start_row + 1
+            end_row = method_stmt.end_row + 1
+            if math.isnan(start_row):
+                continue
+            if int(start_row) <= rule.line_num <= int(end_row):
+                return method_id
+        return -1
+
+    def get_call_path_from_sources_to_sinks(self, source_rules, sink_rules):
+        call_paths = []
+        for source in source_rules:
+            source_method_id = self.get_rule_method(source)
+            for sink in sink_rules:
+                sink_method_id = self.get_rule_method(sink)
+                call_paths.append(self.get_call_path_between_two_methods_in_p3(source_method_id, sink_method_id))
+
+        return call_paths
 

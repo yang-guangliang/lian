@@ -4,20 +4,22 @@ rules:
 
   - operation: call_stmt
     name: sink
+    line_num: 19
+    unit_name: test_taint.py
     target: [\%arg0]
-  - operation: call_stmt
-    name: send
-    target: [\%arg0]
-  - operation: call_stmt
-    name: web.FileResponse
-    target: [\%arg0]
-  - operation: call_stmt
-    name: pickle.load
-    target: [\%arg0]
-  - operation: call_stmt
-    name: FileResponse
-    target: [\%arg0]
-  - operation: call_stmt
-    name: send_file
-    target: [\%arg0]
-
+#  - operation: call_stmt
+#    name: send
+#    target: [\%arg0]
+#  - operation: call_stmt
+#    name: web.FileResponse
+#    target: [\%arg0]
+#  - operation: call_stmt
+#    name: pickle.load
+#    target: [\%arg0]
+#  - operation: call_stmt
+#    name: FileResponse
+#    target: [\%arg0]
+#  - operation: call_stmt
+#    name: send_file
+#    target: [\%arg0]
+#

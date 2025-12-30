@@ -12,8 +12,9 @@
 # def func0():
 #     a()
 
-def aaa(p):
-    sink(p)
-a = source()
-
-aaa(a)
+def aaa():
+    a = source()
+    bbb(a)
+def bbb(h):
+    sink(h)
+aaa()
