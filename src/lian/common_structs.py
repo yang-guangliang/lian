@@ -1110,7 +1110,7 @@ class SFGNode:
             self.line_no = stmt.start_row
             if len(name) == 0:
                 self.name = stmt.operation
-
+            self.stmt = stmt
             self.operation = readable_gir.get_gir_str(stmt)
 
     def __hash__(self) -> int:

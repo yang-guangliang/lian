@@ -243,7 +243,7 @@ class TaintRuleApplier:
         unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
         unit_info = self.loader.convert_module_id_to_module_info(unit_id)
         unit_path = unit_info.original_path
-        stmt = self.loader.get_stmt_gir(method_id)
+        stmt = node.stmt
         if not stmt.attrs:
             return False
         if not isinstance(stmt.attrs, str):
@@ -326,7 +326,7 @@ class TaintRuleApplier:
     def should_apply_object_call_stmt_sink_rules(self, node):
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call_stmt":
             return False
-        stmt = self.loader.get_stmt_gir(node.def_stmt_id)
+        stmt = node.stmt
         name = stmt.receiver_object + '.' + stmt.field
         for rule in self.rule_manager.all_sinks:
             if rule.name == name:
@@ -362,7 +362,7 @@ class TaintRuleApplier:
 
     def apply_propagation_rules(self, node):
         stmt_id = node.def_stmt_id
-        stmt = self.loader.get_stmt_gir(stmt_id)
+        stmt = node.stmt
         operation = node.name
 
         # 默认认为赋值语句传播污点
@@ -408,7 +408,7 @@ class TaintRuleApplier:
             return sink_tag
 
         stmt_id = node.def_stmt_id
-        stmt = self.loader.get_stmt_gir(stmt_id)
+        stmt = node.stmt
         operation = node.name
 
         # 1. 寻找匹配的 sink 规则
@@ -651,74 +651,6 @@ class TaintAnalysis:
                     if v_data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
                         tag |= self.get_state_with_inclusion_tag(v)
         return tag
-
-    def get_sink_tag_by_rules(self, node):
-        sink_tag = 0
-        if node.node_type != SFG_NODE_KIND.STMT:
-            return sink_tag
-
-        stmt_id = node.def_stmt_id
-        stmt = self.loader.get_stmt_gir(stmt_id)
-        operation = node.name
-
-        # 1. 寻找匹配的 sink 规则
-        matching_rules = []
-        if operation == "call_stmt":
-            _, method_state_nodes = self.get_stmt_first_used_symbol_and_state(node)
-            for rule in self.rule_manager.all_sinks:
-                if rule.operation != "call_stmt":
-                    continue
-                if not method_state_nodes:
-                    if rule.name == stmt.name:
-                        matching_rules.append(rule)
-                    continue
-                for state_node in method_state_nodes:
-                    if self.check_method_name(rule.name, state_node):
-                        matching_rules.append(rule)
-                        break
-        elif operation == "object_call_stmt":
-            name = stmt.receiver_object + '.' + stmt.field
-            for rule in self.rule_manager.all_sinks:
-                if rule.name == name:
-                    matching_rules.append(rule)
-
-        # 2. 根据规则检查对应的 symbol 和 state
-        for rule in matching_rules:
-            targets = rule.target if isinstance(rule.target, list) else [rule.target]
-            for target in targets:
-                target_pos = -1
-                if target == TAG_KEYWORD.ARG0:
-                    target_pos = 1
-                elif target == TAG_KEYWORD.ARG1:
-                    target_pos = 2
-                elif target == TAG_KEYWORD.ARG2:
-                    target_pos = 3
-                elif target == TAG_KEYWORD.ARG3:
-                    target_pos = 4
-                elif target == TAG_KEYWORD.ARG4:
-                    target_pos = 5
-                elif target == TAG_KEYWORD.RECEIVER:
-                    target_pos = 0
-
-                for pred in self.sfg.predecessors(node):
-                    edge_data = self.sfg.get_edge_data(pred, node)
-                    if not edge_data: continue
-                    for data in edge_data.values():
-                        weight = data.get('weight')
-                        if weight.edge_type != SFG_EDGE_KIND.SYMBOL_IS_USED:
-                            continue
-
-                        weight_pos = weight.pos
-                        if operation == "object_call_stmt":
-                            weight_pos -= 1
-
-                        # 匹配位置或者目标是通配符
-                        if (target_pos != -1 and weight_pos == target_pos) or \
-                            (target == TAG_KEYWORD.TARGET) or \
-                            (not target):
-                            sink_tag |= self.get_symbol_with_states_tag(pred)
-
-        return sink_tag
 
     def find_flows(self, sources, sinks):
         # 找到所有的taint flow
