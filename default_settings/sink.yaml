@@ -20,4 +20,22 @@ rules:
   - operation: call_stmt
     name: send_file
     target: [\%arg0]
-
+######################################## 适配污点使用，勿删 ################################################
+  - operation: call_stmt
+    name: FileUtils.copyURLToFile
+    target: [\%arg0]
+  - operation: call_stmt
+    name: requests.get
+    target: [\%arg0]
+  - operation: call_stmt
+    name: template.render
+    target: [\%arg0]
+  - operation: call_stmt
+    name: pickle.load
+    target: [\%arg0]
+  - operation: call_stmt
+    name: web.FileResponse
+    target: [\%arg0]
+  - operation: call_stmt
+    name: eval
+    target: [\%arg0]

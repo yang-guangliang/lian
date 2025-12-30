@@ -29,4 +29,34 @@ rules:
 #  - operation: field_read
 #    target: b.c
 #    tag: [\%target]
+######################################## 适配污点使用，勿删 ################################################
+# 25个CVE的source变量
+  - operation: parameter_decl
+    name: node_input
+    line_num: 522
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10457/test/AutoGPT-0.1.1/autogpt_platform/backend/backend/server/rest_api.py"
 
+  - operation: parameter_decl
+    name: data
+    line_num: 117
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10457/test/AutoGPT-0.1.1/autogpt_platform/backend/backend/server/routers/v1.py"
+
+  - operation: parameter_decl
+    name: request
+    line_num: 291
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-32375/BentoML-1.4.7/src/bentoml/_internal/server/runner_app.py"
+
+  - operation: parameter_decl
+    name: request
+    line_num: 258
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10099/test/server.py"
+
+  - operation: parameter_decl
+    name: request
+    line_num: 196
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-8953/test/composio/server/api.py"
+
+  - operation: call_stmt
+    name: args
+    line_num: 82
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11822/dify-0.9.1/api/controllers/console/extension.py"

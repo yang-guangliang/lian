@@ -14,8 +14,100 @@
 - lang: python
   method_list: ["nnn"]
   unit_path: "test1/david.py"
-
+######################################## 适配污点使用，勿删 ################################################
+# 25个CVE的entrypoints
 - lang: java
-  method_list: [ "channelRead0" ]
+  method_list: ["channelRead0"]
   unit_name: "HttpRequestHandler.java"
 
+- lang: python
+  method_list: ["file", "queue_join", "predict"]
+  unit_name: "routes.py"
+
+- lang: python
+  method_list: ["from_pretrained"]
+  unit_name: "retrieval_rag.py"
+
+- lang: python
+  method_list: ["from_pretrained"]
+  unit_name: "tokenization_auto.py"
+
+- lang: python
+  method_list: ["worker_api_generate_stream"]
+  unit_name: "controller.py"
+
+- lang: python
+  method_list: ["upload_image", "view_image"]
+  unit_name: "server.py"
+
+- lang: python
+  method_list: ["execute_graph"]
+  unit_name: "rest_api.py"
+
+- lang: python
+  method_list: ["run_service"]
+  unit_name: "manager.py"
+
+- lang: python
+  method_list: ["invoke"]
+  unit_name: "base.py"
+
+- lang: python
+  method_list: ["init_device"]
+  unit_name: "worker.py"
+
+- lang: python
+  method_list: ["delete_images_from_list"]
+  unit_name: "images.py"
+
+- lang: python
+  method_list: ["retrieve"]
+  unit_name: "base_retriever.py"
+
+- lang: python
+  method_list: ["start"]
+  unit_name: "model_install_default.py"
+
+- lang: python
+  method_list: ["_create_model_version", "get_model_version_artifact_handler"]
+  unit_name: "handlers.py"
+
+- lang: python
+  method_list: ["add"]
+  unit_name: "embedchain.py"
+
+- lang: python
+  method_list: ["create_chat_completion"]
+  unit_name: "llama.py"
+
+- lang: python
+  method_list: ["start"]
+  unit_name: "queueing.py"
+
+- lang: python
+  method_list: ["_run_plugin"]
+  unit_name: "plugin.py"
+
+- lang: python
+  method_list: ["_execute_action"]
+  unit_name: "api.py"
+
+- lang: python
+  method_list: ["run_rpc_server"]
+  unit_name: "server.py"
+
+- lang: python
+  method_list: ["execute_graph_block"]
+  unit_name: "v1.py"
+
+- lang: python
+  method_list: ["__init__"]
+  unit_name: "llm.py"
+
+- lang: python
+  method_list: ["generate_prompts"]
+  unit_name: "builtin_task.py"
+
+- lang: python
+  method_list: ["_request_handler"]
+  unit_name: "runner_app.py"
