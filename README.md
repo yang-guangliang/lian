@@ -4,17 +4,15 @@ Lian is a unified pointer-level program analysis framework for supporting multip
 
 ## Overview
 
-Modern software is increasingly developed using many different languages, especially dynamically typed languages. Python dominates AI and data engineering, JavaScript and TypeScript power web and cross-platform applications. These languages significantly improve developer productivity, but their highly dynamic runtime semantics break many assumptions that traditional static analysis techniques rely on.
+In past, many languages are becomming increasingly popular, especially dynamically typed languages. Python dominates AI and data engineering, JavaScript and TypeScript power web and cross-platform applications and frameworks, and Go and Rust greatly boosts cloud service and systems programming. These languages significantly improve developer productivity, but there are also many highly dynamic runtime semantics breaking the assumptions that traditional static analysis techniques rely on.
 
-In practice, type information is often unavailable or unstable, object layouts evolve at runtime, and control flow depends on dynamic dispatch, higher-order functions, and reflective property access. As a result, conventional static analyses (originally designed for statically typed and single-language systems) struggle to maintain both precision and scalability on real-world dynamic codebases.
+In many causes, type information is often unavailable or unstable, object layouts evolve at runtime, and control flow depends on dynamic dispatch, higher-order functions and reflective property access. As a result, conventional static analyses (originally designed for statically typed and single-language systems) struggle to maintain both precision and scalability on real-world dynamic codebases. They either over-approximate aggressively and lose precision, or become computationally intractable.
 
 ### Mean Idea
 
 Lian is built on the observation that the fundamental limitation of existing approaches is not insufficient language-specific modeling, but the lack of a **unified** semantic foundation that remains valid across dynamic behavior and language boundaries.
 
-Traditional analyses assume stable object models, statically enumerable fields, and reliable type constraints. While these assumptions hold in languages like Java or C++, they break down in Python and JavaScript. When this happens, analyses either over-approximate aggressively and lose precision, or become computationally intractable.
-
-Lian takes a different path. It abstracts program behavior into a small set of language-agnostic semantic primitives and performs analysis directly at this level, instead of anchoring analysis logic to surface-level syntax or type systems.
+Different from traditional analyses that assume stable object models and reliable type constraints, Lian takes a different path. It abstracts program behavior into a set of language-agnostic semantic primitives and performs analysis directly at this level, instead of anchoring analysis logic to surface-level syntax or type systems.
 
 ### Design Philosophy
 
@@ -36,7 +34,7 @@ Lian is not intended to replace traditional frameworks in the domains where they
 
 ### System Requirements
 
-Lian currently targets Unix-like environments and requires Python 3 or above.
+Lian currently targets Unix-like environments and requires Python 3.10 or above.
 
 ### Installation
 
@@ -79,9 +77,5 @@ Feel free to submit feedback and suggestions via [Issues](https://github.com/yan
 
 ## Project Status
 
-Lian is an active and research-driven project. The current implementation focuses on the unified intermediate representation and the core infrastructure for pointer-level and context-sensitive analysis.
-
-Lian is independently developed by the [FDU-SSR (System Security and Reliability)](https://yang-guangliang.github.io/) research group at Fudan University. We are committed to building a scalable, high-precision, and multiple-language program security analysis infrastructure.
-
-```
+Lian is an active and research-driven project. Lian is independently developed by the [SSR (System Security and Reliability) research group](https://yang-guangliang.github.io/) at Fudan University. We are committed to building a generic, scalable, and high-precision program security analysis infrastructure.
 
