@@ -40,10 +40,12 @@ markdown_extensions:
 copyright: <p/>2025至今，由<a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;">复旦系统安全与可靠性研究组</a>独立开发和维护<p/>
 
 nav:
-  - 主页: index.md
-  - 入门指南:
-      - 安装: setup.md
-      - 示例: examples.md
+  - 概述: 01.overview.md
+  - 程序分析介绍:
+      - 基础: 02.background/2-1.basics.md
+      - 数据流分析: 02.background/2-2.dataflow.md
+      - 指针分析： 02.background/2-3.pointers.md
+      - 污点分析： 02.background/2-4.taint.md
   - 前端:
       - 语言解析器: lang_parser.md
       - 通用IR - GIR: gir.md
