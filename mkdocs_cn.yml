@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------
 # MkDocs Configuration for Chinese Version (/)
 # -------------------------------------------------------------------
-site_name: 欢迎来到 LIAN (中文)
+site_name: 欢迎来到莲花系统Lian
 site_url: https://yang-guangliang.github.io/lian/cn
 repo_url: https://github.com/yang-guangliang/lian
 docs_dir: docs/cn
@@ -41,10 +41,10 @@ copyright: <p/>2025至今，由<a href="https://yang-guangliang.github.io/" styl
 
 nav:
   - 概述: index.md
-  - 程序分析介绍:
-      - 基础: 02.background/2-1.basics.md
+  - 程序分析讲义:
+      - 程序分析基础: 02.background/2-1.basics.md
       - 数据流分析: 02.background/2-2.dataflow.md
-      - 指针分析： 02.background/2-3.pointers.md
+      - 指针分析： 02.background/2-3.pointer.md
       - 污点分析： 02.background/2-4.taint.md
   - 前端:
       - 语言解析器: lang_parser.md
