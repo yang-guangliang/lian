@@ -33,32 +33,163 @@ rules:
 #    tag: [\%target]
 ######################################## 适配污点使用，勿删 ################################################
 # 25个CVE的source变量
+lang: java
+rules:
+# CVE-2023-43654
+  - operation: parameter_decl
+    name: req
+    line_num: 35
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-43654/test/serve-0.8.0/frontend/server/src/main/java/org/pytorch/serve/http/HttpRequestHandler.java"
+
+# CVE-2023-48299
+# 同上
+
+lang: python
+rules:
+# CVE-2023-51449
+  - operation: parameter_decl
+    name: path_or_url
+    line_num: 434
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-51449/test/gradio-4.10.0/gradio/routes.py"
+# CVE-2023-6730
+  - operation: parameter_decl
+    name: retriever_name_or_path
+    line_num: 419
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-6730/test/transformers-4.35.2/src/transformers/models/rag/retrieval_rag.py"
+# CVE-2023-7018
+  - operation: parameter_decl
+    name: pretrained_model_name_or_path
+    line_num: 592
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-7018/test/transformers-4.35.2/src/transformers/models/auto/tokenization_auto.py"
+# CVE-2024-10044
+  - operation: parameter_decl
+    name: request
+    line_num: 337
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10044/test/FastChat/fastchat/serve/controller.py"
+# CVE-2024-10099
+  - operation: parameter_decl
+    name: request
+    line_num: 258
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10099/test/ComfyUI-0.2.2/server.py"
+  - operation: parameter_decl
+    name: request
+    line_num: 307
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10099/test/ComfyUI-0.2.2/server.py"
+# CVE-2024-10457
   - operation: parameter_decl
     name: node_input
     line_num: 522
     unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10457/test/AutoGPT-0.1.1/autogpt_platform/backend/backend/server/rest_api.py"
-
   - operation: parameter_decl
     name: data
     line_num: 117
     unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10457/test/AutoGPT-0.1.1/autogpt_platform/backend/backend/server/routers/v1.py"
-
+# CVE-2024-10940
+  - operation: parameter_decl
+    name: template
+    line_num: 491
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10940/test/langchain-langchain-core-0.3.14/libs/core/langchain_core/prompts/chat.py"
+  - operation: parameter_decl
+    name: input
+    line_num: 192
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10940/test/langchain-langchain-core-0.3.14/libs/core/langchain_core/prompts/base.py"
+# CVE-2024-11041
+  - operation: object_call
+    name: \%this.remote_socket.recv
+    line_num: 422
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11041/test/vllm-0.6.2/vllm/distributed/device_communicators/shm_broadcast.py"
+    tag: [\%target]
+# CVE-2024-11042
+  - operation: parameter_decl
+    name: image_names
+    l ine_num: 346
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11042/test/InvokeAI-5.0.2/invokeai/app/api/routers/images.py"
+# CVE-2024-11958
+  - operation: parameter_decl
+    name: str_or_query_bundle
+    line_num: 222
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11958/test/llama_index-0.12.2/llama-index-core/llama_index/core/base/base_retriever.py"
+# CVE-2024-12029
+  - operation: parameter_decl
+    name: source
+    line_num: 450
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-12029/test/InvokeAI-5.3.1/invokeai/app/api/routers/model_manager.py"
+  - operation: object_call
+    name: \%this._queue.get
+    line_num: 280
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-12029/test/InvokeAI-5.3.1/invokeai/app/services/download/download_default.py"
+    tag: [\%target]
+# CVE-2024-1558
+  - operation: parameter_decl
+    name: flask_request
+    line_num: 421
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-1558/test/mlflow-2.11.3/mlflow/server/handlers.py"
+  - operation: object_call
+    name: request.query_string.decode
+    line_num: 1786
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-1558/test/mlflow-2.11.3/mlflow/server/handlers.py"
+    tag: [\%target]
+# CVE-2024-23731
+  - operation: parameter_decl
+    name: data_type
+    line_num: 139
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-23731/test/mem0-0.1.56/embedchain/embedchain.py"
+# CVE-2024-34359
+  - operation: parameter_decl
+    name: model_path
+    line_num: 66
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-34359/test/llama-cpp-python-0.2.71/llama_cpp/llama.py"
+  - operation: field_read
+    name: \%this.chat_handler
+    line_num: 1722
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-34359/test/llama-cpp-python-0.2.71/llama_cpp/llama.py"
+# CVE-2024-4325
   - operation: parameter_decl
     name: request
-    line_num: 291
-    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-32375/BentoML-1.4.7/src/bentoml/_internal/server/runner_app.py"
-
+    line_num: 654
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-4325/test/gradio-4.21.0/gradio/routes.py"
+  - operation: field_read
+    name: \%this.event_queue_per_concurrency_id
+    line_num: 246
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-4325/test/gradio-4.21.0/gradio/queueing.py"
+# CVE-2024-4941
   - operation: parameter_decl
-    name: request
-    line_num: 258
-    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10099/test/server.py"
-
+    name: body
+    line_num: 668
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-4941/test/gradio-4.25.0/gradio/routes.py"
+# CVE-2024-5980
+  - operation: parameter_decl
+    name: run
+    line_num: 128
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-5980/test/pytorch-lightning-2.2.4/src/lightning/app/plugin/plugin.py"
+# CVE-2024-8953
   - operation: parameter_decl
     name: request
     line_num: 196
-    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-8953/test/composio/server/api.py"
-
-  - operation: call_stmt
-    name: args
-    line_num: 82
-    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11822/dify-0.9.1/api/controllers/console/extension.py"
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-8953/test/composio-0.4.3/python/composio/server/api.py"
+# CVE-2024-9053
+  - operation: object_call
+    name: \%this.socket.recv_multipart
+    line_num: 198
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-9053/test/vllm-0.6.0/vllm/entrypoints/openai/rpc/server.py"
+    tag: [\%target]
+# CVE-2025-1040
+  - operation: parameter_decl
+    name: data
+    line_num: 117
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-1040/test/AutoGPT-autogpt-platform-beta-v0.3.4/autogpt_platform/backend/backend/server/routers/v1.py"
+# CVE-2025-24357
+  - operation: parameter_decl
+    name: model
+    line_num: 152
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-24357/test/vllm-0.6.6/vllm/entrypoints/llm.py"
+# CVE-2025-25362
+  - operation: parameter_decl
+    name: docs
+    line_num: 57
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-25362/test/spacy-llm-0.7.2/spacy_llm/tasks/builtin_task.py"
+# CVE-2025-32375
+  - operation: parameter_decl
+    name: request
+    line_num: 291
+    unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-32375/test/BentoML-1.4.7/src/bentoml/_internal/server/runner_app.py"
