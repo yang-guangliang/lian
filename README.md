@@ -1,49 +1,69 @@
-## Lian: Next-Generation Program Analysis Framework
+# Lian
 
-"Lian" is a next-generation program analysis framework. Lian applies the "all-in-one" design philosophy, converting languages into General Intermediate Representation (GIR) for unified semantic analysis and security detection. By simply adapting a lightweight frontend for a language (~1,600 lines of code), one can achieve deep code analysis.
+Lian is a unified pointer-level program analysis framework for supporting multiple languages. It is designed to provide a reusable analysis foundation for pointer analysis, context-sensitive dataflow analysis, and security-oriented reasoning.
 
-The Lian framework consists of three core modules:
+## Overview
 
-- **GIR-based Language Frontend**: Unlike traditional IR like LLVM, GIR supports the unified representation of both typed and untyped languages.
+In past, many languages are becomming increasingly popular, especially dynamically typed languages. Python dominates AI and data engineering, JavaScript and TypeScript power web and cross-platform applications and frameworks, and Go and Rust greatly boosts cloud service and systems programming. These languages significantly improve developer productivity, but there are also many highly dynamic runtime semantics breaking the assumptions that traditional static analysis techniques rely on.
 
-- **Semantic Analysis Engine**: Lian constructs context- and flow-sensitive points-to and data-flow analysis, and outputs SFG (State Flow Graph) as a structured representation of program semantics.
+In many causes, type information is often unavailable or unstable, object layouts evolve at runtime, and control flow depends on dynamic dispatch, higher-order functions and reflective property access. As a result, conventional static analyses (originally designed for statically typed and single-language systems) struggle to maintain both precision and scalability on real-world dynamic codebases. They either over-approximate aggressively and lose precision, or become computationally intractable.
 
-- **Taint Analysis**: On top of SFG, Lian automatically identifies sensitive sources and sinks and efficiently tracks data flow paths, supporting security tasks such as vulnerability detection and privacy leakage analysis.
+### Mean Idea
+
+Lian is built on the observation that the fundamental limitation of existing approaches is not insufficient language-specific modeling, but the lack of a **unified** semantic foundation that remains valid across dynamic behavior and language boundaries.
+
+Different from traditional analyses that assume stable object models and reliable type constraints, Lian takes a different path. It abstracts program behavior into a set of language-agnostic semantic primitives and performs analysis directly at this level, instead of anchoring analysis logic to surface-level syntax or type systems.
+
+### Design Philosophy
+
+Lian adopts a language-agnostic design by reducing program behavior to fundamental semantic operations such as object creation, reference propagation, property access, and dynamic call resolution.
+
+Programs written in different languages are translated into a generic intermediate representation (GIR) that makes these operations explicit. The analysis core operates solely on this representation, ensuring that pointer-level reasoning and dataflow semantics have a consistent interpretation across languages.
+
+Language-specific complexity is isolated in frontend translations, while the analysis engine itself remains uniform. This separation allows Lian to evolve as new languages, execution models, and security analyses are added, without re-engineering the analysis core.
+
+### How Lian Differs from Existing Frameworks
+
+Most existing program analysis frameworks are language-centric. Their analysis logic is tightly coupled to constructs such as types, classes, or declared fields, which works well within a single language ecosystem but limits reuse across languages and breaks down in highly dynamic settings.
+
+Lian shifts the abstraction boundary. Instead of treating language syntax as the foundation of analysis, it treats runtime semantics as the common ground. Language constructs become artifacts of frontend translation, not fundamental elements of the analysis itself.
+
+Lian is not intended to replace traditional frameworks in the domains where they excel. Rather, it provides a shared analytical foundation for polyglot systems, dynamic execution environments, and security reasoning scenarios where language-centric tools reach their limits.
 
 ## Installation and Usage
 
-### System Requirements:
-- Linux
-- Python 3+
+### System Requirements
 
-### Installation:
-1. Clone the latest Lian repository:
+Lian currently targets Unix-like environments and requires Python 3.10 or above.
+
+### Installation
+
+Clone the latest version of the Lian repository:
+
 ```shell
-$ git clone git@gitee.com:fdu-ssr/lian.git
+$ git clone https://github.com/yang-guangliang/lian.git
+$ cd lian
 ````
 
-Alternatively, a stable version is available in [Release](https://github.com/yang-guangliang/lian/releases).
+Alternatively, a stable version can be obtained from the GitHub Releases page.
 
-2. Install the dependencies:
+Install the required Python dependencies:
 
 ```shell
-# Enter the Lian directory
-$ cd lian
-# Install Python dependencies
 $ pip install -r requirements.txt
 ```
 
-### Launch the Visualization Tool:
+### Running Lian
 
-Lian provides a visualization tool for easier usage:
+Lian can be used either through a visualization interface or via the command line.
+
+To launch the visualization tool:
 
 ```shell
 $ ./scripts/lian-ui.sh
 ```
 
-### Using the Command-Line Tool:
-
-Lian also provides a command-line tool for direct code analysis:
+For direct analysis from the command line:
 
 ```shell
 $ ./scripts/lian.sh -l <language> <path_to_code_to_analyze>
@@ -55,10 +75,7 @@ For more technical details, please refer to [Documentation](https://yang-guangli
 
 Feel free to submit feedback and suggestions via [Issues](https://github.com/yang-guangliang/lian/issues),[Discussions](https://github.com/yang-guangliang/lian/discussions), and [Pull Requests](https://github.com/yang-guangliang/lian/pulls)!
 
+## Project Status
 
-## About Us
-
-Lian is independently developed by the [FDU-SSR (System Security and Reliability)](https://yang-guangliang.github.io/) research group at Fudan University. We are committed to building a scalable, high-precision, and multiple-language program security analysis infrastructure.
-
-
+Lian is an active and research-driven project. Lian is independently developed by the [SSR (System Security and Reliability) research group](https://yang-guangliang.github.io/) at Fudan University. We are committed to building a generic, scalable, and high-precision program security analysis infrastructure.
 

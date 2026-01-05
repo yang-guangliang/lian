@@ -4,9 +4,8 @@ rules:
 
   - operation: call_stmt
     name: sink
-    target: [\%arg0]
-  - operation: call_stmt
-    name: send
+    line_num: 19
+    unit_name: test_taint.py
     target: [\%arg0]
   - operation: call_stmt
     name: web.FileResponse

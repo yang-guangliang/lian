@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 import collections
 import base64
+from dataclasses import dataclass
 
 # --- 基础配置 ---
 BASE_DIR = Path(__file__).parent.absolute()
@@ -15,14 +16,14 @@ DEFAULT_WORKSPACE = "/tmp/lian_workspace"
 
 # 支持的语言列表
 SUPPORTED_LANGUAGES = [
-    "python", "java", "javascript", "php", "c", "go", "csharp", "ruby", "llvm", "smali", "typescript"
+    "python", "java", "javascript", "typescript", "php", "c", "go", "llvm", "csharp (dev)", "ruby (dev)", "smali (dev)",
 ]
 
 # 分析类型选项
 ANALYSIS_COMMANDS = {
-    "run": "污点分析 (Taint)",
-    "semantic": "语义分析 (Semantic)",
-    "lang": "生成通用IR (GIR)",
+    "run": "污点分析 Taint analysis",
+    "semantic": "语义分析 Semantic analysis",
+    "lang": "生成通用Generate GIR",
 }
 
 IGNORED_EXTENSIONS = [".log", ".indexing"]
@@ -44,7 +45,6 @@ FOOTER_HEIGHT = 64
 MIN_FOOTER_HEIGHT = 20
 MAX_FOOTER_HEIGHT = 200
 
-from dataclasses import dataclass
 
 @dataclass
 class ReturnStatus:
@@ -68,7 +68,7 @@ class Render:
                 return True
         return False
 
-    def config_layout(self, page_title="代码分析工具"):
+    def config_layout(self, page_title="莲花代码分析 Lian Code Analyzer"):
         st.set_page_config(
             layout="wide",
             page_title=page_title,
@@ -103,32 +103,32 @@ class Render:
             header_html = f"""
             <div style=\"display:flex;align-items:center;gap:12px;margin-bottom:1rem;\">
                 <img src=\"data:image/png;base64,{img_b64}\" style=\"height:36px;\" />
-                <h1 style=\"margin:0;\">莲花代码分析 (LIAN)</h1>
+                <h1 style=\"margin:0;\">莲花代码分析 LIAN Code Analyzer</h1>
             </div>
             """
             st.markdown(header_html, unsafe_allow_html=True)
         else:
-            st.title("莲花代码分析 (LIAN)")
+            st.title("莲花代码分析 LIAN Code Analyzer")
 
     def build_sidebar(self):
         from_btn_flag = False
         with st.sidebar:
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.header("配置")
+                st.header("配置 Config")
 
             # Disable widgets if analysis is running
             is_running = st.session_state.get("is_running", False)
 
             self.sub_command = st.radio(
-                "选择代码分析命令",
+                "选择分析命令 Select analysis command",
                 options=list(ANALYSIS_COMMANDS.keys()),
                 format_func=lambda x: ANALYSIS_COMMANDS[x],
                 disabled=is_running
             )
 
             self.lang = st.multiselect(
-                "语言 (-l)",
+                "语言 Language (-l)",
                 options=SUPPORTED_LANGUAGES,
                 default=[],
                 key="lang_sidebar",
@@ -136,9 +136,9 @@ class Render:
             )
 
             in_path_input = st.text_input(
-                "待分析路径 (in_path)",
+                "待分析路径 Input path (-in_path)",
                 value=self.in_path,
-                help="要分析的代码路径，可以是文件或目录",
+                help="要分析的代码路径，可以是文件或目录 path to code (file or directory)",
                 width="stretch",
                 disabled=is_running
             )
@@ -173,78 +173,81 @@ class Render:
                     unsafe_allow_html=True
                 )
 
-            st.header("其他配置")
+            st.header("其他配置 other settings")
             self.workspace = st.text_input(
-                "工作空间路径 (-w)",
+                "工作空间路径 Workspace path (-w) ",
                 value=self.workspace,
                 disabled=is_running
             )
 
             self.reset_tabs = st.checkbox(
-                "重置结果视图",
+                "重置结果视图 Reset result view",
                 value=False,
                 disabled=is_running
             )
             self.force = st.checkbox(
-                "强制模式 (-f)",
+                "强制模式 Force mode (-f) ",
                 value=False,
                 disabled=is_running
             )
             self.debug = st.checkbox(
-                "调试模式 (-d)",
+                "调试模式 Debug mode (-d)",
                 value=False,
                 disabled=is_running
             )
             self.output_graph = st.checkbox(
-                "输出SFG图 (--graph)",
+                "输出SFG图 Output SFG graph (--graph)",
                 value=False,
                 disabled=is_running
             )
             self.complete_graph = st.checkbox(
-                "输出完整SFG (--complete-graph)",
+                "输出完整SFG图 Output full SFG (--complete-graph)",
                 value=False,
                 disabled=is_running
             )
 
             self.print_stmts = st.checkbox(
-                "打印语句 (-p)",
+                "打印语句 Print unflattened GIR statements (-p)",
                 value=False,
                 disabled=is_running
             )
             self.incremental = st.checkbox(
-                "增量分析 (-inc)",
+                "增量分析 Incremental analysis (-inc)",
                 value=False,
                 disabled=is_running
             )
             self.noextern = st.checkbox(
-                "禁用外部处理 (--noextern)",
+                "禁用外部处理 Disable extern processing (--noextern)",
                 value=True,
                 disabled=is_running
             )
 
             self.event_handlers = st.text_input(
-                "事件处理器 (-e)",
+                "事件处理器 Event handlers (-e)",
                 value="",
                 disabled=is_running
             )
             self.default_settings = st.text_input(
-                "默认设置 (--default-settings)",
+                "默认设置 Default settings (--default-settings)",
                 value="",
                 disabled=is_running
             )
             self.additional_settings = st.text_input(
-                "额外设置 (--additional-settings)",
+                "额外设置 Additional settings (--additional-settings)",
                 value="",
                 disabled=is_running
             )
 
             st.divider()
-            st.markdown("查看[项目源代码](https://github.com/yang-guangliang/lian)")
+            st.markdown("查看[项目源代码Gitee](https://gitee.com/fdu-ssr/lian)")
             st.markdown("本项目由[复旦大学系统安全与可靠性研究组](https://gitee.com/fdu-ssr/)开发和维护")
+
+            st.markdown(" Check out the [source code on GitHub](https://github.com/yang-guangliang/lian)")
+            st.markdown(" Developed and maintained by [Fudan University SSR Group](https://yang-guangliang.github.io/)")
 
             with col2:
                 # Show "运行" button when no analysis is running
-                if st.button("运行", type="primary", width='stretch', disabled=is_running):
+                if st.button("运行 Run", type="primary", width='stretch', disabled=is_running):
                     cmd_list = self.build_command()
                     st.session_state.last_cmd = cmd_list
                     st.session_state.is_running = True  # Mark analysis as running
@@ -253,7 +256,7 @@ class Render:
 
             with col3:
                 # Show "停止" button when analysis is running
-                if st.button("停止", type="secondary", width='stretch', disabled=not is_running):
+                if st.button("停止 Stop", type="secondary", width='stretch', disabled=not is_running):
                     # Terminate the running process
                     if "process" in st.session_state:
                         st.session_state.process.terminate()
@@ -313,29 +316,31 @@ class Render:
 
     def create_log_container_with_result(self, from_btn_flag: bool = False):
         """执行命令并返回日志内容和状态，用于保存到 session_state"""
-        st.subheader("执行日志")
         if not st.session_state.get("is_running", False):
             if not from_btn_flag:
                 self.display_running_result(st.session_state.get("result_status", None))
 
                 if "full_log" in st.session_state:
+                    st.subheader("执行日志 Execution log")
                     log_lines = st.session_state.full_log.splitlines()
                     recent_lines = log_lines[-MAX_DISPLAY_LINES:] if len(log_lines) > MAX_DISPLAY_LINES else log_lines
-                    with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行)", expanded=st.session_state.expander_open):
+                    with st.expander(f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行) Log records", expanded=st.session_state.expander_open):
                         st.code("\n".join(recent_lines), language="bash")
 
                         # Add a "Download Log" button for the full log
                         if len(log_lines) > MAX_DISPLAY_LINES:
                             st.download_button(
-                                label="下载完整日志",
+                                label="下载完整日志 Download full log",
                                 data=st.session_state.full_log.encode('utf-8'),
                                 file_name="full_log.txt",
                                 mime="text/plain"
                             )
             return
 
+        st.subheader("执行日志 Execution log")
+
         status_box = st.empty()
-        status_box.info("准备开始分析...")
+        status_box.info("准备开始分析 Preparing analysis ...")
 
         full_log_content = []
         log_buffer = collections.deque(maxlen=MAX_DISPLAY_LINES)
@@ -343,13 +348,13 @@ class Render:
         result_status = None
 
         expander_entered = False
-        expander_str = f"⚙️ 控制台输出 (显示最近 {MAX_DISPLAY_LINES} 行)"
+        expander_str = f"⚙️ 日志记录 (显示最近 {MAX_DISPLAY_LINES} 行) Log records"
         with st.expander(expander_str, expanded=st.session_state.expander_open):
             expander_entered = True
             log_placeholder = st.empty()
 
             try:
-                status_box.info("🚀 正在启动 LIAN 分析...")
+                status_box.info("🚀 正在启动 Launching LIAN analysis ...")
 
                 # Store the subprocess in session state for termination
                 process = subprocess.Popen(
@@ -388,11 +393,11 @@ class Render:
                 return_code = process.wait()
 
                 if return_code == 0:
-                    result_status = ReturnStatus("success", "✅ 分析完成！")
+                    result_status = ReturnStatus("success", "✅ 分析完成 Analysis completed!")
                 else:
-                    result_status = ReturnStatus("error", f"❌ 分析异常终止 (Exit Code: {return_code})")
+                    result_status = ReturnStatus("error", f"❌ 分析异常终止 Analysis failed (Exit Code: {return_code})")
             except Exception as e:
-                result_status = ReturnStatus("error", f"❌ 执行错误: {str(e)}")
+                result_status = ReturnStatus("error", f"❌ 执行错误 Execution error: {str(e)}")
 
             # Save the full log content to session state
             st.session_state.full_log = "\n".join(full_log_content)
@@ -409,18 +414,18 @@ class Render:
     def render_dataframe_with_search(self, df, key_suffix):
         """渲染带有高级检索功能的 DataFrame"""
         # --- DataFrame 高级检索功能 ---
-        with st.expander("🔍 数据检索与过滤", expanded=False):
+        with st.expander("🔍 数据检索与过滤 Data search & filter", expanded=False):
             col1, col2 = st.columns([1, 2])
             with col1:
                 search_cols = st.multiselect(
-                    "限制检索列 (留空则检索所有列)",
+                    "限制检索列 (留空则检索所有列) Columns to search (empty = all)",
                     options=df.columns.tolist(),
                     default=[],
                     key=f"cols_{key_suffix}"
                 )
             with col2:
                 search_term = st.text_input(
-                    "输入检索内容 (支持部分匹配)",
+                    "输入检索内容 (支持部分匹配) Search term (partial match supported)",
                     key=f"search_{key_suffix}"
                 )
 
@@ -436,7 +441,7 @@ class Render:
             final_mask = mask.any(axis=1)
             filtered_df = df[final_mask]
 
-            st.info(f"检索到 {len(filtered_df)} / {len(df)} 行数据")
+            st.info(f"检索到 {len(filtered_df)} / {len(df)} 行数据 (Found {len(filtered_df)} / {len(df)} rows)")
             st.dataframe(filtered_df, width='stretch', height=DATAFRAME_HEIGHT)
         else:
             st.dataframe(df, width='stretch', height=DATAFRAME_HEIGHT)
@@ -448,22 +453,22 @@ class Render:
                 content = f.read()
             st.code(content, language="text")
         except Exception as e:
-            st.error(f"无法读取文件: {e}")
+            st.error(f"无法读取文件 Failed to read file: {e}")
 
     def render_results(self):
-        st.subheader("分析结果可视化")
+        st.subheader("分析结果可视化 Analysis results visualization")
 
         # 检查并处理工作空间路径
         workspace_path = Path(self.workspace)
 
         if not workspace_path.exists():
-            st.info(f"等待分析完成... 工作空间 `{self.workspace}` 尚未找到。")
+            st.info(f"等待分析完成... 工作空间 `{self.workspace}` 尚未找到 (Workspace `{self.workspace}` not found).")
 
             self.build_footer()
             return
 
         search_query = st.text_input(
-            "🔍 在结果中过滤文件或目录",
+            "🔍 在结果中过滤文件或目录 Filter files/dirs in results",
             key="results_search_box"
         ).lower()
 
@@ -491,9 +496,9 @@ class Render:
 
         if not result_dirs_map:
             if search_query:
-                 st.warning(f"在工作空间中未找到与关键词 '{search_query}' 匹配的文件。")
+                 st.warning(f"在工作空间中未找到与关键词 '{search_query}' 匹配的文件 (No files matched keyword '{search_query}' in workspace).")
             else:
-                 st.warning("工作空间中未发现任何文件。")
+                 st.warning("工作空间中未发现任何文件 (No files found in workspace).")
 
             self.build_footer()
             return
@@ -511,6 +516,7 @@ class Render:
         )
 
         tabs_map = {}
+        tab_name = ""
         for d in sorted_dirs:
             relative_path = d.relative_to(workspace_path)
             tab_name = str(relative_path) if str(relative_path) != '.' else workspace_path.name
@@ -527,7 +533,7 @@ class Render:
             st.session_state.selected_tab = tab_names_list[0]
 
         selected_tab = st.radio(
-            "目录",
+            "目录 Directory",
             options=tab_names_list,
             index=tab_names_list.index(st.session_state.selected_tab),
             horizontal=True,
@@ -546,8 +552,8 @@ class Render:
 
         # 文件选择组件
         selected_file = st.selectbox(
-            f"选择文件 ({len(file_names)} 个文件)",
-            options=["请选择文件..."] + file_names,
+            f"选择文件 ({len(file_names)} 个文件) (Select {len(file_names)} files)",
+            options=["请选择文件 Please select a file..."] + file_names,
             key="file_select",
             index=1 if len(file_names) == 1 else 0
         )
@@ -559,10 +565,10 @@ class Render:
 
         file_path = Path(file_path_str)
 
-        st.markdown(f"**文件路径**: `{file_path}`")
-        self.config_layout(page_title=f"{tab_name}/{file_path.name}")
+        st.markdown(f"**文件路径** (File path) : `{file_path}` ")
+        self.config_layout(page_title=f"{file_path.name}")
 
-        with st.spinner(f"正在加载 {file_path.name} ({file_path.suffix.upper()})..."):
+        with st.spinner(f"正在加载 Loading {file_path.name} ({file_path.suffix.upper()})..."):
             if file_path.suffix.lower() in TXT_EXTENSIONS:
                 self.display_as_text(file_path)
             else:
