@@ -7,19 +7,209 @@ rules:
     line_num: 19
     unit_name: test_taint.py
     target: [\%arg0]
-#  - operation: call_stmt
-#    name: send
-#    target: [\%arg0]
-#  - operation: call_stmt
-#    name: web.FileResponse
-#    target: [\%arg0]
-#  - operation: call_stmt
-#    name: pickle.load
-#    target: [\%arg0]
-#  - operation: call_stmt
-#    name: FileResponse
-#    target: [\%arg0]
-#  - operation: call_stmt
-#    name: send_file
-#    target: [\%arg0]
-#
+  - operation: call_stmt
+    name: web.FileResponse
+    target: [\%arg0]
+  - operation: call_stmt
+    name: pickle.load
+    target: [\%arg0]
+  - operation: call_stmt
+    name: FileResponse
+    target: [\%arg0]
+  - operation: call_stmt
+    name: send_file
+    target: [\%arg0]
+######################################## 适配污点使用，勿删 ################################################
+# 25个CVE的source变量
+lang: java
+rules:
+# CVE-2023-43654
+  - operation: object_call
+    name: FileUtils.copyURLToFile
+    line_num: 35
+    unit_name: "HttpUtils.java"
+    target: [\%arg0]
+# CVE-2023-48299
+  - operation: object_call
+    name: IOUtils.copy
+    line_num: 35
+    unit_name: "ZipUtils.java"
+    target: [\%arg1]
+
+lang: python
+rules:
+# CVE-2023-51449
+  - operation: call_stmt
+    name: FileResponse
+    line_num: 484
+    unit_name: "routes.py"
+    target: [\%arg0]
+# CVE-2023-6730
+  - operation: object_call
+    name: pickle.load
+    line_num: 135
+    unit_name: "retrieval_rag.py"
+    target: [\%arg0]
+# CVE-2023-7018
+  - operation: object_call
+    name: pickle.load
+    line_num: 210
+    unit_name: "tokenization_transfo_xl.py"
+    target: [\%arg0]
+# CVE-2024-10044
+  - operation: object_call
+    name: controller.worker_api_generate_stream
+    line_num: 339
+    unit_name: "controller.py"
+    target: [\%target]
+# CVE-2024-10099
+  - operation: object_call
+    name: f.write
+    line_num: 251
+    unit_name: "server.py"
+    target: [\%arg0]
+  - operation: object_call
+    name: web.FileResponse
+    line_num: 390
+    unit_name: "server.py"
+    target: [\%arg0]
+# CVE-2024-10457
+  - operation: object_call
+    name: \%this.queue.add
+    line_num: 791
+    unit_name: "manager.py"
+    target: [\%arg0]
+  - operation: object_call
+    name: request.get
+    line_num: 13
+    unit_name: "search.py"
+    target: [\%arg0]
+# CVE-2024-10940
+  - operation: object_call
+    # TODO 这里的 name 有问题
+    name: super().__init__
+    line_num: 36
+    unit_name: "image.py"
+    target: [\%arg0]
+  - operation: object_call
+    name: image_file.read
+    line_num: 15
+    unit_name: "image.py"
+    target: [\%receiver]
+# CVE-2024-11041
+  - operation: object_call
+    name: pickle.loads
+    line_num: 443
+    unit_name: "shm_broadcast.py"
+    target: [\%arg0]
+# CVE-2024-11042
+  - operation: object_call
+    name: thumbnail_path.unlink
+    line_num: 107
+    unit_name: "image_files_disk.py"
+    target: [\%receiver]
+# CVE-2024-11958
+  - operation: object_call
+    name: conn.execute
+    line_num: 113
+    unit_name: "base.py"
+    target: [\%arg0]
+# CVE-2024-12029
+  - operation: object_call
+    name: \%this._queue.put
+    line_num: 124
+    unit_name: "download_default.py"
+    target: [\%arg0]
+  - operation: object_call
+    name: torch.load
+    line_num: 63
+    unit_name: "model_util.py"
+    target: [\%arg0]
+# CVE-2024-1558
+  - operation: object_call
+    name: session.flush
+    line_num: 706
+    unit_name: "sqlalchemy_store.py"
+    target: [\%receiver]
+  - operation: call_stmt
+    name: send_file
+    line_num: 500
+    unit_name: "handlers.py"
+    target: [\%arg0]
+# CVE-2024-23731
+  - operation: object_call
+    name: yaml.load
+    line_num: 35
+    unit_name: "openapi.py"
+    target: [\%arg0]
+# CVE-2024-34359
+  - operation: field_write
+    name: \%this.chat_handler
+    line_num: 380
+    unit_name: "llama.py"
+    target: [\%target]
+  - operation: object_call
+    name: \%this._environment.render
+    line_num: 380
+    unit_name: "llama.py"
+    target: [\%receiver]
+# CVE-2024-4325
+  - operation: object_call
+    # TODO 这里的name有问题
+    name: event_queue.queue.append
+    line_num: 212
+    unit_name: "queueing.py"
+    target: [\%arg0]
+  - operation: object_call
+    name: httpx.stream
+    line_num: 193
+    unit_name: "processing_utils.py"
+    target: [\%arg1]
+# CVE-2024-4941
+  - operation: record_write
+    key: data
+    line_num: 1775
+    unit_name: "blocks.py"
+    target: []
+# CVE-2024-5980
+  - operation: object_call
+    name: tf.extractall
+    line_num: 162
+    unit_name: "plugin.py"
+    target: [\%arg0]
+# CVE-2024-8953
+  - operation: call_stmt
+    name: eval
+    line_num: 37
+    unit_name: "calculator.py"
+    target: [\%arg0]
+# CVE-2024-9053
+  - operation: object_call
+    name: cloudpickle.loads
+    line_num: 157
+    unit_name: "server.py"
+    target: [\%arg0]
+# CVE-2025-1040
+  - operation: object_call
+    name: template.render
+    line_num: 309
+    unit_name: "basic.py"
+    target: [\%arg0]
+# CVE-2025-24357
+  - operation: object_call
+    name: torch.load
+    line_num: 450
+    unit_name: "weight_utils.py"
+    target: [\%arg0]
+# CVE-2025-25362
+  - operation: object_call
+    name: _template.render
+    line_num: 79
+    unit_name: "builtin_task.py"
+    target: [\%arg0]
+# CVE-2025-25362
+  - operation: object_call
+    name: pickle.loads
+    line_num: 301
+    unit_name: "runner_app.py"
+    target: [\%arg0]
