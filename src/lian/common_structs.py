@@ -1072,6 +1072,7 @@ class StateFlowGraph(SymbolGraph):
         # info = inspect.getframeinfo(caller_frame)
         # print(f"{info.filename}:{info.lineno} add_edge: {src_node} -> {dst_node} @ weight={weight}")
         super().add_edge(src_node, dst_node, weight)
+        a = 1
 
 @dataclasses.dataclass
 class SFGNode:
