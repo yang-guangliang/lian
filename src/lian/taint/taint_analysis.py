@@ -280,7 +280,7 @@ class TaintRuleApplier:
         unit_info = self.loader.convert_module_id_to_module_info(unit_id)
         unit_path = unit_info.original_path
         unit_name = os.path.basename(unit_path)
-        method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_first_used_symbol_and_state(node)
+        method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
         defined_symbol_node, defined_state_nodes = self.taint_analysis.get_stmt_define_symbol_and_states_node(node)
         if not method_symbol_node or not defined_symbol_node:
             return False
@@ -321,12 +321,15 @@ class TaintRuleApplier:
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call_stmt":
             return False
         stmt = node.stmt
-        name = stmt.receiver_object + '.' + stmt.field
         stmt_id = node.def_stmt_id
         unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
         unit_info = self.loader.convert_module_id_to_module_info(unit_id)
         unit_path = unit_info.original_path
         unit_name = os.path.basename(unit_path)
+        method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+
+        name = util.access_path_formatter(method_state_nodes[0].access_path) + '.' + stmt.field
+
         for rule in self.rule_manager.all_sinks:
             if rule.unit_path and rule.unit_path != unit_path:
                 continue
@@ -341,13 +344,15 @@ class TaintRuleApplier:
     def should_apply_call_stmt_sink_rules(self, node):
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "call_stmt":
             return False
-        method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_first_used_symbol_and_state(node)
+        method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
         stmt_id = node.def_stmt_id
         unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
         unit_info = self.loader.convert_module_id_to_module_info(unit_id)
         unit_path = unit_info.original_path
         unit_name = os.path.basename(unit_path)
         for rule in self.rule_manager.all_sinks:
+            if rule.operation != "call_stmt":
+                continue
             if rule.unit_path and rule.unit_path != unit_path:
                 continue
             if rule.unit_name and rule.unit_name != unit_name:
@@ -360,7 +365,28 @@ class TaintRuleApplier:
                     return True
 
         return False
+    def apply_record_write_sink_rules(self, node):
+        stmt_id = node.def_stmt_id
+        unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+        unit_path = unit_info.original_path
+        unit_name = os.path.basename(unit_path)
+        if node.node_type != SFG_NODE_KIND.STMT or node.name != "record_write":
+            return False
 
+        for rule in self.rule_manager.all_sinks:
+            if rule.operation != "record_write":
+                continue
+            if rule.unit_path and rule.unit_path != unit_path:
+                continue
+            if rule.unit_name and rule.unit_name != unit_name:
+                continue
+            if rule.line_num and rule.line_num != int(node.line_no + 1):
+                continue
+            if rule.key and rule.key == node.stmt.key:
+                return True
+
+        return False
     def check_method_name(self, rule_name, method_state):
         state_access_path = method_state.access_path
         rule_name_parts = rule_name.split('.')
@@ -405,7 +431,7 @@ class TaintRuleApplier:
 
             elif operation == "call_stmt":
                 # 检查函数名是否符合规则
-                method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_first_used_symbol_and_state(node)
+                method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
                 if method_state_nodes:
                     for state_node in method_state_nodes:
                         if self.check_method_name(rule.name, state_node):
@@ -428,7 +454,7 @@ class TaintRuleApplier:
         # 1. 寻找匹配的 sink 规则
         matching_rules = []
         if operation == "call_stmt":
-            _, method_state_nodes = self.taint_analysis.get_stmt_first_used_symbol_and_state(node)
+            _, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
             for rule in self.rule_manager.all_sinks:
                 if rule.operation != "call_stmt":
                     continue
@@ -512,7 +538,7 @@ class TaintAnalysis:
                 rules.append(rule)
         return rules
 
-    def get_stmt_first_used_symbol_and_state(self, node):
+    def get_stmt_used_symbol_and_state_by_pos(self, node, pos = 0):
         if node.node_type != SFG_NODE_KIND.STMT:
             return None, None
         state_nodes = []
@@ -522,7 +548,7 @@ class TaintAnalysis:
             return None, None
         for predecessor in predecessors:
             edge = self.sfg.get_edge_data(predecessor, node)
-            if edge and edge[0]['weight'].pos == 0:
+            if edge and edge[0]['weight'].pos == pos:
                 name_symbol_node = predecessor
         name_symbol_successors = list(util.graph_successors(self.sfg, name_symbol_node))
         for successor in name_symbol_successors:
@@ -612,6 +638,8 @@ class TaintAnalysis:
         for node in self.sfg.nodes:
             if self.rule_applier.should_apply_call_stmt_sink_rules(
                 node) or self.rule_applier.should_apply_object_call_stmt_sink_rules(node):
+                node_list.append(node)
+            if self.rule_applier.apply_record_write_sink_rules(node):
                 node_list.append(node)
         return node_list
 
@@ -953,7 +981,7 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources()
             sinks = self.find_sinks()
-
+            print(sources, sinks)
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 

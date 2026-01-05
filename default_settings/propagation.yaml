@@ -1,6 +1,5 @@
-rule_kind: propagation
-lang: python
-rules:
+- lang: python
+  rules:
   - operation: assign_stmt
     src: operand1
     dst:

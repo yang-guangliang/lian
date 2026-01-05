@@ -2030,10 +2030,20 @@ class StmtStates:
                 if not isinstance(name_state, State) or len(name_state.access_path) == 0:
                     continue
                 return_access_path = copy.deepcopy(name_state.access_path)
-            return_access_path.append(AccessPoint(
-                kind=ACCESS_POINT_KIND.CALL_RETURN,
-                key=name_symbol.name
-            ))
+
+            if stmt.operation == "call_stmt":
+                return_access_path.append(AccessPoint(
+                    kind=ACCESS_POINT_KIND.CALL_RETURN,
+                    key=name_symbol.name
+                ))
+            elif stmt.operation == "object_call_stmt":
+                field_index = status.used_symbols[1]
+                field_state = self.frame.symbol_state_space[field_index]
+
+                return_access_path.append(AccessPoint(
+                    kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
+                    key=field_state.value
+                ))
             unsolved_state_index = self.create_state_and_add_space(
                 status, stmt_id,
                 source_symbol_id=defined_symbol.symbol_id,
