@@ -1,6 +1,6 @@
-Copyright (c) 2022-present Guangliang Yang and contributors
+Copyright (c) 2025-present Guangliang Yang and contributors
 
-The Lian Security is provided under the terms of the Apache 2.0 license.
+The Lian program analysis framework is provided under the terms of the Apache 2.0 license.
 
 Please see
         https://www.apache.org/licenses/LICENSE-2.0.txt

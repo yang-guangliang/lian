@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------
 # MkDocs Configuration for English Version (/)
 # -------------------------------------------------------------------
-site_name: Welcome to LIAN (English)
+site_name: Welcome to the Lian System
 site_url: https://yang-guangliang.github.io/lian/en
 repo_url: https://github.com/yang-guangliang/lian
 docs_dir: docs/en
