@@ -1236,7 +1236,6 @@ class StmtStates:
 
     def recursively_collect_children_fields(self, stmt_id, status: StmtStatus, state_set_in_summary_field: set,
                                             state_set_in_arg_field: set, source_symbol_id, access_path):
-        # 闭包缓存，避免field环形依赖
         cache = {}
 
         def _set_attributes_on_states(states, fields_to_set, state_type, source_symbol_id, access_path):
@@ -1286,7 +1285,16 @@ class StmtStates:
             )
             # 检查缓存
             if cache_key in cache:
-                return cache[cache_key]
+                cached_result = cache[cache_key]
+                if cached_result is None:
+                    # 循环依赖情况，避免无限递归
+                    if state_set_in_arg_field:
+                        return state_set_in_arg_field.copy()
+                    else:
+                        return state_set_in_summary_field.copy()
+                return cached_result
+
+            cache[cache_key] = None
 
             # state_type默认为REGULAR，如果任意一个输入状态的 state_type 是 ANYTHING，则结果也标记为 ANYTHING。
             state_type = STATE_TYPE_KIND.REGULAR
@@ -1300,8 +1308,6 @@ class StmtStates:
             # 填充summary_states_fields
             for each_state_index in state_set_in_summary_field:
                 each_state = self.frame.symbol_state_space[each_state_index]
-                # print("打印summary_field中的",each_state_index)
-                # pprint.pprint(each_state)
                 if not (each_state and isinstance(each_state, State)):
                     continue
                 if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
@@ -1323,8 +1329,6 @@ class StmtStates:
 
                 if not (each_state and isinstance(each_state, State)):
                     continue
-                # print("打印arg_field中的",each_state_index)
-                # pprint.pprint(each_state)
                 if each_state.tangping_flag:
                     tangping_flag = True
                     tangping_elements.update(each_state.tangping_elements)
@@ -1335,14 +1339,13 @@ class StmtStates:
 
             # 合并caller中同id的states
             states_with_diff_ids = set()
-            # 如果是第三阶段，吧states加到states_with_diff_ids，不允许下面的for
+            # 如果是第三阶段，把states加到states_with_diff_ids，不允许下面的for
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
                 for state_id, states in state_id_to_states.items():
                     if len(states) == 1:
                         new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, next(iter(states)))
                         states_with_diff_ids.add(new_state_index)
                     else:
-
                         states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, status))
             else:
                 for state_id, states in state_id_to_states.items():
@@ -1354,9 +1357,6 @@ class StmtStates:
                     state.tangping_flag = True
                     state.tangping_elements = tangping_elements
                 return_set.update(states_with_diff_ids)
-
-            # print(f"\n======\naccess_path {access_path}")
-            # print(f"arg_fields: {arg_state_fields}\nsummary_fields: {summary_states_fields}" )
 
             # 只有单侧有字段时的处理
             if not arg_state_fields or not summary_states_fields:
@@ -1373,6 +1373,7 @@ class StmtStates:
                 else:
                     if not return_set:
                         return_set.update(state_set_in_summary_field)
+                cache[cache_key] = return_set
                 return return_set
 
             # 两侧都有字段
