@@ -157,7 +157,8 @@ class Lian:
         return self
 
     def taint_analysis(self):
-        TaintAnalysis(self, self.options).run()
+        taint_analysis = TaintAnalysis(self, self.options).run()
+        return taint_analysis
 
     def lang_cmd(self):
         self.lang_analysis()
