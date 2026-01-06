@@ -981,7 +981,7 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources()
             sinks = self.find_sinks()
-            print(sources, sinks)
+            # print(sources, sinks)
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 
@@ -990,4 +990,5 @@ class TaintAnalysis:
         else:
             if not self.options.quiet:
                 self.print_and_write_flows(all_flows)
+        return self
 
