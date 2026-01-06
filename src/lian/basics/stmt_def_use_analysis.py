@@ -409,6 +409,8 @@ class StmtDefUseAnalysis:
             named_symbol_list = arg_symbol_list[positional_arg_index:]
             if named_symbol_list:
                 for index, arg in enumerate(named_args):
+                    if index >= len(named_symbol_list):
+                        break
                     space_index =  named_symbol_list[index]
                     arg_symbol = self.symbol_state_space[space_index]
                     if isinstance(arg_symbol, State):

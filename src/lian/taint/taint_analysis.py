@@ -327,8 +327,10 @@ class TaintRuleApplier:
         unit_path = unit_info.original_path
         unit_name = os.path.basename(unit_path)
         method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
-
-        name = util.access_path_formatter(method_state_nodes[0].access_path) + '.' + stmt.field
+        if method_state_nodes and len(method_state_nodes) > 0:
+            name = util.access_path_formatter(method_state_nodes[0].access_path) + '.' + stmt.field
+        else:
+            name = stmt.receiver_object + '.' + stmt.field
 
         for rule in self.rule_manager.all_sinks:
             if rule.unit_path and rule.unit_path != unit_path:
