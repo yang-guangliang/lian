@@ -3304,7 +3304,8 @@ class Loader:
             method_stmt = self.get_stmt_gir(method_id)
             start_row = method_stmt.start_row + 1
             end_row = method_stmt.end_row + 1
-
+            if math.isnan(start_row):
+                continue
             if int(start_row) <= line_num <= int(end_row):
                 return method_id
         return -1
