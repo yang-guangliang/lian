@@ -3325,6 +3325,8 @@ class Loader:
                     method_ids = self.convert_unit_id_to_method_ids(unit_id)
         elif rule.unit_name:
             for module_symbol in module_symbol_table:
+                if math.isnan(module_symbol.original_path):
+                    continue
                 if not os.path.isfile(module_symbol.original_path):
                     continue
                 if os.path.basename(module_symbol.original_path) == rule.unit_name:
