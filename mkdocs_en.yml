@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------
 # MkDocs Configuration for English Version (/)
 # -------------------------------------------------------------------
-site_name: Welcome to the Lian System
+site_name: Lian Program Analysis Framework
 site_url: https://yang-guangliang.github.io/lian/en
 repo_url: https://github.com/yang-guangliang/lian
 docs_dir: docs/en
