@@ -233,10 +233,10 @@ class TaintRuleApplier:
         unit_path = unit_info.original_path
         unit_name = os.path.basename(unit_path)
         stmt = node.stmt
-        if not stmt.attrs:
-            return False
-        if not isinstance(stmt.attrs, str):
-            return False
+        # if not stmt.attrs:
+        #     return False
+        # if not isinstance(stmt.attrs, str):
+        #     return False
         attrs = stmt.attrs
         parameter_symbol = list(util.graph_successors(self.sfg, node))[0]
         for rule in self.rule_manager.all_sources:
@@ -244,14 +244,14 @@ class TaintRuleApplier:
                 continue
             if rule.unit_name and rule.unit_name != unit_name:
                 continue
-            if rule.line_num and rule.line_num != str(stmt.line_no):
+            if rule.line_num and rule.line_num != int(stmt.start_row + 1):
                 continue
             if not rule.attr and rule.name == parameter_symbol.name:
                 return True
             if rule.operation != "parameter_decl":
                 continue
-            if rule.attr and rule.attr not in attrs:
-                continue
+            # if rule.attr and rule.attr not in attrs:
+            #     continue
             if rule.name == parameter_symbol.name:
                 return True
         return False

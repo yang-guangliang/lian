@@ -3348,7 +3348,14 @@ class Loader:
             source_method_id = self.get_rule_method(source)
             for sink in sink_rules:
                 sink_method_id = self.get_rule_method(sink)
-                call_paths.append(self.get_call_path_between_two_methods_in_p3(source_method_id, sink_method_id))
+                result = self.get_call_path_between_two_methods_in_p3(source_method_id, sink_method_id)
+                if len(result) > 0:
+                    call_paths.append(self.get_call_path_between_two_methods_in_p3(source_method_id, sink_method_id))
 
         return call_paths
+
+    def get_call_path_from_source(self, source_rules):
+        call_paths = []
+        for source in source_rules:
+            source_method_id = self.get_rule_method(source)
 

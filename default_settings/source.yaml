@@ -13,7 +13,7 @@
     - operation: parameter_decl
       name: req
       line_num: 35
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-43654/test/serve-0.8.0/frontend/server/src/main/java/org/pytorch/serve/http/HttpRequestHandler.java"
+      unit_name: HttpRequestHandler.java
     # CVE-2023-48299（同上，保留注释）
     - operation: parameter_decl
       name: req  # 沿用上方CVE-2023-43654的配置，可根据实际需求修改
