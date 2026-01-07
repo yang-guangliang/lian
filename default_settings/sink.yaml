@@ -31,7 +31,7 @@
     # CVE-2023-43654
     - operation: object_call
       name: FileUtils.copyURLToFile
-      line_num: 35
+      line_num: 61
       unit_name: "HttpUtils.java"
       target: [\%arg0]
     # CVE-2023-48299

@@ -115,7 +115,8 @@ class SFGDumper:
             dir_name = config.STATE_FLOW_GRAPH_P3_DIR
         else:
             dir_name = config.STATE_FLOW_GRAPH_P2_DIR
-        return str(Path(workspace) / dir_name / f"{entry_point}.dot")
+        method_name = self.loader.convert_method_id_to_method_name(entry_point)
+        return str(Path(workspace) / dir_name / f"{method_name}_{entry_point}.dot")
 
     # ---------- Basic utilities ----------
     def dot_escape(self, s: Any) -> str:
