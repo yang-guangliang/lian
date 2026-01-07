@@ -1394,6 +1394,7 @@ class CallPathLoader:
         return callee
 
     def get_call_path_between_two_methods(self, src_method, dst_method):
+        """if des_method is None, return all call_path from src to end"""
         call_paths_between_two_methods = []
         for path in self.all_paths:
             current_path = []
@@ -1405,6 +1406,9 @@ class CallPathLoader:
                 elif found_src:
                     current_path.append(call_site)
                     if call_site.callee_id == dst_method:
+                        call_paths_between_two_methods.append(current_path)
+                        break
+                    elif not dst_method and call_site == path[-1]:
                         call_paths_between_two_methods.append(current_path)
                         break
         return call_paths_between_two_methods
@@ -2902,7 +2906,7 @@ class Loader:
 
     # gl: 给一个函数来查询函数调用路径吧
     # 输入是两个函数，还是两个函数列表啊，感觉列表更合理一点
-    def get_call_path_between_two_methods_in_p3(self, src_method, dst_method):
+    def get_call_path_between_two_methods_in_p3(self, src_method, dst_method = None):
         return self._global_call_path_loader.get_call_path_between_two_methods(src_method, dst_method)
 
     # gl: 试了一下还是叫 get_callers/callees 更好
