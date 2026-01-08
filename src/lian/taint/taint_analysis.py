@@ -367,6 +367,21 @@ class TaintRuleApplier:
                     return True
 
         return False
+    def apply_rules_from_code(self, node, rules):
+        stmt_id = node.def_stmt_id
+        unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+        unit_path = unit_info.original_path
+
+        for rule in rules:
+            if rule.unit_path not in unit_path:
+                continue
+            if node.line_no + 1 != rule.line_num:
+                continue
+            if rule.symbol_name in node.operation:
+                return True
+        return False
+
     def apply_record_write_sink_rules(self, node):
         stmt_id = node.def_stmt_id
         unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
@@ -408,7 +423,7 @@ class TaintRuleApplier:
         operation = node.name
 
         # 默认认为赋值语句传播污点
-        if operation == "assign_stmt":
+        if operation in ["assign_stmt", "call_stmt"] :
             return True
 
         for rule in self.rule_manager.all_propagations:
@@ -509,7 +524,16 @@ class TaintRuleApplier:
                             (target == TAG_KEYWORD.TARGET) or \
                             (not target):
                             sink_tag |= self.taint_analysis.get_symbol_with_states_tag(pred)
-
+        # 应用codeql规则
+        is_sink_node = False
+        for rule in self.rule_manager.all_sinks_from_code:
+            if node.line_no + 1 != rule.line_num:
+                continue
+            if rule.symbol_name in node.operation:
+                is_sink_node = True
+        if is_sink_node:
+            for pred in self.sfg.predecessors(node):
+                sink_tag |= self.taint_analysis.get_symbol_with_states_tag(pred)
         return sink_tag
 
 
@@ -583,43 +607,23 @@ class TaintAnalysis:
         for node in self.sfg.nodes:
             if node.node_type != SFG_NODE_KIND.STMT:
                 continue
-            if node.name == "call_stmt":
-                if self.rule_applier.apply_call_stmt_source_rules(node):
-                    defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
-                    node_list.append(defined_symbol_node)
-            if node.name == "parameter_decl":
-                if self.rule_applier.apply_parameter_source_rules(node):
-                    defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
-                    node_list.append(defined_symbol_node)
-            if node.name == "field_read":
-                if self.rule_applier.apply_field_read_source_rules(node):
-                    defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
-                    node_list.append(defined_symbol_node)
+            if node.name == "call_stmt" and self.rule_applier.apply_call_stmt_source_rules(node):
+                defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+                node_list.append(defined_symbol_node)
+            elif node.name == "parameter_decl" and self.rule_applier.apply_parameter_source_rules(node):
+                defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+                node_list.append(defined_symbol_node)
+            elif node.name == "field_read" and self.rule_applier.apply_field_read_source_rules(node):
+                defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+                node_list.append(defined_symbol_node)
             # 为了兼容codeql规则
-            # elif node.node_type == SFG_NODE_KIND.STMT:
-            #     rules = self.rule_manager.all_sources_from_code
-            #     if self.apply_rules_from_code(node, rules):
-            #         node_list.append(node)
+            else:
+                rules = self.rule_manager.all_sources_from_code
+                if self.rule_applier.apply_rules_from_code(node, rules):
+                    defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+                    node_list.append(defined_symbol_node)
 
         return node_list
-
-    def apply_rules_from_code(self, node, rules):
-        stmt_id = node.def_stmt_id
-
-        status = self.get_stmt_status(node, stmt_id)
-        stmt = self.loader.get_stmt_gir(stmt_id)
-        for rule in rules:
-            if str(stmt.start_row) != rule.line_num:
-                continue
-            symbol_in_stmt = False
-            if self.space[status.defined_symbol].name == rule.symbol_name:
-                symbol_in_stmt = True
-            for symbol_index in status.used_symbols:
-                symbol = self.space[symbol_index]
-                if symbol.name == rule.symbol_name:
-                    symbol_in_stmt = True
-            if not symbol_in_stmt:
-                continue
 
     def access_path_formatter(self, state_access_path):
         key_list = []
@@ -641,8 +645,12 @@ class TaintAnalysis:
             if self.rule_applier.should_apply_call_stmt_sink_rules(
                 node) or self.rule_applier.should_apply_object_call_stmt_sink_rules(node):
                 node_list.append(node)
-            if self.rule_applier.apply_record_write_sink_rules(node):
+            elif self.rule_applier.apply_record_write_sink_rules(node):
                 node_list.append(node)
+            else:
+                rules = self.rule_manager.all_sinks_from_code
+                if self.rule_applier.apply_rules_from_code(node, rules):
+                    node_list.append(node)
         return node_list
 
     def check_method_name(self, rule_name, method_state):
