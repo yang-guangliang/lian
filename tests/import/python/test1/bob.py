@@ -5,3 +5,7 @@ a = toolbox.tools
 def nnn():
     r = 1
     pass
+
+f = kkk()
+p = f
+ppp(p)

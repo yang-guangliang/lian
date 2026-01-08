@@ -1413,6 +1413,16 @@ class CallPathLoader:
                         break
         return call_paths_between_two_methods
 
+    def get_call_path_by_entry_point(self, entry_point):
+        call_paths_between_two_methods = []
+        for path in self.all_paths:
+            call_path = []
+            if 0 < entry_point != path[0].caller_id:
+                continue
+            call_paths_between_two_methods.append(path)
+        return call_paths_between_two_methods
+
+
     def get_lowest_common_ancestor(self, node1, node2, entry_point):
         """
         寻找两个节点的最近公共祖先 (LCA)
@@ -2909,6 +2919,24 @@ class Loader:
     def get_call_path_between_two_methods_in_p3(self, src_method, dst_method = None):
         return self._global_call_path_loader.get_call_path_between_two_methods(src_method, dst_method)
 
+    def get_call_path_by_entry_point(self, entry_point):
+        return self._global_call_path_loader.get_call_path_by_entry_point(entry_point)
+
+    def get_call_path_in_name_by_entry_point(self, entry_point):
+        call_path = self._global_call_path_loader.get_call_path_by_entry_point(entry_point)
+        all_path = []
+        for path in call_path:
+            path_in_name = []
+            for call_site in path:
+                caller_name = self.convert_method_id_to_method_name(call_site.caller_id)
+                callee_name = self.convert_method_id_to_method_name(call_site.callee_id)
+                if len(path_in_name) == 0 or path_in_name[-1] != caller_name:
+                    path_in_name.append(caller_name)
+                if len(path_in_name) == 0 or path_in_name[-1] != callee_name:
+                    path_in_name.append(callee_name)
+
+            all_path.append(path_in_name)
+        return all_path
     # gl: 试了一下还是叫 get_callers/callees 更好
     # 就是参数有点复杂
     # 写的时候，根据条件分流到不同的函数吧
