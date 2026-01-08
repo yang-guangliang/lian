@@ -1,26 +1,29 @@
-rule_kind: sink
-lang: python
-rules:
- - unit_path: "ComfyUI-0.2.2/comfy/ldm/modules/encoders/noise_aug_modules.py"
-   line_num: 11
-   symbol_name: clip_stats_path
+- lang: python
+  rules:
+     - unit_path: "ComfyUI-0.2.2/comfy/ldm/modules/encoders/noise_aug_modules.py"
+       line_num: 11
+       symbol_name: clip_stats_path
 
- - unit_path: "ComfyUI-0.2.2/comfy/sd1_clip.py"
-   line_num: 371
-   symbol_name: embed_path
+     - unit_path: "ComfyUI-0.2.2/comfy/sd1_clip.py"
+       line_num: 371
+       symbol_name: embed_path
 
- - unit_path: "ComfyUI-0.2.2/comfy/sd1_clip.py"
-   line_num: 375
-   symbol_name: embed_path
+     - unit_path: "ComfyUI-0.2.2/comfy/sd1_clip.py"
+       line_num: 375
+       symbol_name: embed_path
 
- - unit_path: "ComfyUI-0.2.2/tests/inference/test_execution.py"
-   line_num: 138
-   symbol_name: pargs
+     - unit_path: "ComfyUI-0.2.2/tests/inference/test_execution.py"
+       line_num: 138
+       symbol_name: pargs
 
- - unit_path: "ComfyUI-0.2.2/.ci/update_windows/update.py"
-   line_num: 133
-   symbol_name: Attribute
+     - unit_path: "ComfyUI-0.2.2/.ci/update_windows/update.py"
+       line_num: 133
+       symbol_name: Attribute
 
- - unit_path: "ComfyUI-0.2.2/comfy/utils.py"
-   line_num: 41
-   symbol_name: ckpt
+     - unit_path: "ComfyUI-0.2.2/comfy/utils.py"
+       line_num: 41
+       symbol_name: ckpt
+
+     -   unit_path: "test1/bob.py"
+         line_num: 11
+         symbol_name: ppp
