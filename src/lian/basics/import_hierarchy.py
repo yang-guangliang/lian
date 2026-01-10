@@ -44,6 +44,9 @@ class ImportHierarchy:
             unit_id = unit_id
         )
         self.symbol_id_to_symbol_node[symbol_id] = import_node
+        if symbol_name not in self.module_name_to_symbol_nodes:
+            self.module_name_to_symbol_nodes[symbol_name] = []
+        self.module_name_to_symbol_nodes[symbol_name].append(import_node)
         self.add_import_graph_edge(parent_node_id, symbol_id, symbol_name, symbol_type = symbol_type)
         return import_node
 
@@ -340,12 +343,9 @@ class ImportHierarchy:
         if import_path_str.startswith("."):
             import_path_str = import_path_str[1:]
         import_path: list = import_path_str.split(".")
-        parent_module_id = 0
-        if len(import_path) > 0:
-            first_path = import_path[0]
-            for each_node in self.symbol_id_to_symbol_node.values():
-                if each_node.symbol_name == first_path:
-                    parent_module_id = each_node.scope_id
+        
+        parent_module_id = unit_info.parent_module_id
+
         import_nodes, remaining = self.parse_import_path_from_current_dir(
             import_path_str, parent_module_id
         )
