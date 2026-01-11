@@ -46,17 +46,20 @@ nav:
       - 数据流分析 : 02.background/2-2.dataflow.md
       - 指针分析 : 02.background/2-3.pointer.md
       - 污点分析 : 02.background/2-4.taint.md
-  - 前端:
-      - 语言解析器: 03.lang_parser.md
-      - 通用中间语言GIR: 03.gir.md 
-  - 语义分析:
-      - 语义分析概述: 04.design.md
-      - 基本分析: 04.basic_analysis.md
-      - 摘要生成: 04.summary_generation.md
-      - 全局分析: 04.global_analysis.md
+  - 通用中间语言GIR:
+      - 语言解析器: 03.frontend/3-1.lang.md
+      - GIR语法定义: 03.frontend/3-2.gir.md 
+  - 统一程序分析:
+      - 分析技术: 04.analysis/4-1.tech.md
+      - 基础性分析: 04.analysis/4-2.basics.md
+      - 自下而上分析: 04.analysis/4-3.preliminary.md
+      - 自上而下分析: 04.analysis/4-4.global.md
+      - 解析器Resolver: 04.analysis/4-5.resolver.md
+  - 语言差异性兼容:
+      - 插件系统: 05.inconsistency/5-1.plugin.md
   - 污点分析:
-      - 污点分析概述: 05.taint.md
-  - 底层:
-      - loader: 06.loader.md
-      - 插件: 06.plugins.md
-      - 数据层: 06.data_model.md
+      - 指针分析结果: 06.taint/6-1.svf.md
+      - 污点跟踪技术: 06.taint/6-2.taint.md
+  - 底层支持:
+      - 数据层: 07.underlying/7-1.data-model.md
+      - 结果管理Loader: 07.underlying/7-2.loader.md

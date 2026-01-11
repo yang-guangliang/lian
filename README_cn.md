@@ -75,6 +75,6 @@ $ ./scripts/lian.sh -l <language> <path_to_code>
 
 ## 项目状态
 
-Lian是一个活跃的、研究驱动项目，由复旦大学[SSR（系统安全与可靠性）研究组](https://yang-guangliang.github.io/)独立开发。我们致力于构建一个通用、可扩展、高精度的程序安全分析基础设施。
+Lian是一个活跃的、研究驱动项目，由[复旦大学SSR（系统安全与可靠性）研究组](https://yang-guangliang.github.io/)独立开发。我们致力于构建一个通用、可扩展、高精度的程序安全分析基础设施。
 
 如有问题，也欢迎直接联系作者杨广亮： yanggl at fudan.edu.cn
