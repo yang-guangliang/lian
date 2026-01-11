@@ -23,7 +23,7 @@ SUPPORTED_LANGUAGES = [
 ANALYSIS_COMMANDS = {
     "run": "污点分析 Taint analysis",
     "semantic": "语义分析 Semantic analysis",
-    "lang": "生成通用Generate GIR",
+    "lang": "生成 GIR generation",
 }
 
 IGNORED_EXTENSIONS = [".log", ".indexing"]
