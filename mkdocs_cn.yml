@@ -48,7 +48,7 @@ nav:
       - 污点分析 : 02.background/2-4.taint.md
   - 前端:
       - 语言解析器: 03.lang_parser.md
-      - 通用中间语言GIR: 03.gir.md
+      - 通用中间语言GIR: 03.gir.md 
   - 语义分析:
       - 语义分析概述: 04.design.md
       - 基本分析: 04.basic_analysis.md
