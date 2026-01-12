@@ -57,7 +57,7 @@
     - operation: object_call
       name: pickle.load
       line_num: 210
-      unit_name: "tokenization_transfo_xl.py"
+      unit_name: tokenization_transfo_xl.py
       target: [\%arg0]
     # CVE-2024-10044
     - operation: object_call

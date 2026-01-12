@@ -229,8 +229,11 @@ def unify_this(data: EventData):
     return er.EventHandlerReturnKind.SUCCESS
 
 def find_python_method_first_parameter(method_decl):
+    if "attrs" in method_decl["method_decl"] and "staticmethod" in method_decl["method_decl"]["attrs"]:
+        return ""
     if "method_decl" in method_decl:
         method_decl = method_decl["method_decl"]
+
         if "parameters" in method_decl:
             parameters = method_decl["parameters"]
             counter = 0
@@ -257,11 +260,13 @@ def adjust_python_self(obj, first_parameter_name = "", new_name = LIAN_INTERNAL.
             if "methods" in current_class:
                 for each_method in current_class["methods"]:
                     first_one = find_python_method_first_parameter(each_method)
-                    if first_one and "body" in each_method["method_decl"]:
+                    if first_one and "body" in each_method["method_decl"] and "staticmethod" not in each_method["method_decl"]["attrs"]:
                         adjust_python_self(each_method["method_decl"]["body"], first_one, under_class_decl = True)
 
         elif "method_decl" in obj:
-            if "body" in obj["method_decl"]:
+            if "body" in obj["method_decl"] and "attrs" not in obj["method_decl"]:
+                adjust_python_self(obj["method_decl"]["body"])
+            if "attrs" in obj["method_decl"] and "staticmethod" not in obj["method_decl"]["attrs"]:
                 adjust_python_self(obj["method_decl"]["body"])
         else:
             for key, value in obj.items():

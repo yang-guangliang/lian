@@ -30,17 +30,17 @@
     - operation: parameter_decl
       name: path_or_url
       line_num: 434
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-51449/test/gradio-4.10.0/gradio/routes.py"
+      unit_name: routes.py
     # CVE-2023-6730
     - operation: parameter_decl
       name: retriever_name_or_path
       line_num: 419
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-6730/test/transformers-4.35.2/src/transformers/models/rag/retrieval_rag.py"
+      unit_name: retrieval_rag.py
     # CVE-2023-7018
     - operation: parameter_decl
       name: pretrained_model_name_or_path
       line_num: 592
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-7018/test/transformers-4.35.2/src/transformers/models/auto/tokenization_auto.py"
+      unit_name: tokenization_auto.py
     # CVE-2024-10044
     - operation: parameter_decl
       name: request
