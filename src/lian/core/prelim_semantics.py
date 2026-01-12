@@ -799,6 +799,7 @@ class PrelimSemanticAnalysis:
                                 def_stmt_id=stmt_id,
                                 name=stmt.operation,
                                 context=tmp_context,
+                                stmt=stmt,
                             ),
                             SFGEdge(
                                 edge_type=SFG_EDGE_KIND.SYMBOL_IS_USED,
