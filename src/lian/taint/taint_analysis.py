@@ -423,7 +423,7 @@ class TaintRuleApplier:
         operation = node.name
 
         # 默认认为赋值语句传播污点
-        if operation in ["assign_stmt", "call_stmt"] :
+        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object"] :
             return True
 
         for rule in self.rule_manager.all_propagations:
