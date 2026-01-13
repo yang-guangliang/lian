@@ -115,6 +115,10 @@
 - lang: python
   method_list: ["from_template", "invoke"]
   unit_name: "chat.py"
+
+- lang: python
+  method_list: ["broadcast_object"]
+  unit_name: "shm_broadcast.py"
 ######################################## 腾讯项目使用，勿删 ################################################
 - lang: python
   method_list: ['on_voice_change']

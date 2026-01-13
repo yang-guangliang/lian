@@ -77,7 +77,7 @@
     # CVE-2024-11041
     - operation: object_call
       name: \%this.remote_socket.recv  # 规范引号，移除多余反斜杠（YAML中无需转义%）
-      line_num: 422
+      line_num: 442
       unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11041/test/vllm-0.6.2/vllm/distributed/device_communicators/shm_broadcast.py"
       tag: ["%target"]
     # CVE-2024-11042
