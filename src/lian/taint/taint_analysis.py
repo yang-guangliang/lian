@@ -731,7 +731,11 @@ class TaintAnalysis:
                         phase_id=ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS,
                         taint_manager=self.taint_manager
                     )
-
+                    self.dump_tainted_sfg_by_method(
+                        source=source,
+                        phase_id=ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS,
+                        taint_manager=self.taint_manager
+                    )
                 # 2. Sink 检查 (针对单一 Sink)
                 sink_tag = self.rule_applier.get_sink_tag_by_rules(sink)
 
@@ -745,7 +749,9 @@ class TaintAnalysis:
 
         return flow_list
     def save_graph_to_dot(self, graph, entry_point, phase_id, taint_manager=None):
-
+        # 仅在用户开启 graph 输出时导出
+        if not (getattr(self.options, "graph", False) or getattr(self.options, "complete_graph", False)):
+            return
 
         if graph is None or len(graph) == 0:
             return
@@ -768,6 +774,69 @@ class TaintAnalysis:
             if not self.options.quiet:
                 util.error("An error occurred while writing state flow graph to dot file.")
                 traceback.print_exc()
+
+    def _get_node_method_id(self, node):
+        """
+        尝试将 SFGNode 映射到其所属 method_id。
+        优先使用 node.def_stmt_id -> method_id；无法映射时返回 -1。
+        """
+        try:
+            if getattr(node, "def_stmt_id", -1) is None or node.def_stmt_id < 0:
+                return -1
+            return self.loader.convert_stmt_id_to_method_id(node.def_stmt_id)
+        except Exception:
+            return -1
+
+    def split_sfg_by_method(self, graph):
+        """
+        将一个 entrypoint 的 SFG 按 method_id 拆分成多个子图。
+        规则：
+        - 节点归属：method_id = convert_stmt_id_to_method_id(node.def_stmt_id)
+        - 边保留：仅保留两端节点属于同一 method_id 的边
+        - 无法映射的节点（method_id == -1）归入 -1 组
+        """
+        method_to_nodes = {}
+        for n in graph.nodes():
+            mid = self._get_node_method_id(n)
+            method_to_nodes.setdefault(mid, set()).add(n)
+
+        method_to_subgraph = {}
+        for mid, nodes in method_to_nodes.items():
+            sg = nx.MultiDiGraph()
+            sg.add_nodes_from(nodes)
+            method_to_subgraph[mid] = sg
+
+        for u, v, k, data in graph.edges(keys=True, data=True):
+            mu = self._get_node_method_id(u)
+            mv = self._get_node_method_id(v)
+            if mu != mv:
+                continue
+            method_to_subgraph[mu].add_edge(u, v, key=k, **data)
+
+        return method_to_subgraph
+
+    def dump_tainted_sfg_by_method(self, source, phase_id, taint_manager):
+        """
+        在污点传播完成后，将当前 entrypoint 的 SFG 按函数拆分并分别导出 dot。
+        """
+        if not (getattr(self.options, "graph", False) or getattr(self.options, "complete_graph", False)):
+            return
+
+        method_to_graph = self.split_sfg_by_method(self.sfg)
+        for method_id, sub_g in method_to_graph.items():
+            # method_id == -1 表示无法映射的“未知归属”节点集合
+            if method_id >= 0:
+                method_name = self.loader.convert_method_id_to_method_name(method_id)
+                method_suffix = f"m{method_id}_{method_name}"
+            else:
+                method_suffix = "m_unknown"
+
+            self.save_graph_to_dot(
+                graph=sub_g,
+                entry_point=f"{self.current_entry_point}_taint_{source.def_stmt_id}_{method_suffix}",
+                phase_id=phase_id,
+                taint_manager=taint_manager,
+            )
 
     def get_all_forward_nodes(self, source):
         """
