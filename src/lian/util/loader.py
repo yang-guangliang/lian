@@ -3331,18 +3331,15 @@ class Loader:
     def get_yaml_info(self, unit_path: str, line_num: int):
         unit_id = self.convert_unit_path_to_unit_id(unit_path)
         unit_gir = self._gir_loader.get(unit_id)
-        stmt_id_to_stmt = {}
-        for row in unit_gir:
-            stmt_id_to_stmt[row.stmt_id] = row
-        current_stmt = None
-        for stmt_id, stmt in stmt_id_to_stmt.items():
-            if stmt.operation in ["call_stmt", "object_call_stmt"] and line_num == int(stmt.start_row + 1):
-                current_stmt = stmt
-                break
-        while current_stmt.operation != "method_decl":
-            parent_stmt_id = current_stmt.parent_stmt_id
-            current_stmt = stmt_id_to_stmt.get(parent_stmt_id)
-        return -1 if not current_stmt else current_stmt.stmt_id
+
+        for stmt in unit_gir:
+            start_row = stmt.start_row + 1
+            if math.isnan(start_row):
+                continue
+            if start_row == line_num:
+                return self.convert_stmt_id_to_method_id(stmt.stmt_id)
+        return -1
+
 
     def get_rule_method(self, rule):
         method_ids = set()
