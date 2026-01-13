@@ -14,7 +14,9 @@
 
 def aaa():
     a = source()
-    bbb(a)
+    n = a
+    bbb(n)
 def bbb(h):
-    sink(h)
+    f = h
+    sink(f)
 aaa()

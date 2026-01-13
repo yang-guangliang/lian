@@ -1939,7 +1939,8 @@ class StmtStates:
 
         # call plugin to deal with undefined_callee_error
         # if len(unsolved_callee_states) != 0:
-        if len(callee_method_ids) == 0 or self.is_abstract_method(callee_method_ids):
+        caller_id = self.frame.method_id
+        if len(callee_method_ids) == 0 or self.is_abstract_method(callee_method_ids) or caller_id in callee_method_ids:
             out_data = self.trigger_extern_callee(
                 stmt_id, stmt, status, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
             )
