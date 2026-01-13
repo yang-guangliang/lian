@@ -60,10 +60,11 @@
       name: node_input
       line_num: 522
       unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10457/test/AutoGPT-0.1.1/autogpt_platform/backend/backend/server/rest_api.py"
-    - operation: parameter_decl
-      name: \%this.queue
+    - operation: object_call
+      name: \%this.queue.get
       line_num: 705
       unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10457/test/AutoGPT-0.1.1/autogpt_platform/backend/backend/executor/manager.py"
+      tag: ["%target"]
     # CVE-2024-10940
     - operation: parameter_decl
       name: template
