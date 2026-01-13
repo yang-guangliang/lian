@@ -342,7 +342,6 @@ class ImportHierarchy:
         # 搜索相对路径
         if import_path_str.startswith("."):
             import_path_str = import_path_str[1:]
-        import_path: list = import_path_str.split(".")
         
         parent_module_id = unit_info.parent_module_id
 
