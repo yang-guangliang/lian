@@ -119,6 +119,10 @@
 - lang: python
   method_list: ["broadcast_object"]
   unit_name: "shm_broadcast.py"
+
+- lang: python
+  method_list: ["install_model"]
+  unit_name: "model_manager.py"
 ######################################## 腾讯项目使用，勿删 ################################################
 - lang: python
   method_list: ['on_voice_change']
