@@ -887,8 +887,8 @@ class PrelimSemanticAnalysis:
             for each_state_index in defined_symbol.states:
                 if each_state_index == -1:
                     continue
-                if each_state_index in old_defined_symbol_states:
-                    continue
+                # if each_state_index in old_defined_symbol_states:
+                #     continue
 
                 state = frame.symbol_state_space[each_state_index]
                 if not isinstance(state, State):
