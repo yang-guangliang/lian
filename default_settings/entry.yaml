@@ -111,6 +111,10 @@
 - lang: python
   method_list: ["_request_handler"]
   unit_name: "runner_app.py"
+
+- lang: python
+  method_list: ["from_template", "invoke"]
+  unit_name: "chat.py"
 ######################################## 腾讯项目使用，勿删 ################################################
 - lang: python
   method_list: ['on_voice_change']
