@@ -83,7 +83,7 @@
       unit_name: "manager.py"
       target: [\%arg0]
     - operation: object_call
-      name: request.get
+      name: requests.get
       line_num: 13
       unit_name: "search.py"
       target: [\%arg0]
