@@ -67,7 +67,7 @@
       target: [\%target]
     # CVE-2024-10099
     - operation: object_call
-      name: f.write
+      name: open.open.write
       line_num: 251
       unit_name: "server.py"
       target: [\%arg0]

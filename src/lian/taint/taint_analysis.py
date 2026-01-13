@@ -331,7 +331,7 @@ class TaintRuleApplier:
             name = util.access_path_formatter(method_state_nodes[0].access_path) + '.' + stmt.field
         else:
             name = stmt.receiver_object + '.' + stmt.field
-
+        # print(name, stmt.start_row)
         for rule in self.rule_manager.all_sinks:
             if rule.unit_path and rule.unit_path != unit_path:
                 continue
@@ -484,7 +484,11 @@ class TaintRuleApplier:
                         matching_rules.append(rule)
                         break
         elif operation == "object_call_stmt":
-            name = stmt.receiver_object + '.' + stmt.field
+            method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+            if method_state_nodes and len(method_state_nodes) > 0:
+                name = util.access_path_formatter(method_state_nodes[0].access_path) + '.' + stmt.field
+            else:
+                name = stmt.receiver_object + '.' + stmt.field
             for rule in self.rule_manager.all_sinks:
                 if rule.name == name:
                     matching_rules.append(rule)
@@ -1060,7 +1064,10 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources()
             sinks = self.find_sinks()
-            # print(sources, sinks)
+            print(sources, sinks)
+            if len(sinks) > 0:
+                print(sinks[0].line_no)
+            print("entry:", method_id)
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 
