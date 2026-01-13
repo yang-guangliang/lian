@@ -65,7 +65,7 @@ class EntryPointGenerator:
 
                 self._parse_config_file(default_lang, os.path.join(root, file_name))
 
-    def check_entry_point_rules(self, lang, unit_id, unit_path, method_id, method_name, attrs = [], args = "", return_type = ""):
+    def check_entry_point_rules(self, lang, unit_id, unit_path, method_id, method_name, attrs = "", args = "", return_type = ""):
         unit_name = os.path.basename(unit_path)
         for rule in self.entry_point_rules:
             if rule.lang:
@@ -121,7 +121,7 @@ class EntryPointGenerator:
         all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(LIAN_SYMBOL_KIND.METHOD_KIND))
         for scope in all_method_scopes:
             name = ""
-            attrs = []
+            attrs = ""
             if util.is_available(scope.name):
                 name = scope.name
             if util.is_available(scope.attrs):
