@@ -961,11 +961,27 @@ class Parser(common_parser.Parser):
                 modifiers = []
                 if clause.named_child_count > 0 and self.read_node_text(clause.children[0]) == "async":
                     modifiers.append("async")
-                left = self.find_child_by_field(clause, "left")
+                name = self.find_child_by_field(clause, "left")
                 right = self.find_child_by_field(clause, "right")
-                shadow_left = self.parse(left, statements)
+                # shadow_left = self.parse(left, statements)
                 shadow_right = self.parse(right, statements)
+                pattern_list = []
+                if name.type == "pattern_list":
+                    shadow_name = self.tmp_variable()
+                    for each_child in name.named_children:
+                        pattern_list.append(self.parse(each_child, statements))
+                else:
+                    shadow_name = self.parse(name, statements)
                 for_body = []
+                for index, shadow_pattern in enumerate(pattern_list):
+                    for_body.append(self.add_col_row_info(clause, {"variable_decl": {"name": shadow_pattern}}))
+                    for_body.append(self.add_col_row_info(clause, {
+                        "array_read": {
+                            "array": shadow_name,
+                            "index": str(index),
+                            "target": shadow_pattern
+                        }
+                    }))
                 if body.type == "pair":
                     key = self.find_child_by_field(body, "key")
                     value = self.find_child_by_field(body, "value")
@@ -975,9 +991,11 @@ class Parser(common_parser.Parser):
                 else:
                     shadow_body = self.parse(body, for_body)
                     for_body.append(self.add_col_row_info(body, {"array_append": {"array": target, "source":shadow_body}}))
+                self.append_stmts(statements, clause, {"variable_decl": {"name": shadow_name}})
+
                 self.append_stmts(statements, body, {"forin_stmt":
                                         {"attr": modifiers,
-                                         "name": shadow_left,
+                                         "name": shadow_name,
                                          "receiver": shadow_right,
                                          "body": for_body}})
             else:
@@ -1442,6 +1460,7 @@ class Parser(common_parser.Parser):
 
         for_body = []
         for index, shadow_pattern in enumerate(pattern_list):
+            for_body.append(self.add_col_row_info(node, {"variable_decl": {"name": shadow_pattern}}))
             for_body.append(self.add_col_row_info(node, {
                 "array_read":{
                     "array" : shadow_name,

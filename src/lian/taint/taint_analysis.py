@@ -317,6 +317,34 @@ class TaintRuleApplier:
 
         return apply_rule_flag
 
+    def apply_object_call_stmt_source_rules(self, node):
+        if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call_stmt":
+            return False
+        stmt = node.stmt
+        stmt_id = node.def_stmt_id
+        unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+        unit_path = unit_info.original_path
+        unit_name = os.path.basename(unit_path)
+        method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+        names = []
+        if method_state_nodes and len(method_state_nodes) > 0:
+            for state in method_state_nodes:
+                names.append(util.access_path_formatter(state.access_path) + '.' + stmt.field)
+
+        names.append(stmt.receiver_object + '.' + stmt.field)
+        # print(name, stmt.start_row)
+        for rule in self.rule_manager.all_sources:
+            if rule.unit_path and rule.unit_path != unit_path:
+                continue
+            if rule.unit_name and rule.unit_name != unit_name:
+                continue
+            if rule.line_num and rule.line_num != int(node.line_no + 1):
+                continue
+            if rule.name in names:
+                return True
+        return False
+
     def should_apply_object_call_stmt_sink_rules(self, node):
         if node.node_type != SFG_NODE_KIND.STMT or node.name != "object_call_stmt":
             return False
@@ -327,10 +355,12 @@ class TaintRuleApplier:
         unit_path = unit_info.original_path
         unit_name = os.path.basename(unit_path)
         method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+        names = []
         if method_state_nodes and len(method_state_nodes) > 0:
-            name = util.access_path_formatter(method_state_nodes[0].access_path) + '.' + stmt.field
-        else:
-            name = stmt.receiver_object + '.' + stmt.field
+            for state in method_state_nodes:
+                names.append(util.access_path_formatter(state.access_path) + '.' + stmt.field)
+
+        names.append(stmt.receiver_object + '.' + stmt.field)
         # print(name, stmt.start_row)
         for rule in self.rule_manager.all_sinks:
             if rule.unit_path and rule.unit_path != unit_path:
@@ -339,7 +369,7 @@ class TaintRuleApplier:
                 continue
             if rule.line_num and rule.line_num != int(node.line_no + 1):
                 continue
-            if rule.name == name:
+            if rule.name in names:
                 return True
         return False
 
@@ -360,6 +390,8 @@ class TaintRuleApplier:
             if rule.unit_name and rule.unit_name != unit_name:
                 continue
             if rule.line_num and rule.line_num != int(node.line_no + 1):
+                continue
+            if not method_state_nodes:
                 continue
             for state_node in method_state_nodes:
                 # 检查函数名是否符合规则
@@ -423,7 +455,7 @@ class TaintRuleApplier:
         operation = node.name
 
         # 默认认为赋值语句传播污点
-        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object"] :
+        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read", "record_write","record_extend"] :
             return True
 
         for rule in self.rule_manager.all_propagations:
@@ -485,12 +517,13 @@ class TaintRuleApplier:
                         break
         elif operation == "object_call_stmt":
             method_symbol_node, method_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+            name = None
             if method_state_nodes and len(method_state_nodes) > 0:
                 name = util.access_path_formatter(method_state_nodes[0].access_path) + '.' + stmt.field
-            else:
-                name = stmt.receiver_object + '.' + stmt.field
+
+            name1 = stmt.receiver_object + '.' + stmt.field
             for rule in self.rule_manager.all_sinks:
-                if rule.name == name:
+                if rule.name in [name, name1]:
                     matching_rules.append(rule)
 
         # 2. 根据规则检查对应的 symbol 和 state
@@ -520,7 +553,7 @@ class TaintRuleApplier:
                             continue
 
                         weight_pos = weight.pos
-                        if operation == "object_call_stmt":
+                        if operation == "object_call_stmt" and target_pos != 0:
                             weight_pos -= 1
 
                         # 匹配位置或者目标是通配符
@@ -612,6 +645,9 @@ class TaintAnalysis:
             if node.node_type != SFG_NODE_KIND.STMT:
                 continue
             if node.name == "call_stmt" and self.rule_applier.apply_call_stmt_source_rules(node):
+                defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
+                node_list.append(defined_symbol_node)
+            elif node.name == "object_call_stmt" and self.rule_applier.apply_object_call_stmt_source_rules(node):
                 defined_symbol_node, defined_state_nodes = self.get_stmt_define_symbol_and_states_node(node)
                 node_list.append(defined_symbol_node)
             elif node.name == "parameter_decl" and self.rule_applier.apply_parameter_source_rules(node):

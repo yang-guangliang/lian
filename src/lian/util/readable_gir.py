@@ -37,6 +37,7 @@ class ReadableGir:
             "for_stmt": self.for_stmt,
             "return_stmt": self.return_stmt,
             "call_stmt": self.call_stmt,
+            "object_call_stmt": self.object_call,
 
             "dowhile_stmt": self.dowhile_stmt,
             "forin_stmt": self.forin_stmt,
