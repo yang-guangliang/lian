@@ -12,7 +12,7 @@ import hashlib
 import dis
 
 from lian.config import config
-
+from lian.util import readable_gir
 
 def is_empty(element):
     #print("is_empty:", element)
@@ -603,5 +603,19 @@ def access_path_formatter(access_path):
         key_value = getattr(p, 'key', p)
         parts.append(str(key_value))
     return ".".join(parts)
+
+def stmt_is_source_or_sink(stmt, unit_path, rules):
+    gir = readable_gir.get_gir_str(stmt)
+
+    for rule in rules:
+        if math.isnan(stmt.start_row):
+            continue
+        if rule.unit_path not in unit_path:
+            continue
+        if stmt.start_row + 1 != rule.line_num:
+            continue
+        if rule.symbol_name in gir:
+            return True
+    return False
 
 

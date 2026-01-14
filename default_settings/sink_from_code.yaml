@@ -37565,6 +37565,9 @@
   - unit_path: "vllm/vllm/model_executor/model_loader/weight_utils.py"
     line_num: 775
     symbol_name: bin_file
+  - unit_path: "a_playground.py"
+    line_num: 3
+    symbol_name: sink
 
 - lang: python
   rules:

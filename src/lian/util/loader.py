@@ -15,6 +15,7 @@ from lian.util.data_model import DataModel
 from lian.config import schema
 from lian.util import util
 from lian.config import config
+from lian.taint.rule_manager import RuleManager, Rule
 from lian.config.constants import (
     IMPORT_GRAPH_EDGE_KIND,
     SYMBOL_OR_STATE,
@@ -3385,8 +3386,20 @@ class Loader:
 
         return call_paths
 
-    def get_call_path_from_source(self, source_rules):
-        call_paths = []
-        for source in source_rules:
-            source_method_id = self.get_rule_method(source)
+    def get_sources_sinks_from_rule(self):
+        rule_manager = RuleManager()
+        all_stmt = self._gir_loader.get_all()
+        source_stmt_ids = []
+        sink_stmt_ids = []
+        for unit_stmts in all_stmt.values():
+            for stmt in unit_stmts:
+                stmt_id = stmt.stmt_id
+                unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
+                unit_info = self.convert_module_id_to_module_info(unit_id)
+                unit_path = unit_info.original_path
+                if util.stmt_is_source_or_sink(stmt, unit_path, rule_manager.all_sources_from_code):
+                    source_stmt_ids.append(stmt.stmt_id)
+                if util.stmt_is_source_or_sink(stmt, unit_path, rule_manager.all_sinks_from_code):
+                    sink_stmt_ids.append(stmt.stmt_id)
+        return source_stmt_ids, sink_stmt_ids
 
