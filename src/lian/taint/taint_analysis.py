@@ -269,7 +269,7 @@ class TaintRuleApplier:
             for state_node in state_nodes:
                 # 格式化访问路径
                 access_path = access_path_formatter(state_node.access_path)
-                if access_path == rule.target:
+                if access_path == rule.name:
                     return True
 
         return False
