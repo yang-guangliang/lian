@@ -424,7 +424,6 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         self.loader.save_symbol_state_space_p3(0, global_space)
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader.export()
-        print(self.loader.get_sources_sinks_from_rule())
 
         # if self.options.debug:
         #       all_paths = self.loader.get_global_call_paths()

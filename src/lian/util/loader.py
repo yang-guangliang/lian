@@ -2,6 +2,7 @@
 import math
 import os
 import ast
+import re
 from collections import namedtuple
 
 import networkx as nx
@@ -14,6 +15,7 @@ import pandas as pd
 from lian.util.data_model import DataModel
 from lian.config import schema
 from lian.util import util
+from lian.util import readable_gir
 from lian.config import config
 from lian.taint.rule_manager import RuleManager, Rule
 from lian.config.constants import (
@@ -164,6 +166,12 @@ class ModuleSymbolsLoader:
             return []
 
         return all_units
+    
+    def get_all_unit_ids(self):
+        unit_ids = set()
+        for each_unit in self.get_all_unit_info():
+            unit_ids.add(each_unit.module_id)
+        return unit_ids
 
     def convert_unit_path_to_unit_id(self, unit_path):
         if not unit_path:
@@ -2467,6 +2475,8 @@ class Loader:
         return self._module_symbols_loader.get_all_module_ids()
     def get_all_unit_info(self):
         return self._module_symbols_loader.get_all_unit_info()
+    def get_all_unit_ids(self):
+        return self._module_symbols_loader.get_all_unit_ids()
     def convert_module_id_to_module_info(self, module_id):
         return self._module_symbols_loader.convert_module_id_to_module_info(module_id)
     # def convert_unit_id_to_unit_info(self, unit_id):
@@ -3385,21 +3395,51 @@ class Loader:
                     call_paths.append(self.get_call_path_between_two_methods_in_p3(source_method_id, sink_method_id))
 
         return call_paths
+    
+    def _is_stmt_source_or_sink(self, stmt, unit_path, rules):
+        gir_str = readable_gir.get_gir_str(stmt)
+        for rule in rules:
+            if rule.line_num:
+                if util.is_empty(stmt.start_row):
+                    continue
+                if stmt.start_row + 1 != rule.line_num:
+                    continue
+            
+            # 快速检查：符号名是否在字符串中
+            if rule.symbol_name in gir_str:
+                # 如果在，再进行精确的单词边界匹配
+                pattern = r'\b' + re.escape(rule.symbol_name) + r'\b'
+                if re.search(pattern, gir_str):
+                    return True
+        return False
+        
+    def _filter_rules_by_unit_path(self, unit_path, rules):
+        new_rules = []
+        for each_rule in rules:
+            if each_rule.unit_path:
+                if each_rule.unit_path in unit_path:
+                    new_rules.append(each_rule)
+            else:
+                new_rules.append(each_rule)
+        return new_rules
 
-    def get_sources_sinks_from_rule(self):
+    def get_source_sink_stmt_ids_by_rules(self):
         rule_manager = RuleManager()
-        all_stmt = self._gir_loader.get_all()
-        source_stmt_ids = []
-        sink_stmt_ids = []
-        for unit_stmts in all_stmt.values():
-            for stmt in unit_stmts:
-                stmt_id = stmt.stmt_id
-                unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-                unit_info = self.convert_module_id_to_module_info(unit_id)
-                unit_path = unit_info.original_path
-                if util.stmt_is_source_or_sink(stmt, unit_path, rule_manager.all_sources_from_code):
-                    source_stmt_ids.append(stmt.stmt_id)
-                if util.stmt_is_source_or_sink(stmt, unit_path, rule_manager.all_sinks_from_code):
-                    sink_stmt_ids.append(stmt.stmt_id)
-        return source_stmt_ids, sink_stmt_ids
+        source_stmt_ids = set()
+        sink_stmt_ids = set()
+
+        for unit_info in self.get_all_unit_info():
+            unit_id = unit_info.module_id
+            unit_gir = self.get_unit_gir(unit_id)
+            unit_path = unit_info.original_path
+
+            source_rules = self._filter_rules_by_unit_path(unit_path, rule_manager.all_sources_from_code)
+            sink_rules = self._filter_rules_by_unit_path(unit_path, rule_manager.all_sinks_from_code)
+            for stmt in unit_gir:
+                if self._is_stmt_source_or_sink(stmt, unit_path, source_rules):
+                    source_stmt_ids.add(stmt.stmt_id)
+                if self._is_stmt_source_or_sink(stmt, unit_path, sink_rules):
+                    sink_stmt_ids.add(stmt.stmt_id)
+
+        return (source_stmt_ids, sink_stmt_ids)
 

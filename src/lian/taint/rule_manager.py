@@ -11,6 +11,7 @@ import os
 
 import yaml
 from lian.config import config
+from lian.util import util
 
 class Source:
     def __init__(self, name, tag, value):
@@ -123,24 +124,27 @@ class RuleManager:
                     lang = rule_group["lang"]
                     rules = rule_group["rules"]
                     for rule in rules:
-                        new_rule = Rule(kind=rule_kind,
-                                        lang=lang,
-                                        name=rule.get("name", None),
-                                        operation=rule.get("operation", None),
-                                        receiver=rule.get("receiver", None),
-                                        field=rule.get("field", []),
-                                        target=rule.get("target", None),
-                                        args=rule.get("args", None),
-                                        tag=rule.get("tag", None),
-                                        src=rule.get("src", None),
-                                        dst=rule.get("dst", None),
-                                        attr=rule.get("attr", None),
-                                        unit_path=rule.get("unit_path", None),
-                                        unit_name=rule.get("unit_name", None),
-                                        line_num=rule.get("line_num", None),
-                                        key=rule.get("key", None),
-                                        unset=rule.get("unset", None))
+                        new_rule = Rule(
+                            kind=rule_kind,
+                            lang=lang,
+                            name=rule.get("name", None),
+                            operation=rule.get("operation", None),
+                            receiver=rule.get("receiver", None),
+                            field=rule.get("field", []),
+                            target=rule.get("target", None),
+                            args=rule.get("args", None),
+                            tag=rule.get("tag", None),
+                            src=rule.get("src", None),
+                            dst=rule.get("dst", None),
+                            attr=rule.get("attr", None),
+                            unit_path=rule.get("unit_path", None),
+                            unit_name=rule.get("unit_name", None),
+                            line_num=rule.get("line_num", None),
+                            key=rule.get("key", None),
+                            unset=rule.get("unset", None)
+                        )
                         self.all_sources.append(new_rule)
+
             with open(self.taint_sink, 'r') as file:
                 data = yaml.safe_load(file)
                 rule_kind = "sink"
@@ -148,22 +152,24 @@ class RuleManager:
                     lang = rule_group["lang"]
                     rules = rule_group["rules"]
                     for rule in rules:
-                        new_rule = Rule(kind=rule_kind,
-                                        lang=lang,
-                                        name=rule.get("name", None),
-                                        operation=rule.get("operation", None),
-                                        receiver=rule.get("receiver", None),
-                                        field=rule.get("field", []),
-                                        target=rule.get("target", None),
-                                        args=rule.get("args", None),
-                                        tag=rule.get("tag", None),
-                                        src=rule.get("src", None),
-                                        dst=rule.get("dst", None),
-                                        unit_path=rule.get("unit_path", None),
-                                        unit_name=rule.get("unit_name", None),
-                                        line_num=rule.get("line_num", None),
-                                        key=rule.get("key", None),
-                                        unset=rule.get("unset", None))
+                        new_rule = Rule(
+                            kind=rule_kind,
+                            lang=lang,
+                            name=rule.get("name", None),
+                            operation=rule.get("operation", None),
+                            receiver=rule.get("receiver", None),
+                            field=rule.get("field", []),
+                            target=rule.get("target", None),
+                            args=rule.get("args", None),
+                            tag=rule.get("tag", None),
+                            src=rule.get("src", None),
+                            dst=rule.get("dst", None),
+                            unit_path=rule.get("unit_path", None),
+                            unit_name=rule.get("unit_name", None),
+                            line_num=rule.get("line_num", None),
+                            key=rule.get("key", None),
+                            unset=rule.get("unset", None)
+                        )
                         self.all_sinks.append(new_rule)
 
             with open(self.taint_prop, 'r') as file:
@@ -173,22 +179,25 @@ class RuleManager:
                     lang = rule_group["lang"]
                     rules = rule_group["rules"]
                     for rule in rules:
-                        new_rule = Rule(kind=rule_kind,
-                                        lang=lang,
-                                        name=rule.get("name", None),
-                                        operation=rule.get("operation", None),
-                                        receiver=rule.get("receiver", None),
-                                        field=rule.get("field", []),
-                                        target=rule.get("target", None),
-                                        args=rule.get("args", None),
-                                        tag=rule.get("tag", None),
-                                        src=rule.get("src", None),
-                                        dst=rule.get("dst", None),
-                                        unit_path=rule.get("unit_path", None),
-                                        unit_name=rule.get("unit_name", None),
-                                        line_num=rule.get("line_num", None),
-                                        unset=rule.get("unset", None))
+                        new_rule = Rule(
+                            kind=rule_kind,
+                            lang=lang,
+                            name=rule.get("name", None),
+                            operation=rule.get("operation", None),
+                            receiver=rule.get("receiver", None),
+                            field=rule.get("field", []),
+                            target=rule.get("target", None),
+                            args=rule.get("args", None),
+                            tag=rule.get("tag", None),
+                            src=rule.get("src", None),
+                            dst=rule.get("dst", None),
+                            unit_path=rule.get("unit_path", None),
+                            unit_name=rule.get("unit_name", None),
+                            line_num=rule.get("line_num", None),
+                            unset=rule.get("unset", None)
+                        )
                         self.all_propagations.append(new_rule)
+
         with open(self.taint_source_from_code, 'r') as file:
             data = yaml.safe_load(file)
             rule_kind = "source"
@@ -196,13 +205,15 @@ class RuleManager:
                 lang = rule_group["lang"]
                 rules = rule_group["rules"]
                 for rule in rules:
-                    new_rule = SourceCodeRule(kind=rule_kind,
-                                              lang=lang,
-                                              unit_path=rule.get("unit_path", None),
-                                              line_num=rule.get("line_num", None),
-                                              symbol_name=rule.get("symbol_name", None),
-                                              )
+                    new_rule = SourceCodeRule(
+                        kind=rule_kind,
+                        lang=lang,
+                        unit_path=rule.get("unit_path", None),
+                        line_num=rule.get("line_num", None),
+                        symbol_name=rule.get("symbol_name", None),
+                    )
                     self.all_sources_from_code.append(new_rule)
+
         with open(self.taint_sink_from_code, 'r') as file:
             data = yaml.safe_load(file)
             rule_kind = "sink"
@@ -210,12 +221,13 @@ class RuleManager:
                 lang = rule_group["lang"]
                 rules = rule_group["rules"]
                 for rule in rules:
-                    new_rule = SourceCodeRule(kind=rule_kind,
-                                              lang=lang,
-                                              unit_path=rule.get("unit_path", None),
-                                              line_num=rule.get("line_num", None),
-                                              symbol_name=rule.get("symbol_name", None),
-                                              )
+                    new_rule = SourceCodeRule(
+                        kind=rule_kind,
+                        lang=lang,
+                        unit_path=rule.get("unit_path", None),
+                        line_num=rule.get("line_num", None),
+                        symbol_name=rule.get("symbol_name", None),
+                    )
                     self.all_sinks_from_code.append(new_rule)
 
     def add_rule(self, rule_type, rule):
