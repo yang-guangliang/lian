@@ -61,11 +61,18 @@ class PathFinder:
             return u_tag
         return 0
 
-    def _init_source_contamination(self, source, tag, worklist):
+    def _enqueue(self, worklist, in_worklist, node):
+        """将 node 放入 worklist（去重）。"""
+        if node in in_worklist:
+            return
+        worklist.append(node)
+        in_worklist.add(node)
+
+    def _init_source_contamination(self, source, tag, worklist, in_worklist):
         """对初始 source 节点进行污染标记"""
         if source.node_type == SFG_NODE_KIND.SYMBOL:
             self.taint_manager.set_symbol_tag(source.node_id, tag)
-            worklist.append(source)
+            self._enqueue(worklist, in_worklist, source)
             # 污染变量对应的初始状态
             for v in self.sfg.successors(source):
                 edge_data = self.sfg.get_edge_data(source, v)
@@ -73,15 +80,14 @@ class PathFinder:
                     for data in edge_data.values():
                         if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
                             self.taint_manager.set_states_tag([v.node_id], tag)
-                            if v not in worklist:
-                                worklist.append(v)
+                            self._enqueue(worklist, in_worklist, v)
         elif source.node_type == SFG_NODE_KIND.STATE:
             self.taint_manager.set_states_tag([source.node_id], tag)
-            worklist.append(source)
+            self._enqueue(worklist, in_worklist, source)
         elif source.node_type == SFG_NODE_KIND.STMT:
-            worklist.append(source)
+            self._enqueue(worklist, in_worklist, source)
 
-    def _propagate_from_symbol(self, u, u_tag, worklist):
+    def _propagate_from_symbol(self, u, u_tag, worklist, in_worklist):
         """处理从 SYMBOL 节点向下的传播"""
         for v in self.sfg.successors(u):
             edge_data = self.sfg.get_edge_data(u, v)
@@ -93,11 +99,12 @@ class PathFinder:
                         v_tag = self.taint_manager.get_state_tag(v.node_id)
                         if (u_tag | v_tag) != v_tag:
                             self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
-                            worklist.append(v)
+                            self._enqueue(worklist, in_worklist, v)
                     elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
-                        worklist.append(v)
+                        # STMT 的 tag 来自其 use 的 SYMBOL；当 SYMBOL 的 tag 发生变化时，重新处理该 STMT。
+                        self._enqueue(worklist, in_worklist, v)
 
-    def _propagate_from_state(self, u, u_tag, worklist):
+    def _propagate_from_state(self, u, u_tag, worklist, in_worklist):
         """处理从 STATE 节点向下的传播"""
         # 1. 传播到指向该值的变量 (逆向回溯)
         for v in self.sfg.predecessors(u):
@@ -108,7 +115,7 @@ class PathFinder:
                         v_tag = self.taint_manager.get_symbol_tag(v.node_id)
                         if (u_tag | v_tag) != v_tag:
                             self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                            worklist.append(v)
+                            self._enqueue(worklist, in_worklist, v)
 
         # 2. 传播到其包含的子状态 (inclusion)
         for v in self.sfg.successors(u):
@@ -121,9 +128,9 @@ class PathFinder:
                             v_tag = self.taint_manager.get_state_tag(v.node_id)
                             if (u_tag | v_tag) != v_tag:
                                 self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
-                                worklist.append(v)
+                                self._enqueue(worklist, in_worklist, v)
 
-    def _propagate_from_stmt(self, u, u_tag, worklist):
+    def _propagate_from_stmt(self, u, u_tag, worklist, in_worklist):
         """处理从 STMT 节点向下的传播"""
         # 根据规则判断语句是否传播污点
         if self.rule_applier.apply_propagation_rules(u):
@@ -136,7 +143,8 @@ class PathFinder:
                             v_tag = self.taint_manager.get_symbol_tag(v.node_id)
                             if (u_tag | v_tag) != v_tag:
                                 self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                            worklist.append(v)
+                                # 只有当目标 SYMBOL 的 tag 发生变化时才入队，避免环路导致无限传播。
+                                self._enqueue(worklist, in_worklist, v)
 
     def propagate_taint(self, source):
         """
@@ -147,22 +155,24 @@ class PathFinder:
         tag = self.taint_manager.add_and_update_tag_bv(tag_info, 0)
 
         worklist = deque()
-        self._init_source_contamination(source, tag, worklist)
+        in_worklist = set()
+        self._init_source_contamination(source, tag, worklist, in_worklist)
 
         # BFS 传播
         while worklist:
             u = worklist.popleft()
+            in_worklist.discard(u)
             u_tag = self._get_node_tag(u)
 
             if u_tag == 0:
                 continue
 
             if u.node_type == SFG_NODE_KIND.SYMBOL:
-                self._propagate_from_symbol(u, u_tag, worklist)
+                self._propagate_from_symbol(u, u_tag, worklist, in_worklist)
             elif u.node_type == SFG_NODE_KIND.STATE:
-                self._propagate_from_state(u, u_tag, worklist)
+                self._propagate_from_state(u, u_tag, worklist, in_worklist)
             elif u.node_type == SFG_NODE_KIND.STMT:
-                self._propagate_from_stmt(u, u_tag, worklist)
+                self._propagate_from_stmt(u, u_tag, worklist, in_worklist)
         return tag
 
     def reconstruct_define_use_path(self, source, sink):
@@ -455,7 +465,7 @@ class TaintRuleApplier:
         operation = node.name
 
         # 默认认为赋值语句传播污点
-        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read", "record_write","record_extend"] :
+        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read", "record_write","record_extend", "array_write"] :
             return True
 
         for rule in self.rule_manager.all_propagations:
