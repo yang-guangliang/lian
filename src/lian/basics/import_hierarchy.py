@@ -436,7 +436,7 @@ class ImportHierarchy:
         external_symbols.append(fake_node)
 
         #print(external_symbols)
-
+        return external_symbols
 
     def analyze_unit_import_stmts(self, unit_id):
         if unit_id in self.analyzed_imported_unit_ids:
