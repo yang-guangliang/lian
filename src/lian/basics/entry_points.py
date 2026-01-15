@@ -32,7 +32,7 @@ class EntryPointGenerator:
         self.entry_point_results = set()
         self._load_settings()
 
-    def _parse_config_file(self, default_lang, file_path):
+    def _parse_config_file(self, file_path):
         # 判断是否可以打开
         if not os.path.isfile(file_path):
             util.error("Failed to open entry point file: " + file_path)
@@ -54,16 +54,15 @@ class EntryPointGenerator:
                 )
             except Exception as e:
                 util.error_and_quit(f"Failed to parse entry point file ({file_path}), error: {e}")
-                continue
 
     def _load_settings(self):
         for root, dirs, files in os.walk(self.options.default_settings):
             for file_name in files:
-                processing_flag, default_lang = util.check_file_processing_flag_and_extract_lang(file_name, config.ENTRY_POINTS_FILE)
+                processing_flag, _ = util.check_file_processing_flag_and_extract_lang(file_name, config.ENTRY_POINTS_FILE)
                 if not processing_flag:
                     continue
 
-                self._parse_config_file(default_lang, os.path.join(root, file_name))
+                self._parse_config_file(os.path.join(root, file_name))
 
     def check_entry_point_rules(self, lang, unit_id, unit_path, method_id, method_name, attrs = "", args = "", return_type = ""):
         unit_name = os.path.basename(unit_path)
