@@ -35,9 +35,9 @@
     # CVE-2023-48299
     - operation: object_call
       name: IOUtils.copy
-      line_num: 35
+      line_num: 39
       unit_name: "ZipUtils.java"
-      target: [\%arg1]
+      target: [\%arg0]
 
 - lang: python
   rules:
