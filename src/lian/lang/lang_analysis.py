@@ -347,7 +347,7 @@ class LangAnalysis:
         2. 保证ID起始值对齐到10的倍数
         """
         symbol_table = self.loader.get_module_symbol_table()
-        result = len(symbol_table)
+        result = max(symbol_table.module_id)
         return self.adjust_node_id(result)
 
     def adjust_node_id(self, node_id):

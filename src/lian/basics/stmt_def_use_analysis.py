@@ -842,6 +842,7 @@ class StmtDefUseAnalysis:
         if defined_symbol is None:
             return
         result = self.import_hierarchy_analysis.analyze_import_stmt(self.unit_id, self.unit_info, stmt)
+
         found_flag = False
         for each_node in result:
             if each_node.symbol_name == name:
