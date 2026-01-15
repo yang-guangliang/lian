@@ -76,20 +76,20 @@
       unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10940/test/langchain-langchain-core-0.3.14/libs/core/langchain_core/prompts/base.py"
     # CVE-2024-11041
     - operation: object_call
-      name: \%this.remote_socket.recv  # 规范引号，移除多余反斜杠（YAML中无需转义%）
+      name: "%this.remote_socket.recv" # 规范引号，移除多余反斜杠（YAML中无需转义%）
       line_num: 442
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11041/test/vllm-0.6.2/vllm/distributed/device_communicators/shm_broadcast.py"
+      unit_name: shm_broadcast.py
       tag: ["%target"]
     # CVE-2024-11042
     - operation: parameter_decl
       name: image_names
       line_num: 346  # 修正原始错误：移除"l ine_num"中的多余空格
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11042/test/InvokeAI-5.0.2/invokeai/app/api/routers/images.py"
+      unit_name: images.py
     # CVE-2024-11958
     - operation: parameter_decl
       name: str_or_query_bundle
       line_num: 222
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-11958/test/llama_index-0.12.2/llama-index-core/llama_index/core/base/base_retriever.py"
+      unit_name: base_retriever.py
     # CVE-2024-12029
     - operation: parameter_decl
       name: source
@@ -150,15 +150,15 @@
       unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-8953/test/composio-0.4.3/python/composio/server/api.py"
     # CVE-2024-9053
     - operation: object_call
-      name: \%this.socket.recv_multipart # 规范引号，移除多余反斜杠
+      name: "%this.socket.recv_multipart" # 规范引号，移除多余反斜杠
       line_num: 198
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-9053/test/vllm-0.6.0/vllm/entrypoints/openai/rpc/server.py"
+      unit_name: server.py
       tag: ["%target"]
     # CVE-2025-1040
     - operation: parameter_decl
       name: data
       line_num: 117
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-1040/test/AutoGPT-autogpt-platform-beta-v0.3.4/autogpt_platform/backend/backend/server/routers/v1.py"
+      unit_name: v1.py
     # CVE-2025-24357
     - operation: parameter_decl
       name: model
@@ -168,9 +168,9 @@
     - operation: parameter_decl
       name: docs
       line_num: 57
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-25362/test/spacy-llm-0.7.2/spacy_llm/tasks/builtin_task.py"
+      unit_name: builtin_task.py
     # CVE-2025-32375
     - operation: parameter_decl
       name: request
       line_num: 291
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-32375/test/BentoML-1.4.7/src/bentoml/_internal/server/runner_app.py"
+      unit_name: runner_app.py

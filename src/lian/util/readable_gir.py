@@ -37,6 +37,7 @@ class ReadableGir:
             "for_stmt": self.for_stmt,
             "return_stmt": self.return_stmt,
             "call_stmt": self.call_stmt,
+            "object_call_stmt": self.object_call,
 
             "dowhile_stmt": self.dowhile_stmt,
             "forin_stmt": self.forin_stmt,
@@ -296,7 +297,7 @@ class ReadableGir:
         if util.is_available(stmt.named_args):
             args_str = f"{args_str} {stmt.named_args}"
 
-        call_str = f"{stmt.target} = {stmt.receiver}.{stmt.name}({args_str})"
+        call_str = f"{stmt.target} = {stmt.receiver_object}.{stmt.field}({args_str})"
 
         return call_str
 

@@ -13,7 +13,6 @@ import dis
 
 from lian.config import config
 
-
 def is_empty(element):
     #print("is_empty:", element)
     if element is None:
@@ -603,5 +602,6 @@ def access_path_formatter(access_path):
         key_value = getattr(p, 'key', p)
         parts.append(str(key_value))
     return ".".join(parts)
+
 
 
