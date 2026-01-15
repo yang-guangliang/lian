@@ -156,6 +156,9 @@ class ImportHierarchy:
 
         internal_symbols = self.search_public_symbols_from_scope_hierarchy(scope_hierarchy)
         for each_symbol in internal_symbols:
+            if util.is_available(each_symbol.attrs) and "default" in each_symbol.attrs:
+                each_symbol.name = "default"
+
             if each_symbol.name.startswith("%"):
                 continue
             scope_id = each_symbol.scope_id
@@ -215,7 +218,6 @@ class ImportHierarchy:
             import_path = stmt.source
         if util.is_available(stmt.name):
             import_path += "." + stmt.name
-            import_path = import_path.replace("..", ".")
         return import_path
 
     def parse_import_path_from_module_worklist(self, import_path_list, initial_worklist):
@@ -340,13 +342,39 @@ class ImportHierarchy:
                 alias = last_name
 
         # 搜索相对路径
+        levels_up = 0
+        search_path = import_path_str
+        
         if import_path_str.startswith("."):
-            import_path_str = import_path_str[1:]
+            leading_dots = 0
+            for char in import_path_str:
+                if char == ".":
+                    leading_dots += 1
+                else:
+                    break
+            
+            if leading_dots > 1:
+                levels_up = leading_dots - 1
+            
+            search_path = import_path_str[leading_dots:]
+            if search_path.startswith("."):
+                search_path = search_path[1:]
         
         parent_module_id = unit_info.parent_module_id
 
+        # Traverse up
+        for _ in range(levels_up):
+            if parent_module_id in self.symbol_id_to_symbol_node:
+                parent_node = self.symbol_id_to_symbol_node[parent_module_id]
+                if parent_node and parent_node.scope_id != -1:
+                    parent_module_id = parent_node.scope_id
+                else:
+                    break # Hit root
+            else:
+                pass # Try best effort
+
         import_nodes, remaining = self.parse_import_path_from_current_dir(
-            import_path_str, parent_module_id
+            search_path, parent_module_id
         )
         import_nodes = self.check_import_stmt_analysis_results(
             unit_info, stmt, import_nodes, remaining
@@ -408,7 +436,6 @@ class ImportHierarchy:
         external_symbols.append(fake_node)
 
         #print(external_symbols)
-        return external_symbols
 
 
     def analyze_unit_import_stmts(self, unit_id):
