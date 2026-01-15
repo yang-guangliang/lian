@@ -183,7 +183,7 @@ FIRST_VAR_CHARS = {"%", "@", "$", "_"}
 def is_variable(name):
     if isinstance(name, str) and len(name) > 0:
         # TODO: 程序中的关键字不能作为变量名。但因编程语言而异，此处排除了python中的关键字。
-        if keyword.iskeyword(name) and name != "as":
+        if keyword.iskeyword(name) and name not in ["as", "is"]:
             return False
         first_char = name[0]
         if first_char in FIRST_VAR_CHARS or first_char.isalpha():

@@ -94,6 +94,7 @@ class Parser(common_parser.Parser):
             "yield_statement"                       : self.yield_statement,
             "throw_statement"                       : self.throw_statement,
             "try_statement"                         : self.try_statement,
+            "try_with_resources_statement"          : self.try_statement,
         }
 
     def is_comment(self, node):
@@ -1247,27 +1248,65 @@ class Parser(common_parser.Parser):
         else_body = []
         finally_body = []
 
-        #self.sync_tmp_variable(try_body, statements)
+        # try-with-resources: try ( ...resources... ) { ... }
+        # tree-sitter-java commonly uses node type "resource_specification" under try_statement.
+        # We parse the resources first and inject the resulting statements at the beginning of try body
+        # so the variables are in-scope for the try block and downstream analyses can see them.
+        resource_spec = self.find_child_by_type(node, "resource_specification")
+        if not resource_spec:
+            # Some grammars may expose resources as a field.
+            resource_spec = self.find_child_by_field(node, "resources")
+        if resource_spec:
+            for res in resource_spec.named_children:
+                # Resources are typically local_variable_declaration or identifier.
+                # local_variable_declaration is already mapped to variable_declaration, so parse() will emit GIR.
+                mytype = self.find_child_by_field(res, "type")
+                shadow_type = self.read_node_text(mytype)
+                name = self.find_child_by_field(res, "name")
+                name = self.read_node_text(name)
+                self.append_stmts(try_body, node,
+                                  {"variable_decl": {"data_type": shadow_type, "name": name}})
+                value_node = self.find_child_by_field(res, "value")
+                shadow_value = self.parse(value_node, try_body)
+
+                self.append_stmts(try_body, node, {"assign_stmt": {"target": name, "operand": shadow_value}})
+        # Parse try body block and append after resources
         body = self.find_child_by_field(node, "body")
-        self.parse(body, try_body)
+        if body:
+            self.parse(body, try_body)
         try_op["body"] = try_body
 
         #self.sync_tmp_variable(catch_body, statements)
-        except_clauses = self.find_children_by_type(node, "except_clause")
-        if except_clauses:
-            for clause in except_clauses:
-                except_clause = {}
+        # Java uses "catch_clause" (but keep backward compatibility with old "except_clause" naming).
+        catch_clauses = self.find_children_by_type(node, "catch_clause")
+        if not catch_clauses:
+            catch_clauses = self.find_children_by_type(node, "except_clause")
 
-                condition = clause.children[1 : -2]
-                if len(condition) > 0:
-                    shadow_condition = self.parse(condition[0], catch_body)
-                    except_clause["expcetion"] = shadow_condition
+        if catch_clauses:
+            for clause in catch_clauses:
+                catch_clause = {}
 
-                shadow_except_clause_body = []
-                except_clause_body = clause.children[-1]
-                self.parse(except_clause_body, shadow_except_clause_body)
-                except_clause["body"] = shadow_except_clause_body
-                catch_body.append({"catch_clause": except_clause})
+                if clause.type == "catch_clause":
+                    # Prefer structured fields if available.
+                    param = self.find_child_by_field(clause, "parameter")
+                    if not param:
+                        param = self.find_child_by_type(clause, "catch_formal_parameter")
+                    if param:
+                        catch_clause["exception"] = self.read_node_text(param)
+                else:
+                    # Legacy fallback (kept to avoid breaking existing outputs).
+                    condition = clause.children[1: -2]
+                    if len(condition) > 0:
+                        shadow_condition = self.parse(condition[0], catch_body)
+                        catch_clause["expcetion"] = shadow_condition
+
+                shadow_catch_clause_body = []
+                clause_body = self.find_child_by_field(clause, "body")
+                if not clause_body and len(clause.children) > 0:
+                    clause_body = clause.children[-1]
+                self.parse(clause_body, shadow_catch_clause_body)
+                catch_clause["body"] = shadow_catch_clause_body
+                catch_body.append({"catch_clause": catch_clause})
         try_op["catch_body"] = catch_body
 
         #self.sync_tmp_variable(finally_body, statements)
