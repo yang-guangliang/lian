@@ -147,7 +147,7 @@
     - operation: parameter_decl
       name: request
       line_num: 196
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-8953/test/composio-0.4.3/python/composio/server/api.py"
+      unit_name: api.py
     # CVE-2024-9053
     - operation: object_call
       name: "%this.socket.recv_multipart" # 规范引号，移除多余反斜杠
