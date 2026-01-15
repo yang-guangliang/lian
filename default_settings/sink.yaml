@@ -90,7 +90,7 @@
     # CVE-2024-10940
     - operation: object_call
       # TODO 这里的 name 有问题
-      name: super().__init__
+      name: __init__
       line_num: 36
       unit_name: "image.py"
       target: [\%arg0]
