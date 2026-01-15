@@ -1089,17 +1089,23 @@ class Parser(common_parser.Parser):
         source_str = self.parse(import_source, statements)
 
         if source_str is not None:
+            # Handle quotes and extension
+            if source_str.startswith("\"") and source_str.endswith("\""):
+                 source_str = source_str[1:-1]
             source_str = os.path.normpath(source_str)
-            if source_str[-4:-1] == ".js":
-                source_str = source_str[:-4]
-                source_str = source_str[1:]
+            if source_str.endswith(".js"):
+                source_str = source_str[:-3]
+            if source_str.startswith("./"):
+                source_str = "." + source_str[2:]
+            elif source_str.startswith("../"):
+                prefix = "."
+                while source_str.startswith("../"):
+                    prefix += "."
+                    source_str = source_str[3:]
+                source_str = prefix + source_str
+
             source_str = source_str.replace("/", ".") # for linux
             source_str = source_str.replace("\\", ".") # for windows
-            for str in source_str:
-                if str != '.':
-                    break
-                else:
-                    source_str = source_str[1:]
         # side effect import, 格式为: import "module-name";
         if not import_clause:
             self.append_stmts(statements, node, {"import_stmt": {"module_path": source_str, "attrs": ['init']}})
