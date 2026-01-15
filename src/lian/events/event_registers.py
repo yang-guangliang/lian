@@ -17,6 +17,7 @@ from lian.config.constants import (
     LIAN_INTERNAL,
 )
 from lian.config import config
+from lian.externs.modeling import python_call
 
 class DefaultEventHandlerManager(EventHandlerManager):
     def enable(self):
@@ -136,6 +137,12 @@ class DefaultEventHandlerManager(EventHandlerManager):
                 event = EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
                 handler = this_field_write.appstorage_read_and_write,
                 langs = ["abc"]
+            ),
+
+            EventHandler(
+                event=EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
+                handler=python_call.dispatch,
+                langs=["python"]
             ),
 
             # EventHandler(
