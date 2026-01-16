@@ -967,17 +967,17 @@ class StmtStates:
             if util.is_available(item_index_set):
                 for each_item_index in item_index_set:
                     each_item = self.frame.symbol_state_space[each_item_index]
-                    if not (each_item and isinstance(each_item, State) and each_item.array):
+                    if not (each_item and isinstance(each_item, State) and each_item.tangping_elements):
                         continue
 
-                    for array_index in range(len(each_item.array)):
+                    for array_index in range(len(each_item.tangping_elements)):
                         array_length = len(positional_args)
                         if array_length <= array_index:
                             positional_args.extend(
                                 [set() for _ in range(array_index + 1 - array_length)]
                             )
 
-                        positional_args[array_index].update(each_item.array[array_index])
+                        positional_args[array_index].update(each_item.tangping_elements)
 
         elif not util.isna(stmt.positional_args):
             start_index = 1
@@ -1898,6 +1898,8 @@ class StmtStates:
         # callee_name = self.resolver.recover_callee_name(stmt_id, self.frame)
         app_return = self.event_manager.notify(event)
         if er.should_block_event_requester(app_return):
+            if util.is_available(event.out_data):
+                return event.out_data
             return P2ResultFlag()
         if util.is_empty(callee_info):
             result = self.trigger_extern_callee(
@@ -2955,6 +2957,10 @@ class StmtStates:
                         new_target_state.tangping_elements.update(element)
                 else:
                     new_target_state.array.extend(array_state_to_extend)
+                defined_symbol_states.add(new_target_state_index)
+            else:
+                new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, target_state_index)
+                new_target_state: State = self.frame.symbol_state_space[new_target_state_index]
                 defined_symbol_states.add(new_target_state_index)
 
         defined_array_symbol.states = defined_symbol_states
