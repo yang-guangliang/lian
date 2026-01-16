@@ -30,6 +30,10 @@ def dispatch(data: EventData):
         context_run(data)
         app_return = er.config_block_event_requester(app_return)
         return app_return
+    elif "cls(*init_inputs, **init_kwargs)" in stmt_src_code:
+        init(data)
+        app_return = er.config_block_event_requester(app_return)
+        return app_return
     else:
         app_return = er.config_continue_event_processing(app_return)
         return app_return
@@ -47,8 +51,6 @@ def executor_submit(data: EventData):
     status = in_data.status.copy()
     in_states = in_data.in_states
     defined_symbol = in_data.defined_symbol
-    resolver = in_data.resolver
-    frame = in_data.frame
     args = in_data.args
 
     real_method_ids = loader.convert_method_name_to_method_ids("on_graph_execution")
@@ -78,8 +80,6 @@ def apply_async(data: EventData):
     status = in_data.status.copy()
     in_states = in_data.in_states
     defined_symbol = in_data.defined_symbol
-    resolver = in_data.resolver
-    frame = in_data.frame
     args = in_data.args
 
     real_method_ids = loader.convert_method_name_to_method_ids("on_node_execution")
@@ -111,8 +111,6 @@ def context_run(data: EventData):
     status = in_data.status.copy()
     in_states = in_data.in_states
     defined_symbol = in_data.defined_symbol
-    resolver = in_data.resolver
-    frame = in_data.frame
     args = in_data.args
 
     real_method_ids = loader.convert_method_name_to_method_ids("on_graph_execution")
@@ -127,4 +125,31 @@ def context_run(data: EventData):
 
     data.out_data = state_analysis.compute_target_method_states(
         stmt_id, stmt, status, in_states, real_method_ids, defined_symbol, real_args
+    )
+
+def init(data: EventData):
+    in_data = data.in_data
+    stmt_id = in_data.stmt_id
+    state_analysis = in_data.state_analysis
+    loader = state_analysis.loader
+    stmt_src_code = "\n".join(loader.get_stmt_source_code_with_comment(stmt_id))
+
+    stmt = in_data.stmt
+    status = in_data.status.copy()
+    in_states = in_data.in_states
+    defined_symbol = in_data.defined_symbol
+
+    args = in_data.args
+
+    real_method_ids = loader.convert_method_name_to_method_ids("__init__")
+    method_ids = set()
+    for method_id in real_method_ids:
+        stmt = loader.get_stmt_gir(method_id)
+        if stmt.start_row == 167:
+            method_ids.add(method_id)
+            break
+
+
+    data.out_data = state_analysis.compute_target_method_states(
+        stmt_id, stmt, status, in_states, method_ids, defined_symbol, args
     )
