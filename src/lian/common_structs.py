@@ -1071,6 +1071,20 @@ class StateFlowGraph(SymbolGraph):
         # caller_frame = inspect.currentframe().f_back
         # info = inspect.getframeinfo(caller_frame)
         # print(f"{info.filename}:{info.lineno} add_edge: {src_node} -> {dst_node} @ weight={weight}")
+        # StateFlowGraph(SFG) 不需要 MultiDiGraph 的“多重边”语义：
+        # 如果同一对节点 (src_node, dst_node) 的边已经存在，则跳过，避免重复边干扰后续分析。
+        if util.is_empty(src_node) or util.is_empty(dst_node):
+            return
+
+        if isinstance(src_node, list):
+            for src in src_node:
+                self.add_edge(src, dst_node, weight)
+            return
+
+        # networkx.MultiDiGraph.has_edge(u, v) 为 True 表示 u->v 至少存在一条边
+        if self.graph.has_edge(src_node, dst_node):
+            return
+
         super().add_edge(src_node, dst_node, weight)
 
 @dataclasses.dataclass
