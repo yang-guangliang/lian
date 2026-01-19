@@ -77,7 +77,7 @@
   unit_name: "embedchain.py"
 
 - lang: python
-  method_list: ["create_chat_completion"]
+  method_list: ["create_chat_completion", "__init__"]
   unit_name: "llama.py"
 
 - lang: python
