@@ -114,16 +114,16 @@
     - operation: parameter_decl
       name: data_type
       line_num: 139
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-23731/test/mem0-0.1.56/embedchain/embedchain.py"
+      unit_name: embedchain.py
     # CVE-2024-34359
     - operation: parameter_decl
       name: model_path
       line_num: 66
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-34359/test/llama-cpp-python-0.2.71/llama_cpp/llama.py"
+      unit_name: llama.py
     - operation: field_read
-      name: \%this.chat_handler  # 规范引号，移除多余反斜杠
+      name: "%this.chat_handler"  # 规范引号，移除多余反斜杠
       line_num: 1722
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-34359/test/llama-cpp-python-0.2.71/llama_cpp/llama.py"
+      unit_name: llama.py
     # CVE-2024-4325
     - operation: parameter_decl
       name: request
