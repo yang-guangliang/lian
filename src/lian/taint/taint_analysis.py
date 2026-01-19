@@ -103,6 +103,14 @@ class PathFinder:
                     elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
                         # STMT 的 tag 来自其 use 的 SYMBOL；当 SYMBOL 的 tag 发生变化时，重新处理该 STMT。
                         self._enqueue(worklist, in_worklist, v)
+                    elif etype in (SFG_EDGE_KIND.SYMBOL_FLOW, SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW):
+                        # SYMBOL -> SYMBOL 的数据流传播
+                        if v.node_type != SFG_NODE_KIND.SYMBOL:
+                            continue
+                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                        if (u_tag | v_tag) != v_tag:
+                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                            self._enqueue(worklist, in_worklist, v)
 
     def _propagate_from_state(self, u, u_tag, worklist, in_worklist):
         """处理从 STATE 节点向下的传播"""
