@@ -465,7 +465,7 @@ class TaintRuleApplier:
         operation = node.name
 
         # 默认认为赋值语句传播污点
-        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read", "record_write","record_extend", "array_write"] :
+        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read", "record_write","record_extend", "array_write", "array_extend"] :
             return True
 
         for rule in self.rule_manager.all_propagations:

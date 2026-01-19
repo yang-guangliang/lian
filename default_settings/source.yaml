@@ -104,11 +104,11 @@
     - operation: parameter_decl
       name: flask_request
       line_num: 421
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-1558/test/mlflow-2.11.3/mlflow/server/handlers.py"
+      unit_name: handlers.py
     - operation: object_call
       name: request.query_string.decode  # 规范引号，移除多余反斜杠
       line_num: 1786
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-1558/test/mlflow-2.11.3/mlflow/server/handlers.py"
+      unit_name: handlers.py
       tag: ["%target"]
     # CVE-2024-23731
     - operation: parameter_decl
