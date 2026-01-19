@@ -59,7 +59,7 @@
     - operation: parameter_decl
       name: node_input
       line_num: 522
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10457/test/AutoGPT-0.1.1/autogpt_platform/backend/backend/server/rest_api.py"
+      unit_name: rest_api.py
     - operation: field_read
       name: "%this.queue"
       line_num: 705
@@ -69,11 +69,11 @@
     - operation: parameter_decl
       name: template
       line_num: 491
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10940/test/langchain-langchain-core-0.3.14/libs/core/langchain_core/prompts/chat.py"
+      unit_name: chat.py
     - operation: parameter_decl
       name: input
       line_num: 192
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-10940/test/langchain-langchain-core-0.3.14/libs/core/langchain_core/prompts/base.py"
+      unit_name: base.py
     # CVE-2024-11041
     - operation: object_call
       name: "%this.remote_socket.recv" # 规范引号，移除多余反斜杠（YAML中无需转义%）

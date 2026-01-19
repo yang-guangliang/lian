@@ -3504,9 +3504,32 @@ class StmtStates:
             }
         )
         app_return = self.event_manager.notify(event)
-
-        unsolved_callee_states = set()
         args = self.prepare_args(stmt_id, stmt, status, in_states)
+        event = EventData(
+            self.lang,
+            EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
+            {
+                "resolver": self.resolver,
+                "stmt_id": stmt_id,
+                "stmt": stmt,
+                "status": status,
+                "receiver_states": receiver_states,
+                "receiver_symbol": receiver_symbol,
+                "frame": self.frame,
+                "field_states": field_states,
+                "in_states": in_states,
+                "defined_symbol": defined_symbol,
+                "state_analysis": self,
+                "args": args,
+                "defined_states": named_states
+            }
+        )
+        app_return = self.event_manager.notify(event)
+        if er.should_block_event_requester(app_return):
+            if util.is_available(event.out_data):
+                return event.out_data
+            return P2ResultFlag()
+        unsolved_callee_states = set()
         callee_info = self.frame.stmt_id_to_callee_info.get(stmt_id)
 
         name_symbol = None
