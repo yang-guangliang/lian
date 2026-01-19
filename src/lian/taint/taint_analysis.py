@@ -145,6 +145,32 @@ class PathFinder:
                                 self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
                                 # 只有当目标 SYMBOL 的 tag 发生变化时才入队，避免环路导致无限传播。
                                 self._enqueue(worklist, in_worklist, v)
+            # object_call_stmt: target = receiver.field(args)
+            # 当 args 携带污点时，receiver 也可能被副作用污染（常见于可变对象的 method call）。
+            # 在 SFG 中 receiver_symbol 是该 STMT 的前驱（SYMBOL_IS_USED, pos==0），这里将 u_tag 回写到 receiver。
+            if getattr(u, "name", None) == "object_call_stmt":
+                for pred in self.sfg.predecessors(u):
+                    edge_data = self.sfg.get_edge_data(pred, u)
+                    if not edge_data:
+                        continue
+                    for data in edge_data.values():
+                        weight = data.get('weight')
+                        if not weight:
+                            continue
+                        if weight.edge_type != SFG_EDGE_KIND.SYMBOL_IS_USED:
+                            continue
+                        # object_call 的 receiver 占用 pos==0
+                        if getattr(weight, "pos", -1) != 0:
+                            continue
+                        if pred.node_type != SFG_NODE_KIND.SYMBOL:
+                            continue
+                        pred_tag = self.taint_manager.get_symbol_tag(pred.node_id)
+                        if (u_tag | pred_tag) != pred_tag:
+                            self.taint_manager.set_symbol_tag(pred.node_id, u_tag | pred_tag)
+                            self._enqueue(worklist, in_worklist, pred)
+                        # receiver 只有一个，找到即可
+                        break
+
 
     def propagate_taint(self, source):
         """
@@ -1111,9 +1137,9 @@ class TaintAnalysis:
             sources = self.find_sources()
             sinks = self.find_sinks()
             print(sources, sinks)
-            if len(sinks) > 0:
-                print(sinks[0].line_no)
-            print("entry:", method_id)
+            if len(sources) > 0:
+                print(sources[0].line_no)
+            print("entry:", self.loader.convert_method_id_to_method_name(method_id))
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 
