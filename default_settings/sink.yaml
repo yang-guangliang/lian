@@ -148,13 +148,13 @@
     # CVE-2024-34359
     - operation: field_write
       name: "%this.chat_handler"
-      line_num: 380
+      line_num: 444
       unit_name: "llama.py"
       target: [\%target]
     - operation: object_call
       name: "%this._environment.render"
-      line_num: 380
-      unit_name: "llama.py"
+      line_num: 213
+      unit_name: "llama_chat_format.py"
       target: [\%receiver]
     # CVE-2024-4325
     - operation: object_call

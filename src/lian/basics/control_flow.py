@@ -352,7 +352,7 @@ class ControlFlowAnalysis:
                     final_body, [CFGNode(last_stmts_of_catch_body, CONTROL_FLOW_KIND.CATCH_FINALLY)], global_special_stmts
                 )
             else:
-                return (last_stmts_of_catch_body, boundary)
+                return (last_stmts_of_body, boundary)
 
         return (last_stmts_of_final_body, boundary)
 
