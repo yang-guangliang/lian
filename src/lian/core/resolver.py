@@ -533,7 +533,15 @@ class Resolver:
 
                 tmp_states: set[State] = set()
                 if isinstance(source, Symbol):
-                    tmp_states = set([current_space[s] for s in source.states])
+                    for state_index in source.states:
+                        if state_index == -1:
+                            continue
+                        tmp_state = current_space[state_index]
+                        if isinstance(tmp_state, Symbol):
+                            continue
+                        tmp_states.add(tmp_state)
+
+                    # tmp_states = set([current_space[s] for s in source.states])
                 else:
                     tmp_states = {source}
 
