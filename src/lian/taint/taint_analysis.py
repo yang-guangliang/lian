@@ -153,6 +153,11 @@ class PathFinder:
                                 self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
                                 # 只有当目标 SYMBOL 的 tag 发生变化时才入队，避免环路导致无限传播。
                                 self._enqueue(worklist, in_worklist, v)
+                            else:
+                                # 逻辑补丁：如果该 SYMBOL 已经带着相同 tag，但本轮从未被处理过，
+                                # 仍需入队一次以触发其后继 STMT 的分析（否则可能“永远不入队”）。
+                                if getattr(self, "_processed_nodes", None) is not None and v not in self._processed_nodes:
+                                    self._enqueue(worklist, in_worklist, v)
             # object_call_stmt: target = receiver.field(args)
             # 当 args 携带污点时，receiver 也可能被副作用污染（常见于可变对象的 method call）。
             # 在 SFG 中 receiver_symbol 是该 STMT 的前驱（SYMBOL_IS_USED, pos==0），这里将 u_tag 回写到 receiver。
@@ -176,6 +181,9 @@ class PathFinder:
                         if (u_tag | pred_tag) != pred_tag:
                             self.taint_manager.set_symbol_tag(pred.node_id, u_tag | pred_tag)
                             self._enqueue(worklist, in_worklist, pred)
+                        else:
+                            if getattr(self, "_processed_nodes", None) is not None and pred not in self._processed_nodes:
+                                self._enqueue(worklist, in_worklist, pred)
                         # receiver 只有一个，找到即可
                         break
 
@@ -190,12 +198,16 @@ class PathFinder:
 
         worklist = deque()
         in_worklist = set()
+        # 记录本轮传播中“已经实际出队并处理过”的节点。
+        # 用于修复：某些节点在进入传播前已带有目标 tag，但从未入队，导致其后继语句永远不被处理。
+        self._processed_nodes = set()
         self._init_source_contamination(source, tag, worklist, in_worklist)
 
         # BFS 传播
         while worklist:
             u = worklist.popleft()
             in_worklist.discard(u)
+            self._processed_nodes.add(u)
             u_tag = self._get_node_tag(u)
 
             if u_tag == 0:
@@ -207,6 +219,8 @@ class PathFinder:
                 self._propagate_from_state(u, u_tag, worklist, in_worklist)
             elif u.node_type == SFG_NODE_KIND.STMT:
                 self._propagate_from_stmt(u, u_tag, worklist, in_worklist)
+        # 清理本轮状态，避免跨 source 互相影响
+        self._processed_nodes = set()
         return tag
 
     def reconstruct_define_use_path(self, source, sink):
@@ -410,6 +424,8 @@ class TaintRuleApplier:
                 names.append(util.access_path_formatter(state.access_path) + '.' + stmt.field)
 
         names.append(stmt.receiver_object + '.' + stmt.field)
+        if stmt.field == "__init__":
+            names.append("__init__")
         # print(name, stmt.start_row)
         for rule in self.rule_manager.all_sinks:
             if rule.unit_path and rule.unit_path != unit_path:
@@ -528,7 +544,7 @@ class TaintRuleApplier:
         operation = node.name
 
         # 默认认为赋值语句传播污点
-        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read","field_write", "record_write","record_extend", "array_write", "array_extend"] :
+        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read","field_write", "record_write","record_extend", "array_write", "array_extend", "array_append"] :
             return True
 
         for rule in self.rule_manager.all_propagations:
@@ -596,7 +612,14 @@ class TaintRuleApplier:
 
             name1 = stmt.receiver_object + '.' + stmt.field
             for rule in self.rule_manager.all_sinks:
-                if rule.name in [name, name1]:
+                if rule.name in [name, name1, stmt.field]:
+                    matching_rules.append(rule)
+        elif operation == "field_write":
+            used_symbol_nodes, used_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+            for rule in self.rule_manager.all_sinks:
+                if rule.operation != "field_write":
+                    continue
+                if rule.name in node.operation:
                     matching_rules.append(rule)
         elif operation == "field_write":
             used_symbol_nodes, used_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
@@ -705,6 +728,8 @@ class TaintAnalysis:
         successors = list(util.graph_successors(self.sfg, node))
         define_symbol_node = None
         for successor in successors:
+            if successor.node_id == -1 or successor.name == "":
+                continue
             edge = self.sfg.get_edge_data(node, successor)
             if edge and edge[0]['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
                 define_symbol_node = successor
@@ -1183,9 +1208,9 @@ class TaintAnalysis:
             sources = self.find_sources()
             sinks = self.find_sinks()
             print(sources, sinks)
-            if len(sources) > 0:
-                print(sources[0].line_no)
-            print("entry:", self.loader.convert_method_id_to_method_name(method_id))
+            if len(sinks) > 0:
+                print(sinks[0].line_no)
+            print("entry:", self.loader.convert_method_id_to_method_name(method_id), method_id)
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 

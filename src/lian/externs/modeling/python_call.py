@@ -166,9 +166,10 @@ def executor_class(data: EventData):
     args = in_data.args
 
     real_method_ids = loader.convert_method_name_to_method_ids("__init__")
-    class_id = loader.convert_class_name_to_class_id("ExecutorBase")
+    class_ids = loader.convert_class_name_to_class_ids("ExecutorBase")
+    res = -1
     for real_method_id in real_method_ids:
-        if loader.convert_method_id_to_class_id(real_method_id) == class_id:
+        if loader.convert_method_id_to_class_id(real_method_id) in class_ids:
             res = real_method_id
             break
     real_method_ids = {res}
@@ -178,5 +179,5 @@ def executor_class(data: EventData):
     # 应该调用ExecutorBase.__init__(vllm_config=vllm_config, )
 
     data.out_data = state_analysis.compute_target_method_states(
-        stmt_id, stmt, status, in_states, real_method_ids, defined_symbol, real_args
+        stmt_id, stmt, status, in_states, real_method_ids, defined_symbol, args
     )

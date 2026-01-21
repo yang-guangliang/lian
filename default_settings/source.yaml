@@ -101,10 +101,11 @@
       unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-12029/test/InvokeAI-5.3.1/invokeai/app/services/download/download_default.py"
       tag: ["%target"]
     # CVE-2024-1558
-    - operation: parameter_decl
-      name: flask_request
-      line_num: 421
+    - operation: call_stmt
+      name: _get_request_message
+      line_num: 1755
       unit_name: handlers.py
+      tag: ["%target"]
     - operation: object_call
       name: request.query_string.decode  # 规范引号，移除多余反斜杠
       line_num: 1786
@@ -128,16 +129,16 @@
     - operation: parameter_decl
       name: request
       line_num: 654
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-4325/test/gradio-4.21.0/gradio/routes.py"
+      unit_name: routes.py
     - operation: field_read
-      name: \%this.event_queue_per_concurrency_id  # 规范引号，移除多余反斜杠
+      name: "%this.event_queue_per_concurrency_id"  # 规范引号，移除多余反斜杠
       line_num: 246
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-4325/test/gradio-4.21.0/gradio/queueing.py"
+      unit_name: queueing.py
     # CVE-2024-4941
     - operation: parameter_decl
       name: body
       line_num: 668
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-4941/test/gradio-4.25.0/gradio/routes.py"
+      unit_name: routes.py
     # CVE-2024-5980
     - operation: parameter_decl
       name: run
@@ -163,7 +164,7 @@
     - operation: parameter_decl
       name: model
       line_num: 152
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2025-24357/test/vllm-0.6.6/vllm/entrypoints/llm.py"
+      unit_name: llm.py
     # CVE-2025-25362
     - operation: parameter_decl
       name: docs
