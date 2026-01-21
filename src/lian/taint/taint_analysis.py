@@ -621,6 +621,13 @@ class TaintRuleApplier:
                     continue
                 if rule.name in node.operation:
                     matching_rules.append(rule)
+        elif operation == "field_write":
+            used_symbol_nodes, used_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+            for rule in self.rule_manager.all_sinks:
+                if rule.operation != "field_write":
+                    continue
+                if rule.name in node.operation:
+                    matching_rules.append(rule)
 
         # 2. 根据规则检查对应的 symbol 和 state
         for rule in matching_rules:
