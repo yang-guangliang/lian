@@ -103,6 +103,14 @@ class PathFinder:
                     elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
                         # STMT 的 tag 来自其 use 的 SYMBOL；当 SYMBOL 的 tag 发生变化时，重新处理该 STMT。
                         self._enqueue(worklist, in_worklist, v)
+                    elif etype in (SFG_EDGE_KIND.SYMBOL_FLOW, SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW):
+                        # SYMBOL -> SYMBOL 的数据流传播
+                        if v.node_type != SFG_NODE_KIND.SYMBOL:
+                            continue
+                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                        if (u_tag | v_tag) != v_tag:
+                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                            self._enqueue(worklist, in_worklist, v)
 
     def _propagate_from_state(self, u, u_tag, worklist, in_worklist):
         """处理从 STATE 节点向下的传播"""
@@ -111,7 +119,7 @@ class PathFinder:
             edge_data = self.sfg.get_edge_data(v, u)
             if edge_data:
                 for data in edge_data.values():
-                    if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                    if data.get('weight').edge_type in (SFG_EDGE_KIND.SYMBOL_STATE, SFG_EDGE_KIND.STATE_INCLUSION):
                         v_tag = self.taint_manager.get_symbol_tag(v.node_id)
                         if (u_tag | v_tag) != v_tag:
                             self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
@@ -283,12 +291,14 @@ class TaintRuleApplier:
             if rule.line_num and rule.line_num != int(stmt.start_row + 1):
                 continue
             if not rule.attr and rule.name == parameter_symbol.name:
+                print(rule.name)
                 return True
             if rule.operation != "parameter_decl":
                 continue
             # if rule.attr and rule.attr not in attrs:
             #     continue
             if rule.name == parameter_symbol.name:
+                print(rule.name)
                 return True
         return False
 
@@ -306,6 +316,7 @@ class TaintRuleApplier:
                 # 格式化访问路径
                 access_path = access_path_formatter(state_node.access_path)
                 if access_path == rule.name:
+                    print(rule.name)
                     return True
 
         return False
@@ -343,6 +354,7 @@ class TaintRuleApplier:
                 if len(access_path) == 0:
                     access_path = method_symbol_node.name
                 if access_path == name:
+                    print(rule.name)
                     apply_rule_flag = True
                     tag = self.taint_analysis.taint_manager.get_symbol_tag(tag_space_id)
                     new_tag = self.taint_analysis.taint_manager.add_and_update_tag_bv(tag_info=tag_info,
@@ -378,6 +390,7 @@ class TaintRuleApplier:
             if rule.line_num and rule.line_num != int(node.line_no + 1):
                 continue
             if rule.name in names:
+                print(rule.name)
                 return True
         return False
 
@@ -472,6 +485,30 @@ class TaintRuleApplier:
                 return True
 
         return False
+
+    def apply_field_write_sink_rules(self, node):
+        stmt_id = node.def_stmt_id
+        unit_id = self.loader.convert_stmt_id_to_unit_id(stmt_id)
+        unit_info = self.loader.convert_module_id_to_module_info(unit_id)
+        unit_path = unit_info.original_path
+        unit_name = os.path.basename(unit_path)
+        if node.node_type != SFG_NODE_KIND.STMT or node.name != "field_write":
+            return False
+
+        for rule in self.rule_manager.all_sinks:
+            if rule.operation != "field_write":
+                continue
+            if rule.unit_path and rule.unit_path != unit_path:
+                continue
+            if rule.unit_name and rule.unit_name != unit_name:
+                continue
+            if rule.line_num and rule.line_num != int(node.line_no + 1):
+                continue
+            if rule.name and rule.name in node.operation:
+                return True
+
+        return False
+
     def check_method_name(self, rule_name, method_state):
         state_access_path = method_state.access_path
         rule_name_parts = rule_name.split('.')
@@ -491,7 +528,7 @@ class TaintRuleApplier:
         operation = node.name
 
         # 默认认为赋值语句传播污点
-        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read", "record_write","record_extend", "array_write", "array_extend"] :
+        if operation in ["assign_stmt", "call_stmt", "object_call_stmt", "new_object", "forin_stmt", "field_read","field_write", "record_write","record_extend", "array_write", "array_extend"] :
             return True
 
         for rule in self.rule_manager.all_propagations:
@@ -561,12 +598,19 @@ class TaintRuleApplier:
             for rule in self.rule_manager.all_sinks:
                 if rule.name in [name, name1]:
                     matching_rules.append(rule)
+        elif operation == "field_write":
+            used_symbol_nodes, used_state_nodes = self.taint_analysis.get_stmt_used_symbol_and_state_by_pos(node)
+            for rule in self.rule_manager.all_sinks:
+                if rule.operation != "field_write":
+                    continue
+                if rule.name in node.operation:
+                    matching_rules.append(rule)
 
         # 2. 根据规则检查对应的 symbol 和 state
         for rule in matching_rules:
             targets = rule.target if isinstance(rule.target, list) else [rule.target]
             for target in targets:
-                target_pos = -1
+                # target_pos = -1
                 if target == TAG_KEYWORD.ARG0:
                     target_pos = 1
                 elif target == TAG_KEYWORD.ARG1:
@@ -577,7 +621,7 @@ class TaintRuleApplier:
                     target_pos = 4
                 elif target == TAG_KEYWORD.ARG4:
                     target_pos = 5
-                elif target == TAG_KEYWORD.RECEIVER:
+                elif target in [TAG_KEYWORD.RECEIVER, TAG_KEYWORD.TARGET]:
                     target_pos = 0
 
                 for pred in self.sfg.predecessors(node):
@@ -722,6 +766,8 @@ class TaintAnalysis:
                 node) or self.rule_applier.should_apply_object_call_stmt_sink_rules(node):
                 node_list.append(node)
             elif self.rule_applier.apply_record_write_sink_rules(node):
+                node_list.append(node)
+            elif self.rule_applier.apply_field_write_sink_rules(node):
                 node_list.append(node)
             else:
                 rules = self.rule_manager.all_sinks_from_code

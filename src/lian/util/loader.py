@@ -1043,11 +1043,11 @@ class StmtStatusLoader(MethodLevelAnalysisResultLoader):
                     used_symbols = [int(item) for item in ast.literal_eval(row.used_symbols)],
                     implicitly_defined_symbols = [int(item) for item in ast.literal_eval(row.implicitly_defined_symbols)],
                     implicitly_used_symbols = [int(item) for item in ast.literal_eval(row.implicitly_used_symbols)],
-                    in_symbol_bits = set(row.in_symbol_bits),
-                    out_symbol_bits = set(row.out_symbol_bits),
-                    defined_states = set(row.defined_states),
-                    in_state_bits = set(row.in_state_bits),
-                    out_state_bits = set(row.out_state_bits),
+                    in_symbol_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
+                    out_symbol_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
+                    defined_states = {int(item) for item in ast.literal_eval(row.implicitly_used_symbols)},
+                    in_state_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
+                    out_state_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
                     field_name = row.field,
                 )
         return stmt_to_status

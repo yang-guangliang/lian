@@ -1075,6 +1075,8 @@ class PrelimSemanticAnalysis:
             old_states = set()
             symbol_id_to_old_state_indexes= {}
             for symbol_def_node in available_defined_symbols:
+                if not isinstance(symbol_def_node, SymbolDefNode):
+                    continue
                 symbol_id = symbol_def_node.symbol_id
                 if symbol_id in current_symbol_ids: # 说明是我们需要放到summary中去的symbol
                      symbol = symbol_state_space[symbol_def_node.index]
@@ -1176,7 +1178,6 @@ class PrelimSemanticAnalysis:
     def analyze_stmts(self, frame: ComputeFrame):
         while len(frame.stmt_worklist) != 0:
             stmt_id = frame.stmt_worklist.peek()
-            # print(f"当前语句id是{stmt_id}, stmt_worklist:",frame.stmt_worklist)
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
                 frame.stmt_worklist.pop()
                 continue
