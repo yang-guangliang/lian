@@ -920,11 +920,12 @@ class StmtStates:
             if util.is_available(item_index_set):
                 for each_item_index in item_index_set:
                     each_item = self.frame.symbol_state_space[each_item_index]
-                    if not (each_item and isinstance(each_item, State) and each_item.fields):
+                    packed_named_arg_symbol = self.frame.symbol_state_space[packed_named_arg_index]
+                    if not (each_item and isinstance(each_item, State)):
                         continue
 
-                    named_args.update(each_item.fields)
-
+                    # named_args.update(each_item.fields)
+                    named_args[packed_named_arg_symbol.name]=item_index_set
                     for field_name, state_index_set in each_item.fields.items():
                         util.add_to_dict_with_default_set(named_args, field_name, state_index_set)
 

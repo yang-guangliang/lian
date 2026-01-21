@@ -221,7 +221,19 @@ class GlobalStmtStates(StmtStates):
     def add_arg_to_param_edge(self, each_pair, status, parameter_name_symbol):
         for node in self.sfg.graph.nodes:
             if self.node_is_state(node) and node.index == each_pair.arg_index_in_space:
-                all_parent_nodes = list(self.sfg.graph.predecessors(node))
+                # `node` 是参数对应的 STATE 节点；它的直接前驱通常是 SYMBOL。
+                # 但在某些建图路径下，可能出现 STATE -> STATE 的链路（如 inclusion/copy），
+                # 导致直接前驱里包含 STATE 节点。此时需要把这些 STATE 的父 SYMBOL 也纳入候选，
+                # 以便找到真正“在 call_stmt/object_call_stmt 中被使用”的变量节点。
+                all_parent_nodes = set(self.sfg.graph.predecessors(node))
+                for parent in list(all_parent_nodes):
+                    if getattr(parent, "node_type", None) != SFG_NODE_KIND.STATE:
+                        continue
+                    for pp in self.sfg.graph.predecessors(parent):
+                        if getattr(pp, "node_type", None) == SFG_NODE_KIND.SYMBOL:
+                            all_parent_nodes.add(pp)
+
+                all_parent_nodes = list(all_parent_nodes)
                 for parent_node in all_parent_nodes:
                     if not self.is_used_in_call_stmt(parent_node):
                         continue

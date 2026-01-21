@@ -243,7 +243,8 @@ class Parser(common_parser.Parser):
 
                         parameter_type = self.find_child_by_field(parameter, "type")
                         shadow_type = self.read_node_text(parameter_type)
-
+                        if parameter_name.type == "dictionary_splat_pattern":
+                            attrs.append(LIAN_INTERNAL.PACKED_NAMED_PARAMETER)
                         parameter_decls.append(self.add_col_row_info(
                             parameter,
                             {"parameter_decl": {
@@ -987,7 +988,7 @@ class Parser(common_parser.Parser):
                     value = self.find_child_by_field(body, "value")
                     shadow_key = self.parse(key, for_body)
                     shadow_value = self.parse(value, for_body)
-                    for_body.append(self.add_col_row_info(body, {"map_write": {"target": target, "key": shadow_key, "value": shadow_value}}))
+                    for_body.append(self.add_col_row_info(body, {"record_write": {"receiver_record": target, "key": shadow_key, "value": shadow_value}}))
                 else:
                     shadow_body = self.parse(body, for_body)
                     for_body.append(self.add_col_row_info(body, {"array_append": {"array": target, "source":shadow_body}}))
@@ -1007,7 +1008,7 @@ class Parser(common_parser.Parser):
                     value = self.find_child_by_field(body, "value")
                     shadow_key = self.parse(key, true_body)
                     shadow_value = self.parse(value, true_body)
-                    true_body.append(self.add_col_row_info(body, {"map_write": {"target": target, "key": shadow_key, "value": shadow_value}}))
+                    true_body.append(self.add_col_row_info(body, {"record_write": {"receiver_record": target, "key": shadow_key, "value": shadow_value}}))
                 else:
                     shadow_body = self.parse(body, true_body)
                     true_body.append(self.add_col_row_info(body, {"array_append": {"array": target, "source": shadow_body}}))
