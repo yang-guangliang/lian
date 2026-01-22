@@ -28,7 +28,8 @@ from lian.config.constants import (
     ACCESS_POINT_KIND,
     CLASS_DECL_OPERATION,
     STATE_TYPE_KIND,
-    IMPORT_GRAPH_EDGE_KIND
+    IMPORT_GRAPH_EDGE_KIND,
+    ANALYSIS_PHASE_ID,
 )
 from lian.util.loader import Loader
 from lian.util import util
@@ -732,7 +733,10 @@ class Resolver:
             # 收集初始的arg_indexes
             arg_state_indexes = set()
             call_site = CallSite(caller_frame.method_id, stmt_id, callee_id)
-            parameter_mapping_list = self.loader.get_parameter_mapping_p2(call_site)
+            if caller_frame.stmt_state_analysis.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+                parameter_mapping_list = self.loader.get_parameter_mapping_p2(call_site)
+            else:
+                parameter_mapping_list = self.loader.get_parameter_mapping_p3(call_site)
             if util.is_empty(parameter_mapping_list):
                 return
             for each_mapping in parameter_mapping_list:
