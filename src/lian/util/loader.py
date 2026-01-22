@@ -1864,6 +1864,8 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, method_id, item_df):
         symbol_graph = StateFlowGraph(method_id)
         for row in item_df:
+            if not row or not row.source_node or not row.dest_node:
+                continue
             symbol_graph.add_edge(
                 SFGNode().from_tuple(row.source_node),
                 SFGNode().from_tuple(row.dest_node),
