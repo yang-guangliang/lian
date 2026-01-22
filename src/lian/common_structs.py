@@ -1741,8 +1741,10 @@ class MetaComputeFrame:
     is_meta_frame:bool = True
 
 class ComputeFrame(MetaComputeFrame):
-    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = [], this_class_ids = [], state_flow_graph = None):
+    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = [], this_class_ids = [], state_flow_graph = None, call_site_analyze_counter=None):
         super().__init__(method_id)
+        if this_class_ids is None:
+            this_class_ids = []
         self.is_meta_frame = False
         self.has_been_inited = False
         self.method_id = method_id
@@ -1813,6 +1815,7 @@ class ComputeFrame(MetaComputeFrame):
         self.callee_classes_of_method = []
         self.this_class_ids = this_class_ids
         self.callee_this_class_ids = []
+        self.call_site_analyze_counter = call_site_analyze_counter
 
     def get_context(self):
         return self.call_site

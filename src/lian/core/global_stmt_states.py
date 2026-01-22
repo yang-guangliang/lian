@@ -116,9 +116,11 @@ class GlobalStmtStates(StmtStates):
                 self.path_manager.path_exists(callee_path) or
                 callee_path.count_cycles() > 1 or
                 each_callee_id in self.frame.call_path or
-                self.frame.content_already_analyzed.get(new_call_site, False)
+                self.frame.content_already_analyzed.get(new_call_site, False) or
+                self.frame.call_site_analyze_counter.get(new_call_site, 0) > config.MAX_ANALYSIS_ROUND_FOR_CALL_SITE
             ):
                 continue
+            self.frame.call_site_analyze_counter[new_call_site] = self.frame.call_site_analyze_counter.get(new_call_site, 0) + 1
 
             callee_ids_to_be_analyzed.append(each_callee_id)
             # prepare callee parameters
@@ -164,6 +166,7 @@ class GlobalStmtStates(StmtStates):
 
         for each_callee_id in callee_method_ids:
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
+            self.frame.call_site_analyze_counter[new_call_site] = self.frame.call_site_analyze_counter.get(new_call_site, 0) + 1
             if caller_id != each_callee_id:
                 new_path = self.frame.call_path.add_callsite(new_call_site)
                 self.path_manager.add_path(new_path)
