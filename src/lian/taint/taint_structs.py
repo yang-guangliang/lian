@@ -55,6 +55,52 @@ class TaintEnv:
         self.symbols_to_bv = {} # symbol_id -> tagbitvector
         self.bit_vector_manager = TagBitVectorManager()
         self.tag_info_hash_to_data = {}
+        # 记录“本次污点传播过程中实际出队处理过”的节点，用于图可视化染色（与是否 tainted 无关）。
+        # 存储为 node.to_tuple() 的结果，避免直接持有图节点对象导致跨图/跨进程不一致。
+        self.processed_nodes = set()
+
+    def mark_processed_node(self, node):
+        """
+        标记一个 SFGNode 在传播过程中被处理过（出队并执行传播逻辑）。
+        该标记仅用于可视化染色，不参与 taint tag 计算。
+        """
+        if node is None:
+            return
+        try:
+            if hasattr(node, "to_tuple"):
+                self.processed_nodes.add(node.to_tuple())
+                return
+        except Exception:
+            pass
+        # fallback：尽量构造稳定 key
+        self.processed_nodes.add(
+            (
+                getattr(node, "node_type", None),
+                getattr(node, "def_stmt_id", None),
+                getattr(node, "index", None),
+                getattr(node, "node_id", None),
+                getattr(node, "context_id", None),
+            )
+        )
+
+    def is_processed_node(self, node) -> bool:
+        if node is None:
+            return False
+        try:
+            if hasattr(node, "to_tuple"):
+                return node.to_tuple() in self.processed_nodes
+        except Exception:
+            return False
+        return (
+            (
+                getattr(node, "node_type", None),
+                getattr(node, "def_stmt_id", None),
+                getattr(node, "index", None),
+                getattr(node, "node_id", None),
+                getattr(node, "context_id", None),
+            )
+            in self.processed_nodes
+        )
 
     def add_and_update_tag_bv(self, tag_info, current_taint):
         """添加一位新tag到tag_bv, 并更新当前bv"""
