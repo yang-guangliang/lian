@@ -259,6 +259,21 @@ class SFGDumper:
         else:
             label = "UNKNOWN"
 
+        # Highlight processed nodes (visited during taint propagation) with a soft blue.
+        # Note: tainted nodes (tag != 0) will override this with red below.
+        if self.taint_manager is not None and hasattr(self.taint_manager, "is_processed_node"):
+            try:
+                if self.taint_manager.is_processed_node(node):
+                    attrs["fillcolor"] = "#E8F0FE"
+                    attrs["color"] = "#2B65D9"
+                    attrs["penwidth"] = "2.0"
+                    # keep existing style; just ensure filled exists
+                    if "style" not in attrs or not attrs["style"]:
+                        attrs["style"] = "filled"
+            except Exception:
+                # Best-effort highlighting; never break dumping.
+                pass
+
         # Highlight tainted SYMBOL/STATE nodes with special color.
         if self.taint_manager is not None:
             try:

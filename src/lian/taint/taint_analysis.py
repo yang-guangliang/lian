@@ -208,6 +208,11 @@ class PathFinder:
             u = worklist.popleft()
             in_worklist.discard(u)
             self._processed_nodes.add(u)
+            # 给每个“实际处理过”的节点打标（用于导出 SFG 时染色）
+            try:
+                self.taint_manager.mark_processed_node(u)
+            except Exception:
+                pass
             u_tag = self._get_node_tag(u)
 
             if u_tag == 0:
