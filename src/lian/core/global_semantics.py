@@ -56,6 +56,7 @@ from networkx.generators.classic import complete_graph
 class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
         super().__init__(lian)
+        self.max_analysis_round = config.MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS
         self.path_manager = PathManager()
         self.analyzed_method_list = analyzed_method_list
         self.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
@@ -421,6 +422,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
             self.save_graph_to_dot(sfg.graph, entry_point, self.analysis_phase_id, global_space)
             self.loader.save_symbol_state_space_p3(entry_point, global_space)
+
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader.export()
 

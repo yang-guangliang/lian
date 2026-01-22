@@ -12,9 +12,8 @@ BUILTIN_SYMBOL_START_ID                                      = -101
 RULE_START_ID                                                = 10
 MAX_ROWS                                                     = 40 * 10000
 MAX_BENCHMARK_TARGET                                         = 10_000
-MAX_ANALYSIS_ROUND                                           = 4
-MAX_ANALYSIS_ROUND_FOR_DYNAMIC_CALL_IN_PRELIM_ANALYSIS       = 1
-MAX_ANALYSIS_ROUND_FOR_REGULAR                               = 4
+MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS                       = 2
+MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS                       = 3
 
 FIRST_ROUND                                                  = 0
 SECOND_ROUND                                                 = 1
@@ -45,14 +44,16 @@ MOCK_METHOD_NAME_SEPARATOR                                   = "_1_"
 DEFAULT_SETTINGS                                             = os.path.join(ROOT_DIR, "default_settings")
 DEFAULT_SETTINGS_PATH                                        = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
 
-BUNDLE_CACHE_CAPACITY                                        = 10
-LRU_CACHE_CAPACITY                                           = 10000
-GIR_CACHE_CAPACITY                                           = LRU_CACHE_CAPACITY / 2
+BUNDLE_CACHE_CAPACITY                                        = 2
+LRU_CACHE_CAPACITY                                           = 10
+MIN_CACHE_CAPACITY                                           = 1
+MEDIUM_CACHE_CAPACITY                                        = 4
 
-METHOD_HEADER_CACHE_CAPABILITY                               = 10000
-METHOD_BODY_CACHE_CAPABILITY                                 = 1000
+GIR_CACHE_CAPACITY                                           = 1000
+METHOD_HEADER_CACHE_CAPABILITY                               = 100
+METHOD_BODY_CACHE_CAPABILITY                                 = 10
 STMT_SCOPE_CACHE_CAPABILITY                                  = 1000
-MAX_STMT_CACHE_CAPACITY                                      = 100000
+MAX_STMT_CACHE_CAPACITY                                      = 1000
 
 UNSOLVED_SYMBOL_NAME                                         = "%%%%unsolved_symbols"
 POSITIVE_GIR_INTERVAL                                        = 10000

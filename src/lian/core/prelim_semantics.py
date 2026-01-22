@@ -68,7 +68,7 @@ class PrelimSemanticAnalysis:
         self.analyzed_method_list = set()
         self.inited_unit_list = set()
         self.analysis_phase_id = ANALYSIS_PHASE_ID.PRELIM_SEMANTICS
-        self.max_analysis_round = config.MAX_ANALYSIS_ROUND
+        self.max_analysis_round = config.MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS
 
         self.count_stmt_defined_states_for_debug = {}
         self.count_stmt_defined_states_number_for_debug = {}
@@ -1348,12 +1348,6 @@ class PrelimSemanticAnalysis:
             counter+=1
             # print(each_op)
 
-    def reduce_max_analysis_round(self):
-        self.max_analysis_round = config.MAX_ANALYSIS_ROUND_FOR_DYNAMIC_CALL_IN_PRELIM_ANALYSIS
-
-    def reset_max_analysis_round(self):
-        self.max_analysis_round = config.MAX_ANALYSIS_ROUND
-
     def run(self):
         if not self.options.quiet:
             print("\n############ # Phase II: Preliminary (Bottom-up) Analysis # ##########")
@@ -1364,12 +1358,10 @@ class PrelimSemanticAnalysis:
             if method_id not in self.analyzed_method_list:
                 self.analyze_method(method_id)
 
-        self.reduce_max_analysis_round()
         # in every round only analyze the stmts once
         for method_id in grouped_methods.get_methods_with_dynamic_call():
             if method_id not in self.analyzed_method_list:
                 self.analyze_method(method_id)
-        self.reset_max_analysis_round()
 
         # save all results here
         self.loader.save_call_graph_p2(self.call_graph)

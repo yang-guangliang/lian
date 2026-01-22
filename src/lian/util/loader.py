@@ -2094,7 +2094,7 @@ class Loader:
             # schema.bit_vector_manager_schema,
             [],
             os.path.join(self.semantic_path_p3, config.SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
+            config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
@@ -2112,7 +2112,7 @@ class Loader:
             # schema.bit_vector_manager_schema,
             [],
             os.path.join(self.semantic_path_p3, config.STATE_BIT_VECTOR_MANAGER_BUNDLE_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
+            config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
@@ -2139,7 +2139,7 @@ class Loader:
             # schema.stmt_status_schema,
             [],
             os.path.join(self.semantic_path_p3, config.STMT_STATUS_BUNDLE_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
+            config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
@@ -2175,7 +2175,7 @@ class Loader:
             # schema.symbol_state_space_schema,
             [],
             os.path.join(self.semantic_path_p3, config.SYMBOL_STATE_SPACE_BUNDLE_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
+            config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
@@ -2184,7 +2184,7 @@ class Loader:
             # schema.symbol_state_space_schema,
             [],
             os.path.join(self.semantic_path_p3, config.SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
+            config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
@@ -2236,7 +2236,7 @@ class Loader:
             options,
             [],
             os.path.join(self.semantic_path_p3, config.DEFINED_SYMBOLS_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
+            config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
@@ -2296,7 +2296,7 @@ class Loader:
             options,
             schema.state_flow_graph_schema_p2,
             os.path.join(self.semantic_path_p3, config.SFG_BUNDLE_PATH_P3),
-            config.LRU_CACHE_CAPACITY,
+            config.MEDIUM_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
