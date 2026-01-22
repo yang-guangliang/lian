@@ -61,6 +61,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         self.analyzed_method_list = analyzed_method_list
         self.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
         self.caller_unknown_callee_edge = {}
+        self.call_site_analyze_counter = {}
 
     def get_stmt_id_to_callee_info(self, callees):
         results = {}
@@ -355,6 +356,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
                             classes_of_method = frame.callee_classes_of_method,
                             this_class_ids = frame.callee_this_class_ids,
                             state_flow_graph = sfg,
+                            call_site_analyze_counter=self.call_site_analyze_counter,
                         )
                         frame_stack.add(new_frame)
                         children_done_flag = False
@@ -407,21 +409,29 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def init_frame_stack(self, entry_method_id, global_space, sfg):
         frame_stack = ComputeFrameStack()
         frame_stack.add(MetaComputeFrame()) #  used for collecting the final results
-        entry_frame = ComputeFrame(method_id = entry_method_id, loader = self.loader, space = global_space, state_flow_graph = sfg)
+        entry_frame = ComputeFrame(
+            method_id = entry_method_id,
+            loader = self.loader,
+            space = global_space,
+            state_flow_graph = sfg,
+            call_site_analyze_counter=self.call_site_analyze_counter
+        )
         frame_stack.add(entry_frame)
         return frame_stack
 
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase III: Global (Top-down) Semantic Analysis ##########")
+        global_space = SymbolStateSpace()
+
         for entry_point in self.loader.get_entry_points():
-            global_space = SymbolStateSpace()
+            self.call_site_analyze_counter = {}
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
             self.save_graph_to_dot(sfg.graph, entry_point, self.analysis_phase_id, global_space)
-            self.loader.save_symbol_state_space_p3(entry_point, global_space)
+        self.loader.save_symbol_state_space_p3(0, global_space)
 
         self.loader.save_call_paths_p3(self.path_manager.paths)
         self.loader.export()
