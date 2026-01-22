@@ -260,7 +260,9 @@ def adjust_python_self(obj, first_parameter_name = "", new_name = LIAN_INTERNAL.
             if "methods" in current_class:
                 for each_method in current_class["methods"]:
                     first_one = find_python_method_first_parameter(each_method)
-                    if first_one and "body" in each_method["method_decl"] and "staticmethod" not in each_method["method_decl"]["attrs"]:
+                    if "attrs" not in each_method["method_decl"]:
+                        continue
+                    if first_one and "body" in each_method["method_decl"] and  "staticmethod" not in each_method["method_decl"]["attrs"]:
                         adjust_python_self(each_method["method_decl"]["body"], first_one, under_class_decl = True)
 
         elif "method_decl" in obj:
