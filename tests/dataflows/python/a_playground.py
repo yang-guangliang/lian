@@ -1,4 +1,4 @@
-
+@classmethod
 def _from_pretrained(
     cls,
     resolved_vocab_files,
@@ -14,23 +14,7 @@ def _from_pretrained(
 ):
     # We instantiate fast tokenizers based on a slow tokenizer if we don't have access to the tokenizer.json
     # file or if `from_slow` is set to True.
-    from_slow = kwargs.get("from_slow", False)
-    resolved_vocab_files = source()
-    has_tokenizer_file = resolved_vocab_files.get("tokenizer_file", None) is not None
-    if (from_slow or not has_tokenizer_file) and cls.slow_tokenizer_class is not None:
-        slow_tokenizer = (cls.slow_tokenizer_class)._from_pretrained(
-            copy.deepcopy(resolved_vocab_files),
-            pretrained_model_name_or_path,
-            copy.deepcopy(init_configuration),
-            *init_inputs,
-            token=token,
-            cache_dir=cache_dir,
-            local_files_only=local_files_only,
-            _commit_hash=_commit_hash,
-            **(copy.deepcopy(kwargs)),
-        )
-    else:
-        slow_tokenizer = None
+
 
     # Prepare tokenizer initialization kwargs
     # Did we saved some inputs and kwargs to reload ?
@@ -58,52 +42,7 @@ def _from_pretrained(
             init_kwargs["auto_map"], pretrained_model_name_or_path
         )
 
-    if config_tokenizer_class is None:
-        from .models.auto.configuration_auto import AutoConfig  # tests_ignore
 
-        # Second attempt. If we have not yet found tokenizer_class, let's try to use the config.
-        try:
-            config = AutoConfig.from_pretrained(
-                pretrained_model_name_or_path,
-                token=token,
-                cache_dir=cache_dir,
-                local_files_only=local_files_only,
-                _commit_hash=_commit_hash,
-            )
-            config_tokenizer_class = config.tokenizer_class
-        except (OSError, ValueError, KeyError):
-            # skip if an error occurred.
-            config = None
-        if config_tokenizer_class is None:
-            # Third attempt. If we have not yet found the original type of the tokenizer,
-            # we are loading we see if we can infer it from the type of the configuration file
-            from .models.auto.tokenization_auto import TOKENIZER_MAPPING_NAMES  # tests_ignore
-
-            if hasattr(config, "model_type"):
-                model_type = config.model_type
-            else:
-                # Fallback: use pattern matching on the string.
-                model_type = None
-                for pattern in TOKENIZER_MAPPING_NAMES.keys():
-                    if pattern in str(pretrained_model_name_or_path):
-                        model_type = pattern
-                        break
-
-            if model_type is not None:
-                config_tokenizer_class, config_tokenizer_class_fast = TOKENIZER_MAPPING_NAMES.get(
-                    model_type, (None, None)
-                )
-                if config_tokenizer_class is None:
-                    config_tokenizer_class = config_tokenizer_class_fast
-
-    if config_tokenizer_class is not None:
-        if cls.__name__.replace("Fast", "") != config_tokenizer_class.replace("Fast", ""):
-            logger.warning(
-                "The tokenizer class you load from this checkpoint is not the same type as the class this"
-                " function is called from. It may result in unexpected tokenization. \nThe tokenizer class you"
-                f" load from this checkpoint is '{config_tokenizer_class}'. \nThe class this function is called"
-                f" from is '{cls.__name__}'."
-            )
 
     # Update with newly provided kwargs
     init_kwargs.update(kwargs)
@@ -196,19 +135,10 @@ def _from_pretrained(
 
         # allows converting a fast -> slow: add the `tokenizer.json`'s `"added_tokens"` to the slow tokenizer
         # if `tokenizer_config.json` is `None`
-        if "Fast" not in cls.__name__ and tokenizer_file is not None:
-            # This is for slow so can be done before
-            with open(tokenizer_file, encoding="utf-8") as tokenizer_file_handle:
-                tokenizer_file_handle = json.load(tokenizer_file_handle)
-                added_tokens = tokenizer_file_handle.pop("added_tokens")
-            for serialized_tokens in added_tokens:
-                idx = serialized_tokens.pop("id")
-                added_tokens_decoder[idx] = AddedToken(**serialized_tokens)
-                added_tokens_map[str(added_tokens_decoder[idx])] = added_tokens_decoder[idx]
-        # end legacy
+
 
     # Passing AddedTokens and not strings to the class to prevent it from casting the string to a different AddedToken
-    for key in cls.SPECIAL_TOKENS_ATTRIBUTES & init_kwargs.keys():
+    for key in init_kwargs.keys():
         if added_tokens_map != {} and init_kwargs[key] is not None:
             if key != "additional_special_tokens":
                 init_kwargs[key] = added_tokens_map.get(init_kwargs[key], init_kwargs[key])
@@ -218,7 +148,7 @@ def _from_pretrained(
     init_kwargs = cls.convert_added_tokens(init_kwargs, save=False)
     # Instantiate the tokenizer.
     try:
-        tokenizer = A(*init_inputs, **init_kwargs)
+        tokenizer = cls(*init_inputs, **init_kwargs)
     except OSError:
         raise OSError(
             "Unable to load vocabulary from file. "
@@ -231,31 +161,4 @@ def _from_pretrained(
             " fine-tuned or trained."
         )
     return tokenizer
-class A:
-    def __init__(
-        self,
-        special=None,
-        min_freq=0,
-        max_size=None,
-        lower_case=False,
-        delimiter=None,
-        vocab_file=None,
-        pretrained_vocab_file: str = None,
-        never_split=None,
-        unk_token="<unk>",
-        eos_token="<eos>",
-        additional_special_tokens=["<formula>"],
-        language="en",
-        **kwargs,
-    ):
-
-        # This try... catch... is not beautiful but honestly this tokenizer was not made to be used
-        # in a library like ours, at all.
-        try:
-            vocab_dict = None
-            if pretrained_vocab_file is not None:
-                # Priority on pickle files (support PyTorch and TF)
-                with open(pretrained_vocab_file, "rb") as f:
-                    sink(f)
-                    vocab_dict = pickle.load(f)
 _from_pretrained()
