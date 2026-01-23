@@ -3114,13 +3114,22 @@ class Loader:
     def get_unit_source_code_by_stmt_id(self, stmt_id):
         """给定一个stmt_id，获取其所在unit的源代码"""
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        if unit_id == -1: return []
+        if unit_id == -1:
+            return []
+
         unit_info = self.convert_module_id_to_module_info(unit_id)
+        if not unit_info or not getattr(unit_info, "original_path", None):
+            return []
+
         unit_path = unit_info.original_path
-        with open(unit_path, 'r') as f:
-            lines = f.readlines()
-        lines = [line.rstrip() for line in lines]
-        return lines
+        try:
+            with open(unit_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+            return [line.rstrip("\n") for line in lines]
+        except Exception as e:
+            # 可选：只在 debug 时输出，避免污染正常输出
+            util.debug(f"get_unit_source_code_by_stmt_id failed: stmt_id={stmt_id}, unit_id={unit_id}, path={unit_path}, err={e}")
+            return []
 
     def get_stmt_source_code_with_comment(self, stmt_id):
         """

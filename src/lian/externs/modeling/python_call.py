@@ -6,7 +6,8 @@ from lian.common_structs import (
     Argument,
     MethodCallArguments,
     State,
-    Symbol
+    Symbol,
+    P2ResultFlag,
 )
 from lian.config.constants import LIAN_INTERNAL
 import lian.events.event_return as er
@@ -50,6 +51,7 @@ def executor_submit(data: EventData):
     loader = state_analysis.loader
     stmt_src_code = "\n".join(loader.get_stmt_source_code_with_comment(stmt_id))
     if not "Executor.on_graph_execution" in stmt_src_code:
+        data.out_data = P2ResultFlag()
         return
     stmt = in_data.stmt
     status = in_data.status.copy()
@@ -79,6 +81,7 @@ def apply_async(data: EventData):
     loader = state_analysis.loader
     stmt_src_code = "\n".join(loader.get_stmt_source_code_with_comment(stmt_id))
     if not "cls.on_node_execution," in stmt_src_code:
+        data.out_data = P2ResultFlag()
         return
     stmt = in_data.stmt
     status = in_data.status.copy()
