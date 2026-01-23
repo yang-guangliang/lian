@@ -1,6 +1,6 @@
 import dataclasses
 import lian.events.event_return as er
-from lian import util
+from lian.util import util
 from lian.events.handler_template import EventData
 from lian.config.constants import LIAN_INTERNAL
 
