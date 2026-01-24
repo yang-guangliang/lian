@@ -2,7 +2,7 @@
 
 莲花Lian系统是新一代面向多语言场景的高精度程序分析框架，旨在为多种语言提供统一的、强大的程序分析能力，包括指针分析、数据流分析、污点分析等。
 
-<kbd>![](docs/cn/img/lian-ui.png)</kbd>
+
 
 ## 背景
 
@@ -60,7 +60,7 @@ Lian 支持可视化界面与命令行两种模式：
 ```shell
 $ ./scripts/lian-ui.sh
 ```
-
+<kbd>![](docs/cn/img/lian-ui.png)</kbd>
 
 **2. 命令行直接分析：**
 
