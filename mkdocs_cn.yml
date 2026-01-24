@@ -8,6 +8,7 @@ docs_dir: docs/cn
 
 theme:
   name: material
+  logo: 'img/logo.png'
   features:
     - announce.dismiss
     - navigation.sections
@@ -51,7 +52,7 @@ nav:
       - GIR语法定义: 03.frontend/3-2.gir.md 
   - 统一程序分析:
       - 分析方法总述: 04.analysis/4-1.overview.md
-      - 基础性分析: 04.analysis/4-2.basics.md
+      - 基础结构性分析: 04.analysis/4-2.basics.md
       - 自下而上分析: 04.analysis/4-3.preliminary.md
       - 自上而下分析: 04.analysis/4-4.global.md
       - 解析器Resolver: 04.analysis/4-5.resolver.md

@@ -1,5 +1,7 @@
 # 莲花Lian程序分析框架
 
+<kbd>![](img/lian-ui.png)</kbd>
+
 ## 1 背景
 
 程序分析是理解程序行为、验证软件正确性、保障系统安全的基石性技术。过去几十年中，围绕C/C++与Java等传统工业语言的研究已形成成熟程序分析技术体系。在C/C++领域，SVF和Phasar等工具通过对别名关系与堆对象的精细建模支持高精度指针分析；在Java领域，Soot和WALA等框架利用相对稳定的类型系统与引用语义构建可复用的指向分析基础设施。这些高精度技术已在代码审计和漏洞挖掘等场景中得到广泛应用。
@@ -107,7 +109,73 @@ Lian具备几个强大的特性，包括
 - 安全分析：Lian可以帮助进行安全建模和审计分析，发现其中深层次安全漏洞；
 - AI+：跟AI非常容易对接，可以利用Lian进行模型训练，进行模型预测。
 
-## 6 总结
+## 6 其他重要说明
+
+### 6-1 语言支持
+
+Lian语言前端当前实现情况：
+
+| 语言 | 状态 |
+|------|------|
+| Python | ✅ 完整支持 |
+| JavaScript | ✅ 完整支持 |
+| TypeScript | ✅ 完整支持 |
+| Java | ✅ 完整支持 |
+| Go | ✅ 完整支持 |
+| C | ✅ 完整支持 |
+| PHP | ✅ 完整支持 |
+| ArkTS | ✅ 完整支持 |
+| LLVM IR | ✅ 完整支持 |
+| Rust MIR | 不成熟 |
+| C# | 不成熟 |
+| Ruby | 不成熟 |
+| Smali | 不成熟 |
+
+### 6-2 核心模块说明
+
+```
+src/lian/
+├── lang/                       # 语言前端
+│   ├── xxx_parser.py               # 某个语言的解析器
+│   ├── common_parser.py            # 所有语言解析器的公共类
+│   └── lang_analysis.py            # 语言分析主程序
+├── basics/                     # 基础结构性分析
+│   ├── control_flow.py             # 控制流分析
+│   ├── entry_points.py             # 入口点识别
+│   ├── import_hierarchy.py         # 模块导入关系分析
+│   ├── scope_hierarchy.py          # 作用域层级分析
+│   ├── stmt_def_use_analysis.py    # 定义-使用关系分析
+│   └── type_hierarchy.py           # 类型层级分析
+├── core/                       # 核心语义分析引擎
+│   ├── global_semantics.py         # 从上而下语义分析
+│   ├── prelim_semantics.py         # 从下而上语义分析
+│   ├── resolver.py                 # 解析器
+│   └── stmt_states.py              # 语句状态分析
+├── taint/                      # 污点分析
+│   ├── taint_analysis.py           # 污点分析引擎
+│   ├── taint_structs.py            # 污点分析数据结构
+│   └── rule_manager.py             # 规则管理器
+├── events/                     # 插件系统，保证可扩展性，用于处理语言差异性
+│   ├── event_manager.py            # 事件管理器
+│   └── default_event_handlers/     # 默认事件处理器
+├── externs/                    # 外部系统建模
+│   └── extern_system.py            # 外部系统集成
+└── util/                       # 工具模块
+    ├── loader.py                   # 文件系统管理
+    ├── data_model.py               # 数据模型
+    └── readable_gir.py             # GIR可读输出
+```
+
+### 6-3 配置选项
+
+通过 `default_settings/` 目录下的配置文件可以自定义：
+
+- `entry.yaml`：入口点规则配置
+- `source.yaml`：污点源规则配置
+- `sink.yaml`：污点汇聚点规则配置
+- `propagation.yaml`：污点传播规则配置
+
+## 7 总结
 
 Lian是由[复旦大学系统软件与可靠性课题组](https://yang-guangliang.github.io/)独立开发，基于通用中间语言GIR，进行统一的高精度的指针分析。其具有极强的可扩展性，原则上可支持任意具有明确语义定义的编程语言，兼顾这些语言差异性，实现高效安全分析。
 

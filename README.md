@@ -65,7 +65,7 @@ Lian supports both a graphical user interface and command-line mode:
 $ ./scripts/lian-ui.sh
 ```
 
-<kbd>![](docs/img/lian-ui.png)</kbd>
+<kbd>![](docs/cn/img/lian-ui.png)</kbd>
 
 **2. Performing analysis via command line:**
 

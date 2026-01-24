@@ -9,8 +9,9 @@ from dataclasses import dataclass
 
 # --- 基础配置 ---
 BASE_DIR = Path(__file__).parent.absolute()
+LOGO_PICTURE_PATH = "../docs/cn/img/logo.png"
 # 假设 logo 存在，如果没有可以注释掉
-LOGO_PATH = BASE_DIR / "logo.png" if (BASE_DIR / "logo.png").exists() else None
+LOGO_PATH = BASE_DIR / LOGO_PICTURE_PATH if (BASE_DIR / LOGO_PICTURE_PATH).exists() else None
 LIAN_PATH = os.path.join(os.path.dirname(BASE_DIR), "src/lian/main.py")
 DEFAULT_WORKSPACE = "/tmp/lian_workspace"
 
