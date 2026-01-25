@@ -53,9 +53,9 @@ nav:
       - GIR语法定义: 03.frontend/3-2.gir.md 
   - 统一语义分析:
       - 分析方法总述: 04.analysis/4-1.overview.md
-      - 基础结构性分析: 04.analysis/4-2.basics.md
-      - 自下而上分析: 04.analysis/4-3.preliminary.md
-      - 自上而下分析: 04.analysis/4-4.global.md
+      - P1-基础结构性分析: 04.analysis/4-2.basics.md
+      - P2-自下而上分析: 04.analysis/4-3.preliminary.md
+      - P3-自上而下分析: 04.analysis/4-4.global.md
   - 语言差异性兼容:
       - 插件系统: 05.inconsistency/5-1.plugin.md
   - 污点分析:

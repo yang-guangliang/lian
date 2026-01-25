@@ -53,9 +53,9 @@ nav:
       - GIR Instruction Set: 03.frontend/3-2.gir.md 
   - Unified Semantic Analysis:
       - Overview of Analysis Methods: 04.analysis/4-1.overview.md
-      - Basic Structural Analysis: 04.analysis/4-2.basics.md
-      - Bottom-up Analysis: 04.analysis/4-3.preliminary.md
-      - Top-down Analysis: 04.analysis/4-4.global.md
+      - P1-Basic Structural Analysis: 04.analysis/4-2.basics.md
+      - P2-Bottom-up Analysis: 04.analysis/4-3.preliminary.md
+      - P3-Top-down Analysis: 04.analysis/4-4.global.md
   - Language Heterogeneity Compatibility:
       - Plugin System: 05.inconsistency/5-1.plugin.md
   - Taint Analysis:
