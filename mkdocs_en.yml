@@ -50,7 +50,7 @@ nav:
       - Taint Analysis: 02.background/2-4.taint.md
   - General Intermediate Representation (GIR):
       - Language Parsers: 03.frontend/3-1.lang.md
-      - GIR Syntax Definition: 03.frontend/3-2.gir.md 
+      - GIR Instruction Set: 03.frontend/3-2.gir.md 
   - Unified Semantic Analysis:
       - Overview of Analysis Methods: 04.analysis/4-1.overview.md
       - Basic Structural Analysis: 04.analysis/4-2.basics.md
