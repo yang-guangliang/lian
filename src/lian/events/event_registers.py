@@ -139,11 +139,11 @@ class DefaultEventHandlerManager(EventHandlerManager):
                 langs = ["abc"]
             ),
 
-            EventHandler(
-                event=EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
-                handler=python_call.dispatch,
-                langs=["python"]
-            ),
+            # EventHandler(
+            #     event=EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
+            #     handler=python_call.dispatch,
+            #     langs=["python"]
+            # ),
 
             # EventHandler(
             #     event = EventKind.P2STATE_FIELD_READ_AFTER,
