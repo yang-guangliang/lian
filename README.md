@@ -19,11 +19,13 @@ Yet, traditional analysis tools still struggle to support these languages effect
 
 ## Unified Program Analysis
 
-Lian lies in semantic consistences. Despite vast syntactic differences across languages, program behaviors at the execution level can all be reduced to a common set of semantic operations, enabling unified analysis.
+Despite vast syntactic differences across languages, program behaviors at the execution level can all be reduced to a common set of semantic operations, enabling unified analysis.
 
 - **Generic Intermediate Representation (GIR)**: A concise and universal IR that supports both statically and dynamically typed languages. Translating any source language into GIR requires only ~1,600 lines of code.
   
-- **Unified Analysis Engine**: High-precision pointer analysis, dataflow analysis, and taint analysis are implemented atop GIR. The framework provides an extensible plugin architecture to support custom analyses.
+- **Unified Analysis Engine**: High-precision pointer analysis, dataflow analysis, and taint analysis are implemented atop GIR. 
+
+- **Support Inconsistency**: The framework provides an extensible plugin architecture to support custom analyses and be compatible with the features in various languages.
 
 ## Key Features
 
@@ -65,7 +67,7 @@ Lian supports both a graphical user interface and command-line mode:
 $ ./scripts/lian-ui.sh
 ```
 
-<kbd>![](docs/img/lian-ui.png)</kbd>
+<kbd>![](docs/cn/img/lian-ui.png)</kbd>
 
 **2. Performing analysis via command line:**
 

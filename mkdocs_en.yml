@@ -8,6 +8,7 @@ docs_dir: docs/en
 
 theme:
   name: material
+  logo: 'img/logo.png'
   features:
     - announce.dismiss
     - navigation.sections
@@ -20,6 +21,7 @@ extra:
 
 plugins:
   - tooltips
+  - glightbox
   - search:
       lang: en
 
@@ -37,20 +39,28 @@ markdown_extensions:
   - toc:
       permalink: true
 
-copyright: <p/>2025-present, Developed & Maintained by <a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;"> the System Security and Reliability Research group</a>, Fudan University<p/>
+copyright: <p/>2025 to present, independently developed and maintained by <a href="https://yang-guangliang.github.io/" style="color:#f4f4f4;">Fudan System Security and Reliability Research Group</a><p/>
 
 nav:
-  - Home: index.md
-  - Getting Started:
-      - Setup: setup.md
-      - Examples: examples.md
-  - Frontends:
-      - Language Parsers: lang_parser.md
-      - General IR - GIR: gir.md
-  - Semantic Analysis:
-      - design: design.md
-      - Basic Analysis: basic_analysis.md
-      - Summary Generation: summary_generation.md
-      - Global Analysis: global_analysis.md
-  - Underlying Layer:
-      - Overview: underlying.md
+  - Overview: index.md
+  - Program Analysis Lectures:
+      - Fundamentals of Program Analysis: 02.background/2-1.basics.md
+      - Dataflow Analysis: 02.background/2-2.dataflow.md
+      - Pointer Analysis: 02.background/2-3.pointer.md
+      - Taint Analysis: 02.background/2-4.taint.md
+  - General Intermediate Representation (GIR):
+      - Language Parsers: 03.frontend/3-1.lang.md
+      - GIR Instruction Set: 03.frontend/3-2.gir.md 
+  - Unified Semantic Analysis:
+      - Overview of Analysis Methods: 04.analysis/4-1.overview.md
+      - P1-Basic Structural Analysis: 04.analysis/4-2.basics.md
+      - P2-Bottom-up Analysis: 04.analysis/4-3.preliminary.md
+      - P3-Top-down Analysis: 04.analysis/4-4.global.md
+  - Language Heterogeneity Compatibility:
+      - Plugin System: 05.inconsistency/5-1.plugin.md
+  - Taint Analysis:
+      - State Flow Graph: 06.taint/6-1.sfg.md
+      - Taint Tracking Techniques: 06.taint/6-2.taint.md
+  - Underlying Support:
+      - Data Layer: 07.underlying/7-1.data-model.md
+      - Semantic Storage and Retrieval: 07.underlying/7-2.loader.md
