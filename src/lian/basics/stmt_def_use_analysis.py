@@ -389,8 +389,10 @@ class StmtDefUseAnalysis:
         #print("positional_args", positional_args)
         #print("args_list", args_list)
         #print(stmt_id)
-        if positional_args:
+        if positional_args and len(arg_symbol_list) > 0:
             for index, arg in enumerate(positional_args):
+                if index >= len(arg_symbol_list):
+                    continue
                 index =  arg_symbol_list[index]
                 arg_symbol = self.symbol_state_space[index]
                 if isinstance(arg_symbol, State):
@@ -398,12 +400,12 @@ class StmtDefUseAnalysis:
                 else:
                     positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
 
-        elif packed_positional_args:
+        elif packed_positional_args and len(arg_symbol_list) > 0:
             index =  arg_symbol_list[0]
             arg_symbol = self.symbol_state_space[index]
             packed_positional_args_info.append({"symbol_id": arg_symbol.symbol_id, "name": arg_symbol.name})
 
-        if named_args:
+        if named_args and len(arg_symbol_list) > 0:
             args_keys = sorted(ast.literal_eval(stmt.named_args).keys())
 
             named_symbol_list = arg_symbol_list[positional_arg_index:]
