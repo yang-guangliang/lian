@@ -544,13 +544,17 @@ class Parser(common_parser.Parser):
         args = self.find_child_by_field(node, "arguments")
         if args.named_child_count == 0:
             if call_name.type == "attribute":
-                self.append_stmts(statements,
-                                  node, {"object_call_stmt": {"target": tmp_call, "field": field_name, "receiver_object": receiver_name}}
-                                  )
+                self.append_stmts(
+                    statements,
+                    node,
+                    {"object_call_stmt": {"target": tmp_call, "field": field_name, "receiver_object": receiver_name}}
+                )
                 return tmp_call
             else:
-                self.append_stmts(statements,
-                    node, {"call_stmt": {"target": tmp_call, "name": shadow_call_name}}
+                self.append_stmts(
+                    statements,
+                    node,
+                    {"call_stmt": {"target": tmp_call, "name": shadow_call_name}}
                 )
                 return tmp_call
 

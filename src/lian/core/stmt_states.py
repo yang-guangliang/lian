@@ -3311,6 +3311,8 @@ class StmtStates:
 
         通过state_bit_vector_manager拿到receiver_states的state id对应的最新的state
         """
+        if len(status.used_symbols) < 2:
+            return
         receiver_symbol_index = status.used_symbols[0]
         field_index = status.used_symbols[1]
         receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_symbol_index]
