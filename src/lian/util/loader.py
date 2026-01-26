@@ -2298,7 +2298,7 @@ class Loader:
             options,
             schema.state_flow_graph_schema_p2,
             os.path.join(self.semantic_path_p3, config.SFG_BUNDLE_PATH_P3),
-            config.MEDIUM_CACHE_CAPACITY,
+            config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 

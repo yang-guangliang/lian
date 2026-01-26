@@ -46,7 +46,7 @@ DEFAULT_SETTINGS                                             = os.path.join(ROOT
 DEFAULT_SETTINGS_PATH                                        = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
 
 BUNDLE_CACHE_CAPACITY                                        = 2
-LRU_CACHE_CAPACITY                                           = 10
+LRU_CACHE_CAPACITY                                           = 100
 MIN_CACHE_CAPACITY                                           = 1
 MEDIUM_CACHE_CAPACITY                                        = 4
 
