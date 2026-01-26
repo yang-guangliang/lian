@@ -12,7 +12,7 @@ BUILTIN_SYMBOL_START_ID                                      = -101
 RULE_START_ID                                                = 10
 MAX_ROWS                                                     = 40 * 10000
 MAX_BENCHMARK_TARGET                                         = 10_000
-MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS                       = 2
+MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS                       = 1
 MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS                       = 3
 MAX_ANALYSIS_ROUND_FOR_CALL_SITE                             = 2
 
