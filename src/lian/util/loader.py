@@ -3413,7 +3413,7 @@ class Loader:
             if rule.line_num:
                 if util.is_empty(stmt.start_row):
                     continue
-                if stmt.start_row + 1 != rule.line_num:
+                if rule.line_num < stmt.start_row + 1 or stmt.end_row + 1 < rule.line_num:
                     continue
             
             # 快速检查：符号名是否在字符串中
@@ -3446,11 +3446,13 @@ class Loader:
 
             source_rules = self._filter_rules_by_unit_path(unit_path, rule_manager.all_sources_from_code)
             sink_rules = self._filter_rules_by_unit_path(unit_path, rule_manager.all_sinks_from_code)
+            if not unit_gir:
+                continue
             for stmt in unit_gir:
                 if self._is_stmt_source_or_sink(stmt, unit_path, source_rules):
                     source_stmt_ids.add(stmt.stmt_id)
                 if self._is_stmt_source_or_sink(stmt, unit_path, sink_rules):
                     sink_stmt_ids.add(stmt.stmt_id)
 
-        return (source_stmt_ids, sink_stmt_ids)
+        return source_stmt_ids, sink_stmt_ids
 
