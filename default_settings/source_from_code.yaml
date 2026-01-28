@@ -1,3 +1,8 @@
+- lang: java
+  rules:
+  - unit_path: "playground.java"
+    line_num: 2
+    symbol_name: source
 - lang: python
   rules:
   - unit_path: "ChatTTS/examples/web/funcs.py"
@@ -41445,7 +41450,11 @@
   - unit_path: "vllm/tests/v1/kv_connector/nixl_integration/toy_proxy_server.py"
     line_num: 244
     symbol_name: request
-  - unit_path: "a_playground.py"
-    line_num: 2
+  - unit_path: "test_sink.py"
+    line_num: 3
     symbol_name: source
+  - unit_path: "test_sink.py"
+    line_num: 28
+    symbol_name: map_location
+
 

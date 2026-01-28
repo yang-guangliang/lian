@@ -37565,8 +37565,8 @@
   - unit_path: "vllm/vllm/model_executor/model_loader/weight_utils.py"
     line_num: 775
     symbol_name: bin_file
-  - unit_path: "a_playground.py"
-    line_num: 3
+  - unit_path: "test_sink.py"
+    line_num: 18
     symbol_name: sink
 
 - lang: python
@@ -37574,6 +37574,18 @@
   - unit_path: "whisper/whisper/__init__.py"
     line_num: 151
     symbol_name: fp
+
+  - unit_path: "whisper/whisper/audio.py"
+    line_num: 58
+    symbol_name: cmd
+  - unit_path: "test_sink.py"
+    line_num: 27
+    symbol_name: checkpoint_path
+- lang: java
+  rules:
+  - unit_path: "playground.java"
+    line_num: 8
+    symbol_name: unzip
 
   - unit_path: "whisper/whisper/audio.py"
     line_num: 58
