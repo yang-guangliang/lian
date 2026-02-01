@@ -3,6 +3,7 @@ import ast
 import pprint
 import re
 import copy
+import time
 
 from lian.events.handler_template import EventData
 from lian.util import util
@@ -1979,22 +1980,63 @@ class StmtStates:
             util.debug(f"callee_method_ids: {callee_method_ids}")
 
         for each_callee_id in callee_method_ids:
+            if config.DEBUG_FLAG:
+                _t_total_0 = time.perf_counter()
+                _t_callgraph = 0.0
+                _t_analyzed_check = 0.0
+                _t_prepare_params = 0.0
+                _t_get_mapping = 0.0
+                _t_map_args = 0.0
+
+            if config.DEBUG_FLAG:
+                _t0 = time.perf_counter()
             if self.call_graph:
                 if not self.call_graph.has_specific_weight(self.frame.method_id, each_callee_id, stmt_id):
                     self.call_graph.add_edge(int(self.frame.method_id), int(each_callee_id), int(stmt_id))
+            if config.DEBUG_FLAG:
+                _t_callgraph = time.perf_counter() - _t0
 
+            if config.DEBUG_FLAG:
+                _t0 = time.perf_counter()
             if not (each_callee_id in self.analyzed_method_list or self.frame_stack.has_method_id(each_callee_id)):
                 callee_ids_to_be_analyzed.append(each_callee_id)
+            if config.DEBUG_FLAG:
+                _t_analyzed_check = time.perf_counter() - _t0
             # prepare callee parameters
+            if config.DEBUG_FLAG:
+                _t0 = time.perf_counter()
             parameters = self.prepare_parameters(each_callee_id)
+            if config.DEBUG_FLAG:
+                _t_prepare_params = time.perf_counter() - _t0
             if config.DEBUG_FLAG:
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}")
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
+            if config.DEBUG_FLAG:
+                _t0 = time.perf_counter()
             parameter_mapping_list = self.loader.get_parameter_mapping_p2(new_call_site)
+            if config.DEBUG_FLAG:
+                _t_get_mapping = time.perf_counter() - _t0
             # gl:为什么要判断是否为空
             if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
+                if config.DEBUG_FLAG:
+                    _t0 = time.perf_counter()
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
+                if config.DEBUG_FLAG:
+                    _t_map_args = time.perf_counter() - _t0
+
+            if config.DEBUG_FLAG:
+                _t_total = time.perf_counter() - _t_total_0
+                util.debug(
+                    "[timing][compute_target_method_states] "
+                    f"stmt_id={stmt_id} caller={caller_id} callee={each_callee_id} | "
+                    f"call_graph={_t_callgraph*1000:.2f}ms, "
+                    f"analyzed_check={_t_analyzed_check*1000:.2f}ms, "
+                    f"prepare_params={_t_prepare_params*1000:.2f}ms, "
+                    f"get_mapping={_t_get_mapping*1000:.2f}ms, "
+                    f"map_args={_t_map_args*1000:.2f}ms, "
+                    f"total={_t_total*1000:.2f}ms"
+                )
 
         # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
         # print(f"analyzed_method_list: {self.analyzed_method_list}")

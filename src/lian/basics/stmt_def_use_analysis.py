@@ -3,6 +3,7 @@
 import ast
 import pdb
 import pprint
+import traceback
 from datetime import datetime
 from lian.util import util
 from lian.config import config
@@ -463,6 +464,8 @@ class StmtDefUseAnalysis:
                 args_list.append(args_dict[key])
 
         used_symbol_list = []
+        if stmt.name == None:
+            stmt.name = "unknown"
         stmt_symbol_list = [stmt.name, *args_list]
 
         for symbol in stmt_symbol_list:

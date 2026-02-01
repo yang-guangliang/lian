@@ -3,6 +3,7 @@ import copy
 import pprint, os
 import sys
 import traceback
+import time
 import numpy
 import networkx as nx
 
@@ -72,6 +73,9 @@ class PrelimSemanticAnalysis:
 
         self.count_stmt_defined_states_for_debug = {}
         self.count_stmt_defined_states_number_for_debug = {}
+
+        # progress info for phase II
+        self._p2_total_methods_set: set[int] = set()
 
     def get_stmt_id_to_callee_info(self, callees):
         results = {}
@@ -1259,6 +1263,7 @@ class PrelimSemanticAnalysis:
 
     def analyze_method(self, method_id):
         current_frame = ComputeFrame(method_id=method_id, loader=self.loader)
+        current_frame._p2_start_time = time.perf_counter()
         frame_stack = ComputeFrameStack().add(current_frame)
         while len(frame_stack) != 0:
             frame = frame_stack.peek()
@@ -1289,6 +1294,7 @@ class PrelimSemanticAnalysis:
                                 call_stmt_id = data.call_stmt_id,
                                 loader = self.loader
                             )
+                            new_frame._p2_start_time = time.perf_counter()
                             frame_stack.add(new_frame)
                 # new_frame = ComputeFrame(method_id = data.method_id, caller_id = data.caller_id, call_stmt_id = data.call_stmt_id, loader = self.loader)
                 # frame_stack.add(new_frame)
@@ -1309,6 +1315,18 @@ class PrelimSemanticAnalysis:
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
             self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
             self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
+
+            # progress printing: total / analyzed / current method time
+            if frame.method_id not in self._p2_total_methods_set:
+                self._p2_total_methods_set.add(frame.method_id)
+            if not self.options.quiet:
+                total = len(self._p2_total_methods_set) if self._p2_total_methods_set else 0
+                done = len(self.analyzed_method_list)
+                start_t = getattr(frame, "_p2_start_time", None)
+                elapsed = (time.perf_counter() - start_t) if start_t is not None else -1.0
+                method_name = getattr(frame, "method_name", "")
+                name_part = f" {method_name}" if method_name else ""
+                print(f"[PrelimSemantic 进度] 总函数: {total} / 已分析: {done} | 当前函数耗时: {elapsed:.3f}s | method_id: {frame.method_id}{name_part}")
 
             frame_stack.pop()
 
@@ -1354,6 +1372,8 @@ class PrelimSemanticAnalysis:
 
         # analyze all methods
         grouped_methods:SimplyGroupedMethodTypes = self.loader.get_grouped_methods()
+        # initialize total method set for progress printing
+        self._p2_total_methods_set = set(grouped_methods.get_methods_with_direct_call()) | set(grouped_methods.get_methods_with_dynamic_call())
         for method_id in grouped_methods.get_methods_with_direct_call():
             if method_id not in self.analyzed_method_list:
                 self.analyze_method(method_id)
