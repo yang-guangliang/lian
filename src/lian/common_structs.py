@@ -563,6 +563,78 @@ class State(BasicElement):
     def get_data_type(self):
         return self.data_type
 
+    @staticmethod
+    def _safe_str(obj) -> str:
+        """
+        Best-effort stringification that won't crash on huge int decimal conversion.
+        Keeps plain strings unchanged (no added quotes), to preserve prior behavior.
+        """
+        if isinstance(obj, str):
+            return obj
+        if isinstance(obj, int):
+            try:
+                return str(obj)
+            except ValueError:
+                return hex(obj)
+        try:
+            return str(obj)
+        except ValueError:
+            # fall back to a literal-safe representation
+            return State._safe_literal(obj)
+
+    @staticmethod
+    def _safe_literal(obj):
+        """
+        Convert object into a Python-literal string that is safe against Python's
+        max int->decimal string conversion limit.
+
+        Notes:
+        - For large ints, we fall back to hex integer literals (0x... / -0x...),
+          which remain parseable by ast.literal_eval.
+        - For containers, we recursively build literals so loader-side
+          ast.literal_eval continues to work.
+        """
+        # primitives
+        if obj is None or isinstance(obj, (bool, float)):
+            return repr(obj)
+
+        if isinstance(obj, int):
+            try:
+                return str(obj)
+            except ValueError:
+                return hex(obj)
+
+        if isinstance(obj, str):
+            return repr(obj)
+
+        # containers
+        if isinstance(obj, list):
+            return "[" + ", ".join(State._safe_literal(v) for v in obj) + "]"
+
+        if isinstance(obj, tuple):
+            inner = ", ".join(State._safe_literal(v) for v in obj)
+            if len(obj) == 1:
+                inner += ","
+            return "(" + inner + ")"
+
+        if isinstance(obj, set):
+            if len(obj) == 0:
+                return "set()"
+            return "{" + ", ".join(State._safe_literal(v) for v in obj) + "}"
+
+        if isinstance(obj, dict):
+            parts = []
+            for k, v in obj.items():
+                parts.append(State._safe_literal(k) + ": " + State._safe_literal(v))
+            return "{" + ", ".join(parts) + "}"
+
+        # fallback
+        try:
+            return repr(obj)
+        except ValueError:
+            # last resort: stringify, but still avoid crashing the serializer
+            return repr(f"<unreprable {type(obj).__name__}>")
+
     def to_dict(self, counter, _id):
         result = {
             "index"                 : counter,
@@ -574,7 +646,7 @@ class State(BasicElement):
             "states"                : None,
             "state_type"            : self.state_type,
             "data_type"             : self.data_type,
-            "value"                 : str(self.value),
+            "value"                 : State._safe_str(self.value),
             "tangping_flag"         : self.tangping_flag,
             "tangping_elements"     : str(self.tangping_elements),
             "fields"                : str(self.fields),
