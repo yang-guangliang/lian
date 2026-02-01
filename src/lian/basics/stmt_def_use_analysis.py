@@ -535,6 +535,7 @@ class StmtDefUseAnalysis:
 
         used_symbol_list = []
         stmt_symbol_list = [stmt.receiver_object, stmt.field, *args_list]
+        print(stmt.receiver_object, stmt.field)
         index = 0
         for symbol in stmt_symbol_list:
             if index == 1 and not util.isna(symbol):
