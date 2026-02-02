@@ -3171,14 +3171,18 @@ class StmtStates:
         receiver_symbol.states.add(receiver_state_index)
 
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+        _perf_on = bool(getattr(config, "DEBUG_FLAG", False))
+        _t_total0 = time.perf_counter() if _perf_on else None
         receiver_symbol_index = status.used_symbols[0]
         field_index = status.used_symbols[1]
         receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_symbol_index]
         field_symbol: Symbol = self.frame.symbol_state_space[field_index]
         if not isinstance(receiver_symbol, Symbol):  # TODO: 暂时未处理<string>.format的形式
             return
+        _t0 = time.perf_counter() if _perf_on else None
         receiver_states = self.read_used_states(receiver_symbol_index, in_states)
         field_states = self.read_used_states(field_index, in_states)
+        _t_read_used = (time.perf_counter() - _t0) if _perf_on else 0.0
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -3204,12 +3208,26 @@ class StmtStates:
                 "defined_states": defined_states
             }
         )
+        _t0 = time.perf_counter() if _perf_on else None
         app_return = self.event_manager.notify(event)
+        _t_event_before = (time.perf_counter() - _t0) if _perf_on else 0.0
         if er.should_block_event_requester(app_return):
             defined_symbol.states = event.out_data.defined_states
             return P2ResultFlag()
         # else:
         # receiver_states = event.out_data.receiver_states
+
+        # Detailed breakdown only when scale is small, to avoid measurement overhead.
+        _do_detail = _perf_on and (len(receiver_states) * max(1, len(field_states)) <= 200)
+        _t_loop0 = time.perf_counter() if _perf_on else None
+        _t_branch = {
+            "tangping": 0.0,
+            "empty_or_anything": 0.0,
+            "field_hit": 0.0,
+            "unit": 0.0,
+            "class": 0.0,
+            "change_receiver": 0.0,
+        } if _do_detail else None
 
         for receiver_state_index in receiver_states:
             each_defined_states = set()
@@ -3225,23 +3243,33 @@ class StmtStates:
 
                 field_name = str(each_field_state.value)
                 if each_receiver_state.tangping_elements:
+                    _t1 = time.perf_counter() if _do_detail else None
                     each_defined_states.update(each_receiver_state.tangping_elements)
+                    if _do_detail:
+                        _t_branch["tangping"] += (time.perf_counter() - _t1)
                     continue
 
                 elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
+                    _t1 = time.perf_counter() if _do_detail else None
                     self.change_field_read_receiver_state(
                         stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                         field_name, each_defined_states, is_tangping=True
                     )
+                    if _do_detail:
+                        _t_branch["empty_or_anything"] += (time.perf_counter() - _t1)
                     continue
 
                 elif field_name in each_receiver_state.fields:
+                    _t1 = time.perf_counter() if _do_detail else None
                     index_set = each_receiver_state.fields.get(field_name, set())
                     each_defined_states.update(index_set)
+                    if _do_detail:
+                        _t_branch["field_hit"] += (time.perf_counter() - _t1)
                     continue
 
                 # if field_name not in receiver_state.fields:
                 elif self.is_state_a_unit(each_receiver_state):
+                    _t1 = time.perf_counter() if _do_detail else None
                     import_graph = self.loader.get_import_graph()
                     import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
                     # [ah]
@@ -3302,8 +3330,11 @@ class StmtStates:
                                 )
                                 self.update_access_path_state_id(state_index)
                                 each_defined_states.add(state_index)
+                    if _do_detail:
+                        _t_branch["unit"] += (time.perf_counter() - _t1)
 
                 elif self.is_state_a_class_decl(each_receiver_state):
+                    _t1 = time.perf_counter() if _do_detail else None
                     first_found_class_id = -1  # 记录从下往上找到该方法的第一个class_id。最后只返回该class中所有的同名方法，不继续向上找。
                     class_methods = self.loader.get_methods_in_class(each_receiver_state.value)
                     if class_methods:
@@ -3334,14 +3365,20 @@ class StmtStates:
                                 )
                                 self.update_access_path_state_id(state_index)
                                 each_defined_states.add(state_index)
+                    if _do_detail:
+                        _t_branch["class"] += (time.perf_counter() - _t1)
 
                 # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
+                _t1 = time.perf_counter() if _do_detail else None
                 self.change_field_read_receiver_state(
                     stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                     field_name, each_defined_states, is_tangping=False
                 )
+                if _do_detail:
+                    _t_branch["change_receiver"] += (time.perf_counter() - _t1)
             defined_states |= each_defined_states
 
+        _t_loop = (time.perf_counter() - _t_loop0) if _perf_on else 0.0
         defined_symbol.states = defined_states
 
         event = EventData(
@@ -3362,7 +3399,32 @@ class StmtStates:
                 "defined_states": defined_states
             }
         )
+        _t0 = time.perf_counter() if _perf_on else None
         app_return = self.event_manager.notify(event)
+        _t_event_after = (time.perf_counter() - _t0) if _perf_on else 0.0
+
+        if _perf_on:
+            _t_total = time.perf_counter() - _t_total0
+            # only print when it's actually slow
+            if _t_total > 0.05:  # 50ms
+                util.debug(
+                    "[perf][P2][field_read] "
+                    f"stmt_id={stmt_id} op={getattr(stmt, 'operation', '')} "
+                    f"receiver_states={len(receiver_states)} field_states={len(field_states)} | "
+                    f"read_used={_t_read_used*1000:.2f}ms "
+                    f"event_before={_t_event_before*1000:.2f}ms "
+                    f"loop={_t_loop*1000:.2f}ms "
+                    f"event_after={_t_event_after*1000:.2f}ms "
+                    f"total={_t_total*1000:.2f}ms"
+                )
+                if _do_detail and _t_branch:
+                    # print top 4 branches by time
+                    top = sorted(_t_branch.items(), key=lambda x: x[1], reverse=True)[:4]
+                    for name, t in top:
+                        if t <= 0:
+                            continue
+                        util.debug(f"[perf][P2][field_read_branch] stmt_id={stmt_id} {name}={t*1000:.2f}ms")
+
         return P2ResultFlag()
 
     def object_call_state(self, stmt_id, stmt, status: StmtStatus, in_states):

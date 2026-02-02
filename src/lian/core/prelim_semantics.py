@@ -965,14 +965,12 @@ class PrelimSemanticAnalysis:
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
-        util.debug("before stmt_state_analysis")
         change_flag: P2ResultFlag = frame.stmt_state_analysis.run(stmt_id, stmt, status, in_states, used_symbol_id_to_indexes)
         if change_flag is None:
             # print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
-        util.debug("after adjust_computation_results")
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
 
         if self.options.debug:
@@ -1216,7 +1214,7 @@ class PrelimSemanticAnalysis:
                     continue
 
             if self.options.debug:
-                util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}> operation{stmt.operation}-----")
+                util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}> operation is {stmt.operation}-----")
 
             _t_stmt0 = time.perf_counter() if self.options.debug else None
             _t_reach = 0.0
@@ -1234,7 +1232,6 @@ class PrelimSemanticAnalysis:
 
             # according to symbol_graph, compute the state flow of current statement
             _t0 = time.perf_counter() if self.options.debug else None
-            util.debug("before compute_stmt_states")
             result_flag = self.compute_stmt_states(stmt_id, stmt, frame)
             if self.options.debug:
                 _t_states = time.perf_counter() - _t0
@@ -1350,19 +1347,69 @@ class PrelimSemanticAnalysis:
             # save the result
             self.analyzed_method_list.add(frame.method_id)
             _t_save0 = time.perf_counter() if self.options.debug else None
-            util.debug("generate_and_save_analysis_summary before")
             self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
 
-            self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
-            self.loader.save_symbol_bit_vector_p2(frame.method_id, frame.symbol_bit_vector_manager)
-            self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
-            self.loader.save_symbol_state_space_p2(frame.method_id, frame.symbol_state_space)
-            self.loader.save_method_symbol_graph_p2(frame.method_id, frame.symbol_graph.graph)
-            self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
-            self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
-            self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
-            self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
-            self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
+            if self.options.debug:
+                _save_costs = []  # list of (name, seconds)
+
+                _t0 = time.perf_counter()
+                self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
+                _save_costs.append(("save_stmt_status_p2", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_symbol_bit_vector_p2(frame.method_id, frame.symbol_bit_vector_manager)
+                _save_costs.append(("save_symbol_bit_vector_p2", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
+                _save_costs.append(("save_state_bit_vector_p2", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_symbol_state_space_p2(frame.method_id, frame.symbol_state_space)
+                _save_costs.append(("save_symbol_state_space_p2", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_method_symbol_graph_p2(frame.method_id, frame.symbol_graph.graph)
+                _save_costs.append(("save_method_symbol_graph_p2", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
+                _save_costs.append(("save_method_defined_symbols_p2", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
+                _save_costs.append(("save_method_defined_states_p2", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
+                _save_costs.append(("save_method_def_use_summary", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
+                _save_costs.append(("save_method_sfg", time.perf_counter() - _t0))
+
+                _t0 = time.perf_counter()
+                self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
+                _save_costs.append(("save_graph_to_dot", time.perf_counter() - _t0))
+
+                # print summary if saving is slow (or any single step is slow)
+                _t_save = time.perf_counter() - _t_save0
+                slow_any = any(t > 0.05 for _, t in _save_costs)  # 50ms
+                if _t_save > 0.1 or slow_any:  # 100ms total
+                    util.debug(f"[perf][P2][save_total] method={frame.method_id} total={_t_save*1000:.2f}ms")
+                    for name, t in sorted(_save_costs, key=lambda x: x[1], reverse=True)[:6]:
+                        util.debug(f"[perf][P2][save_step] method={frame.method_id} {name}={t*1000:.2f}ms")
+            else:
+                self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
+                self.loader.save_symbol_bit_vector_p2(frame.method_id, frame.symbol_bit_vector_manager)
+                self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
+                self.loader.save_symbol_state_space_p2(frame.method_id, frame.symbol_state_space)
+                self.loader.save_method_symbol_graph_p2(frame.method_id, frame.symbol_graph.graph)
+                self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
+                self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
+                self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
+                self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
+                self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
             if self.options.debug:
                 _t_save = time.perf_counter() - _t_save0
                 if _t_save > 0.1:
