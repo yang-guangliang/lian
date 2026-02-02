@@ -1350,11 +1350,13 @@ class PrelimSemanticAnalysis:
             # save the result
             self.analyzed_method_list.add(frame.method_id)
             _t_save0 = time.perf_counter() if self.options.debug else None
-            util.debug("generate_and_save_analysis_summary before")
-            self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
 
             if self.options.debug:
                 _save_costs = []  # list of (name, seconds)
+
+                _t0 = time.perf_counter()
+                self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
+                _save_costs.append(("save_analysis_summary", time.perf_counter() - _t0))
 
                 _t0 = time.perf_counter()
                 self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
@@ -1404,6 +1406,7 @@ class PrelimSemanticAnalysis:
                     for name, t in sorted(_save_costs, key=lambda x: x[1], reverse=True)[:6]:
                         util.debug(f"[perf][P2][save_step] method={frame.method_id} {name}={t*1000:.2f}ms")
             else:
+                self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
                 self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
                 self.loader.save_symbol_bit_vector_p2(frame.method_id, frame.symbol_bit_vector_manager)
                 self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
