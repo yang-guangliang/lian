@@ -2109,22 +2109,39 @@ class StmtStates:
 
         for each_callee_id in callee_method_ids:
             # prepare callee summary template and compact space
+            _t0 = time.perf_counter() if config.DEBUG_FLAG else None
             callee_summary = self.loader.get_method_summary_template(each_callee_id)
+            _t_summary = (time.perf_counter() - _t0) if config.DEBUG_FLAG else 0.0
             if util.is_empty(callee_summary):
                 # print(f"\neach_callee_id: {each_callee_id}")
                 continue
             callee_summary = callee_summary.copy()
 
+            _t0 = time.perf_counter() if config.DEBUG_FLAG else None
             callee_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(each_callee_id)
+            _t_space = (time.perf_counter() - _t0) if config.DEBUG_FLAG else 0.0
             if util.is_empty(callee_compact_space):
                 continue
             callee_compact_space = callee_compact_space.copy()
 
             # apply callee semantic summary
+            _t0 = time.perf_counter() if config.DEBUG_FLAG else None
             self.apply_callee_semantic_summary(
                 stmt_id, each_callee_id, args, callee_summary,
                 callee_compact_space, this_state_set, new_object_flag
             )
+            _t_apply = (time.perf_counter() - _t0) if config.DEBUG_FLAG else 0.0
+
+            if config.DEBUG_FLAG:
+                _t_total = _t_summary + _t_space + _t_apply
+                # only print slow callees to keep logs useful
+                if _t_total > 0.05:  # 50ms
+                    util.debug(
+                        "[perf][P2][callee_apply] "
+                        f"stmt_id={stmt_id} caller={caller_id} callee={each_callee_id} | "
+                        f"summary={_t_summary*1000:.2f}ms space={_t_space*1000:.2f}ms "
+                        f"apply={_t_apply*1000:.2f}ms total={_t_total*1000:.2f}ms"
+                    )
 
         return P2ResultFlag()
 

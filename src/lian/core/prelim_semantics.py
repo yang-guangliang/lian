@@ -1180,6 +1180,17 @@ class PrelimSemanticAnalysis:
         # print(f"dynamic_call_stmts: {frame.method_summary_template.dynamic_call_stmts}")
 
     def analyze_stmts(self, frame: ComputeFrame):
+        # perf counters (debug only)
+        if self.options.debug and not hasattr(frame, "_p2_perf"):
+            frame._p2_perf = {
+                "stmt_total": 0,
+                "t_total": 0.0,
+                "t_reachable_symbols": 0.0,
+                "t_compute_states": 0.0,
+                "t_rerun_defuse": 0.0,
+                "slow_stmts": [],  # list of (total_s, stmt_id, op, t_reach_s, t_states_s, t_rerun_s)
+            }
+
         while len(frame.stmt_worklist) != 0:
             stmt_id = frame.stmt_worklist.peek()
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
@@ -1205,14 +1216,25 @@ class PrelimSemanticAnalysis:
             if self.options.debug:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
 
+            _t_stmt0 = time.perf_counter() if self.options.debug else None
+            _t_reach = 0.0
+            _t_states = 0.0
+            _t_rerun = 0.0
+
             if frame.interruption_flag:
                 frame.interruption_flag = False
             else:
                 # compute in/out bits
+                _t0 = time.perf_counter() if self.options.debug else None
                 self.analyze_reachable_symbols(stmt_id, stmt, frame)
+                if self.options.debug:
+                    _t_reach = time.perf_counter() - _t0
 
             # according to symbol_graph, compute the state flow of current statement
+            _t0 = time.perf_counter() if self.options.debug else None
             result_flag = self.compute_stmt_states(stmt_id, stmt, frame)
+            if self.options.debug:
+                _t_states = time.perf_counter() - _t0
             frame.stmts_with_symbol_update.remove(stmt_id)
             # check if interruption is enabled
             if result_flag.interruption_flag:
@@ -1221,9 +1243,12 @@ class PrelimSemanticAnalysis:
             # re-analyze def/use
             if result_flag.symbol_def_changed or result_flag.symbol_use_changed:
                 # change out_bit to reflect implicitly_defined_symbols
+                _t0 = time.perf_counter() if self.options.debug else None
                 self.rerun_analyze_reachable_symbols(stmt_id, stmt, frame, result_flag)
                 # update method def/use
                 self.update_method_def_use_summary(stmt_id, frame)
+                if self.options.debug:
+                    _t_rerun = time.perf_counter() - _t0
 
             # global stmt_counts
             # stmt_counts += 1
@@ -1234,6 +1259,24 @@ class PrelimSemanticAnalysis:
             frame.stmt_worklist.pop()
             frame.stmt_counters[stmt_id] += 1
             frame.is_first_round[stmt_id] = False
+
+            if self.options.debug:
+                _t_stmt = time.perf_counter() - _t_stmt0
+                frame._p2_perf["stmt_total"] += 1
+                frame._p2_perf["t_total"] += _t_stmt
+                frame._p2_perf["t_reachable_symbols"] += _t_reach
+                frame._p2_perf["t_compute_states"] += _t_states
+                frame._p2_perf["t_rerun_defuse"] += _t_rerun
+                # only log slow stmts to reduce noise
+                if _t_stmt > 0.05:  # 50ms
+                    op = getattr(stmt, "operation", "")
+                    frame._p2_perf["slow_stmts"].append((_t_stmt, stmt_id, op, _t_reach, _t_states, _t_rerun))
+                    util.debug(
+                        "[perf][P2][stmt] "
+                        f"method={frame.method_id} stmt={stmt_id} op={op} | "
+                        f"total={_t_stmt*1000:.2f}ms reach={_t_reach*1000:.2f}ms "
+                        f"states={_t_states*1000:.2f}ms rerun={_t_rerun*1000:.2f}ms"
+                    )
 
     def save_graph_to_dot(self, graph, entry_point, phase_id, symbol_state_space):
         if not (self.options.graph or self.options.complete_graph):
@@ -1303,6 +1346,7 @@ class PrelimSemanticAnalysis:
             # Current frame is done, pop it
             # save the result
             self.analyzed_method_list.add(frame.method_id)
+            _t_save0 = time.perf_counter() if self.options.debug else None
             self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
 
             self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
@@ -1315,6 +1359,28 @@ class PrelimSemanticAnalysis:
             self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
             self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
             self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
+            if self.options.debug:
+                _t_save = time.perf_counter() - _t_save0
+                if _t_save > 0.1:
+                    util.debug(f"[perf][P2][save] method={frame.method_id} save_total={_t_save*1000:.2f}ms")
+                # method-level perf summary (top slow stmts)
+                if hasattr(frame, "_p2_perf"):
+                    p = frame._p2_perf
+                    util.debug(
+                        "[perf][P2][method] "
+                        f"method={frame.method_id} stmts={p['stmt_total']} "
+                        f"total={p['t_total']:.3f}s reach={p['t_reachable_symbols']:.3f}s "
+                        f"states={p['t_compute_states']:.3f}s rerun={p['t_rerun_defuse']:.3f}s"
+                    )
+                    if p["slow_stmts"]:
+                        top = sorted(p["slow_stmts"], key=lambda x: x[0], reverse=True)[:5]
+                        for (t_s, sid, op, tr, ts, rr) in top:
+                            util.debug(
+                                "[perf][P2][slow_stmt_top] "
+                                f"method={frame.method_id} stmt={sid} op={op} "
+                                f"total={t_s*1000:.2f}ms reach={tr*1000:.2f}ms "
+                                f"states={ts*1000:.2f}ms rerun={rr*1000:.2f}ms"
+                            )
 
             # progress printing: total / analyzed / current method time
             if frame.method_id not in self._p2_total_methods_set:
