@@ -965,12 +965,14 @@ class PrelimSemanticAnalysis:
             return P2ResultFlag()
 
         self.unset_states_of_defined_symbol(stmt_id, frame, status)
+        util.debug("before stmt_state_analysis")
         change_flag: P2ResultFlag = frame.stmt_state_analysis.run(stmt_id, stmt, status, in_states, used_symbol_id_to_indexes)
         if change_flag is None:
             # print(f"  NO CHANGE")
             change_flag = P2ResultFlag()
 
         self.adjust_computation_results(stmt_id, frame, status, old_index_ceiling)
+        util.debug("after adjust_computation_results")
         new_out_states = self.update_out_states(stmt_id, frame, status, old_index_ceiling)
 
         if self.options.debug:
@@ -1214,7 +1216,7 @@ class PrelimSemanticAnalysis:
                     continue
 
             if self.options.debug:
-                util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}>-----")
+                util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}> operation{stmt.operation}-----")
 
             _t_stmt0 = time.perf_counter() if self.options.debug else None
             _t_reach = 0.0
@@ -1232,6 +1234,7 @@ class PrelimSemanticAnalysis:
 
             # according to symbol_graph, compute the state flow of current statement
             _t0 = time.perf_counter() if self.options.debug else None
+            util.debug("before compute_stmt_states")
             result_flag = self.compute_stmt_states(stmt_id, stmt, frame)
             if self.options.debug:
                 _t_states = time.perf_counter() - _t0
@@ -1347,6 +1350,7 @@ class PrelimSemanticAnalysis:
             # save the result
             self.analyzed_method_list.add(frame.method_id)
             _t_save0 = time.perf_counter() if self.options.debug else None
+            util.debug("generate_and_save_analysis_summary before")
             self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
 
             self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
