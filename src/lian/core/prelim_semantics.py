@@ -1394,18 +1394,6 @@ class PrelimSemanticAnalysis:
                 name_part = f" {method_name}" if method_name else ""
                 print(f"[PrelimSemantic 进度] 总函数: {total} / 已分析: {done} | 当前函数耗时: {elapsed:.3f}s | method_id: {frame.method_id}{name_part}")
 
-            # progress printing: total / analyzed / current method time
-            if frame.method_id not in self._p2_total_methods_set:
-                self._p2_total_methods_set.add(frame.method_id)
-            if not self.options.quiet:
-                total = len(self._p2_total_methods_set) if self._p2_total_methods_set else 0
-                done = len(self.analyzed_method_list)
-                start_t = getattr(frame, "_p2_start_time", None)
-                elapsed = (time.perf_counter() - start_t) if start_t is not None else -1.0
-                method_name = getattr(frame, "method_name", "")
-                name_part = f" {method_name}" if method_name else ""
-                print(f"[PrelimSemantic 进度] 总函数: {total} / 已分析: {done} | 当前函数耗时: {elapsed:.3f}s | method_id: {frame.method_id}{name_part}")
-
             frame_stack.pop()
 
     def sort_methods_by_unit_id(self, methods):
