@@ -2126,6 +2126,8 @@ class StmtStates:
 
             # apply callee semantic summary
             _t0 = time.perf_counter() if config.DEBUG_FLAG else None
+            util.debug("apply_callee_semantic_summary before")
+
             self.apply_callee_semantic_summary(
                 stmt_id, each_callee_id, args, callee_summary,
                 callee_compact_space, this_state_set, new_object_flag
