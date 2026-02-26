@@ -55,7 +55,7 @@ class UnitLevelIncrementalChecker:
             # util.error_and_quit("backup not loaded")
             return None
         unit_hash = unit_info.hash
-        bak_unit_entry = self.module_symbol_backup.query(self.module_symbol_backup.hash == unit_hash)
+        bak_unit_entry = self.module_symbol_backup.query_index_column_value_first("hash", unit_hash)
         # util.debug(unit_hash)
         if len(bak_unit_entry) == 0:
             return None

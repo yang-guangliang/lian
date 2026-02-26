@@ -8,6 +8,8 @@ import base64
 from dataclasses import dataclass
 
 # --- 基础配置 ---
+REGULAR_CMD ="python"
+BENCHMARK_CMD = "time python -m kernprof -o /tmp/line_profiler.lprof -lvr -u 1e-3 -z"
 BASE_DIR = Path(__file__).parent.absolute()
 LOGO_PICTURE_PATH = "../docs/cn/img/logo.png"
 # 假设 logo 存在，如果没有可以注释掉
@@ -186,6 +188,11 @@ class Render:
                 value=False,
                 disabled=is_running
             )
+            self.enable_p2 = st.checkbox(
+                "启用第二阶段自下而上分析 Enable P2 preliminary bottom-up analysis (--enable-p2)",
+                value=False,
+                disabled=is_running
+            )
             self.force = st.checkbox(
                 "强制模式 Force mode (-f) ",
                 value=False,
@@ -217,8 +224,8 @@ class Render:
                 value=False,
                 disabled=is_running
             )
-            self.noextern = st.checkbox(
-                "禁用外部处理 Disable extern processing (--noextern)",
+            self.nomock = st.checkbox(
+                "禁用外部假文件 Disable extern mock files (--nomock)",
                 value=True,
                 disabled=is_running
             )
@@ -238,8 +245,11 @@ class Render:
                 value="",
                 disabled=is_running
             )
-
-            st.divider()
+            self.benchmark= st.checkbox(
+                "测试模式 benchmark (--benchmark) : only for test",
+                value=False,
+                disabled=is_running
+            )
             st.markdown("查看[项目源代码Gitee](https://gitee.com/fdu-ssr/lian)")
             st.markdown("本项目由[复旦大学系统安全与可靠性研究组](https://gitee.com/fdu-ssr/)开发和维护")
 
@@ -268,7 +278,13 @@ class Render:
             return from_btn_flag
 
     def build_command(self):
-        cmd = ["python", LIAN_PATH, self.sub_command]
+        cmd = []
+        if self.benchmark:
+            cmd.extend(BENCHMARK_CMD.split())
+        else:
+            cmd.append(REGULAR_CMD)
+        
+        cmd.extend([LIAN_PATH, self.sub_command])
 
         if self.lang:
             cmd.extend(["-l", ",".join(self.lang)])
@@ -276,14 +292,16 @@ class Render:
         # 参数映射
         flags = [
             ("-f", self.force),
+            ("--enable-p2", self.enable_p2),
             ("-d", self.debug),
             ("-p", self.print_stmts),
             #("--android", self.android_mode),
             #("--strict-parse-mode", self.strict_parse),
             ("-inc", self.incremental),
-            ("--noextern", self.noextern),
+            ("--nomock", self.nomock),
             ("--graph", self.output_graph),
             ("--complete-graph", self.complete_graph),
+            ("--benchmark", self.benchmark),
         ]
         for flag, condition in flags:
             if condition:

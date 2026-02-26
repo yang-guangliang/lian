@@ -25,8 +25,7 @@ SRC_PATH = os.path.join(ROOT_PATH, "src")
 sys.path.append(SRC_PATH)
 
 DEBUG = True
-TEST_DIR = path.realpath(path.dirname(__file__))
+TEST_DIR = path.realpath(path.dirname(path.dirname(__file__)))
 TMP_DIR = path.realpath(path.join(TEST_DIR, './tmp'))
-RESOURCE_DIR = path.realpath(path.join(TEST_DIR, './testcases'))
-OUTPUT_DIR = path.realpath(path.join(TEST_DIR, './lian_workspace'))
+OUTPUT_DIR = "/tmp/lian_workspace"
 OUTPUT_LLVM = os.path.join(OUTPUT_DIR, "output.ll")

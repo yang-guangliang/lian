@@ -77,8 +77,8 @@ class ExternSystem:
         if not unit_info.original_path.startswith(config.EXTERNS_MOCK_CODE_DIR):
             return
 
-        method_decls = unit_scope.query(
-            (unit_scope.scope_kind == LIAN_SYMBOL_KIND.METHOD_KIND)
+        method_decls = unit_scope.query_index_column_value(
+            "scope_kind", LIAN_SYMBOL_KIND.METHOD_KIND
         )
 
         for each_method in method_decls:

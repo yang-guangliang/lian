@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+from collections import namedtuple
+import json
 import math
 import os
 import ast
 import re
-from collections import namedtuple
 
 import networkx as nx
 import pprint
@@ -11,6 +12,7 @@ import numpy
 from bisect import insort
 
 import pandas as pd
+from dataclasses import dataclass
 
 from lian.util.data_model import DataModel
 from lian.config import schema
@@ -53,7 +55,20 @@ from lian.common_structs import (
     StateFlowGraph,
     SFGNode,
     SFGEdge,
+    CallSite
 )
+
+def json_dict_value_list_to_set_hook(d):
+    # 遍历字典的每个 value
+    for key, value in d.items():
+        if isinstance(value, list):
+            d[key] = set(value)
+    return d
+
+@dataclass
+class ActiveItem:
+    flattened_item: DataModel
+    data_model: dict
 
 class ModuleSymbolsLoader:
     """
@@ -157,13 +172,16 @@ class ModuleSymbolsLoader:
         if len(self.module_symbol_table) == 0:
             return []
 
-        all_units = self.module_symbol_table.query(self.module_symbol_table.symbol_type == LIAN_SYMBOL_KIND.UNIT_SYMBOL)
+        all_units = self.module_symbol_table.query_index_column_value("symbol_type", LIAN_SYMBOL_KIND.UNIT_SYMBOL)
         if len(all_units) == 0:
             return []
 
-        all_units = all_units.query(all_units.unit_ext.isin(self.options.lang_extensions))
+        all_units = all_units.slow_query(all_units.unit_ext.isin(self.options.lang_extensions))
         if len(all_units) == 0:
             return []
+        
+        if hasattr(self.options, "benchmark"):            
+            all_units = all_units.slice(0, config.MAX_BENCHMARK_FILES)
 
         return all_units
     
@@ -233,7 +251,7 @@ class GeneralLoader:
         accumulated_rows = []
         for key in sorted(self.active_bundle.keys()):
             value = self.active_bundle[key]
-            accumulated_rows.extend(value[1])
+            accumulated_rows.extend(value.flattened_item)
 
         return DataModel(accumulated_rows, columns=self.item_schema)
 
@@ -244,8 +262,11 @@ class GeneralLoader:
         result = self.bundle_count
         self.bundle_count += 1
         return result
+    
+    def contain(self, _id):
+        return _id in self.item_id_to_bundle_id
 
-    def get(self, _id):
+    def get_raw_item_by_id(self, _id):
         if self.item_cache.contain(_id):
             return self.item_cache.get(_id)
 
@@ -256,9 +277,12 @@ class GeneralLoader:
         if bundle_id == -1:
             # the item should be in the active bundle at this moment
             result = self.active_bundle.get(_id, None)
-            if result is not None:
-                self.item_cache.put(_id, result[0])
-                return result[0]
+            if util.is_available(result):
+                if result.data_model is None:
+                    result.data_model = DataModel(result.flattened_item, columns=self.item_schema)
+                dm = result.data_model
+                self.item_cache.put(_id, dm)
+                return dm
             return None
 
         # read this item from existing bundles
@@ -271,14 +295,19 @@ class GeneralLoader:
             self.bundle_cache.put(bundle_id, bundle_data)
 
         item_df = self.query_flattened_item_when_loading(_id, bundle_data)
-        formatted_item = self.unflatten_item_dataframe_when_loading(_id, item_df)
-        self.item_cache.put(_id, formatted_item)
-        return formatted_item
+        self.item_cache.put(_id, item_df)
+        return item_df 
+    
+    def get_item_by_id(self, _id):        
+        item_df = self.get_raw_item_by_id(_id)
+        if not isinstance(item_df, DataModel):
+            return item_df
+        return self.unflatten_item_dataframe_when_loading(_id, item_df)
 
     def get_all(self):
         all_results = {}
         for item_id in self.item_id_to_bundle_id:
-            all_results[item_id] = self.get(item_id)
+            all_results[item_id] = self.get_raw_item_by_id(item_id)
         return all_results
 
     def remove_unit_id(self, _id):
@@ -299,9 +328,9 @@ class GeneralLoader:
                 bundle_data.save(bundle_path)
 
     def save(self, _id, item_content):
-        self.item_cache.put(_id, item_content)
         flattened_item = self.flatten_item_when_saving(_id, item_content)
-        self.active_bundle[_id] = (item_content, flattened_item)
+        #self.item_cache.put(_id, flattened_item)
+        self.active_bundle[_id] = ActiveItem(flattened_item = flattened_item, data_model = None)
         self.item_id_to_bundle_id[_id] = -1
         self.active_bundle_length += len(flattened_item)
         if self.active_bundle_length > config.MAX_ROWS:
@@ -322,6 +351,8 @@ class GeneralLoader:
 
             self.active_bundle = {}
             self.active_bundle_length = 0
+
+        #self.item_cache.clean()
 
     def export_indexing(self):
         results = []
@@ -354,52 +385,22 @@ class UnitLevelLoader(GeneralLoader):
     This loader is used to manage unit-level data content
     """
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
+        flattened_item = bundle_data.query_index_column_value("unit_id", unit_id)
         return flattened_item
 
-    def convert_content_to_dict_list(self, unit_id, item_content):
+    def flatten_item_when_saving(self, unit_id, item_content):
         results = []
-        #print("@convert_content_to_dict_list", item_content)
         for item in item_content:
-            to_dict_result = item.to_dict()
+            to_dict_result = item
+            if not isinstance(item, dict):
+                to_dict_result = item.to_dict()
             if not hasattr(to_dict_result, "unit_id"):
                 to_dict_result["unit_id"] = unit_id
             #print("to_dict_result", to_dict_result)
             results.append(to_dict_result)
         return results
 
-    def save(self, unit_id, item_content):
-        # convert item_content to dataframe
-        flattened_item = self.convert_content_to_dict_list(unit_id, item_content)
-        item_df = DataModel(flattened_item)
-        self.item_cache.put(unit_id, item_df)
-
-        self.active_bundle[unit_id] = (item_df, flattened_item)
-        self.item_id_to_bundle_id[unit_id] = -1
-        self.active_bundle_length += len(flattened_item)
-
-        if self.active_bundle_length > config.MAX_ROWS:
-            self.export()
-
-        return item_df
-
 class UnitGIRLoader(UnitLevelLoader):
-    def save(self, unit_id, flattened_item):
-        # print("flattened_item", flattened_item)
-        # convert item_content to dataframe
-        item_df = DataModel(flattened_item)
-        return self.save_data_model_and_flattened_item(unit_id, item_df, flattened_item)
-
-    def save_data_model_and_flattened_item(self, unit_id, data_model, flattened_item):
-        self.active_bundle[unit_id] = (data_model, flattened_item)
-        self.item_id_to_bundle_id[unit_id] = -1
-        self.active_bundle_length += len(flattened_item)
-
-        if self.active_bundle_length > config.MAX_ROWS:
-            self.export()
-
-        return data_model
-
     def export(self):
         if self.active_bundle_length > 0:
             new_bundle_id = self.new_bundle_id()
@@ -445,7 +446,8 @@ class ClassIDToMembersLoader(UnitLevelLoader):
 
 class SymbolNameToScopeIDsLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
+        flattened_item = bundle_data.query_index_column_value("unit_id", unit_id)
+        #print("flattened_item", flattened_item)
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, symbol_name_to_scope_ids):
@@ -460,13 +462,14 @@ class SymbolNameToScopeIDsLoader(GeneralLoader):
 
     def unflatten_item_dataframe_when_loading(self, _id, item_df):
         symbol_name_to_scope_ids = {}
+        #print(type(item_df), item_df)
         for row in item_df:
             symbol_name_to_scope_ids[row.symbol_name] = set(row.scope_ids)
         return symbol_name_to_scope_ids
 
 class ScopeIDToSymbolInfoLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
+        flattened_item = bundle_data.query_index_column_value("unit_id", unit_id)
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, scope_id_to_symbol_info):
@@ -499,7 +502,7 @@ class ScopeIDToSymbolInfoLoader(GeneralLoader):
 
 class ScopeIDToAvailableScopeIDsLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
+        flattened_item = bundle_data.query_index_column_value("unit_id", unit_id)
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, scope_id_to_available_scope_ids):
@@ -527,9 +530,9 @@ class UnitSymbolDeclSummaryLoader:
     def get(self, unit_id):
         return UnitSymbolDeclSummary(
             unit_id,
-            self.symbol_name_to_scope_ids_loader.get(unit_id),
-            self.scope_id_to_symbol_info_loader.get(unit_id),
-            self.scope_id_to_available_scope_ids_loader.get(unit_id)
+            self.symbol_name_to_scope_ids_loader.get_item_by_id(unit_id),
+            self.scope_id_to_symbol_info_loader.get_item_by_id(unit_id),
+            self.scope_id_to_available_scope_ids_loader.get_item_by_id(unit_id)
         )
 
     def save(self, unit_id, summary: UnitSymbolDeclSummary):
@@ -572,7 +575,7 @@ class StmtIDToScopeIDLoader:
 
 class SymbolNameToDeclIDsLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, unit_id, bundle_data):
-        flattened_item = bundle_data.query(sorted(bundle_data.unit_id.bundle_search(unit_id)))
+        flattened_item = bundle_data.query_index_column_value("unit_id", unit_id)
         return flattened_item
 
     def flatten_item_when_saving(self, unit_id, symbol_name_to_decl_ids):
@@ -782,6 +785,14 @@ class UnitIDToClassIDLoader(OneToManyMapLoader):
 
     def is_class_decl(self, stmt_id):
         return stmt_id in self.many_to_one
+    
+class ClassIDToStmtIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.class_id_to_stmt_id_schema)
+
+class MethodIDToStmtIDLoader(OneToManyMapLoader):
+    def __init__(self, path):
+        super().__init__(path, schema.method_id_to_stmt_id_schema)
 
 class UnitIDToNamespaceIDLoader(OneToManyMapLoader):
     def __init__(self, path):
@@ -943,7 +954,7 @@ class EntryPointsLoader:
 
 class CFGLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, method_id, bundle_data):
-        flattened_item = bundle_data.query(sorted(bundle_data.method_id.bundle_search(method_id)))
+        flattened_item = bundle_data.query_index_column_value("method_id", method_id)
         return flattened_item
 
     def unflatten_item_dataframe_when_loading(self, method_id, item_df):
@@ -970,15 +981,14 @@ class CFGLoader(GeneralLoader):
 class MethodLevelAnalysisResultLoader(GeneralLoader):
     def query_flattened_item_when_loading(self, _id, bundle_data):
         if type(_id) == tuple:
-            flattened_item = bundle_data.query(bundle_data.hash_id.bundle_search(hash(_id)))
+            flattened_item = bundle_data.query_index_column_value("hash_id", hash(_id))
         elif hasattr(_id, 'caller_id') and hasattr(_id, 'call_stmt_id') and hasattr(_id, 'callee_id'):
-            flattened_item = bundle_data.query(bundle_data.hash_id.bundle_search(hash(_id)))
+            flattened_item = bundle_data.query_index_column_value("hash_id", hash(_id))
         else:
-            flattened_item = bundle_data.query(bundle_data.method_id.bundle_search(_id))
+            flattened_item = bundle_data.query_index_column_value("method_id", _id)
         return flattened_item
 
     def export_indexing(self):
-        from lian.common_structs import CallSite
         results = []
         for (key, value) in self.item_id_to_bundle_id.items():
             if isinstance(key, CallSite):
@@ -1036,18 +1046,46 @@ class StmtStatusLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, method_id, flattened_item):
         stmt_to_status = {}
         for row in flattened_item:
+            in_symbol_bits_list = json.loads(row.in_symbol_bits)
+            new_in_symbol_bits_list = []
+            for item in in_symbol_bits_list:
+                new_in_symbol_bits_list.append(
+                    SymbolDefNode(index = item["index"], symbol_id = item["symbol_id"], stmt_id = item["stmt_id"])
+                )
+
+            out_symbol_bits_list = json.loads(row.out_symbol_bits)
+            new_out_symbol_bits_list = []
+            for item in out_symbol_bits_list:
+                new_out_symbol_bits_list.append(
+                    SymbolDefNode(index = item["index"], symbol_id = item["symbol_id"], stmt_id = item["stmt_id"])
+                )
+
+            in_state_bits_list = json.loads(row.in_state_bits)
+            new_in_state_bits_list = []
+            for item in in_state_bits_list:
+                new_in_state_bits_list.append(
+                    StateDefNode(index = item["index"], state_id = item["state_id"], stmt_id = item["stmt_id"])
+                )
+
+            out_state_bits_list = json.loads(row.out_state_bits)
+            new_out_state_bits_list = []
+            for item in out_state_bits_list:
+                new_out_state_bits_list.append(
+                    StateDefNode(index = item["index"], state_id = item["state_id"], stmt_id = item["stmt_id"])
+                )
+
             stmt_to_status[row.stmt_id] = \
                 StmtStatus(
                     stmt_id = int(row.stmt_id),
                     defined_symbol = int(row.defined_symbol),
-                    used_symbols = [int(item) for item in ast.literal_eval(row.used_symbols)],
-                    implicitly_defined_symbols = [int(item) for item in ast.literal_eval(row.implicitly_defined_symbols)],
-                    implicitly_used_symbols = [int(item) for item in ast.literal_eval(row.implicitly_used_symbols)],
-                    in_symbol_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
-                    out_symbol_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
-                    defined_states = {int(item) for item in ast.literal_eval(row.implicitly_used_symbols)},
-                    in_state_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
-                    out_state_bits = {item for item in ast.literal_eval(row.implicitly_used_symbols)},
+                    used_symbols = json.loads(row.used_symbols),
+                    implicitly_defined_symbols = json.loads(row.implicitly_defined_symbols),
+                    implicitly_used_symbols = json.loads(row.implicitly_used_symbols),
+                    in_symbol_bits = set(new_in_symbol_bits_list),
+                    out_symbol_bits = set(new_out_symbol_bits_list),
+                    defined_states = set(json.loads(row.defined_states)),
+                    in_state_bits = set(new_in_state_bits_list),
+                    out_state_bits = set(new_out_state_bits_list),
                     field_name = row.field,
                 )
         return stmt_to_status
@@ -1075,9 +1113,8 @@ class SymbolStateSpaceLoader(MethodLevelAnalysisResultLoader):
                 )
             else:
                 access_path = []
-                access_path_str_list = row.access_path
-                for access_path_point_str in access_path_str_list:
-                    access_path_point = ast.literal_eval(access_path_point_str)
+                access_path_str_list = json.loads(row.access_path)
+                for access_path_point in access_path_str_list:
                     access_path.append(
                         AccessPoint(
                             kind = access_path_point['kind'],
@@ -1085,16 +1122,20 @@ class SymbolStateSpaceLoader(MethodLevelAnalysisResultLoader):
                             state_id = access_path_point['state_id']
                         )
                     )
+                #print(row.get_whole_str())
+                tangping_elements = json.loads(row.tangping_elements)
+                if isinstance(tangping_elements, list):
+                    tangping_elements = set(tangping_elements)
                 item = State(
                     stmt_id = row.stmt_id,
                     data_type = row.data_type,
                     state_type = row.state_type,
                     state_id = row.state_id,
                     value = row.value,
-                    fields = ast.literal_eval(row.fields),
-                    array = ast.literal_eval(row.array),
+                    fields = json.loads(row.fields, object_hook=json_dict_value_list_to_set_hook),
+                    array = json.loads(row.array, object_hook=json_dict_value_list_to_set_hook),
                     tangping_flag = row.tangping_flag,
-                    tangping_elements = ast.literal_eval(row.tangping_elements),
+                    tangping_elements = tangping_elements,
                     access_path = access_path,
                     symbol_or_state = row.symbol_or_state
                 )
@@ -1113,22 +1154,25 @@ class CalleeParameterMapping(MethodLevelAnalysisResultLoader):
             arg_access_path = []
             access_path_str_list = row.arg_access_path
             for access_path_point_str in access_path_str_list:
-                access_path_point = ast.literal_eval(access_path_point_str)
-                arg_access_path.append(
-                    AccessPoint(
-                        kind = access_path_point['kind'],
-                        key = access_path_point['key'],
-                        state_id = access_path_point['state_id']
+                if util.is_available(access_path_point_str):
+                    access_path_point = ast.literal_eval(access_path_point_str)
+                    arg_access_path.append(
+                        AccessPoint(
+                            kind = access_path_point['kind'],
+                            key = access_path_point['key'],
+                            state_id = access_path_point['state_id']
+                        )
                     )
-                )
 
             parameter_access_point_str = row.parameter_access_path
-            parameter_access_point = ast.literal_eval(parameter_access_point_str)
-            parameter_access_path = AccessPoint(
-                kind = parameter_access_point['kind'],
-                key = parameter_access_point['key'],
-                state_id = parameter_access_point['state_id']
-            )
+            parameter_access_path = AccessPoint()
+            if util.is_available(parameter_access_point_str):
+                parameter_access_point = ast.literal_eval(parameter_access_point_str)
+                parameter_access_path = AccessPoint(
+                    kind = parameter_access_point['kind'],
+                    key = parameter_access_point['key'],
+                    state_id = parameter_access_point['state_id']
+                )
 
             parameter_mapping_list.append(
                 ParameterMapping(
@@ -1156,8 +1200,13 @@ class MethodDefUseSummaryLoader:
         self.method_summary_records = {}
         self.path = path
 
+    def get_copy(self, method_id):
+        if method_id not in self.method_summary_records:
+            return MethodDefUseSummary()
+        return self.method_summary_records[method_id].copy()
+    
     def get(self, method_id):
-        return self.method_summary_records.get(method_id)
+        return self.method_summary_records[method_id].get(method_id)
 
     def save(self, method_id, basic_method_summary: MethodDefUseSummary):
         self.method_summary_records[method_id] = basic_method_summary
@@ -1531,12 +1580,13 @@ class ImportGraphLoader:
         self.import_graph_nodes = []
         self.import_deps = None
         self.symbol_id_to_import_node = {}
-
         self.import_graph_nodes_save_path = self.path + "_nodes"
 
         dir_path = os.path.dirname(self.path)
         new_save_path = os.path.join(dir_path, "import_deps")
         self.import_deps_save_path = new_save_path
+
+        self.EdgeNodePair = namedtuple("EdgeNodePair", ["edge", "node"])
 
     def save(self, import_graph):
         self.import_graph = import_graph
@@ -1591,16 +1641,16 @@ class ImportGraphLoader:
 
     def get_edges_and_nodes_with_edge_attrs(self, node_id, attr_dict: dict):
         """attr可以是：real_name, weight(edge_kind), site(import_stmt_id), symbol_type(该节点类型)"""
-        EdgeNodePair = namedtuple("EdgeNodePair", ["edge", "node"])
         edge_node_list = util.graph_successors_with_edge_attrs(self.import_graph, node_id, attr_dict)
-        return [EdgeNodePair(edge, self.get_successor_nodes_from_ids(node_index)) for edge, node_index in edge_node_list]
+        return [self.EdgeNodePair(edge, self.get_successor_nodes_from_ids(node_index)) for edge, node_index in edge_node_list]
 
     def get_import_node_with_name(self, unit_id, import_name):
-        """在unit中给定import_name，找到被import的节点，没有则返回None"""
+        """在unit中给定import_name，找到被import的节点，没有则返回None"""        
+        result = None
         edge_node_list = self.get_edges_and_nodes_with_edge_attrs(unit_id, {"real_name":import_name})
-        if util.is_empty(edge_node_list):
-            return None
-        return edge_node_list[0].node[0]
+        if util.is_available(edge_node_list):
+            result = edge_node_list[0].node[0]    
+        return result
 
     def restore(self):
         df = DataModel().load(self.path)
@@ -1694,6 +1744,7 @@ class TypeGraphLoader:
         DataModel(results).save(self.path)
 
 class MethodSymbolToDefinedLoader(MethodLevelAnalysisResultLoader):
+    @profile
     def unflatten_item_dataframe_when_loading(self, method_id, flattened_item):
         defined_symbols = {}
         for row in flattened_item:
@@ -1704,7 +1755,8 @@ class MethodSymbolToDefinedLoader(MethodLevelAnalysisResultLoader):
             for each_defined in defined:
                 if isinstance(each_defined, (tuple, numpy.ndarray)):
                     defined_symbols[row.symbol_id].add(
-                        SymbolDefNode(index = int(each_defined[0]), symbol_id = int(row.symbol_id), stmt_id = int(each_defined[1])))
+                        SymbolDefNode(index = int(each_defined[0]), symbol_id = int(row.symbol_id), stmt_id = int(each_defined[1]))
+                    )
 
                 else:
                     defined_symbols[row.symbol_id].add(each_defined)
@@ -1891,13 +1943,12 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
 
 class Loader:
     # This is our file system manager
-    def __init__(self, options, event_handlers):
+    def __init__(self, options):
         self.options = options
         self.frontend_path = os.path.join(options.workspace, config.FRONTEND_DIR)
-        self.semantic_path_p1 = os.path.join(options.workspace, config.SEMANTIC_DIR_P1)
-        self.semantic_path_p2 = os.path.join(options.workspace, config.SEMANTIC_DIR_P2)
-        self.semantic_path_p3 = os.path.join(options.workspace, config.SEMANTIC_DIR_P3)
-        self.event_handlers = event_handlers
+        self.semantic_p1_path = os.path.join(options.workspace, config.SEMANTIC_P1_DIR)
+        self.semantic_p2_path = os.path.join(options.workspace, config.SEMANTIC_P2_DIR)
+        self.semantic_p3_path = os.path.join(options.workspace, config.SEMANTIC_P3_DIR)
 
         self.stmt_gir_cache = util.LRUCache(capacity = config.MAX_STMT_CACHE_CAPACITY)
 
@@ -1920,13 +1971,13 @@ class Loader:
         )
 
         self._external_symbol_id_collection_loader = ExternalSymbolIDCollectionLoader(
-            os.path.join(self.semantic_path_p1, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
+            os.path.join(self.semantic_p1_path, config.EXTERNAL_SYMBOL_ID_COLLECTION_PATH)
         )
 
         self._cfg_loader: CFGLoader = CFGLoader(
             options,
             schema.control_flow_graph_schema,
-            os.path.join(self.semantic_path_p1, config.CFG_BUNDLE_PATH),
+            os.path.join(self.semantic_p1_path, config.CFG_BUNDLE_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1934,7 +1985,7 @@ class Loader:
         self._scope_hierarchy_loader = ScopeHierarchyLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SCOPE_HIERARCHY_BUNDLE_PATH),
+            os.path.join(self.semantic_p1_path, config.SCOPE_HIERARCHY_BUNDLE_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -1942,71 +1993,79 @@ class Loader:
         self._unit_id_to_export_symbols_loader = UnitIDToExportSymbolsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.UNIT_EXPORT_PATH),
+            os.path.join(self.semantic_p1_path, config.UNIT_EXPORT_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
         self._class_id_to_methods_loader = ClassIDToMethodsLoader(
-            os.path.join(self.semantic_path_p1, config.CLASS_METHODS_PATH),
+            os.path.join(self.semantic_p1_path, config.CLASS_METHODS_PATH),
         )
 
         self._call_stmt_id_to_call_format_info_loader = CallStmtIDToCallFormatInfoLoader(
-            os.path.join(self.semantic_path_p1, config.CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH)
+            os.path.join(self.semantic_p1_path, config.CALL_STMT_ID_TO_CALL_FORMAT_INFO_PATH)
         )
 
         self._method_id_to_method_decl_format_loader = MethodIDToMethodDeclFormatLoader(
-            os.path.join(self.semantic_path_p1, config.METHOD_ID_TO_METHOD_DECL_FORMAT_PATH)
+            os.path.join(self.semantic_p1_path, config.METHOD_ID_TO_METHOD_DECL_FORMAT_PATH)
         )
 
         self._unit_id_to_stmt_id_loader = UnitIDToStmtIDLoader(
-            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_STMT_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.UNIT_ID_TO_STMT_ID_PATH)
         )
 
         self._unit_id_to_method_id_loader = UnitIDToMethodIDLoader(
-            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_METHOD_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.UNIT_ID_TO_METHOD_ID_PATH)
         )
 
         self._unit_id_to_class_id_loader = UnitIDToClassIDLoader(
-            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_CLASS_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.UNIT_ID_TO_CLASS_ID_PATH)
+        )
+
+        self._class_id_to_stmt_id_loader = ClassIDToStmtIDLoader(
+            os.path.join(self.semantic_p1_path, config.CLASS_ID_TO_STMT_ID_PATH)
+        )
+
+        self._method_id_to_stmt_id_loader = MethodIDToStmtIDLoader(
+            os.path.join(self.semantic_p1_path, config.METHOD_ID_TO_STMT_ID_PATH)
         )
 
         self._unit_id_to_namespace_id_loader = UnitIDToNamespaceIDLoader(
-            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_NAMESPACE_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.UNIT_ID_TO_NAMESPACE_ID_PATH)
         )
 
         self._unit_id_to_variable_id_loader = UnitIDToVariableIDLoader(
-            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_VARIABLE_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.UNIT_ID_TO_VARIABLE_ID_PATH)
         )
 
         self._unit_id_to_import_stmt_id_loader = UnitIDToImportStmtIDLoader(
-            os.path.join(self.semantic_path_p1, config.UNIT_ID_TO_IMPORT_STMT_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.UNIT_ID_TO_IMPORT_STMT_ID_PATH)
         )
 
         self._method_id_to_parameter_id_loader = MethodIDToParameterIDLoader(
-            os.path.join(self.semantic_path_p1, config.METHOD_ID_TO_PARAMETER_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.METHOD_ID_TO_PARAMETER_ID_PATH)
         )
 
         self._class_id_to_method_id_loader = ClassIDToMethodIDLoader(
-            os.path.join(self.semantic_path_p1, config.CLASS_ID_TO_METHOD_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.CLASS_ID_TO_METHOD_ID_PATH)
         )
 
         self._class_id_to_field_id_loader = ClassIDToFieldIDLoader(
-            os.path.join(self.semantic_path_p1, config.CLASS_ID_TO_FIELD_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.CLASS_ID_TO_FIELD_ID_PATH)
         )
 
         self._class_id_to_class_name_loader = ClassIdToNameLoader(
-            os.path.join(self.semantic_path_p1, config.CLASS_ID_TO_CLASS_NAME_PATH)
+            os.path.join(self.semantic_p1_path, config.CLASS_ID_TO_CLASS_NAME_PATH)
         )
 
         self._method_id_to_method_name_loader = MethodIDToMethodNameLoader(
-            os.path.join(self.semantic_path_p1, config.METHOD_ID_TO_METHOD_NAME_PATH)
+            os.path.join(self.semantic_p1_path, config.METHOD_ID_TO_METHOD_NAME_PATH)
         )
 
         self._symbol_name_to_scope_ids_loader = SymbolNameToScopeIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_SCOPE_IDS_PATH),
+            os.path.join(self.semantic_p1_path, config.SYMBOL_NAME_TO_SCOPE_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2014,7 +2073,7 @@ class Loader:
         self._symbol_name_to_decl_ids_loader = SymbolNameToDeclIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
+            os.path.join(self.semantic_p1_path, config.SYMBOL_NAME_TO_DECL_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2022,7 +2081,7 @@ class Loader:
         self._scope_id_to_symbol_info_loader = ScopeIDToSymbolInfoLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_SYMBOL_INFO_PATH),
+            os.path.join(self.semantic_p1_path, config.SCOPE_ID_TO_SYMBOL_INFO_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2030,7 +2089,7 @@ class Loader:
         self._scope_id_to_available_scope_ids_loader = ScopeIDToAvailableScopeIDsLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
+            os.path.join(self.semantic_p1_path, config.SCOPE_ID_TO_AVAILABLE_SCOPE_IDS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2050,22 +2109,22 @@ class Loader:
         )
 
         self._entry_points_loader = EntryPointsLoader(
-            os.path.join(self.semantic_path_p1, config.ENTRY_POINTS_PATH)
+            os.path.join(self.semantic_p1_path, config.ENTRY_POINTS_PATH)
         )
 
         self._import_graph_loader = ImportGraphLoader(
-            os.path.join(self.semantic_path_p1, config.IMPORT_GRAPH_PATH),
+            os.path.join(self.semantic_p1_path, config.IMPORT_GRAPH_PATH),
         )
 
         self._type_graph_loader = TypeGraphLoader(
-            os.path.join(self.semantic_path_p1, config.TYPE_GRAPH_PATH),
+            os.path.join(self.semantic_p1_path, config.TYPE_GRAPH_PATH),
         )
 
         self._symbol_bit_vector_manager_p1_loader = BitVectorManagerLoader(
             options,
             # schema.bit_vector_manager_schema,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P1),
+            os.path.join(self.semantic_p1_path, config.SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P1),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2074,7 +2133,7 @@ class Loader:
             options,
             # schema.bit_vector_manager_schema,
             [],
-            os.path.join(self.semantic_path_p2, config.SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2082,20 +2141,20 @@ class Loader:
         self._class_id_to_members_loader = ClassIDToMembersLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.CLASS_ID_TO_MEMBERS_PATH),
+            os.path.join(self.semantic_p2_path, config.CLASS_ID_TO_MEMBERS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
         self._stmt_id_to_scope_id_loader = StmtIDToScopeIDLoader(
-            os.path.join(self.semantic_path_p1, config.STMT_ID_TO_SCOPE_ID_PATH)
+            os.path.join(self.semantic_p1_path, config.STMT_ID_TO_SCOPE_ID_PATH)
         )
 
         self._symbol_bit_vector_manager_p3_loader = BitVectorManagerLoader(
             options,
             # schema.bit_vector_manager_schema,
             [],
-            os.path.join(self.semantic_path_p3, config.SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.SYMBOL_BIT_VECTOR_MANAGER_BUNDLE_PATH_P3),
             config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2104,7 +2163,7 @@ class Loader:
             options,
             # schema.bit_vector_manager_schema,
             [],
-            os.path.join(self.semantic_path_p2, config.STATE_BIT_VECTOR_MANAGER_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.STATE_BIT_VECTOR_MANAGER_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2113,7 +2172,7 @@ class Loader:
             options,
             # schema.bit_vector_manager_schema,
             [],
-            os.path.join(self.semantic_path_p3, config.STATE_BIT_VECTOR_MANAGER_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.STATE_BIT_VECTOR_MANAGER_BUNDLE_PATH_P3),
             config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2122,7 +2181,7 @@ class Loader:
             options,
             # schema.stmt_status_schema,
             [],
-            os.path.join(self.semantic_path_p1, config.STMT_STATUS_BUNDLE_PATH_P1),
+            os.path.join(self.semantic_p1_path, config.STMT_STATUS_BUNDLE_PATH_P1),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2131,7 +2190,7 @@ class Loader:
             options,
             # schema.stmt_status_schema,
             [],
-            os.path.join(self.semantic_path_p2, config.STMT_STATUS_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.STMT_STATUS_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2140,7 +2199,7 @@ class Loader:
             options,
             # schema.stmt_status_schema,
             [],
-            os.path.join(self.semantic_path_p3, config.STMT_STATUS_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.STMT_STATUS_BUNDLE_PATH_P3),
             config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2149,7 +2208,7 @@ class Loader:
             options,
             # schema.symbol_state_space_schema,
             [],
-            os.path.join(self.semantic_path_p1, config.SYMBOL_STATE_SPACE_BUNDLE_PATH_P1),
+            os.path.join(self.semantic_p1_path, config.SYMBOL_STATE_SPACE_BUNDLE_PATH_P1),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2158,7 +2217,7 @@ class Loader:
             options,
             # schema.symbol_state_space_schema,
             [],
-            os.path.join(self.semantic_path_p2, config.SYMBOL_STATE_SPACE_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.SYMBOL_STATE_SPACE_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2167,7 +2226,7 @@ class Loader:
             options,
             # schema.symbol_state_space_schema,
             [],
-            os.path.join(self.semantic_path_p2, config.SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2176,7 +2235,7 @@ class Loader:
             options,
             # schema.symbol_state_space_schema,
             [],
-            os.path.join(self.semantic_path_p3, config.SYMBOL_STATE_SPACE_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.SYMBOL_STATE_SPACE_BUNDLE_PATH_P3),
             config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2185,43 +2244,43 @@ class Loader:
             options,
             # schema.symbol_state_space_schema,
             [],
-            os.path.join(self.semantic_path_p3, config.SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P3),
             config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
         self._method_internal_callees_loader = MethodInternalCalleesLoader(
-            os.path.join(self.semantic_path_p1, config.METHOD_INTERNAL_CALLEES_PATH),
+            os.path.join(self.semantic_p1_path, config.METHOD_INTERNAL_CALLEES_PATH),
         )
 
         self._method_def_use_summary_loader = MethodDefUseSummaryLoader(
-            os.path.join(self.semantic_path_p1, config.METHOD_DEF_USE_SUMMARY_PATH),
+            os.path.join(self.semantic_p1_path, config.METHOD_DEF_USE_SUMMARY_PATH),
         )
 
         self._method_summary_template_loader = MethodSummaryLoader(
-            os.path.join(self.semantic_path_p2, config.METHOD_SUMMARY_TEMPLATE_PATH),
+            os.path.join(self.semantic_p2_path, config.METHOD_SUMMARY_TEMPLATE_PATH),
         )
 
         self._method_summary_template_instance = MethodSummaryLoader(
-            os.path.join(self.semantic_path_p3, config.METHOD_SUMMARY_INSTANCE_PATH),
+            os.path.join(self.semantic_p3_path, config.METHOD_SUMMARY_INSTANCE_PATH),
         )
 
         self._classified_method_call_loader = CallGraphLoader(
-            os.path.join(self.semantic_path_p1, config.CALL_GRAPH_BUNDLE_PATH_P1),
+            os.path.join(self.semantic_p1_path, config.CALL_GRAPH_BUNDLE_PATH_P1),
         )
 
         self._prelim_call_graph_loader = CallGraphLoader(
-            os.path.join(self.semantic_path_p2, config.STATIC_CALL_GRAPH_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.STATIC_CALL_GRAPH_BUNDLE_PATH_P2),
         )
 
         self._global_call_path_loader = CallPathLoader(
-            os.path.join(self.semantic_path_p3, config.GLOBAL_CALL_PATH_BUNDLE_PATH),
+            os.path.join(self.semantic_p3_path, config.GLOBAL_CALL_PATH_BUNDLE_PATH),
         )
 
-        self._defined_symbols_loader = MethodSymbolToDefinedLoader(
+        self._defined_symbols_p1_loader = MethodSymbolToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.DEFINED_SYMBOLS_PATH),
+            os.path.join(self.semantic_p1_path, config.DEFINED_SYMBOLS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2229,7 +2288,7 @@ class Loader:
         self._defined_symbols_p2_loader = MethodSymbolToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.DEFINED_SYMBOLS_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.DEFINED_SYMBOLS_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2237,7 +2296,7 @@ class Loader:
         self._defined_symbols_p3_loader = MethodSymbolToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p3, config.DEFINED_SYMBOLS_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.DEFINED_SYMBOLS_PATH_P3),
             config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2245,7 +2304,7 @@ class Loader:
         self._defined_states_p1_loader = MethodStateToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.DEFINED_STATES_PATH_P1),
+            os.path.join(self.semantic_p1_path, config.DEFINED_STATES_PATH_P1),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2253,7 +2312,7 @@ class Loader:
         self._defined_states_p2_loader = MethodStateToDefinedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.DEFINED_STATES_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.DEFINED_STATES_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2261,19 +2320,19 @@ class Loader:
         self._used_symbols_loader = MethodSymbolToUsedLoader(
             options,
             [],
-            os.path.join(self.semantic_path_p1, config.USED_SYMBOLS_PATH),
+            os.path.join(self.semantic_p1_path, config.USED_SYMBOLS_PATH),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
 
         self._grouped_methods_loader: GroupedMethodsLoader = GroupedMethodsLoader(
-            os.path.join(self.semantic_path_p1, config.GROUPED_METHODS_PATH)
+            os.path.join(self.semantic_p1_path, config.GROUPED_METHODS_PATH)
         )
 
         self._symbol_graph_p2_loader: SymbolGraphLoader = SymbolGraphLoader(
             options,
             schema.symbol_graph_schema_p2,
-            os.path.join(self.semantic_path_p2, config.SYMBOL_GRAPH_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.SYMBOL_GRAPH_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2281,7 +2340,7 @@ class Loader:
         self._symbol_graph_p3_loader: SymbolGraphLoader = SymbolGraphLoader(
             options,
             schema.symbol_graph_schema_p2,
-            os.path.join(self.semantic_path_p3, config.SYMBOL_GRAPH_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.SYMBOL_GRAPH_BUNDLE_PATH_P3),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2289,7 +2348,7 @@ class Loader:
         self._state_flow_graph_p2_loader: StateFlowGraphLoader = StateFlowGraphLoader(
             options,
             schema.state_flow_graph_schema_p2,
-            os.path.join(self.semantic_path_p2, config.SFG_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.SFG_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2297,7 +2356,7 @@ class Loader:
         self._state_flow_graph_p3_loader: StateFlowGraphLoader = StateFlowGraphLoader(
             options,
             schema.state_flow_graph_schema_p2,
-            os.path.join(self.semantic_path_p3, config.SFG_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p3_path, config.SFG_BUNDLE_PATH_P3),
             config.MIN_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2305,7 +2364,7 @@ class Loader:
         self._callee_parameter_mapping_p2_loader: CalleeParameterMapping = CalleeParameterMapping(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2),
+            os.path.join(self.semantic_p2_path, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P2),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2313,7 +2372,7 @@ class Loader:
         self._callee_parameter_mapping_p3_loader: CalleeParameterMapping = CalleeParameterMapping(
             options,
             [],
-            os.path.join(self.semantic_path_p2, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3),
+            os.path.join(self.semantic_p2_path, config.CALLEE_PARAMETER_MAPPING_BUNDLE_PATH_P3),
             config.LRU_CACHE_CAPACITY,
             config.BUNDLE_CACHE_CAPACITY
         )
@@ -2342,10 +2401,10 @@ class Loader:
             return self.method_header_cache.get(method_id)
 
         unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
-        unit_gir = self._gir_loader.get(unit_id)
+        unit_gir = self._gir_loader.get_item_by_id(unit_id)
         if util.is_empty(unit_gir):
             return (None, None)
-        method_decl_stmt = unit_gir.query_first(unit_gir.stmt_id.eq(method_id))
+        method_decl_stmt = unit_gir.query_index_column_value_first("stmt_id", method_id)
         method_parameters = unit_gir.read_block(method_decl_stmt.parameters)
         result = (method_decl_stmt, method_parameters)
         self.method_header_cache.put(method_id, result)
@@ -2359,7 +2418,7 @@ class Loader:
             self.method_body_cache.get(method_id)
 
         unit_id = self.convert_method_id_to_unit_id(method_id)
-        unit_gir = self._gir_loader.get(unit_id)
+        unit_gir = self._gir_loader.get_item_by_id(unit_id)
         method_body = unit_gir.read_block(method_decl_stmt.body)
         self.method_body_cache.put(method_id, method_body)
         return method_body
@@ -2373,15 +2432,15 @@ class Loader:
         method_body = self._load_method_body_by_header(method_id, method_decl_stmt)
         return (method_decl_stmt, method_parameters, method_body)
 
-    def get_whole_method_gir(self, method_id):
+    def _get_whole_method_gir(self, method_id):
         if method_id <= 0:
             return None
 
         unit_id = self._unit_id_to_method_id_loader.convert_many_to_one(method_id)
-        unit_gir = self._gir_loader.get(unit_id)
+        unit_gir = self._gir_loader.get_item_by_id(unit_id)
         if util.is_empty(unit_gir):
             return None
-        method_decl_stmt = unit_gir.query_first(unit_gir.stmt_id.eq(method_id))
+        method_decl_stmt = unit_gir.query_index_column_value_first("stmt_id", method_id)
         max_id = unit_gir.boundary_of_multi_blocks([method_decl_stmt.parameters, method_decl_stmt.body])
         if max_id <= 0:
             return None
@@ -2389,14 +2448,14 @@ class Loader:
         return method_whole_gir
 
     def _clone_method_gir(self, unit_id, method_id, method_gir, new_name):
-        unit_gir = self._gir_loader.get(unit_id)
+        unit_gir = self._gir_loader.get_item_by_id(unit_id)
         unit_gir_to_dict = unit_gir.convert_to_dict_list()
         start_stmt_id = self.get_max_gir_id()
         interval = start_stmt_id - method_id
 
         new_method_gir = []
         for stmt in method_gir:
-            stmt_to_dict =  stmt.copy().to_dict()
+            stmt_to_dict = stmt.copy().to_dict()
             #print("stmt:", stmt_to_dict)
             for column in GIR_COLUMNS_TO_BE_ADDED:
                 if column in stmt_to_dict:
@@ -2416,7 +2475,7 @@ class Loader:
 
     def clone_method_in_strict_mode(self, method_id, new_name):
         unit_id = self.convert_method_id_to_unit_id(method_id)
-        method_gir = self.get_whole_method_gir(method_id)
+        method_gir = self._get_whole_method_gir(method_id)
         if len(method_gir) == 0:
             return -1
         #print(method_gir)
@@ -2433,8 +2492,8 @@ class Loader:
             return self.stmt_gir_cache.get(stmt_id)
 
         unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        unit_gir = self._gir_loader.get(unit_id)
-        stmt_gir = unit_gir.query_first(unit_gir.stmt_id.eq(stmt_id))
+        unit_gir = self._gir_loader.get_item_by_id(unit_id)
+        stmt_gir = unit_gir.query_index_column_value_first("stmt_id", stmt_id)
         self.stmt_gir_cache.put(stmt_id, stmt_gir)
         return stmt_gir
 
@@ -2500,14 +2559,14 @@ class Loader:
         return self._module_symbols_loader.convert_module_id_to_child_ids(module_id)
 
     def get_unit_gir(self, unit_id):
-        return self._gir_loader.get(unit_id)
+        return self._gir_loader.get_item_by_id(unit_id)
     def save_unit_gir(self, unit_id, unit_gir):
-        return self._gir_loader.save(unit_id, unit_gir)
+        self._gir_loader.save(unit_id, unit_gir)
     def export_gir(self):
         return self._gir_loader.export()
 
     def get_unit_scope_hierarchy(self, unit_id) -> DataModel:
-        return self._scope_hierarchy_loader.get(unit_id)
+        return self._scope_hierarchy_loader.get_item_by_id(unit_id)
     def save_unit_scope_hierarchy(self, unit_id, scope_hierarchy):
         return self._scope_hierarchy_loader.save(unit_id, scope_hierarchy)
     def get_all_scope_hierarchy(self):
@@ -2515,8 +2574,8 @@ class Loader:
     def export_scope_hierarchy(self):
         return self._scope_hierarchy_loader.export()
 
-    def get_unit_export_symbols(self, unit_id):
-        return self._unit_id_to_export_symbols_loader.get(unit_id)
+    def get_unit_export_symbols(self, unit_id) -> DataModel:
+        return self._unit_id_to_export_symbols_loader.get_item_by_id(unit_id)
     def save_unit_export_symbols(self, unit_id, export_symbols):
         return self._unit_id_to_export_symbols_loader.save(unit_id, export_symbols)
 
@@ -2545,8 +2604,6 @@ class Loader:
         return self._unit_id_to_stmt_id_loader.get(stmt_id)
     def get_all_stmt_ids(self):
         return self._unit_id_to_stmt_id_loader.get_all_stmt_ids()
-    def get_all_unit_ids(self):
-        return self._unit_id_to_stmt_id_loader.get_all_unit_ids()
 
     def save_method_external_symbol_id_collection(self, method_id, external_symbol_id_collection):
         self._external_symbol_id_collection_loader.save_external_symbol_id_collection(method_id, external_symbol_id_collection)
@@ -2600,7 +2657,7 @@ class Loader:
     def save_all_class_id_to_members(self, class_id_to_members):
         return self._class_id_to_members_loader.save_all(class_id_to_members)
     def convert_class_id_to_members(self, class_id, create_if_not_exists = False):
-        class_members: DataModel = self._class_id_to_members_loader.get(class_id)
+        class_members: DataModel = self._class_id_to_members_loader.get_item_by_id(class_id)
         nil_members = {}
         if util.is_empty(class_members):
             if create_if_not_exists:
@@ -2608,7 +2665,7 @@ class Loader:
             return nil_members
 
         class_members_df = class_members.get_data()
-        if not class_members_df.empty and hasattr(class_members_df, "members"):
+        if util.is_available(class_members_df) and hasattr(class_members_df, "members"):
             return class_members_df["members"].to_dict()
         return nil_members
 
@@ -2649,6 +2706,19 @@ class Loader:
         return self._unit_id_to_class_id_loader.get_all_items_in_many()
     def is_class_decl(self, class_id):
         return self._unit_id_to_class_id_loader.is_class_decl(class_id)
+    
+    def save_class_id_to_stmt_ids(self, class_id, stmt_ids):
+        return self._class_id_to_stmt_id_loader.save(class_id, stmt_ids)
+    def convert_class_id_to_stmt_ids(self, class_id):
+        return self._class_id_to_stmt_id_loader.convert_one_to_many(class_id)
+    def convert_stmt_id_to_class_id(self, stmt_id):
+        return self._class_id_to_stmt_id_loader.convert_many_to_one(stmt_id)
+    def save_method_id_to_stmt_ids(self, method_id, stmt_ids):
+        return self._method_id_to_stmt_id_loader.save(method_id, stmt_ids)
+    def convert_method_id_to_stmt_ids(self, method_id):
+        return self._method_id_to_stmt_id_loader.convert_one_to_many(method_id)
+    def convert_stmt_id_to_method_id(self, stmt_id):
+        return self._method_id_to_stmt_id_loader.convert_many_to_one(stmt_id)
 
     def convert_unit_id_to_namespace_ids(self, unit_id):
         return self._unit_id_to_namespace_id_loader.convert_one_to_many(unit_id)
@@ -2703,7 +2773,7 @@ class Loader:
         unit_id = self.convert_stmt_id_to_unit_id(scope_id)
         if unit_id < 0: return None # 可能的，比如import的fake节点的symbol_id是虚构的
         scope_data = self.get_unit_scope_hierarchy(unit_id)
-        stmt_scope = scope_data.query_first(scope_data.stmt_id == scope_id)
+        stmt_scope = scope_data.query_index_column_value_first("stmt_id", scope_id)
         self.stmt_scope_cache.put(scope_id, stmt_scope)
         return stmt_scope
 
@@ -2716,10 +2786,10 @@ class Loader:
                 scope_id = self_scope.scope_id
         return scope_id
 
-    def save_symbol_name_to_decl_ids(self, unit_id, symbol_name_to_decl_ids):
+    def save_unit_symbol_name_to_decl_ids(self, unit_id, symbol_name_to_decl_ids):
         return self._symbol_name_to_decl_ids_loader.save(unit_id, symbol_name_to_decl_ids)
-    def get_symbol_name_to_decl_ids(self, unit_id):
-        return self._symbol_name_to_decl_ids_loader.get(unit_id)
+    def get_unit_symbol_name_to_decl_ids(self, unit_id):
+        return self._symbol_name_to_decl_ids_loader.get_item_by_id(unit_id)
 
     # def save_symbol_name_to_scope_ids(self, *args):
     #     return self._symbol_name_to_scope_ids_loader.save(*args)
@@ -2744,74 +2814,76 @@ class Loader:
         return self._entry_points_loader.export()
 
     def get_method_cfg(self, method_id):
-        return self._cfg_loader.get(method_id)
+        return self._cfg_loader.get_item_by_id(method_id)
     def save_method_cfg(self, method_id, cfg):
         return self._cfg_loader.save(method_id, cfg)
 
     def save_symbol_bit_vector_p1(self, method_id, bit_vector):
         return self._symbol_bit_vector_manager_p1_loader.save(method_id, bit_vector)
     def get_symbol_bit_vector_p1(self, method_id):
-        return self._symbol_bit_vector_manager_p1_loader.get(method_id)
+        return self._symbol_bit_vector_manager_p1_loader.get_item_by_id(method_id)
 
     def save_symbol_bit_vector_p2(self, method_id, bit_vector):
         return self._symbol_bit_vector_manager_p2_loader.save(method_id, bit_vector)
     def get_symbol_bit_vector_p2(self, method_id):
-        return self._symbol_bit_vector_manager_p2_loader.get(method_id)
+        return self._symbol_bit_vector_manager_p2_loader.get_item_by_id(method_id)
 
     def save_symbol_bit_vector_p3(self, method_id, bit_vector):
         return self._symbol_bit_vector_manager_p3_loader.save(method_id, bit_vector)
     def get_symbol_bit_vector_p3(self, method_id):
-        return self._symbol_bit_vector_manager_p3_loader.get(method_id)
+        return self._symbol_bit_vector_manager_p3_loader.get_item_by_id(method_id)
 
     def save_state_bit_vector_p2(self, method_id, bit_vector):
         return self._state_bit_vector_manager_p2_loader.save(method_id, bit_vector)
     def get_state_bit_vector_p2(self, method_id):
-        return self._state_bit_vector_manager_p2_loader.get(method_id)
+        return self._state_bit_vector_manager_p2_loader.get_item_by_id(method_id)
 
     def save_state_bit_vector_p3(self, method_id, bit_vector):
         return self._state_bit_vector_manager_p3_loader.save(method_id, bit_vector)
     def get_state_bit_vector_p3(self, method_id):
-        return self._state_bit_vector_manager_p3_loader.get(method_id)
+        return self._state_bit_vector_manager_p3_loader.get_item_by_id(method_id)
 
     def save_stmt_status_p1(self, method_id, status):
         return self._stmt_status_p1_loader.save(method_id, status)
     def get_stmt_status_p1(self, method_id):
-        return self._stmt_status_p1_loader.get(method_id)
+        return self._stmt_status_p1_loader.get_item_by_id(method_id)
 
     def save_stmt_status_p2(self, method_id, status):
         return self._stmt_status_p2_loader.save(method_id, status)
     def get_stmt_status_p2(self, method_id):
-        return self._stmt_status_p2_loader.get(method_id)
+        return self._stmt_status_p2_loader.get_item_by_id(method_id)
 
     def save_stmt_status_p3(self, context_id, status):
         return self._stmt_status_p3_loader.save(context_id, status)
     def get_stmt_status_p3(self, context_id):
-        return self._stmt_status_p3_loader.get(context_id)
+        return self._stmt_status_p3_loader.get_item_by_id(context_id)
 
     def save_symbol_state_space_p1(self, method_id, state_space):
         return self._symbol_state_space_p1_loader.save(method_id, state_space)
     def get_symbol_state_space_p1(self, method_id):
-        return self._symbol_state_space_p1_loader.get(method_id)
+        return self._symbol_state_space_p1_loader.get_item_by_id(method_id)
+    def contain_symbol_state_space_p1(self, method_id):
+        return self._symbol_state_space_p1_loader.contain(method_id)
 
     def save_symbol_state_space_p2(self, method_id, state_space):
         return self._symbol_state_space_p2_loader.save(method_id, state_space)
     def get_symbol_state_space_p2(self, method_id):
-        return self._symbol_state_space_p2_loader.get(method_id)
+        return self._symbol_state_space_p2_loader.get_item_by_id(method_id)
 
     def save_symbol_state_space_summary_p2(self, method_id, summary):
         return self._symbol_state_space_summary_p2_loader.save(method_id, summary)
     def get_symbol_state_space_summary_p2(self, method_id):
-        return self._symbol_state_space_summary_p2_loader.get(method_id)
+        return self._symbol_state_space_summary_p2_loader.get_item_by_id(method_id)
 
     def save_symbol_state_space_p3(self, method_id, state_space):
         return self._symbol_state_space_p3_loader.save(method_id, state_space)
     def get_symbol_state_space_p3(self, method_id):
-        return self._symbol_state_space_p3_loader.get(method_id)
+        return self._symbol_state_space_p3_loader.get_item_by_id(method_id)
 
     def save_symbol_state_space_summary_p3(self, context_id, summary):
         return self._symbol_state_space_summary_p3_loader.save(context_id, summary)
     def get_symbol_state_space_summary_p3(self, context_id):
-        return self._symbol_state_space_summary_p3_loader.get(context_id)
+        return self._symbol_state_space_summary_p3_loader.get_item_by_id(context_id)
 
     def save_method_internal_callees(self, method_id, callees):
         return self._method_internal_callees_loader.save(method_id, callees)
@@ -3003,38 +3075,40 @@ class Loader:
                 result_in_p3 = self.get_callee_ids_by_id_in_p3(method, entry_point_id)
                 return result_in_p2 | result_in_p3
 
-    def get_method_defined_symbols(self, method_id):
-        return self._defined_symbols_loader.get(method_id)
-    def save_method_defined_symbols(self, method_id, symbols):
-        return self._defined_symbols_loader.save(method_id, symbols)
+    def get_method_defined_symbols_p1(self, method_id):
+        return self._defined_symbols_p1_loader.get_item_by_id(method_id)
+    def get_method_defined_symbols_raw_p1(self, method_id):
+        return self._defined_symbols_p1_loader.get_raw_item_by_id(method_id)
+    def save_method_defined_symbols_p1(self, method_id, symbols):
+        return self._defined_symbols_p1_loader.save(method_id, symbols)
 
     def get_method_defined_symbols_p2(self, method_id):
-        return self._defined_symbols_p2_loader.get(method_id)
+        return self._defined_symbols_p2_loader.get_item_by_id(method_id)
     def save_method_defined_symbols_p2(self, method_id, symbols):
         return self._defined_symbols_p2_loader.save(method_id, symbols)
 
     def get_method_defined_symbols_p3(self, context_id):
-        return self._defined_symbols_p3_loader.get(context_id)
+        return self._defined_symbols_p3_loader.get_item_by_id(context_id)
     def save_method_defined_symbols_p3(self, context_id, symbols):
         return self._defined_symbols_p3_loader.save(context_id, symbols)
 
     def get_method_defined_states_p1(self, method_id):
-        return self._defined_states_p1_loader.get(method_id)
+        return self._defined_states_p1_loader.get_item_by_id(method_id)
     def save_method_defined_states_p1(self, method_id, states):
         return self._defined_states_p1_loader.save(method_id, states)
 
     def get_method_defined_states_p2(self, method_id):
-        return self._defined_states_p2_loader.get(method_id)
+        return self._defined_states_p2_loader.get_item_by_id(method_id)
     def save_method_defined_states_p2(self, method_id, states):
         return self._defined_states_p2_loader.save(method_id, states)
 
     def get_method_used_symbols(self, method_id):
-        return self._used_symbols_loader.get(method_id)
+        return self._used_symbols_loader.get_item_by_id(method_id)
     def save_method_used_symbols(self, method_id, symbols):
         return self._used_symbols_loader.save(method_id, symbols)
 
     def get_method_symbol_graph_p2(self, method_id):
-        return self._symbol_graph_p2_loader.get(method_id)
+        return self._symbol_graph_p2_loader.get_item_by_id(method_id)
     def save_method_symbol_graph_p2(self, method_id, graph):
         return self._symbol_graph_p2_loader.save(method_id, graph)
     def save_method_symbol_graph_p3(self, method_id, graph):
@@ -3043,14 +3117,14 @@ class Loader:
     def save_method_sfg(self, method_id, graph):
         return self._state_flow_graph_p2_loader.save(method_id, graph)
     def get_method_sfg(self, method_id):
-        return self._state_flow_graph_p2_loader.get(method_id)
+        return self._state_flow_graph_p2_loader.get_item_by_id(method_id)
     def get_global_sfg_by_entry_point(self, method_id):
-        return self._state_flow_graph_p3_loader.get(method_id)
+        return self._state_flow_graph_p3_loader.get_item_by_id(method_id)
     def save_global_sfg_by_entry_point(self, method_id, graph: StateFlowGraph):
         return self._state_flow_graph_p3_loader.save(method_id, graph.graph)
 
     def get_method_def_use_summary(self, method_id):
-        return self._method_def_use_summary_loader.get(method_id)
+        return self._method_def_use_summary_loader.get_copy(method_id)
     def save_method_def_use_summary(self, method_id, summary):
         return self._method_def_use_summary_loader.save(method_id, summary)
 
@@ -3065,33 +3139,16 @@ class Loader:
         return self._method_summary_template_instance.save(context_id, instance)
 
     def get_parameter_mapping_p2(self, call_site):
-        return self._callee_parameter_mapping_p2_loader.get(call_site)
+        return self._callee_parameter_mapping_p2_loader.get_item_by_id(call_site)
     def save_parameter_mapping_p2(self, call_site, mapping):
         return self._callee_parameter_mapping_p2_loader.save(call_site, mapping)
 
     def get_parameter_mapping_p3(self, call_site):
-        return self._callee_parameter_mapping_p3_loader.get(call_site)
+        return self._callee_parameter_mapping_p3_loader.get_item_by_id(call_site)
     def save_parameter_mapping_p3(self, call_site, mapping):
         return self._callee_parameter_mapping_p3_loader.save(call_site, mapping)
 
-    def convert_stmt_id_to_method_id(self, stmt_id):
-        unit_id = self.convert_stmt_id_to_unit_id(stmt_id)
-        unit_gir = self.get_unit_gir(unit_id)
-        if unit_gir is None:
-            return -1
-
-        stmt_id_to_stmt = {}
-        for row in unit_gir:
-            stmt_id_to_stmt[row.stmt_id] = row
-
-        current_stmt = stmt_id_to_stmt.get(stmt_id)
-        while current_stmt and current_stmt.operation != 'method_decl':
-            parent_stmt_id = current_stmt.parent_stmt_id
-            current_stmt = stmt_id_to_stmt.get(parent_stmt_id)
-
-        return current_stmt.stmt_id
-
-    def get_method_name_by_method_id(self, method_id):
+    def get_class_method_name_by_method_id(self, method_id):
         method_name = self.convert_method_id_to_method_name(method_id)
         class_id = self.convert_method_id_to_class_id(method_id)
         class_name = self.convert_class_id_to_class_name(class_id)
@@ -3352,7 +3409,7 @@ class Loader:
 
     def get_yaml_info(self, unit_path: str, line_num: int):
         unit_id = self.convert_unit_path_to_unit_id(unit_path)
-        unit_gir = self._gir_loader.get(unit_id)
+        unit_gir = self._gir_loader.get_item_by_id(unit_id)
 
         for stmt in unit_gir:
             start_row = stmt.start_row + 1

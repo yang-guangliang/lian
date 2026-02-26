@@ -103,7 +103,7 @@ class GlobalStmtStates(StmtStates):
         parameter_mapping_list = []
 
         if len(callee_method_ids) == 0:
-            callee_name = self.resolver.recover_callee_name(stmt_id, self.loader)
+            callee_name = self.resolver.recover_callee_name(self.frame.method_id, stmt_id, stmt, status, self.frame.symbol_state_space)
             unknown_callee_set = self.caller_unknown_callee_edge.get(str(caller_id), set())
             unknown_callee_set.add((str(stmt_id), callee_name))
             self.caller_unknown_callee_edge[str(caller_id)] = unknown_callee_set
@@ -175,7 +175,7 @@ class GlobalStmtStates(StmtStates):
             if callee_summary:
                 callee_summary = callee_summary.copy()
                 self.apply_callee_semantic_summary(
-                    stmt_id, each_callee_id, args, callee_summary,
+                    stmt_id, stmt, each_callee_id, args, callee_summary,
                     self.frame.symbol_state_space, this_state_set, new_object_flag
                 )
 

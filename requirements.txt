@@ -1,4 +1,6 @@
 setuptools
+# profiling for testing
+line_profiler
 # the frontend for code parsing
 tree-sitter==0.25.2
 # for data storage and manipulation
@@ -8,8 +10,6 @@ pyarrow
 networkx
 # for math
 numpy
-# for profiling
-line_profiler
 # for plotting
 matplotlib
 # for configuration

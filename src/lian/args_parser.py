@@ -22,18 +22,17 @@ class ArgsParser:
         # Add the arguments to the main parser
 
         for parser in [parser_lang, parser_semantic, parser_security, parser_run]:
-            #parser.add_argument("-b", "--benchmark", action="store_true")
+            parser.add_argument("--benchmark", action="store_true", help="Limit analysis to N files for benchmarking (N=config.MAX_BENCHMARK_FILES)")
             # parser.add_argument("-r", "--recursive", action="store_true",
             #                    help="Recursively search the input directory")
-
-            parser.add_argument("-q", "--quiet", action="store_true", help="Disable the verbose output")
             parser.add_argument('in_path', nargs='+', type=str, help='the input')
+            parser.add_argument("-q", "--quiet", action="store_true", help="Disable the verbose output")
             parser.add_argument('-w', "--workspace", default=config.DEFAULT_WORKSPACE, type=str, help='the workspace directory (default:lian_workspace)')
             parser.add_argument("-f", "--force", action="store_true", help="Enable the FORCE mode for rewritting the workspace directory")
             parser.add_argument("-d", "--debug", action="store_true", help="Enable the DEBUG mode")
-            parser.add_argument("-i", "--included_headers", type=str, help="Specifying C-like Headers")
-            parser.add_argument("-I", "--enable_header_preprocess", action="store_true", help="Deal with C-like Headers")
-            parser.add_argument("-p", "--print_stmts", action="store_true", help="Print statements")
+            parser.add_argument("-i", "--included-headers", type=str, help="Specifying C-like Headers")
+            parser.add_argument("-I", "--enable-header-preprocess", action="store_true", help="Deal with C-like Headers")
+            parser.add_argument("-p", "--print-stmts", action="store_true", help="Print statements")
             parser.add_argument("-c", "--cores", default=1, help="Configure the available CPU cores")
             parser.add_argument("--android", action="store_true", help="Enable the Android analysis mode")
             parser.add_argument("-e", "--event-handlers", default=[], action='append', help="Config the event handlers dir")
@@ -44,8 +43,9 @@ class ArgsParser:
             parser.add_argument("--additional-settings",  type=str, help="Specify the additional settings folder")
             parser.add_argument("--graph", action="store_true", help="Output sfg (state flow graph) to .dot files")
             parser.add_argument("--complete-graph", action="store_true", help="Output the sfg with more detailed information for each node")
+            parser.add_argument("--enable-p2", action="store_true", help="Enable the second phase of analysis")
 
-            parser.add_argument("--noextern", action="store_true", help="Disable the external processing module")
+            parser.add_argument("--nomock", action="store_true", help="Disable the external processing module")
 
         return self
 
@@ -78,7 +78,8 @@ class ArgsParser:
             additional_settings = "",
             graph = False,
             complete_graph = False,
-            noextern = False,
+            nomock = False,
+            enable_p2 = False,
         )
 
     def print_help(self):

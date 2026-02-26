@@ -6,7 +6,7 @@ import copy
 from os.path import commonprefix
 
 import networkx as nx
-from lian.core.prelim_semantics import PrelimSemanticAnalysis
+from lian.core.prelim_semantics import P2PrelimSemanticAnalysis
 from lian.util import util
 from lian.config import config
 import lian.util.data_model as dm
@@ -46,14 +46,15 @@ from lian.basics.entry_points import EntryPointGenerator
 from lian.basics.control_flow import ControlFlowAnalysis
 from lian.basics.stmt_def_use_analysis import StmtDefUseAnalysis
 from lian.core.stmt_states import StmtStates
-from lian.core.prelim_semantics import PrelimSemanticAnalysis
+from lian.core.prelim_semantics import P2PrelimSemanticAnalysis
+from lian.util.gir_block import GIRBlockViewer
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
 from lian.core.global_stmt_states import GlobalStmtStates
 from networkx.generators.classic import complete_graph
 
 
-class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
+class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
     def __init__(self, lian, analyzed_method_list):
         super().__init__(lian)
         self.max_analysis_round = config.MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS
@@ -69,7 +70,7 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_index_of_status_space(self, baseline_index, status, frame, space, defined_symbols, symbol_bit_vector, state_bit_vector, method_summary_template):
+    def adjust_index_of_status_space(self, baseline_index, frame, status,space, defined_symbols, symbol_bit_vector, state_bit_vector, method_summary_template):
         for symbol_id in method_summary_template.used_external_symbols:
             new_index_set = set()
             for index in method_summary_template.used_external_symbols[symbol_id]:
@@ -161,26 +162,63 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             # ????
             #each_item.call_site = frame.call_path[-1]
 
-    def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):
-        frame.has_been_inited = True
+    def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):   
         if frame.is_meta_frame:
             return None
 
+        frame.has_been_inited = True
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
-        frame.cfg = self.loader.get_method_cfg(method_id)
+        if not self.loader.contain_symbol_state_space_p1(method_id):
+            return None
+
         if len(frame_stack) > 2:
             last_frame = frame_stack[-2]
             frame.call_path = last_frame.call_path.add_call(
                 last_frame.method_id, frame.call_stmt_id, frame.method_id
             )
             self.path_manager.add_path(frame.call_path)
+
+        if not self.options.enable_p2:
+            super().init_compute_frame(frame, frame_stack)
+            
+            for stmt in frame.stmt_worklist:
+                frame.stmts_with_symbol_update.add(stmt)
+
+            frame.stmt_state_analysis = GlobalStmtStates(
+                analysis_phase_id = self.analysis_phase_id,
+                event_manager = self.event_manager,
+                loader = self.loader,
+                resolver = self.resolver,
+                compute_frame = frame,
+                path_manager = self.path_manager,
+                caller_unknown_callee_edge = self.caller_unknown_callee_edge,
+                complete_graph=self.options.complete_graph,
+            )
+
+            self.adjust_index_of_status_space(len(global_space), frame, frame.stmt_id_to_status, frame.symbol_state_space, frame.defined_symbols, frame.symbol_bit_vector_manager, frame.state_bit_vector_manager, frame.method_summary_template)
+            for item in frame.symbol_state_space:
+                global_space.add(item)
+            frame.symbol_state_space = global_space
+            
+            return frame
+
+        frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
             return None
+        
+        round_number = config.FIRST_ROUND
+        if method_id in self.analyzed_method_list:
+            round_number = config.SECOND_ROUND
+        _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
+        parameter_decl_block = GIRBlockViewer(parameter_decls)
+        method_body_block = GIRBlockViewer(method_body)
+        frame.unit_gir.append_other(parameter_decl_block).append_other(method_body_block)
 
-        if util.is_empty(self.loader.get_symbol_state_space_p1(method_id)):
-            return None
+        for stmt_id in frame.unit_gir.get_all_stmt_ids():
+            frame.stmt_counters[stmt_id] = round_number
+            frame.is_first_round[stmt_id] = True
 
         frame.stmt_state_analysis = GlobalStmtStates(
             analysis_phase_id = self.analysis_phase_id,
@@ -193,52 +231,36 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
             complete_graph=self.options.complete_graph,
         )
 
-        round_number = config.FIRST_ROUND
-        if method_id in self.analyzed_method_list:
-            round_number = config.SECOND_ROUND
-        _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
-        if util.is_available(parameter_decls):
-            for row in parameter_decls:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
-                frame.stmt_counters[row.stmt_id] = round_number
-                frame.is_first_round[row.stmt_id] = True
-        if util.is_available(method_body):
-            for row in method_body:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
-                frame.stmt_counters[row.stmt_id] = round_number
-                frame.is_first_round[row.stmt_id] = True
-
-
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         first_stmts = util.find_cfg_first_nodes(frame.cfg)
         frame.stmt_worklist.add(first_stmts)
         frame.stmts_with_symbol_update.add(first_stmts)
         defined_symbols = self.loader.get_method_defined_symbols_p2(method_id)
         if defined_symbols:
-            frame.defined_symbols = defined_symbols.copy()
-            all_defs = set()
+            frame.defined_symbols = defined_symbols
+            all_symbol_defs = set()
             for stmt_id in frame.defined_symbols:
                 symbol_def_set = frame.defined_symbols[stmt_id]
                 for symbol_def in symbol_def_set:
-                    all_defs.add(symbol_def)
-            frame.all_defs = all_defs
+                    all_symbol_defs.add(symbol_def)
+            frame.all_symbol_defs = all_symbol_defs
 
         defined_states = self.loader.get_method_defined_states_p2(method_id)
         if defined_states:
-            frame.defined_states = defined_states.copy()
+            frame.defined_states = defined_states
 
         # avoid changing the content of the loader
-        status = copy.deepcopy(self.loader.get_stmt_status_p2(method_id))
-        symbol_state_space = self.loader.get_symbol_state_space_p2(method_id).copy()
-        defined_symbols = self.loader.get_method_defined_symbols_p2(method_id).copy()
-        state_bit_vector = self.loader.get_state_bit_vector_p2(method_id).copy()
-        symbol_bit_vector = self.loader.get_symbol_bit_vector_p2(method_id).copy()
-        frame.state_bit_vector_manager = state_bit_vector
-        frame.symbol_bit_vector_manager = symbol_bit_vector
-        method_summary_template = self.loader.get_method_summary_template(method_id).copy()
+        stmt_id_to_status = self.loader.get_stmt_status_p2(method_id)
+        symbol_state_space = self.loader.get_symbol_state_space_p2(method_id)
+        defined_symbols = self.loader.get_method_defined_symbols_p2(method_id)
+        symbol_bit_vector_manager = self.loader.get_symbol_bit_vector_p2(method_id)
+        state_bit_vector_manager = self.loader.get_state_bit_vector_p2(method_id)
+        frame.symbol_bit_vector_manager = symbol_bit_vector_manager
+        frame.state_bit_vector_manager = state_bit_vector_manager
+        method_summary_template = self.loader.get_method_summary_template(method_id)
         frame.method_summary_template = method_summary_template
-        self.adjust_index_of_status_space(len(global_space), status, frame, symbol_state_space, defined_symbols, symbol_bit_vector, state_bit_vector, method_summary_template)
-        frame.stmt_id_to_status = status
+        self.adjust_index_of_status_space(len(global_space), frame, stmt_id_to_status, symbol_state_space, defined_symbols, symbol_bit_vector_manager, state_bit_vector_manager, method_summary_template)
+        frame.stmt_id_to_status = stmt_id_to_status
         frame.defined_symbols = defined_symbols
         # This is the results generated by the previous phase
         for item in symbol_state_space:
@@ -247,14 +269,12 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
         frame.symbol_state_space = global_space
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(self.loader.get_method_internal_callees(method_id))
 
-        frame.state_bit_vector_manager = self.loader.get_state_bit_vector_p2(method_id).copy()
-        frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id).copy()
+        frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id)
 
         frame.external_symbol_id_to_initial_state_index = frame.method_summary_template.external_symbol_to_state
-        frame.space_summary = self.loader.get_symbol_state_space_summary_p2(method_id).copy()
-        frame.symbol_graph.graph = self.loader.get_method_symbol_graph_p2(method_id).copy()
+        frame.space_summary = self.loader.get_symbol_state_space_summary_p2(method_id)
+        frame.symbol_graph.graph = self.loader.get_method_symbol_graph_p2(method_id)
         frame.method_summary_instance.copy_template_to_instance(frame.method_summary_template)
-        #self.adjust_defined_symbols_and_init_bit_vector(frame, method_id)
         return frame
 
     def collect_external_symbol_states(self, frame: ComputeFrame, stmt_id, stmt, symbol_id, summary: MethodSummaryTemplate, old_key_state_indexes: set):
@@ -422,19 +442,21 @@ class GlobalSemanticAnalysis(PrelimSemanticAnalysis):
     def run(self):
         if not self.options.quiet:
             print("\n########### # Phase III: Global (Top-down) Semantic Analysis ##########")
-        global_space = SymbolStateSpace()
 
+        if not self.options.enable_p2:
+            config.MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS = config.MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS
+        
         for entry_point in self.loader.get_entry_points():
+            global_space = SymbolStateSpace()
             self.call_site_analyze_counter = {}
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
             self.save_graph_to_dot(sfg.graph, entry_point, self.analysis_phase_id, global_space)
-        self.loader.save_symbol_state_space_p3(0, global_space)
+            self.loader.save_symbol_state_space_p3(entry_point, global_space)
 
         self.loader.save_call_paths_p3(self.path_manager.paths)
-        self.loader.export()
 
         # if self.options.debug:
         #       all_paths = self.loader.get_global_call_paths()

@@ -28,16 +28,20 @@ from lian.common_structs import (
 )
 from lian.util import util
 from lian.util.loader import Loader
+from lian.util.gir_block import GIRBlockViewer
 
 class UnitScopeHierarchyAnalysis:
     def __init__(self, lian, loader, unit_id, unit_info, unit_gir):
         self.lian = lian
         self.options = lian.options
         self.loader:Loader = loader
-        self.unit_gir = unit_gir
         self.unit_id = unit_id
         self.unit_info = unit_info
-        self.stmt_id_to_gir = {}
+        self.unit_gir = GIRBlockViewer(unit_gir)
+
+        self.scope_space = ScopeSpace()
+        self.symbol_decl_summary = UnitSymbolDeclSummary()
+
         self.stmt_id_to_scope_id_cache = {}
         self.class_stmt_ids = set()
         self.namespace_stmt_ids = set()
@@ -51,8 +55,6 @@ class UnitScopeHierarchyAnalysis:
         self.symbol_name_to_decl_stmts = {}
         self.import_stmt_ids = set()
         self.all_scope_ids = set()
-        self.scope_space = ScopeSpace()
-        self.symbol_decl_summary = UnitSymbolDeclSummary()
         self.symbol_name_to_scope_ids = {}
         self.scope_id_to_symbol_info = {}
         self.scope_id_to_available_scope_ids = {}
@@ -60,27 +62,19 @@ class UnitScopeHierarchyAnalysis:
         self.class_id_to_class_method_ids = {}
         self.class_id_to_members = {}
 
-    def read_block(self, block_id):
-        return self.unit_gir.read_block(block_id)
+        self.class_id_to_stmt_ids = {}
+        self.method_id_to_stmt_ids = {}
 
-    def init(self):
+    def analyze(self):
         if util.is_empty(self.unit_gir):
             # util.error("UnitScopeHierarchyAnalysis.unit_gir is empty")
             return
-        for row in self.unit_gir:
-            if row.stmt_id in self.stmt_id_to_gir:
-                continue
-            self.stmt_id_to_gir[row.stmt_id] = row
-
-    def analyze(self):
-        self.init()
+            
         self.discover_scopes()
         self.correct_scopes()
         self.summarize_symbol_decls()
+        self.scan_classes_and_methods()
         return self.save_necessary_info()
-
-    def access_by_stmt_id(self, stmt_id):
-        return self.stmt_id_to_gir.get(stmt_id)
 
     def determine_scope(self, stmt_id):
         if stmt_id == 0:
@@ -89,7 +83,7 @@ class UnitScopeHierarchyAnalysis:
         if stmt_id in self.stmt_id_to_scope_id_cache:
             return self.stmt_id_to_scope_id_cache[stmt_id]
 
-        stmt = self.access_by_stmt_id(stmt_id)
+        stmt = self.unit_gir.get_stmt_by_id(stmt_id)
         if util.is_empty(stmt):
             return 0
 
@@ -112,9 +106,9 @@ class UnitScopeHierarchyAnalysis:
         self.scope_space.add(root_scope)
         self.all_scope_ids.add(root_scope_id)
 
-        for stmt_id in sorted(self.stmt_id_to_gir.keys()):
+        for stmt_id in self.unit_gir.get_all_stmt_ids():
             scope_id = -1
-            row = self.stmt_id_to_gir[stmt_id]
+            row = self.unit_gir.get_stmt_by_id(stmt_id)
             if row.operation == "package_stmt":
                 scope_id = self.determine_scope(row.parent_stmt_id)
                 package_scope = Scope(
@@ -340,10 +334,10 @@ class UnitScopeHierarchyAnalysis:
 
     def correct_scopes(self):
         for stmt_id in self.class_stmt_ids:
-            stmt = self.access_by_stmt_id(stmt_id)
+            stmt = self.unit_gir.get_stmt_by_id(stmt_id)
             if util.is_available(stmt.fields):
-                fields_block = self.read_block(stmt.fields)
-                variable_decl_stmts = fields_block.query(fields_block.operation == "variable_decl")
+                fields_block = self.unit_gir.read_block(stmt.fields)
+                variable_decl_stmts = fields_block.query_operation("variable_decl")
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
                     item.scope_id = stmt_id
@@ -354,8 +348,8 @@ class UnitScopeHierarchyAnalysis:
                     )
 
             if util.is_available(stmt.methods):
-                methods_block = self.read_block(stmt.methods)
-                method_decl_stmts = methods_block.query(methods_block.operation == "method_decl")
+                methods_block = self.unit_gir.read_block(stmt.methods)
+                method_decl_stmts = methods_block.query_operation("method_decl")
                 for method_decl in method_decl_stmts:
                     if method_decl.parent_stmt_id == stmt.methods:
                         # 只处理直接属于class的methods，不处理嵌套在其他method内部的闭包methods
@@ -368,8 +362,8 @@ class UnitScopeHierarchyAnalysis:
                     )
 
             if util.is_available(stmt.nested):
-                nested_block = self.read_block(stmt.nested)
-                class_decl_stmts = nested_block.query(nested_block.operation == "class_decl")
+                nested_block = self.unit_gir.read_block(stmt.nested)
+                class_decl_stmts = nested_block.query_operation("class_decl")
                 for class_decl in class_decl_stmts:
                     item = self.scope_space.find_first_by_id(class_decl.stmt_id)
                     item.scope_id = stmt_id
@@ -382,13 +376,11 @@ class UnitScopeHierarchyAnalysis:
 
         for stmt_id in self.method_stmt_ids:
             parameter_ids = set()
-            stmt = self.access_by_stmt_id(stmt_id)
+            stmt = self.unit_gir.get_stmt_by_id(stmt_id)
             method_parameters = stmt.parameters
             if util.is_available(method_parameters):
-                method_parameters_block = self.read_block(method_parameters)
-                parameter_decl_stmts = method_parameters_block.query(
-                    method_parameters_block.operation == "parameter_decl"
-                )
+                method_parameters_block = self.unit_gir.read_block(method_parameters)
+                parameter_decl_stmts = method_parameters_block.query_operation("parameter_decl")
                 for parameter_decl in parameter_decl_stmts:
                     parameter_ids.add(parameter_decl.stmt_id)
                     item = self.scope_space.find_first_by_id(parameter_decl.stmt_id)
@@ -398,26 +390,22 @@ class UnitScopeHierarchyAnalysis:
             self.method_id_to_parameter_ids[stmt_id] = parameter_ids
 
         for stmt_id in self.for_stmt_ids:
-            stmt = self.access_by_stmt_id(stmt_id)
+            stmt = self.unit_gir.get_stmt_by_id(stmt_id)
             init_body = stmt.init_body
             if util.is_available(init_body):
-                init_body_block = self.read_block(init_body)
-                variable_decl_stmts = init_body_block.query(
-                    init_body_block.operation == "variable_decl"
-                )
+                init_body_block = self.unit_gir.read_block(init_body)
+                variable_decl_stmts = init_body_block.query_operation("variable_decl")
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
                     item.scope_id = stmt_id
                     self.stmt_id_to_scope_id_cache[variable_decl.stmt_id] = stmt_id
 
         for stmt_id in self.with_stmt_ids:
-            stmt = self.access_by_stmt_id(stmt_id)
+            stmt = self.unit_gir.get_stmt_by_id(stmt_id)
             init_body = stmt.init_body
             if util.is_available(init_body):
-                init_body_block = self.read_block(init_body)
-                variable_decl_stmts = init_body_block.query(
-                    init_body_block.operation == "variable_decl"
-                )
+                init_body_block = self.unit_gir.read_block(init_body)
+                variable_decl_stmts = init_body_block.query_operation("variable_decl")
                 for variable_decl in variable_decl_stmts:
                     item = self.scope_space.find_first_by_id(variable_decl.stmt_id)
                     item.scope_id = stmt_id
@@ -454,8 +442,8 @@ class UnitScopeHierarchyAnalysis:
                             #print("symbol_name:", symbol_name)
                             if symbol_name in scope_id_to_symbol_info[row.scope_id]:
                                 previous_decl_id = scope_id_to_symbol_info[row.scope_id][symbol_name]
-                                previous_stmt = self.stmt_id_to_gir.get(previous_decl_id)
-                                current_stmt = self.stmt_id_to_gir.get(row.stmt_id)
+                                previous_stmt = self.unit_gir.get_stmt_by_id(previous_decl_id)
+                                current_stmt = self.unit_gir.get_stmt_by_id(row.stmt_id)
                                 util.error_and_quit_with_stmt_info(
                                     self.unit_info.original_path,
                                     current_stmt,
@@ -505,9 +493,26 @@ class UnitScopeHierarchyAnalysis:
             )
         )
 
+    def scan_classes_and_methods(self):
+        for class_id in self.class_stmt_ids:
+            stmt_list = []
+            stmt = self.unit_gir.get_stmt_by_id(class_id)
+            stmt_list.extend(self.unit_gir.get_block_stmt_ids(stmt.static_init))
+            stmt_list.extend(self.unit_gir.get_block_stmt_ids(stmt.init))
+            stmt_list.extend(self.unit_gir.get_block_stmt_ids(stmt.fields))
+            stmt_list.extend(self.unit_gir.get_block_stmt_ids(stmt.methods))
+            stmt_list.extend(self.unit_gir.get_block_stmt_ids(stmt.nested))
+            self.class_id_to_stmt_ids[class_id] = stmt_list
+
+        for method_id in sorted(self.method_stmt_ids):
+            stmt_list = []
+            stmt = self.unit_gir.get_stmt_by_id(method_id)
+            stmt_list.extend(self.unit_gir.get_block_stmt_ids(stmt.parameters))
+            stmt_list.extend(self.unit_gir.get_block_stmt_ids(stmt.body))
+            self.method_id_to_stmt_ids[method_id] = stmt_list
+
     def reuse_analysis(self, previous_scope_analysis_results_pack):
         pack = previous_scope_analysis_results_pack # alias
-        self.init()
         for key, value in pack.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -517,7 +522,7 @@ class UnitScopeHierarchyAnalysis:
         return self.save_necessary_info()
 
     def save_necessary_info(self):
-        self.loader.save_unit_id_to_stmt_ids(self.unit_id, self.stmt_id_to_gir.keys())
+        self.loader.save_unit_id_to_stmt_ids(self.unit_id, self.unit_gir.get_all_stmt_ids())
         self.loader.save_unit_id_to_method_ids(self.unit_id, self.method_stmt_ids)
         self.loader.save_unit_id_to_class_ids(self.unit_id, self.class_stmt_ids)
         self.loader.save_unit_id_to_namespace_ids(self.unit_id, self.namespace_stmt_ids)
@@ -525,7 +530,12 @@ class UnitScopeHierarchyAnalysis:
         self.loader.save_unit_id_to_import_stmt_ids(self.unit_id, self.import_stmt_ids)
         self.loader.save_all_class_id_to_members(self.class_id_to_members)
         self.loader.save_stmt_id_to_scope_id(self.stmt_id_to_scope_id_cache)
-        self.loader.save_symbol_name_to_decl_ids(self.unit_id, self.symbol_name_to_decl_stmts)
+        self.loader.save_unit_symbol_name_to_decl_ids(self.unit_id, self.symbol_name_to_decl_stmts)
+
+        for stmt_id in sorted(self.class_id_to_stmt_ids.keys()):
+            self.loader.save_class_id_to_stmt_ids(stmt_id, self.class_id_to_stmt_ids[stmt_id])
+        for stmt_id in sorted(self.method_id_to_stmt_ids.keys()):
+            self.loader.save_method_id_to_stmt_ids(stmt_id, self.method_id_to_stmt_ids[stmt_id])
 
         for stmt_id in self.method_id_to_method_name:
             self.loader.save_method_id_to_method_name(stmt_id, self.method_id_to_method_name[stmt_id])
@@ -538,7 +548,9 @@ class UnitScopeHierarchyAnalysis:
         for stmt_id in self.class_id_to_class_method_ids:
             self.loader.save_class_id_to_method_ids(stmt_id, self.class_id_to_class_method_ids[stmt_id])
 
-        return self.loader.save_unit_scope_hierarchy(self.unit_id, self.scope_space)
+        self.loader.save_unit_scope_hierarchy(self.unit_id, self.scope_space)
+
+        return self.loader.get_unit_scope_hierarchy(self.unit_id)
 
     def display_results(self):
         pprint.pprint(self.scope_space.to_dict())

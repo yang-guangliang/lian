@@ -3,7 +3,6 @@ import ast
 import pprint
 import re
 import copy
-import time
 
 from lian.events.handler_template import EventData
 from lian.util import util
@@ -406,7 +405,7 @@ class StmtStates:
         #         self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
-    def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index):
+    def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index, stmt):
         state = self.frame.symbol_state_space[state_index]
         if not isinstance(state, State):
             return -1
@@ -427,8 +426,7 @@ class StmtStates:
         self.sfg.add_edge(
             self.make_state_sfg_node(state_index),
             self.make_state_sfg_node(index),
-            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_COPY,
-                                    name=self.frame.stmt_id_to_stmt[stmt_id].operation)
+            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_COPY, name=stmt.operation)
         )
 
         status.defined_states.discard(state_index)
@@ -492,7 +490,7 @@ class StmtStates:
         self.used_symbol_id_to_indexes = {}
         return result
 
-    def copy_on_write_arg_state(self, stmt_id, status: StmtStatus, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state):
+    def copy_on_write_arg_state(self, stmt_id, stmt, status: StmtStatus, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state):
         if old_arg_state_index in old_to_new_arg_state:
             return old_to_new_arg_state[old_arg_state_index]
 
@@ -507,7 +505,7 @@ class StmtStates:
         if not latest_old_arg_indexes:
             return -1
         latest_old_arg_index = next(iter(latest_old_arg_indexes))
-        new_arg_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, latest_old_arg_index)
+        new_arg_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, latest_old_arg_index, stmt)
         old_to_new_arg_state[old_arg_state_index] = new_arg_state_index
         status.defined_states.add(new_arg_state_index)
         return new_arg_state_index
@@ -1208,11 +1206,11 @@ class StmtStates:
         elif self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
             self.loader.save_parameter_mapping_p3(call_site, parameter_mapping_list)
 
-    def fuse_states_to_one_state(self, state_indexes: set, stmt_id, status: StmtStatus):
+    def fuse_states_to_one_state(self, state_indexes: set, stmt_id, stmt, status: StmtStatus):
         if util.is_empty(state_indexes) or len(state_indexes) == 1:
             return state_indexes
         # 以集合中的任一个元素作为模板，创建一个fusion_state。create_copy过程中会自动将fusion_state加入status.defined_states中。
-        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, list(state_indexes)[0])
+        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, list(state_indexes)[0], stmt)
         new_state: State = self.frame.symbol_state_space[new_state_index]
         state_array: list[set] = []
         tangping_flag = False
@@ -1236,8 +1234,10 @@ class StmtStates:
             self.make_state_tangping(new_state)
         return {new_state_index}
 
-    def recursively_collect_children_fields(self, stmt_id, status: StmtStatus, state_set_in_summary_field: set,
-                                            state_set_in_arg_field: set, source_symbol_id, access_path):
+    def recursively_collect_children_fields(
+        self, stmt_id, stmt, status: StmtStatus, state_set_in_summary_field: set,
+        state_set_in_arg_field: set, source_symbol_id, access_path
+    ):
         cache = {}
 
         def _set_attributes_on_states(states, fields_to_set, state_type, source_symbol_id, access_path):
@@ -1268,6 +1268,7 @@ class StmtStates:
                     )
                     current_arg_state_fields[field_name] = _recursively_collect_children_fields(
                         stmt_id,
+                        stmt,
                         status,
                         summary_states_fields[field_name],
                         current_arg_state_fields[field_name],
@@ -1277,8 +1278,10 @@ class StmtStates:
 
             return current_arg_state_fields
 
-        def _recursively_collect_children_fields(stmt_id, status: StmtStatus, state_set_in_summary_field: set,
-                                                 state_set_in_arg_field: set, source_symbol_id, access_path):
+        def _recursively_collect_children_fields(
+            stmt_id, stmt, status: StmtStatus, state_set_in_summary_field: set,
+            state_set_in_arg_field: set, source_symbol_id, access_path
+        ):
             cache_key = (
                 stmt_id,
                 frozenset(state_set_in_summary_field),
@@ -1345,10 +1348,10 @@ class StmtStates:
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
                 for state_id, states in state_id_to_states.items():
                     if len(states) == 1:
-                        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, next(iter(states)))
+                        new_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, next(iter(states)), stmt)
                         states_with_diff_ids.add(new_state_index)
                     else:
-                        states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, status))
+                        states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, stmt, status))
             else:
                 for state_id, states in state_id_to_states.items():
                     if len(states) == 1:
@@ -1387,13 +1390,14 @@ class StmtStates:
             return return_set
 
         return _recursively_collect_children_fields(
-            stmt_id, status, state_set_in_summary_field, state_set_in_arg_field,
+            stmt_id, stmt, status, state_set_in_summary_field, state_set_in_arg_field,
             source_symbol_id, access_path
         )
 
     def apply_parameter_summary_to_args_states(
         self,
         stmt_id,
+        stmt,
         status: StmtStatus,
         last_state_indexes: set[int],
         old_arg_state_index,
@@ -1407,7 +1411,7 @@ class StmtStates:
             old_to_latest_old_arg_state = {}
 
         new_arg_state_index = self.copy_on_write_arg_state(
-            stmt_id, status, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state
+            stmt_id, stmt, status, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state
         )
         if new_arg_state_index == -1:
             return
@@ -1424,7 +1428,7 @@ class StmtStates:
         self.merge_callee_arrays_into_arg_state(new_arg_state, callee_state_arrays)
         self.merge_callee_tangping_into_arg_state(new_arg_state, tangping_flag, tangping_elements, stmt_id, callee_id)
         self.merge_callee_fields_into_arg_state(
-            stmt_id, status, new_arg_state, callee_state_fields, parameter_symbol_id
+            stmt_id, stmt, status, new_arg_state, callee_state_fields, parameter_symbol_id
         )
         self.resolve_anything_in_arg_fields(
             new_arg_state.fields,
@@ -1499,7 +1503,7 @@ class StmtStates:
         arg_state.tangping_elements.update(tangping_elements)
 
     def merge_callee_fields_into_arg_state(
-        self, stmt_id, status, arg_state: State, callee_state_fields: dict, parameter_symbol_id
+        self, stmt_id, stmt, status, arg_state: State, callee_state_fields: dict, parameter_symbol_id
     ):
         arg_fields = arg_state.fields
         arg_base_access_path = arg_state.access_path
@@ -1518,6 +1522,7 @@ class StmtStates:
             )
             arg_fields[field_name] = self.recursively_collect_children_fields(
                 stmt_id,
+                stmt,
                 status,
                 callee_fields,
                 arg_fields[field_name],
@@ -1545,7 +1550,7 @@ class StmtStates:
                 )
 
     def apply_this_symbol_semantic_summary(
-        self, stmt_id, callee_id, callee_summary: MethodSummaryTemplate,
+        self, stmt_id, stmt, callee_id, callee_summary: MethodSummaryTemplate,
         callee_space: SymbolStateSpace, instance_state_indexes: set[int],
         new_object_flag: bool
     ):
@@ -1562,7 +1567,7 @@ class StmtStates:
             for instance_state_index_in_space in instance_state_indexes.copy():
                 # 将summary中的this_symbol_last_state应用到实际的instance_state上
                 self.apply_parameter_summary_to_args_states(
-                    stmt_id, status, last_state_indexes, instance_state_index_in_space,
+                    stmt_id, stmt, status, last_state_indexes, instance_state_index_in_space,
                     old_to_new_arg_state, callee_id = callee_id, deferred_index_updates = deferred_index_updates
                 )
 
@@ -1598,6 +1603,7 @@ class StmtStates:
     def apply_parameter_semantic_summary(
         self,
         stmt_id,
+        stmt,
         callee_id,
         callee_summary: MethodSummaryTemplate,
         callee_space: SymbolStateSpace,
@@ -1612,6 +1618,7 @@ class StmtStates:
             if each_mapping.is_default_value:
                 self.apply_default_parameter_mapping(
                     stmt_id,
+                    stmt,
                     status,
                     each_mapping,
                     callee_summary,
@@ -1629,6 +1636,7 @@ class StmtStates:
             )
             self.apply_parameter_summary_to_args_states(
                 stmt_id,
+                stmt,
                 status,
                 last_state_indexes,
                 each_mapping.arg_index_in_space,
@@ -1646,6 +1654,7 @@ class StmtStates:
     def apply_default_parameter_mapping(
         self,
         stmt_id,
+        stmt,
         status: StmtStatus,
         mapping: ParameterMapping,
         callee_summary: MethodSummaryTemplate,
@@ -1679,6 +1688,7 @@ class StmtStates:
         )
         self.apply_parameter_summary_to_args_states(
             stmt_id,
+            stmt,
             status,
             last_state_indexes,
             tmp_default_value_state_index,
@@ -1745,7 +1755,7 @@ class StmtStates:
             status.implicitly_defined_symbols.append(index_to_add)
 
     def apply_callee_semantic_summary(
-        self, stmt_id, callee_id, args: MethodCallArguments,
+        self, stmt_id, stmt, callee_id, args: MethodCallArguments,
         callee_summary, callee_compact_space: SymbolStateSpace,
         this_state_set: set = set(), new_object_flag=False
     ):
@@ -1805,12 +1815,12 @@ class StmtStates:
             parameter_mapping_list = self.loader.get_parameter_mapping_p3(call_site)
         # apply parameter's state in callee_summary to args
         self.apply_parameter_semantic_summary(
-            stmt_id, callee_id, callee_summary, callee_compact_space, parameter_mapping_list
+            stmt_id, stmt, callee_id, callee_summary, callee_compact_space, parameter_mapping_list
         )
 
         # apply this_symbol's state in callee_summary to this_state_set
         self.apply_this_symbol_semantic_summary(
-            stmt_id, callee_id, callee_summary, callee_compact_space, this_state_set, new_object_flag
+            stmt_id, stmt, callee_id, callee_summary, callee_compact_space, this_state_set, new_object_flag
         )
 
         # apply other callee_summary to args
@@ -1896,8 +1906,6 @@ class StmtStates:
                 "space": self.frame.symbol_state_space,
             }
         )
-        # 方便debug
-        # callee_name = self.resolver.recover_callee_name(stmt_id, self.frame)
         app_return = self.event_manager.notify(event)
         if er.should_block_event_requester(app_return):
             if util.is_available(event.out_data):
@@ -1973,70 +1981,27 @@ class StmtStates:
         # Compute callees' summaries
         callee_ids_to_be_analyzed = []
         caller_id = self.frame.method_id
-        call_stmt_id = stmt_id
         if config.DEBUG_FLAG:
             util.debug(f"positional_args of stmt <{stmt_id}>: {args.positional_args}")
             util.debug(f"named_args of stmt <{stmt_id}>: {args.named_args}")
             util.debug(f"callee_method_ids: {callee_method_ids}")
 
         for each_callee_id in callee_method_ids:
-            if config.DEBUG_FLAG:
-                _t_total_0 = time.perf_counter()
-                _t_callgraph = 0.0
-                _t_analyzed_check = 0.0
-                _t_prepare_params = 0.0
-                _t_get_mapping = 0.0
-                _t_map_args = 0.0
-
-            if config.DEBUG_FLAG:
-                _t0 = time.perf_counter()
             if self.call_graph:
                 if not self.call_graph.has_specific_weight(self.frame.method_id, each_callee_id, stmt_id):
                     self.call_graph.add_edge(int(self.frame.method_id), int(each_callee_id), int(stmt_id))
-            if config.DEBUG_FLAG:
-                _t_callgraph = time.perf_counter() - _t0
 
-            if config.DEBUG_FLAG:
-                _t0 = time.perf_counter()
             if not (each_callee_id in self.analyzed_method_list or self.frame_stack.has_method_id(each_callee_id)):
                 callee_ids_to_be_analyzed.append(each_callee_id)
-            if config.DEBUG_FLAG:
-                _t_analyzed_check = time.perf_counter() - _t0
             # prepare callee parameters
-            if config.DEBUG_FLAG:
-                _t0 = time.perf_counter()
             parameters = self.prepare_parameters(each_callee_id)
-            if config.DEBUG_FLAG:
-                _t_prepare_params = time.perf_counter() - _t0
             if config.DEBUG_FLAG:
                 util.debug(f"parameters of callee <{each_callee_id}>: {parameters}")
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
-            if config.DEBUG_FLAG:
-                _t0 = time.perf_counter()
             parameter_mapping_list = self.loader.get_parameter_mapping_p2(new_call_site)
-            if config.DEBUG_FLAG:
-                _t_get_mapping = time.perf_counter() - _t0
-            # gl:为什么要判断是否为空
             if util.is_empty(parameter_mapping_list):
                 parameter_mapping_list = []
-                if config.DEBUG_FLAG:
-                    _t0 = time.perf_counter()
                 self.map_arguments(args, parameters, parameter_mapping_list, new_call_site)
-                if config.DEBUG_FLAG:
-                    _t_map_args = time.perf_counter() - _t0
-
-            if config.DEBUG_FLAG:
-                _t_total = time.perf_counter() - _t_total_0
-                util.debug(
-                    "[timing][compute_target_method_states] "
-                    f"stmt_id={stmt_id} caller={caller_id} callee={each_callee_id} | "
-                    f"call_graph={_t_callgraph*1000:.2f}ms, "
-                    f"analyzed_check={_t_analyzed_check*1000:.2f}ms, "
-                    f"prepare_params={_t_prepare_params*1000:.2f}ms, "
-                    f"get_mapping={_t_get_mapping*1000:.2f}ms, "
-                    f"map_args={_t_map_args*1000:.2f}ms, "
-                    f"total={_t_total*1000:.2f}ms"
-                )
 
         # print(f"callee_ids_to_be_analyzed: {callee_ids_to_be_analyzed}")
         # print(f"analyzed_method_list: {self.analyzed_method_list}")
@@ -2109,41 +2074,21 @@ class StmtStates:
 
         for each_callee_id in callee_method_ids:
             # prepare callee summary template and compact space
-            _t0 = time.perf_counter() if config.DEBUG_FLAG else None
             callee_summary = self.loader.get_method_summary_template(each_callee_id)
-            _t_summary = (time.perf_counter() - _t0) if config.DEBUG_FLAG else 0.0
             if util.is_empty(callee_summary):
                 # print(f"\neach_callee_id: {each_callee_id}")
                 continue
             callee_summary = callee_summary.copy()
 
-            _t0 = time.perf_counter() if config.DEBUG_FLAG else None
             callee_compact_space: SymbolStateSpace = self.loader.get_symbol_state_space_summary_p2(each_callee_id)
-            _t_space = (time.perf_counter() - _t0) if config.DEBUG_FLAG else 0.0
             if util.is_empty(callee_compact_space):
                 continue
             callee_compact_space = callee_compact_space.copy()
 
-            # apply callee semantic summary
-            _t0 = time.perf_counter() if config.DEBUG_FLAG else None
-            util.debug("apply_callee_semantic_summary before")
-
             self.apply_callee_semantic_summary(
-                stmt_id, each_callee_id, args, callee_summary,
+                stmt_id, stmt, each_callee_id, args, callee_summary,
                 callee_compact_space, this_state_set, new_object_flag
             )
-            _t_apply = (time.perf_counter() - _t0) if config.DEBUG_FLAG else 0.0
-
-            if config.DEBUG_FLAG:
-                _t_total = _t_summary + _t_space + _t_apply
-                # only print slow callees to keep logs useful
-                if _t_total > 0.05:  # 50ms
-                    util.debug(
-                        "[perf][P2][callee_apply] "
-                        f"stmt_id={stmt_id} caller={caller_id} callee={each_callee_id} | "
-                        f"summary={_t_summary*1000:.2f}ms space={_t_space*1000:.2f}ms "
-                        f"apply={_t_apply*1000:.2f}ms total={_t_total*1000:.2f}ms"
-                    )
 
         return P2ResultFlag()
 
@@ -2813,7 +2758,7 @@ class StmtStates:
                 array_state = self.frame.symbol_state_space[each_array_state_index]
                 if not isinstance(array_state, State):
                     continue
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
 
                 self.make_state_tangping(new_array_state)
@@ -2839,7 +2784,7 @@ class StmtStates:
                             tangping_flag = True
 
                 if tangping_flag or self.is_state_array_empty(array_state):
-                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id)
+                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
                     new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
 
                     self.make_state_tangping(new_array_state)
@@ -2848,13 +2793,12 @@ class StmtStates:
                         self.sfg.add_edge(
                             self.make_state_sfg_node(new_array_state_index),
                             self.make_state_sfg_node(source_state),
-                            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION,
-                                                    name=self.frame.stmt_id_to_stmt[stmt_id].operation)
+                            self.make_stmt_sfg_edge(stmt_id, SFG_EDGE_KIND.STATE_INCLUSION, name=stmt.operation)
                         )
                     defined_states.add(new_array_state_index)
 
                 elif tmp_array != array_state.array:
-                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id)
+                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
                     new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                     new_array_state.array = tmp_array
                     defined_states.add(new_array_state_index)
@@ -2923,14 +2867,14 @@ class StmtStates:
                         break
 
             if tangping_flag:
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                 self.make_state_tangping(new_array_state)
                 new_array_state.tangping_elements.update(source_states)
                 defined_symbol_states.add(new_array_state_index)
 
             elif tmp_array != array_state.array:
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                 new_array_state.array = tmp_array
                 defined_symbol_states.add(new_array_state_index)
@@ -2962,7 +2906,7 @@ class StmtStates:
             if not (array_state and isinstance(array_state, State)):
                 continue
 
-            new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_index)
+            new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_index, stmt)
             new_target_state: State = self.frame.symbol_state_space[new_target_state_index]
             if array_state.tangping_flag:
                 new_target_state.tangping_elements.update(source_states)
@@ -3012,7 +2956,7 @@ class StmtStates:
                     util.add_to_list_with_default_set(array_state_to_extend, index, tmp_array[index])
 
             if array_state_to_extend:
-                new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, target_state_index)
+                new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, target_state_index, stmt)
                 new_target_state: State = self.frame.symbol_state_space[new_target_state_index]
                 if new_target_state.tangping_flag:
                     for element in array_state_to_extend:
@@ -3021,7 +2965,7 @@ class StmtStates:
                     new_target_state.array.extend(array_state_to_extend)
                 defined_symbol_states.add(new_target_state_index)
             else:
-                new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, target_state_index)
+                new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, target_state_index, stmt)
                 new_target_state: State = self.frame.symbol_state_space[new_target_state_index]
                 defined_symbol_states.add(new_target_state_index)
 
@@ -3055,8 +2999,7 @@ class StmtStates:
                 if not isinstance(each_source_state, State):
                     continue
                 if each_source_state.tangping_flag:
-                    new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id,
-                                                                                       each_receiver_state_index)
+                    new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_receiver_state_index, stmt)
                     new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
                     if each_receiver_state.tangping_flag:
                         self.make_state_tangping(new_receiver_state)
@@ -3065,16 +3008,14 @@ class StmtStates:
                     continue
 
                 if each_receiver_state.tangping_flag:
-                    new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id,
-                                                                                       each_receiver_state_index)
+                    new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_receiver_state_index, stmt)
                     new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
                     for each_field_set in each_source_state.fields.values():
                         new_receiver_state.tangping_elements.update(each_field_set)
                     defined_symbol.states.add(new_receiver_state_index)
                     continue
 
-                new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id,
-                                                                                   each_receiver_state_index)
+                new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_receiver_state_index, stmt)
                 new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
                 for each_field in each_source_state.fields:
                     util.add_to_dict_with_default_set(new_receiver_state.fields, each_field,
@@ -3106,7 +3047,7 @@ class StmtStates:
             return
 
         receiver_symbol = self.frame.symbol_state_space[receiver_symbol_index]
-        # new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
+        # new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index, stmt)
 
         if (not field_name) or is_tangping:
             # self.make_state_tangping(new_receiver_state)
@@ -3171,18 +3112,14 @@ class StmtStates:
         receiver_symbol.states.add(receiver_state_index)
 
     def field_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
-        _perf_on = bool(getattr(config, "DEBUG_FLAG", False))
-        _t_total0 = time.perf_counter() if _perf_on else None
         receiver_symbol_index = status.used_symbols[0]
         field_index = status.used_symbols[1]
         receiver_symbol: Symbol = self.frame.symbol_state_space[receiver_symbol_index]
         field_symbol: Symbol = self.frame.symbol_state_space[field_index]
         if not isinstance(receiver_symbol, Symbol):  # TODO: 暂时未处理<string>.format的形式
             return
-        _t0 = time.perf_counter() if _perf_on else None
         receiver_states = self.read_used_states(receiver_symbol_index, in_states)
         field_states = self.read_used_states(field_index, in_states)
-        _t_read_used = (time.perf_counter() - _t0) if _perf_on else 0.0
         defined_symbol_index = status.defined_symbol
         defined_symbol = self.frame.symbol_state_space[defined_symbol_index]
         if not isinstance(defined_symbol, Symbol):
@@ -3208,26 +3145,12 @@ class StmtStates:
                 "defined_states": defined_states
             }
         )
-        _t0 = time.perf_counter() if _perf_on else None
         app_return = self.event_manager.notify(event)
-        _t_event_before = (time.perf_counter() - _t0) if _perf_on else 0.0
         if er.should_block_event_requester(app_return):
             defined_symbol.states = event.out_data.defined_states
             return P2ResultFlag()
         # else:
         # receiver_states = event.out_data.receiver_states
-
-        # Detailed breakdown only when scale is small, to avoid measurement overhead.
-        _do_detail = _perf_on and (len(receiver_states) * max(1, len(field_states)) <= 200)
-        _t_loop0 = time.perf_counter() if _perf_on else None
-        _t_branch = {
-            "tangping": 0.0,
-            "empty_or_anything": 0.0,
-            "field_hit": 0.0,
-            "unit": 0.0,
-            "class": 0.0,
-            "change_receiver": 0.0,
-        } if _do_detail else None
 
         for receiver_state_index in receiver_states:
             each_defined_states = set()
@@ -3243,98 +3166,85 @@ class StmtStates:
 
                 field_name = str(each_field_state.value)
                 if each_receiver_state.tangping_elements:
-                    _t1 = time.perf_counter() if _do_detail else None
                     each_defined_states.update(each_receiver_state.tangping_elements)
-                    if _do_detail:
-                        _t_branch["tangping"] += (time.perf_counter() - _t1)
                     continue
 
                 elif len(field_name) == 0 or each_field_state.state_type == STATE_TYPE_KIND.ANYTHING:
-                    _t1 = time.perf_counter() if _do_detail else None
                     self.change_field_read_receiver_state(
                         stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                         field_name, each_defined_states, is_tangping=True
                     )
-                    if _do_detail:
-                        _t_branch["empty_or_anything"] += (time.perf_counter() - _t1)
                     continue
 
                 elif field_name in each_receiver_state.fields:
-                    _t1 = time.perf_counter() if _do_detail else None
                     index_set = each_receiver_state.fields.get(field_name, set())
                     each_defined_states.update(index_set)
-                    if _do_detail:
-                        _t_branch["field_hit"] += (time.perf_counter() - _t1)
                     continue
 
-                # # if field_name not in receiver_state.fields:
-                # elif self.is_state_a_unit(each_receiver_state):
-                #     _t1 = time.perf_counter() if _do_detail else None
-                #     import_graph = self.loader.get_import_graph()
-                #     import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
-                #     # [ah]
-                #     found_in_import_graph = False
-                #     # 解决file.symbol的情况，从import graph里找symbol
-                #     for u, v, wt in import_graph.edges(data=True):
-                #         real_name = wt.get("real_name", None)
-                #         if real_name == field_name:
-                #             symbol_type = wt.get("symbol_type", None)
-                #             if symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
-                #                 data_type = LIAN_INTERNAL.METHOD_DECL
-                #             elif symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
-                #                 data_type = LIAN_INTERNAL.CLASS_DECL
-                #             else:
-                #                 data_type = LIAN_INTERNAL.UNIT
-                #
-                #             state_index = self.create_state_and_add_space(
-                #                 status, stmt_id=stmt_id,
-                #                 source_symbol_id=v,
-                #                 source_state_id=each_receiver_state.source_state_id,
-                #                 data_type=data_type,
-                #                 value=v,
-                #                 # access_path=self.copy_and_extend_access_path(
-                #                 #     each_receiver_state.access_path,
-                #                 #     AccessPoint(
-                #                 #         key=real_name,
-                #                 #     )
-                #                 # )
-                #                 access_path=[AccessPoint(key=real_name)]
-                #             )
-                #             found_in_import_graph = True
-                #             self.update_access_path_state_id(state_index)
-                #             each_defined_states.add(state_index)
-                #
-                #     if import_symbols and not found_in_import_graph:
-                #         for import_symbol in import_symbols:
-                #             if import_symbol.symbol_name == field_name:
-                #                 if import_symbol.symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
-                #                     data_type = LIAN_INTERNAL.METHOD_DECL
-                #                 elif import_symbol.symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
-                #                     data_type = LIAN_INTERNAL.CLASS_DECL
-                #                 else:
-                #                     data_type = LIAN_INTERNAL.UNIT
-                #
-                #                 state_index = self.create_state_and_add_space(
-                #                     status, stmt_id=stmt_id,
-                #                     source_symbol_id=import_symbol.symbol_id,
-                #                     source_state_id=each_receiver_state.source_state_id,
-                #                     data_type=data_type,
-                #                     value=import_symbol.import_stmt,
-                #                     # access_path = self.copy_and_extend_access_path(
-                #                     #     each_receiver_state.access_path,
-                #                     #     AccessPoint(
-                #                     #         key=import_symbol.symbol_name,
-                #                     #     )
-                #                     # )
-                #                     access_path=[AccessPoint(key=import_symbol.symbol_name)]
-                #                 )
-                #                 self.update_access_path_state_id(state_index)
-                #                 each_defined_states.add(state_index)
-                #     if _do_detail:
-                #         _t_branch["unit"] += (time.perf_counter() - _t1)
+                # if field_name not in receiver_state.fields:
+                elif self.is_state_a_unit(each_receiver_state):
+                    import_graph = self.loader.get_import_graph()
+                    import_symbols = self.loader.get_unit_export_symbols(each_receiver_state.value)
+                    # [ah]
+                    found_in_import_graph = False
+                    # 解决file.symbol的情况，从import graph里找symbol
+                    for u, v, wt in import_graph.edges(data=True):
+                        real_name = wt.get("real_name", None)
+                        if real_name == field_name:
+                            symbol_type = wt.get("symbol_type", None)
+                            if symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
+                                data_type = LIAN_INTERNAL.METHOD_DECL
+                            elif symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
+                                data_type = LIAN_INTERNAL.CLASS_DECL
+                            else:
+                                data_type = LIAN_INTERNAL.UNIT
+                
+                            state_index = self.create_state_and_add_space(
+                                status, stmt_id=stmt_id,
+                                source_symbol_id=v,
+                                source_state_id=each_receiver_state.source_state_id,
+                                data_type=data_type,
+                                value=v,
+                                # access_path=self.copy_and_extend_access_path(
+                                #     each_receiver_state.access_path,
+                                #     AccessPoint(
+                                #         key=real_name,
+                                #     )
+                                # )
+                                access_path=[AccessPoint(key=real_name)]
+                            )
+                            found_in_import_graph = True
+                            self.update_access_path_state_id(state_index)
+                            each_defined_states.add(state_index)
+                
+                    if import_symbols and not found_in_import_graph:
+                        for import_symbol in import_symbols:
+                            if import_symbol.symbol_name == field_name:
+                                if import_symbol.symbol_type == LIAN_SYMBOL_KIND.METHOD_KIND:
+                                    data_type = LIAN_INTERNAL.METHOD_DECL
+                                elif import_symbol.symbol_type == LIAN_SYMBOL_KIND.CLASS_KIND:
+                                    data_type = LIAN_INTERNAL.CLASS_DECL
+                                else:
+                                    data_type = LIAN_INTERNAL.UNIT
+                
+                                state_index = self.create_state_and_add_space(
+                                    status, stmt_id=stmt_id,
+                                    source_symbol_id=import_symbol.symbol_id,
+                                    source_state_id=each_receiver_state.source_state_id,
+                                    data_type=data_type,
+                                    value=import_symbol.import_stmt,
+                                    # access_path = self.copy_and_extend_access_path(
+                                    #     each_receiver_state.access_path,
+                                    #     AccessPoint(
+                                    #         key=import_symbol.symbol_name,
+                                    #     )
+                                    # )
+                                    access_path=[AccessPoint(key=import_symbol.symbol_name)]
+                                )
+                                self.update_access_path_state_id(state_index)
+                                each_defined_states.add(state_index)
 
                 elif self.is_state_a_class_decl(each_receiver_state):
-                    _t1 = time.perf_counter() if _do_detail else None
                     first_found_class_id = -1  # 记录从下往上找到该方法的第一个class_id。最后只返回该class中所有的同名方法，不继续向上找。
                     class_methods = self.loader.get_methods_in_class(each_receiver_state.value)
                     if class_methods:
@@ -3365,20 +3275,14 @@ class StmtStates:
                                 )
                                 self.update_access_path_state_id(state_index)
                                 each_defined_states.add(state_index)
-                    if _do_detail:
-                        _t_branch["class"] += (time.perf_counter() - _t1)
 
                 # 创建一个新的receiver_symbol，只创建一次。并将更新后的receiver_states赋给它
-                _t1 = time.perf_counter() if _do_detail else None
                 self.change_field_read_receiver_state(
                     stmt_id, stmt, status, receiver_symbol_index, receiver_state_index, each_receiver_state,
                     field_name, each_defined_states, is_tangping=False
                 )
-                if _do_detail:
-                    _t_branch["change_receiver"] += (time.perf_counter() - _t1)
             defined_states |= each_defined_states
 
-        _t_loop = (time.perf_counter() - _t_loop0) if _perf_on else 0.0
         defined_symbol.states = defined_states
 
         event = EventData(
@@ -3399,31 +3303,7 @@ class StmtStates:
                 "defined_states": defined_states
             }
         )
-        _t0 = time.perf_counter() if _perf_on else None
         app_return = self.event_manager.notify(event)
-        _t_event_after = (time.perf_counter() - _t0) if _perf_on else 0.0
-
-        if _perf_on:
-            _t_total = time.perf_counter() - _t_total0
-            # only print when it's actually slow
-            if _t_total > 0.05:  # 50ms
-                util.debug(
-                    "[perf][P2][field_read] "
-                    f"stmt_id={stmt_id} op={getattr(stmt, 'operation', '')} "
-                    f"receiver_states={len(receiver_states)} field_states={len(field_states)} | "
-                    f"read_used={_t_read_used*1000:.2f}ms "
-                    f"event_before={_t_event_before*1000:.2f}ms "
-                    f"loop={_t_loop*1000:.2f}ms "
-                    f"event_after={_t_event_after*1000:.2f}ms "
-                    f"total={_t_total*1000:.2f}ms"
-                )
-                if _do_detail and _t_branch:
-                    # print top 4 branches by time
-                    top = sorted(_t_branch.items(), key=lambda x: x[1], reverse=True)[:4]
-                    for name, t in top:
-                        if t <= 0:
-                            continue
-                        util.debug(f"[perf][P2][field_read_branch] stmt_id={stmt_id} {name}={t*1000:.2f}ms")
 
         return P2ResultFlag()
 
@@ -3706,7 +3586,7 @@ class StmtStates:
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
 
         def tangping():
-            new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index)
+            new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index, stmt)
             new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
             self.make_state_tangping(new_receiver_state)
             new_receiver_state.tangping_elements.update(source_states)
@@ -3762,8 +3642,7 @@ class StmtStates:
                     tangping()
                     continue
 
-                new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id,
-                                                                                   receiver_state_index)
+                new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index, stmt)
                 new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
                 # print("@field_state write", new_receiver_state)
 
@@ -3943,14 +3822,14 @@ class StmtStates:
                         break
 
             if tangping_flag:
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                 self.make_state_tangping(new_array_state)
                 new_array_state.tangping_elements.update(source_state_indexes)
                 defined_symbol_states.add(new_array_state_index)
 
             elif len(tmp_array) > 0 and tmp_array != array_state.array:
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                 new_array_state.array = tmp_array
                 defined_symbol_states.add(new_array_state_index)
@@ -4077,7 +3956,7 @@ class StmtStates:
             if util.is_empty(new_array_symbol_index):
                 new_array_symbol: Symbol = used_array_symbol
 
-            # new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index)
+            # new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt)
             new_array_state_index = each_array_state_index
             new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
             new_path: list = array_state.access_path.copy()

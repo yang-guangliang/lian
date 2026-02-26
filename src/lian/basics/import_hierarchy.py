@@ -103,7 +103,7 @@ class ImportHierarchy:
 
             scope_results = []
             if scope_id in public_scopes:
-                scope_results = scope_hierarchy.query(
+                scope_results = scope_hierarchy.slow_query(
                     (
                         scope_hierarchy.scope_id == scope_id
                     ) & (
@@ -116,7 +116,7 @@ class ImportHierarchy:
                     )
                 )
             else:
-                scope_results = scope_hierarchy.query(
+                scope_results = scope_hierarchy.slow_query(
                     (
                         scope_hierarchy.scope_id == scope_id
                     ) & (
@@ -448,7 +448,7 @@ class ImportHierarchy:
         if util.is_empty(scope_hierarchy):
             return
 
-        import_stmts = scope_hierarchy.query(
+        import_stmts = scope_hierarchy.slow_query(
             (scope_hierarchy.scope_id == 0) &
             (scope_hierarchy.scope_kind == LIAN_SYMBOL_KIND.IMPORT_STMT)
         )

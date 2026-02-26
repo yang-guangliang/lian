@@ -1,5 +1,6 @@
 ##!/usr/bin/env python3
 import dataclasses
+import json
 import os
 import networkx as nx
 import pandas as pd
@@ -12,6 +13,7 @@ from collections import Counter
 from itertools import count
 from collections import defaultdict
 from lian.util import readable_gir
+from lian.util.gir_block import GIRBlockViewer
 
 from lian.util import util
 from lian.config.constants import (
@@ -168,13 +170,17 @@ class BasicGraph:
     #     if node:
     #         self.graph.add_node(node)
 
+    def has_edge(self, src, dst):
+        return self.graph.has_edge(src, dst)
+
+    @profile
     def add_edge(self, src_stmt, dst_stmt, weight = None):
         src_stmt_id = -1
         dst_stmt_id = -1
         if util.is_empty(src_stmt) or util.is_empty(dst_stmt) :
             return
 
-        if type(src_stmt) in (int, numpy.int64, str):
+        if isinstance(src_stmt, (int, numpy.int64, str)):
             src_stmt_id = src_stmt
         elif isinstance(src_stmt, list):
             for src in src_stmt:
@@ -457,7 +463,7 @@ class ControlFlowGraph(BasicGraph):
 @dataclasses.dataclass
 class AccessPoint:
     kind: int = ACCESS_POINT_KIND.TOP_LEVEL
-    key: object = ""
+    key: str = ""
     state_id: int = -1
 
     def to_dict(self):
@@ -475,7 +481,6 @@ class AccessPoint:
         if isinstance(other, AccessPoint):
             return self.kind == other.kind and self.key == other.key and self.state_id == other.state_id
         return False
-
 
 
 # @dataclasses.dataclass
@@ -562,7 +567,7 @@ class State(BasicElement):
 
     def get_data_type(self):
         return self.data_type
-
+    
     @staticmethod
     def _safe_str(obj) -> str:
         """
@@ -634,26 +639,44 @@ class State(BasicElement):
         except ValueError:
             # last resort: stringify, but still avoid crashing the serializer
             return repr(f"<unreprable {type(obj).__name__}>")
+        
+    def _adjust_fields(self):
+        keys_to_move = []
+        for k in self.fields:
+            if not isinstance(k, str): 
+                keys_to_move.append((k, int(k)))
+
+        # 2. 执行原地移动
+        for old_k, new_k in keys_to_move:
+            value = self.fields[old_k]
+            # 删除旧 key
+            del self.fields[old_k]
+            # 赋值新 key
+            self.fields[new_k] = value
 
     def to_dict(self, counter, _id):
+        self._adjust_fields()
+
         result = {
             "index"                 : counter,
             "symbol_or_state"       : self.symbol_or_state,
             "stmt_id"               : self.stmt_id,
             "state_id"              : self.state_id,
+            # the following three fields are for symbol
             "name"                  : None,
             "default_data_type"     : None,
             "states"                : None,
+
             "state_type"            : self.state_type,
             "data_type"             : self.data_type,
-            "value"                 : State._safe_str(self.value),
+            "value"                 : str(self.value), 
             "tangping_flag"         : self.tangping_flag,
-            "tangping_elements"     : str(self.tangping_elements),
-            "fields"                : str(self.fields),
-            "array"                 : str(self.array),
+            "tangping_elements"     : json.dumps(list(self.tangping_elements)),
+            "fields"                : json.dumps(self.fields, default=lambda x: list(x)),
+            "array"                 : json.dumps(self.array, default=lambda x: list(x)),
             "source_symbol_id"      : self.source_symbol_id,
             "source_state_id"       : self.source_state_id,
-            "access_path"           : [p.to_dict_str() for p in self.access_path],
+            "access_path"           : json.dumps(self.access_path, default=lambda x: x.to_dict()),
             # "unique_id"              : self.unique_id,
             # "analysis_round_number"  : self.analysis_round_number,
             # "analysis_phase_id"      : self.analysis_phase_id,
@@ -812,10 +835,10 @@ class ParameterMapping:
             "arg_index_in_space": self.arg_index_in_space,
             "arg_state_id": self.arg_state_id,
             "arg_source_symbol_id": self.arg_source_symbol_id,
-            "arg_access_path": [str(p) for p in self.arg_access_path],
+            "arg_access_path": [p.to_dict_str() for p in self.arg_access_path],
             "parameter_symbol_id": self.parameter_symbol_id,
             "parameter_type": self.parameter_type,
-            "parameter_access_path": str(self.parameter_access_path),
+            "parameter_access_path": self.parameter_access_path.to_dict_str() if self.parameter_access_path else None,
             "is_default_value": self.is_default_value,
         }
 
@@ -1039,6 +1062,13 @@ class StateDefNode:
             "state_id": self.state_id,
             "stmt_id": self.stmt_id
         }
+    
+    def to_simple_dict(self):
+        return {
+            "index": int(self.index),
+            "state_id": int(self.state_id),
+            "stmt_id": int(self.stmt_id)
+        }
 
 @dataclasses.dataclass
 class SymbolDefNode:
@@ -1052,7 +1082,10 @@ class SymbolDefNode:
     def __eq__(self, other: object) -> bool:
         return isinstance(other, SymbolDefNode) and self.index == other.index and self.symbol_id == other.symbol_id and self.stmt_id == other.stmt_id
 
-    def to_dict(self, method_id, bit_pos):
+    def to_tuple(self):
+        return (self.index, self.symbol_id, self.stmt_id,)
+
+    def to_dict(self, method_id = -1, bit_pos = -1):
         return {
             "method_id": method_id,
             "bit_pos": bit_pos,
@@ -1060,15 +1093,12 @@ class SymbolDefNode:
             "symbol_id": self.symbol_id,
             "stmt_id": self.stmt_id
         }
-
-    def to_tuple(self):
-        return (self.index, self.symbol_id, self.stmt_id,)
-
-    def to_dict_with_prefix(self, prefix):
+    
+    def to_simple_dict(self):
         return {
-            f"{prefix}_index": self.index,
-            f"{prefix}_symbol_id": self.symbol_id,
-            f"{prefix}_stmt_id": self.stmt_id
+            "index": int(self.index),
+            "symbol_id": int(self.symbol_id),
+            "stmt_id": int(self.stmt_id)
         }
 
 @dataclasses.dataclass
@@ -1104,60 +1134,68 @@ class StmtStatus:
         )
 
     def to_dict(self, method_id):
+        new_in_symbol_bits = []
+        for each_bit in self.in_symbol_bits:
+            new_in_symbol_bits.append(each_bit.to_simple_dict())
+
+        new_out_symbol_bits = []
+        for each_bit in self.out_symbol_bits:
+            new_out_symbol_bits.append(each_bit.to_simple_dict())
+
+        new_in_state_bits = []
+        for each_bit in self.in_state_bits:
+            new_in_state_bits.append(each_bit.to_simple_dict())
+
+        new_out_state_bits = []
+        for each_bit in self.out_state_bits:
+            new_out_state_bits.append(each_bit.to_simple_dict())
+
         return {
             "method_id"                 : method_id,
             "stmt_id"                   : self.stmt_id,
             "defined_symbol"            : self.defined_symbol,
-            "used_symbols"              : str(self.used_symbols),
-            "implicitly_defined_symbols": str(self.implicitly_defined_symbols),
-            "implicitly_used_symbols"   : str(self.implicitly_used_symbols),
-            "in_symbol_bits"            : str(self.in_symbol_bits),
-            "out_symbol_bits"           : str(self.out_symbol_bits),
-            "defined_states"            : str(self.defined_states),
-            "in_state_bits"             : str(self.in_state_bits),
-            "out_state_bits"            : str(self.out_state_bits),
+            "used_symbols"              : json.dumps(self.used_symbols),
+            "implicitly_defined_symbols": json.dumps(self.implicitly_defined_symbols),
+            "implicitly_used_symbols"   : json.dumps(self.implicitly_used_symbols),
+            "in_symbol_bits"            : json.dumps(new_in_symbol_bits),
+            "out_symbol_bits"           : json.dumps(new_out_symbol_bits),
+            "defined_states"            : json.dumps(list(self.defined_states)),
+            "in_state_bits"             : json.dumps(new_in_state_bits),
+            "out_state_bits"            : json.dumps(new_out_state_bits),
             "field"                     : self.field_name,
         }
 
 class SymbolGraph(BasicGraphWithSelfCircle):
     def __init__(self, method_id):
-        self.method_id = method_id
         super().__init__()
+        self.method_id = method_id
+        self.graph = nx.DiGraph()
 
     def add_edge(self, src_node, dst_node, weight = None):
-        if util.is_empty(src_node) or util.is_empty(dst_node) :
+        if util.is_empty(src_node) or util.is_empty(dst_node):
             return
-
-        if isinstance(src_node, list):
-            for src in src_node:
-                self._add_one_edge(src, dst_node, weight)
-        else:
-            self._add_one_edge(src_node, dst_node, weight)
+        
+        self._add_one_edge(src_node, dst_node, weight)
 
 class StateGraph(SymbolGraph):
     pass
 
 class StateFlowGraph(SymbolGraph):
     def add_edge(self, src_node, dst_node, weight = None):
-        # import inspect
-        # caller_frame = inspect.currentframe().f_back
-        # info = inspect.getframeinfo(caller_frame)
-        # print(f"{info.filename}:{info.lineno} add_edge: {src_node} -> {dst_node} @ weight={weight}")
-        # StateFlowGraph(SFG) 不需要 MultiDiGraph 的“多重边”语义：
-        # 如果同一对节点 (src_node, dst_node) 的边已经存在，则跳过，避免重复边干扰后续分析。
-        if util.is_empty(src_node) or util.is_empty(dst_node):
+        if util.is_empty(dst_node):
             return
-
+        
         if isinstance(src_node, list):
-            for src in src_node:
-                self.add_edge(src, dst_node, weight)
-            return
+            for node in src_node:
+                if util.is_empty(node):
+                    continue
+                self._add_one_edge(node, dst_node, weight)
 
-        # networkx.MultiDiGraph.has_edge(u, v) 为 True 表示 u->v 至少存在一条边
-        if self.graph.has_edge(src_node, dst_node):
-            return
-
-        super().add_edge(src_node, dst_node, weight)
+        else:
+            if util.is_empty(src_node):
+                return
+        
+            self._add_one_edge(src_node, dst_node, weight)
 
 @dataclasses.dataclass
 class SFGNode:
@@ -1171,6 +1209,7 @@ class SFGNode:
     value: the value of state node
     """
 
+    @profile
     def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, stmt=None, name="", access_path=[]):
         # 节点类型
         self.node_type = node_type
@@ -1184,20 +1223,26 @@ class SFGNode:
         # context info: here we use 1-call, indicating which call_stmt calls current method (being tested)
         # Hence it is call_site
         self.context_id = -1
+        if isinstance(context, int):
+            self.context_id = context
+        elif isinstance(context, CallSite):
+            self.context_id = context.call_stmt_id
         #self.method_name=None
         #self.module_name=None
-        self.line_no=-1
+        self.line_no = -1
         self.access_path = access_path
         # if access_path:
         #     self.access_path = util.access_path_formatter(access_path)
         self.operation = ""
+        self.stmt = None
 
-        if stmt:
+        if stmt is not None:
             self.line_no = stmt.start_row
             if len(name) == 0:
                 self.name = stmt.operation
-            self.stmt = stmt
-            self.operation = readable_gir.get_gir_str(stmt)
+
+            if config.COMPLETE_SFG_DUMP_FLAG:
+                self.operation = readable_gir.get_gir_str(stmt)
 
     def __hash__(self) -> int:
         return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id))
@@ -1380,6 +1425,8 @@ class BitVectorManager:
         return results
 
     def add_bit_id(self, bit_id):
+        if not isinstance(bit_id, (SymbolDefNode, StateDefNode)):
+            raise ValueError(f"bit_id {bit_id} is not a SymbolDefNode or StateDefNode")
         if bit_id in self.id_to_bit_pos:
             return
         self.id_to_bit_pos[bit_id] = self.counter
@@ -1396,12 +1443,19 @@ class BitVectorManager:
     def kill_bit_ids(self, bit_vector, id_list):
 
         for bit_id in id_list:
+            if not isinstance(bit_id, (SymbolDefNode, StateDefNode)):
+                raise ValueError(f"bit_id {bit_id} is not a SymbolDefNode or StateDefNode")
+            
             if bit_id in bit_vector:
                 bit_vector.discard(bit_id)
         return bit_vector
 
     def gen_bit_ids(self, bit_vector, id_list):
         for bit_id in id_list:
+
+            if not isinstance(bit_id, (SymbolDefNode, StateDefNode)):
+                raise ValueError(f"bit_id {bit_id} is not a SymbolDefNode or StateDefNode")
+            
             bit_vector.add(bit_id)
         return bit_vector
 
@@ -1649,14 +1703,14 @@ class MethodSummaryInstance(MethodSummaryTemplate):
 
     def copy_template_to_instance(self, summary_template: MethodSummaryTemplate):
         self.key = summary_template.key
-        # self.parameter_symbols = copy.deepcopy(summary_template.parameter_symbols)
-        # self.defined_external_symbols = copy.deepcopy(summary_template.defined_external_symbols)
-        self.used_external_symbols = copy.deepcopy(summary_template.used_external_symbols)
-        # self.return_symbols = copy.deepcopy(summary_template.return_symbols)
-        self.key_dynamic_content = copy.deepcopy(summary_template.key_dynamic_content)
-        self.dynamic_call_stmts = summary_template.dynamic_call_stmts.copy()
+        # self.parameter_symbols = summary_template.parameter_symbols
+        # self.defined_external_symbols = summary_template.defined_external_symbols
+        self.used_external_symbols = summary_template.used_external_symbols
+        # self.return_symbols = summary_template.return_symbols
+        self.key_dynamic_content = summary_template.key_dynamic_content
+        self.dynamic_call_stmts = summary_template.dynamic_call_stmts
         self.resolver_result = {}
-        # self.this_symbols = copy.deepcopy(summary_template.this_symbols)
+        # self.this_symbols = summary_template.this_symbols
 
     def copy(self):
         summary = MethodSummaryInstance(
@@ -1842,11 +1896,12 @@ class ComputeFrame(MetaComputeFrame):
 
         self.stmt_worklist = None
         self.stmts_with_symbol_update = SimpleSet()
-        self.stmt_id_to_stmt = {}
+        self.unit_gir: GIRBlockViewer = GIRBlockViewer()
         self.stmt_id_to_status: dict[int, StmtStatus] = {}
-        self.symbol_state_space: SymbolStateSpace = space
         if space is None:
             self.symbol_state_space = SymbolStateSpace()
+        else:
+            self.symbol_state_space: SymbolStateSpace = space
         self.space_summary: SymbolStateSpace = SymbolStateSpace()
         self.all_symbol_defs = set()
         self.all_state_defs = set()

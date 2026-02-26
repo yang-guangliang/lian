@@ -59,6 +59,7 @@ def file_md5(filename, chunksize=65536):
     return m.hexdigest()
 
 def error_and_quit(*msg):
+    sys.stdout.flush()
     sys.stderr.write(f"[ERROR]: {' '.join(str(item) for item in msg)}\n")
     sys.exit(-1)
 
@@ -438,6 +439,13 @@ class LRUCache:
         node.prev = last_node
         node.next = self.tail
 
+    def clean(self):
+        self.cache = {}
+        self.head = CacheNode(-1, None)
+        self.tail = CacheNode(-1, None)
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
 
 def read_stmt_field(stmt_field, default=""):
     if isna(stmt_field):
@@ -499,7 +507,7 @@ def process_string(s):
         return s
     s = re.sub(r'[\n\t\r]', '', s)
 
-    special_chars = ['\\', '\"', "\'", ' ']
+    special_chars = ['\\', '\"', "\'"]
     for char in special_chars:
         s = s.replace(char, f"\\{char}")
 
@@ -602,6 +610,3 @@ def access_path_formatter(access_path):
         key_value = getattr(p, 'key', p)
         parts.append(str(key_value))
     return ".".join(parts)
-
-
-

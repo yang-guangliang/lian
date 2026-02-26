@@ -67,7 +67,7 @@ def init_imported_unit(data: EventData):
                 frame.init_imported_unit(kid_import, lang)
 
         unit_scope = frame.loader.load_unit_scope_hierarchy(unit_id)
-        scope_item = unit_scope.query(
+        scope_item = unit_scope.slow_query(
             (unit_scope.scope_kind == LIAN_SYMBOL_KIND.METHOD_KIND) &
             (unit_scope.name == LIAN_INTERNAL.UNIT_INIT)
         )

@@ -3,7 +3,6 @@ import copy
 import pprint, os
 import sys
 import traceback
-import time
 import numpy
 import networkx as nx
 
@@ -49,6 +48,7 @@ from lian.common_structs import (
     SFGNode,
     SFGEdge
 )
+from lian.util.gir_block import GIRBlockViewer
 from lian.util.loader import Loader
 from lian.core.resolver import Resolver
 from lian.core.stmt_states import StmtStates
@@ -58,7 +58,7 @@ from networkx.generators.classic import complete_graph
 
 stmt_counts = 0
 
-class PrelimSemanticAnalysis:
+class P2PrelimSemanticAnalysis:
     def __init__(self, lian):
         self.options = lian.options
         self.complete_graph = self.options.complete_graph
@@ -84,32 +84,33 @@ class PrelimSemanticAnalysis:
         return results
 
     def adjust_defined_symbols_and_init_bit_vector(self, frame: ComputeFrame, method_id):
-        old_defined_symbols = self.loader.get_method_defined_symbols(method_id)
-        if not old_defined_symbols:
+        raw_data = self.loader.get_method_defined_symbols_raw_p1(method_id)
+        if util.is_empty(raw_data):
             return
+        
+        symbol_id_to_stmt_ids = {}
+        for row in raw_data:
+            symbol_id_to_stmt_ids[row.symbol_id] = set(row.defined)
 
         all_symbol_defs = set()
-        result = {}
-        for symbol_id, defined_set in old_defined_symbols.items():
-            for defined_stmt_id in defined_set:
-                status = frame.stmt_id_to_status[defined_stmt_id]
-                all_defined_symbol_indexes = [status.defined_symbol] + status.implicitly_defined_symbols
-                for each_index in all_defined_symbol_indexes:
-                    content = frame.symbol_state_space[each_index]
-                    if isinstance(content, Symbol):
-                        if content.symbol_id == symbol_id:
-                            if symbol_id not in result:
-                                result[symbol_id] = set()
-                            symbol_node = SymbolDefNode(
-                                index = each_index, symbol_id=symbol_id, stmt_id=defined_stmt_id
-                            )
-                            result[symbol_id].add(symbol_node)
-                            all_symbol_defs.add(symbol_node)
-                            break
+        defined_symbols = {}
 
-        frame.defined_symbols = result
-        frame.symbol_bit_vector_manager.init(all_symbol_defs)
+        for each_index, item in enumerate(frame.symbol_state_space.space):
+            if isinstance(item, Symbol):
+                symbol_id = item.symbol_id
+                stmt_id = item.stmt_id
+                if symbol_id in symbol_id_to_stmt_ids and stmt_id in symbol_id_to_stmt_ids[symbol_id]:
+                    if symbol_id not in defined_symbols:
+                        defined_symbols[symbol_id] = set()
+                    symbol_node = SymbolDefNode(
+                        index = each_index, symbol_id=symbol_id, stmt_id=stmt_id
+                    )
+                    defined_symbols[symbol_id].add(symbol_node)
+                    all_symbol_defs.add(symbol_node)
+
+        frame.defined_symbols = defined_symbols
         frame.all_symbol_defs = all_symbol_defs
+        frame.symbol_bit_vector_manager.init(all_symbol_defs)
 
     def adjust_defined_states_and_init_bit_vector(self, frame: ComputeFrame, method_id):
         frame.defined_states = self.loader.get_method_defined_states_p1(method_id)
@@ -118,25 +119,26 @@ class PrelimSemanticAnalysis:
             for state_def_node in defined_set:
                 all_state_defs.add(state_def_node)
 
-        frame.state_bit_vector_manager.init(all_state_defs)
         frame.all_state_defs = all_state_defs
+        frame.state_bit_vector_manager.init(all_state_defs)
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack):
         frame.has_been_inited = True
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
+        frame.cfg = self.loader.get_method_cfg(method_id)
+        if util.is_empty(frame.cfg):
+            return None
+
         _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
-        if util.is_available(parameter_decls):
-            for row in parameter_decls:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
-                frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
-                frame.is_first_round[row.stmt_id] = True
-        if util.is_available(method_body):
-            for row in method_body:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
-                frame.stmt_counters[row.stmt_id] = config.FIRST_ROUND
-                frame.is_first_round[row.stmt_id] = True
+        parameter_decl_block = GIRBlockViewer(parameter_decls)
+        method_body_block = GIRBlockViewer(method_body)
+        frame.unit_gir.append_other(parameter_decl_block).append_other(method_body_block)
+
+        for stmt_id in frame.unit_gir.get_all_stmt_ids():
+            frame.stmt_counters[stmt_id] = config.FIRST_ROUND
+            frame.is_first_round[stmt_id] = True
 
         frame.stmt_state_analysis = StmtStates(
             analysis_phase_id = self.analysis_phase_id,
@@ -149,24 +151,20 @@ class PrelimSemanticAnalysis:
             complete_graph=self.options.complete_graph,
         )
 
-        frame.cfg = self.loader.get_method_cfg(method_id)
-        if util.is_empty(frame.cfg):
-            return
-
         frame.stmt_worklist = SimpleWorkList(graph = frame.cfg)
         frame.stmt_worklist.add(util.find_cfg_first_nodes(frame.cfg))
         frame.stmts_with_symbol_update.add(util.find_cfg_first_nodes(frame.cfg))
 
         # avoid changing the content of the loader
-        frame.stmt_id_to_status = copy.deepcopy(self.loader.get_stmt_status_p1(method_id))
-        frame.symbol_state_space = self.loader.get_symbol_state_space_p1(method_id).copy()
+        frame.stmt_id_to_status = self.loader.get_stmt_status_p1(method_id)
+        frame.symbol_state_space = self.loader.get_symbol_state_space_p1(method_id)
         if util.is_empty(frame.symbol_state_space):
-            return
+            return None
 
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(
             self.loader.get_method_internal_callees(method_id)
         )
-        frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id).copy()
+        frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id)
         frame.all_local_symbol_ids = frame.method_def_use_summary.local_symbol_ids
         #print(frame.method_def_use_summary)
 
@@ -262,6 +260,7 @@ class PrelimSemanticAnalysis:
         if status.out_symbol_bits != old_out_symbol_bits or def_changed:
             frame.stmts_with_symbol_update.add(util.graph_successors(frame.cfg, stmt_id))
 
+    @profile
     def analyze_reachable_symbols(self, stmt_id, stmt, frame: ComputeFrame):
         status = frame.stmt_id_to_status[stmt_id]
         old_out_symbol_bits = status.out_symbol_bits
@@ -300,6 +299,8 @@ class PrelimSemanticAnalysis:
             # pprint.pprint(defined_symbol)
             symbol_id = defined_symbol.symbol_id
             key = SymbolDefNode(index = defined_symbol_index, symbol_id = symbol_id, stmt_id = stmt_id)
+            if key in current_bits:
+                continue
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
 
             edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.EXPLICITLY_DEFINED
@@ -358,6 +359,8 @@ class PrelimSemanticAnalysis:
                 continue
             symbol_id = defined_symbol.symbol_id
             key = SymbolDefNode(index=defined_symbol_index, symbol_id=symbol_id, stmt_id=stmt_id)
+            if key in current_bits:
+                continue
             current_bits = self.update_current_symbol_bit(key, frame, current_bits)
             frame.symbol_graph.add_edge(stmt_id, key, SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.IMPLICITLY_DEFINED)
             tmp_context = None
@@ -402,13 +405,7 @@ class PrelimSemanticAnalysis:
         if used_symbol_id in frame.defined_symbols:
             # print(f"used_symbol: {frame.defined_symbols[used_symbol_id]}")
             # print(f"available_symbol_defs: {available_symbol_defs}")
-            used_define_list = list(frame.defined_symbols[used_symbol_id])
-            if len(available_symbol_defs) != 0 and len(used_define_list) != 0:
-                for node1 in available_symbol_defs:
-                    for node2 in used_define_list:
-                        if node1 == node2:
-                            reachable_symbol_defs.add(node1)
-            # reachable_symbol_defs = available_symbol_defs & frame.defined_symbols[used_symbol_id]
+            reachable_symbol_defs = available_symbol_defs & frame.defined_symbols[used_symbol_id]           
             # print(reachable_symbol_defs)
         else:
             if used_symbol_id not in frame.all_local_symbol_ids:
@@ -420,6 +417,7 @@ class PrelimSemanticAnalysis:
 
         return reachable_symbol_defs
 
+    @profile
     def update_used_symbols_to_symbol_graph(self, stmt_id, stmt, frame: ComputeFrame, only_implicitly_used_symbols=False):
         status = frame.stmt_id_to_status[stmt_id]
         available_defs = frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
@@ -435,6 +433,7 @@ class PrelimSemanticAnalysis:
                 tmp_context = None
                 if self.analysis_phase_id == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
                     tmp_context = frame.get_context()
+                    
                 frame.state_flow_graph.add_edge(
                     SFGNode(
                         node_type=SFG_NODE_KIND.STATE,
@@ -465,6 +464,8 @@ class PrelimSemanticAnalysis:
                         edge_type = SYMBOL_DEPENDENCY_GRAPH_EDGE_KIND.EXPLICITLY_USED
 
                 for tmp_key in reachable_defs:
+                    if frame.symbol_graph.has_edge(tmp_key, stmt_id):
+                        continue
                     frame.symbol_graph.add_edge(tmp_key, stmt_id, edge_type)
                     if tmp_key.index <= 0:
                         continue
@@ -641,7 +642,7 @@ class PrelimSemanticAnalysis:
             # 对每个symbol的in_states按state_id合并一次，并将fusion_state添加到status.defined_states中
             state_id_to_indexes = self.group_states_with_state_ids(frame, each_symbol_in_states)
             for state_id, states_with_same_id in state_id_to_indexes.items():
-                fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, status)
+                fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, stmt, status)
                 each_symbol_in_states -= states_with_same_id
                 each_symbol_in_states |= fusion_state
         return symbol_id_to_state_index
@@ -881,6 +882,7 @@ class PrelimSemanticAnalysis:
         #     print(f"adjusted_states: {adjusted_states}")
         status.defined_states = adjusted_states
 
+    @profile
     def add_sfg_edge_of_defined_symbol_to_state(self, stmt_id, stmt, status, frame:ComputeFrame, old_defined_symbol_states):
         if stmt.operation == "variable_decl":
             return
@@ -891,8 +893,9 @@ class PrelimSemanticAnalysis:
             for each_state_index in defined_symbol.states:
                 if each_state_index == -1:
                     continue
-                # if each_state_index in old_defined_symbol_states:
-                #     continue
+                
+                if each_state_index in old_defined_symbol_states:
+                    continue
 
                 state = frame.symbol_state_space[each_state_index]
                 if not isinstance(state, State):
@@ -928,6 +931,7 @@ class PrelimSemanticAnalysis:
                 return True
         return False
 
+    @profile
     def compute_stmt_states(self, stmt_id, stmt, frame: ComputeFrame):
         status = frame.stmt_id_to_status[stmt_id]
         in_states = {}
@@ -1058,7 +1062,7 @@ class PrelimSemanticAnalysis:
 
         for stmt_id in util.find_cfg_last_nodes(frame.cfg):
             # all_newest_states_indexes = set()
-            stmt = frame.stmt_id_to_stmt[stmt_id]
+            stmt = frame.unit_gir.get_stmt_by_id(stmt_id)
             status = frame.stmt_id_to_status[stmt_id]
             current_symbol_bits = status.out_symbol_bits
             current_state_bits = status.out_state_bits
@@ -1101,7 +1105,7 @@ class PrelimSemanticAnalysis:
                 fusion_states = set()
                 for state_id, states_with_same_id in state_id_to_indexes.items():
                     if (len(states_with_same_id) > 1):
-                        fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, status)
+                        fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, stmt, status)
                         fusion_states.update(fusion_state)
                     else:
                         fusion_states.update(states_with_same_id)
@@ -1116,7 +1120,7 @@ class PrelimSemanticAnalysis:
                     fusion_states = set()
                     for state_id, states_with_same_id in state_id_to_indexes.items():
                         if (len(states_with_same_id) > 1):
-                            fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, status)
+                            fusion_state = frame.stmt_state_analysis.fuse_states_to_one_state(states_with_same_id, stmt_id, stmt, status)
                             fusion_states.update(fusion_state)
                         else:
                            fusion_states.update(states_with_same_id)
@@ -1181,25 +1185,16 @@ class PrelimSemanticAnalysis:
         return method_summary
         # print(f"dynamic_call_stmts: {frame.method_summary_template.dynamic_call_stmts}")
 
+    @profile
     def analyze_stmts(self, frame: ComputeFrame):
         # perf counters (debug only)
-        if self.options.debug and not hasattr(frame, "_p2_perf"):
-            frame._p2_perf = {
-                "stmt_total": 0,
-                "t_total": 0.0,
-                "t_reachable_symbols": 0.0,
-                "t_compute_states": 0.0,
-                "t_rerun_defuse": 0.0,
-                "slow_stmts": [],  # list of (total_s, stmt_id, op, t_reach_s, t_states_s, t_rerun_s)
-            }
-
         while len(frame.stmt_worklist) != 0:
             stmt_id = frame.stmt_worklist.peek()
             if stmt_id <= 0 or stmt_id not in frame.stmt_counters:
                 frame.stmt_worklist.pop()
                 continue
 
-            stmt = frame.stmt_id_to_stmt.get(stmt_id)
+            stmt = frame.unit_gir.get_stmt_by_id(stmt_id)
             if stmt_id in frame.loop_total_rounds:
                 if frame.stmt_counters[stmt_id] <= frame.loop_total_rounds[stmt_id]:
                     frame.stmt_worklist.add(util.graph_successors(frame.cfg, stmt_id))
@@ -1218,26 +1213,14 @@ class PrelimSemanticAnalysis:
             if self.options.debug:
                 util.debug(f"-----analyzing stmt <{stmt_id}> of method <{frame.method_id}> operation is {stmt.operation}-----")
 
-            _t_stmt0 = time.perf_counter() if self.options.debug else None
-            _t_reach = 0.0
-            _t_states = 0.0
-            _t_rerun = 0.0
-
             if frame.interruption_flag:
                 frame.interruption_flag = False
             else:
                 # compute in/out bits
-                _t0 = time.perf_counter() if self.options.debug else None
                 self.analyze_reachable_symbols(stmt_id, stmt, frame)
-                if self.options.debug:
-                    _t_reach = time.perf_counter() - _t0
 
             # according to symbol_graph, compute the state flow of current statement
-            _t0 = time.perf_counter() if self.options.debug else None
-            util.debug("before compute_stmt_states")
             result_flag = self.compute_stmt_states(stmt_id, stmt, frame)
-            if self.options.debug:
-                _t_states = time.perf_counter() - _t0
             frame.stmts_with_symbol_update.remove(stmt_id)
             # check if interruption is enabled
             if result_flag.interruption_flag:
@@ -1246,12 +1229,9 @@ class PrelimSemanticAnalysis:
             # re-analyze def/use
             if result_flag.symbol_def_changed or result_flag.symbol_use_changed:
                 # change out_bit to reflect implicitly_defined_symbols
-                _t0 = time.perf_counter() if self.options.debug else None
                 self.rerun_analyze_reachable_symbols(stmt_id, stmt, frame, result_flag)
                 # update method def/use
                 self.update_method_def_use_summary(stmt_id, frame)
-                if self.options.debug:
-                    _t_rerun = time.perf_counter() - _t0
 
             # global stmt_counts
             # stmt_counts += 1
@@ -1262,24 +1242,6 @@ class PrelimSemanticAnalysis:
             frame.stmt_worklist.pop()
             frame.stmt_counters[stmt_id] += 1
             frame.is_first_round[stmt_id] = False
-
-            if self.options.debug:
-                _t_stmt = time.perf_counter() - _t_stmt0
-                frame._p2_perf["stmt_total"] += 1
-                frame._p2_perf["t_total"] += _t_stmt
-                frame._p2_perf["t_reachable_symbols"] += _t_reach
-                frame._p2_perf["t_compute_states"] += _t_states
-                frame._p2_perf["t_rerun_defuse"] += _t_rerun
-                # only log slow stmts to reduce noise
-                if _t_stmt > 0.05:  # 50ms
-                    op = getattr(stmt, "operation", "")
-                    frame._p2_perf["slow_stmts"].append((_t_stmt, stmt_id, op, _t_reach, _t_states, _t_rerun))
-                    util.debug(
-                        "[perf][P2][stmt] "
-                        f"method={frame.method_id} stmt={stmt_id} op={op} | "
-                        f"total={_t_stmt*1000:.2f}ms reach={_t_reach*1000:.2f}ms "
-                        f"states={_t_states*1000:.2f}ms rerun={_t_rerun*1000:.2f}ms"
-                    )
 
     def save_graph_to_dot(self, graph, entry_point, phase_id, symbol_state_space):
         if not (self.options.graph or self.options.complete_graph):
@@ -1307,16 +1269,18 @@ class PrelimSemanticAnalysis:
                 util.error("An error occurred while writing state flow graph to dot file.")
                 traceback.print_exc()
 
+    @profile
     def analyze_method(self, method_id):
         current_frame = ComputeFrame(method_id=method_id, loader=self.loader)
-        current_frame._p2_start_time = time.perf_counter()
         frame_stack = ComputeFrameStack().add(current_frame)
         while len(frame_stack) != 0:
             frame = frame_stack.peek()
-            if not self.options.quiet:
-                print(f"Analyzing <method {frame.method_id}>")
+            # if not self.options.quiet:
+            #     print(f"Analyzing <method {frame.method_id}>")
 
             if not frame.has_been_inited:
+                if not self.options.quiet:
+                    print(f"Analyzing <method {frame.method_id}>")
                 if self.init_compute_frame(frame, frame_stack) is None:
                     self.analyzed_method_list.add(frame.method_id)
                     frame_stack.pop()
@@ -1340,7 +1304,6 @@ class PrelimSemanticAnalysis:
                                 call_stmt_id = data.call_stmt_id,
                                 loader = self.loader
                             )
-                            new_frame._p2_start_time = time.perf_counter()
                             frame_stack.add(new_frame)
                 # new_frame = ComputeFrame(method_id = data.method_id, caller_id = data.caller_id, call_stmt_id = data.call_stmt_id, loader = self.loader)
                 # frame_stack.add(new_frame)
@@ -1349,108 +1312,21 @@ class PrelimSemanticAnalysis:
             # Current frame is done, pop it
             # save the result
             self.analyzed_method_list.add(frame.method_id)
-            _t_save0 = time.perf_counter() if self.options.debug else None
 
-            if self.options.debug:
-                _save_costs = []  # list of (name, seconds)
+            self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
+            self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
+            self.loader.save_symbol_bit_vector_p2(frame.method_id, frame.symbol_bit_vector_manager)
+            self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
+            self.loader.save_symbol_state_space_p2(frame.method_id, frame.symbol_state_space)
+            self.loader.save_method_symbol_graph_p2(frame.method_id, frame.symbol_graph.graph)
+            self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
+            self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
+            self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
+            self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
+            self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
 
-                _t0 = time.perf_counter()
-                self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
-                _save_costs.append(("save_analysis_summary", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
-                _save_costs.append(("save_stmt_status_p2", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_symbol_bit_vector_p2(frame.method_id, frame.symbol_bit_vector_manager)
-                _save_costs.append(("save_symbol_bit_vector_p2", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
-                _save_costs.append(("save_state_bit_vector_p2", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_symbol_state_space_p2(frame.method_id, frame.symbol_state_space)
-                _save_costs.append(("save_symbol_state_space_p2", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_method_symbol_graph_p2(frame.method_id, frame.symbol_graph.graph)
-                _save_costs.append(("save_method_symbol_graph_p2", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
-                _save_costs.append(("save_method_defined_symbols_p2", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
-                _save_costs.append(("save_method_defined_states_p2", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
-                _save_costs.append(("save_method_def_use_summary", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
-                _save_costs.append(("save_method_sfg", time.perf_counter() - _t0))
-
-                _t0 = time.perf_counter()
-                self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
-                _save_costs.append(("save_graph_to_dot", time.perf_counter() - _t0))
-
-                # print summary if saving is slow (or any single step is slow)
-                _t_save = time.perf_counter() - _t_save0
-                slow_any = any(t > 0.05 for _, t in _save_costs)  # 50ms
-                if _t_save > 0.1 or slow_any:  # 100ms total
-                    util.debug(f"[perf][P2][save_total] method={frame.method_id} total={_t_save*1000:.2f}ms")
-                    for name, t in sorted(_save_costs, key=lambda x: x[1], reverse=True)[:6]:
-                        util.debug(f"[perf][P2][save_step] method={frame.method_id} {name}={t*1000:.2f}ms")
-            else:
-                self.generate_and_save_analysis_summary(frame, frame.method_summary_template)
-                self.loader.save_stmt_status_p2(frame.method_id, frame.stmt_id_to_status)
-                self.loader.save_symbol_bit_vector_p2(frame.method_id, frame.symbol_bit_vector_manager)
-                self.loader.save_state_bit_vector_p2(frame.method_id, frame.state_bit_vector_manager)
-                self.loader.save_symbol_state_space_p2(frame.method_id, frame.symbol_state_space)
-                self.loader.save_method_symbol_graph_p2(frame.method_id, frame.symbol_graph.graph)
-                self.loader.save_method_defined_symbols_p2(frame.method_id, frame.defined_symbols)
-                self.loader.save_method_defined_states_p2(frame.method_id, frame.defined_states)
-                self.loader.save_method_def_use_summary(frame.method_id, frame.method_def_use_summary)
-                self.loader.save_method_sfg(frame.method_id, frame.state_flow_graph.graph)
-                self.save_graph_to_dot(frame.state_flow_graph.graph, frame.method_id, self.analysis_phase_id, frame.symbol_state_space)
-            if self.options.debug:
-                _t_save = time.perf_counter() - _t_save0
-                if _t_save > 0.1:
-                    util.debug(f"[perf][P2][save] method={frame.method_id} save_total={_t_save*1000:.2f}ms")
-                # method-level perf summary (top slow stmts)
-                if hasattr(frame, "_p2_perf"):
-                    p = frame._p2_perf
-                    util.debug(
-                        "[perf][P2][method] "
-                        f"method={frame.method_id} stmts={p['stmt_total']} "
-                        f"total={p['t_total']:.3f}s reach={p['t_reachable_symbols']:.3f}s "
-                        f"states={p['t_compute_states']:.3f}s rerun={p['t_rerun_defuse']:.3f}s"
-                    )
-                    if p["slow_stmts"]:
-                        top = sorted(p["slow_stmts"], key=lambda x: x[0], reverse=True)[:5]
-                        for (t_s, sid, op, tr, ts, rr) in top:
-                            util.debug(
-                                "[perf][P2][slow_stmt_top] "
-                                f"method={frame.method_id} stmt={sid} op={op} "
-                                f"total={t_s*1000:.2f}ms reach={tr*1000:.2f}ms "
-                                f"states={ts*1000:.2f}ms rerun={rr*1000:.2f}ms"
-                            )
-
-            # progress printing: total / analyzed / current method time
             if frame.method_id not in self._p2_total_methods_set:
                 self._p2_total_methods_set.add(frame.method_id)
-            if not self.options.quiet:
-                total = len(self._p2_total_methods_set) if self._p2_total_methods_set else 0
-                done = len(self.analyzed_method_list)
-                start_t = getattr(frame, "_p2_start_time", None)
-                elapsed = (time.perf_counter() - start_t) if start_t is not None else -1.0
-                method_name = getattr(frame, "method_name", "")
-                name_part = f" {method_name}" if method_name else ""
-                print(f"[PrelimSemantic 进度] 总函数: {total} / 已分析: {done} | 当前函数耗时: {elapsed:.3f}s | method_id: {frame.method_id}{name_part}")
 
             frame_stack.pop()
 
@@ -1509,7 +1385,6 @@ class PrelimSemanticAnalysis:
 
         # save all results here
         self.loader.save_call_graph_p2(self.call_graph)
-        self.loader.export()
         # self.print_count_stmt_def_states()
 
         return self

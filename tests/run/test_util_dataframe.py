@@ -6,7 +6,7 @@ import pandas as pd
 
 import sys
 
-import tests.run.init_test as init_test
+import init_test
 
 from lian.util import data_model as dm
 from lian.util.util import SimpleEnum
@@ -67,7 +67,7 @@ class TestDataModel(unittest.TestCase):
         cls.df = dm.DataModel(data)
 
 
-    def test_drop(self):
+    def test_drop(self):  
         slice1 = self.df.slice(1, 9)
         print(slice1.access(1))
         assert (slice1.access(1).stmt_id == 2)
@@ -78,7 +78,7 @@ class TestDataModel(unittest.TestCase):
                             "stmt_id": [1, 5, 4],
                             "parent_stmt_id": [3, 8, 9]
                             })
-        q = self.df.query(self.df.operation == "block_end").reset_index()
+        q = self.df.slow_query(self.df.operation == "block_end").reset_index()
         compare_dataframe_and_dataframeagent(res, q)
 
     def test_access(self):

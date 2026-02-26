@@ -36,6 +36,7 @@ def resolve_this_field_method(data: EventData):
     field_states = in_data.field_states
     defined_symbol = in_data.defined_symbol
     stmt_id = in_data.stmt_id
+    stmt = in_data.stmt
     state_analysis:StmtStates = in_data.state_analysis
     loader:Loader = frame.loader
     defined_states = in_data.defined_states
@@ -86,7 +87,7 @@ def resolve_this_field_method(data: EventData):
                 continue
 
             # copy_on_change 创建一个原receiver_state的副本
-            new_receiver_state_index = state_analysis.create_copy_of_state_and_add_space(status, stmt_id, each_receiver_state_index)
+            new_receiver_state_index = state_analysis.create_copy_of_state_and_add_space(status, stmt_id, each_receiver_state_index, stmt)
             new_receiver_state = frame.symbol_state_space[new_receiver_state_index]
             for each_method_id in found_method_ids:
                 field_method_state_index = state_analysis.create_state_and_add_space(

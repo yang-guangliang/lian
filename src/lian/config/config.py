@@ -7,12 +7,13 @@ DEBUG_FLAG                                                   = False
 STRING_MAX_LEN                                               = 2000000
 MAX_PRIORITY                                                 = 100
 MIN_ID_INTERVAL                                              = 10
-BUILTIN_SYMBOL_START_ID                                      = -101
+BUILTIN_OBJECT_SYMBOL_ID                                     = -101
+BUILTIN_SYMBOL_START_ID                                      = -120        
 
 RULE_START_ID                                                = 10
 MAX_ROWS                                                     = 40 * 10000
-MAX_BENCHMARK_TARGET                                         = 10_000
-MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS                       = 1
+MAX_BENCHMARK_FILES                                          = 1000
+MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS                       = 2
 MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS                       = 3
 MAX_ANALYSIS_ROUND_FOR_CALL_SITE                             = 2
 
@@ -27,9 +28,9 @@ SOURCE_CODE_DIR                                              = "src"
 EXTERNS_DIR                                                  = "externs"
 BACKUP_DIR                                                   = "bak"
 FRONTEND_DIR                                                 = "frontend"
-SEMANTIC_DIR_P1                                              = "semantic_p1"
-SEMANTIC_DIR_P2                                              = "semantic_p2"
-SEMANTIC_DIR_P3                                              = "semantic_p3"
+SEMANTIC_P1_DIR                                              = "semantic_p1"
+SEMANTIC_P2_DIR                                              = "semantic_p2"
+SEMANTIC_P3_DIR                                              = "semantic_p3"
 TAINT_OUTPUT_DIR                                             = "taint"
 
 ROOT_DIR                                                     = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
@@ -46,9 +47,12 @@ DEFAULT_SETTINGS                                             = os.path.join(ROOT
 DEFAULT_SETTINGS_PATH                                        = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
 
 BUNDLE_CACHE_CAPACITY                                        = 2
-LRU_CACHE_CAPACITY                                           = 100
+LRU_CACHE_CAPACITY                                           = 20
 MIN_CACHE_CAPACITY                                           = 1
 MEDIUM_CACHE_CAPACITY                                        = 4
+
+IMPLICIT_ROOT_SCOPES_CACHE_CAPACITY                          = 10
+IMPORT_GRAPH_NODE_CACHE_CAPACITY                             = 10
 
 GIR_CACHE_CAPACITY                                           = 1000
 METHOD_HEADER_CACHE_CAPABILITY                               = 100
@@ -64,6 +68,8 @@ MAX_TYPE_CAST_SOURCE_STATES                                  = 4
 MAX_ARRAY_ELEMENT_STATES                                     = 4
 
 MAX_METHOD_CALL_COUNT                                        = 30
+
+COMPLETE_SFG_DUMP_FLAG                                       = False
 
 TAINT_SOURCE                                                 = os.path.join(DEFAULT_SETTINGS, "source.yaml")
 TAINT_SINK                                                   = os.path.join(DEFAULT_SETTINGS, "sink.yaml")
@@ -106,6 +112,8 @@ UNIT_ID_TO_CLASS_ID_PATH                                     = "unit_to_class_id
 UNIT_ID_TO_NAMESPACE_ID_PATH                                 = "unit_to_namespace_id"
 UNIT_ID_TO_VARIABLE_ID_PATH                                  = "unit_to_variable_id"
 UNIT_ID_TO_IMPORT_STMT_ID_PATH                               = "unit_to_import_stmt"
+CLASS_ID_TO_STMT_ID_PATH                                     = "class_to_stmt_id"
+METHOD_ID_TO_STMT_ID_PATH                                    = "method_to_stmt_id"
 METHOD_ID_TO_PARAMETER_ID_PATH                               = "method_to_parameter_id"
 CLASS_ID_TO_METHOD_ID_PATH                                   = "class_to_method_id"
 CLASS_ID_TO_FIELD_ID_PATH                                    = "class_to_field_id"
@@ -134,7 +142,7 @@ SYMBOL_STATE_SPACE_BUNDLE_PATH_P2                            = "s2space_p2"
 SYMBOL_STATE_SPACE_BUNDLE_PATH_P3                            = "s2space_p3"
 SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P2                    = "space_summary_p2"
 SYMBOL_STATE_SPACE_SUMMARY_BUNDLE_PATH_P3                    = "space_summary_p3"
-DEFINED_SYMBOLS_PATH                                         = "defined_symbols"
+DEFINED_SYMBOLS_PATH                                         = "defined_symbols_p1"
 DEFINED_SYMBOLS_PATH_P2                                      = "defined_symbols_p2"
 DEFINED_SYMBOLS_PATH_P3                                      = "defined_symbols_p3"
 DEFINED_STATES_PATH_P1                                       = "defined_states_p1"

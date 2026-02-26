@@ -46,6 +46,8 @@ class Resolver:
         self.unit_id_to_variable_dec_summary = {}
         self.variable_id_to_scope = {}
 
+        self.implicit_root_scopes_cache = util.LRUCache(config.IMPLICIT_ROOT_SCOPES_CACHE_CAPACITY)
+
     def find_unit_id_by_path(self, path):
         if path in self.file_path_to_unit_ids:
             return self.file_path_to_unit_ids[path]
@@ -95,7 +97,7 @@ class Resolver:
 
             # export_symbols = self.loader.load_unit_export_symbols(unit_id)
             # if export_symbols:
-            #     import_info = export_symbols.query(export_symbols.import_stmt == symbol_id)
+            #     import_info = export_symbols.query_index_column_value("import_stmt", symbol_id)
             #     for each_import in import_info:
             #         if self.loader.is_class_decl(each_import.symbol_id):
             #             result.append(each_import.symbol_id)
@@ -131,20 +133,25 @@ class Resolver:
         return SourceSymbolScopeInfo(-1, symbol_id, scope_id)
 
     def resolve_implicit_root_scopes(self, unit_id):
+        if self.implicit_root_scopes_cache.contain(unit_id):
+            return self.implicit_root_scopes_cache.get(unit_id)
+
         unit_scope_space_dm = self.loader.get_unit_scope_hierarchy(unit_id)
         query_implicit_root_scope_condition =(
             (unit_scope_space_dm.get_data()["scope_id"] == 0) &
             (unit_scope_space_dm.get_data()["scope_kind"] == LIAN_SYMBOL_KIND.BLOCK_KIND)
         )
-        implicit_root_scopes = set(unit_scope_space_dm.query(
+        implicit_root_scopes = set(unit_scope_space_dm.slow_query(
             condition_or_index = query_implicit_root_scope_condition,
             column_name = "stmt_id"
         ).tolist())
+
+        self.implicit_root_scopes_cache.put(unit_id, implicit_root_scopes)
         return implicit_root_scopes
 
     def resolve_symbol_source_decl(self, unit_id, stmt_id, symbol_name:str, source_symbol_must_be_global = False):
-        if symbol_name == LIAN_INTERNAL.THIS:
-            return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID, -1)
+        # if symbol_name == LIAN_INTERNAL.THIS:
+        #     return SourceSymbolScopeInfo(unit_id, config.BUILTIN_THIS_SYMBOL_ID, -1)
         # default return value
         default_return = SourceSymbolScopeInfo(unit_id, -1, -1)
         if util.is_empty(symbol_name):
@@ -935,7 +942,7 @@ class Resolver:
         # 收集symbol_name对应的symbol_ids
         symbol_ids = set()
         # insight: symbol_id就是该symbol的decl_stmt_id
-        symbol_decl_stmt_ids = self.loader.get_symbol_name_to_decl_ids(unit_id).get(symbol_name, set()) & frame.stmt_id_to_status.keys()
+        symbol_decl_stmt_ids = self.loader.get_unit_symbol_name_to_decl_ids(unit_id).get(symbol_name, set()) & frame.stmt_id_to_status.keys()
         symbol_ids.update(symbol_decl_stmt_ids)
         # import等语句(见def-use阶段)会修改defined_symbol的symbol_id，需要采集到修改后的symbol_id
         for decl_stmt_id in symbol_decl_stmt_ids:
@@ -1031,9 +1038,7 @@ class Resolver:
                 "caller_frame"            :  caller_frame
             }
 
-    def recover_callee_name(self, stmt_id, loader):
-        method_id = loader.convert_stmt_id_to_method_id(stmt_id)
-        stmt = loader.get_stmt_gir(stmt_id)
+    def recover_callee_name(self, method_id, stmt_id, stmt, status, s2space):
         if stmt.operation == "object_call_stmt":
             if stmt.receiver_object and not stmt.receiver_object.startswith("%vv"):
                 return stmt.receiver_object + '.' + stmt.field
@@ -1054,12 +1059,6 @@ class Resolver:
 
             return '.'.join(key_list)
 
-
-        method_status = loader.get_stmt_status_p2(method_id)
-        status = method_status.get(stmt_id)
-        s2space = loader.get_symbol_state_space_p2(method_id)
-
-
         if not status.used_symbols:
             return "None"
 
@@ -1072,13 +1071,13 @@ class Resolver:
             for index in name_symbol.states:
                 name_state = s2space[index]
 
-                if name_state.access_path and len(name_state.access_path) > 0:
+                if isinstance(name_state, State) and len(name_state.access_path) > 0:
                     access_path = access_path_formatter(name_state.access_path)
                     break
 
             return access_path
-        else:
-            return name_symbol.name
+        
+        return name_symbol.name
 
     def get_class_method(self, class_id):
         methods_in_class = self.loader.get_methods_in_class(class_id)

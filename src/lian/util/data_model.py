@@ -7,8 +7,7 @@ from lian.config import config
 from lian.util import util
 
 class DataModel:
-
-    def __init__(self, data = None, columns = None, reset_index = False):
+    def __init__(self, data = None, columns = None, reset_index = False, is_copy = False):
         self._data = None
         self._reset_index = reset_index
         self._schema = {}
@@ -21,7 +20,10 @@ class DataModel:
             return
 
         if isinstance(data, pd.DataFrame):
-            self._data = data
+            if is_copy:
+                self._data = data.copy(deep=False)
+            else:
+                self._data = data
 
         elif isinstance(data, DataModel):
             self._data = data._data
@@ -42,6 +44,9 @@ class DataModel:
             self.refresh_schema()
             if reset_index:
                 self.reset_index()
+
+    def clone(self):
+        return DataModel(self._data, is_copy=True)
 
     def set_refresh_flag(self):
         self._need_refresh_rows = True
@@ -190,7 +195,7 @@ class DataModel:
         self._data.loc[row_index, column_name] = value
         self.set_refresh_flag()
 
-    def query(self, condition_or_index, column_name = "", reset_index:bool = True):
+    def slow_query(self, condition_or_index, column_name = "", reset_index:bool = True):
         if isinstance(condition_or_index, set):
             condition_or_index = list(condition_or_index)
 
@@ -199,11 +204,11 @@ class DataModel:
 
         df = self._data.loc[condition_or_index]
         return DataModel(df, columns = self._schema, reset_index = reset_index)
-
+    
     def _convert_bool_list_to_index_list(self, bool_list):
         return np.where(bool_list)[0]
 
-    def query_first(self, mask):
+    def slow_query_first(self, mask):
         self.refresh_rows()
         index = None
         if isinstance(mask, (int, np.int64)):
@@ -216,6 +221,34 @@ class DataModel:
             index = sorted(mask)[0]
         row = self._rows[index]
         return Row(row, self._schema, index)
+    
+    def query_index_column_value_indices(self, column_name, value) -> list:
+        if util.isna(value):
+            return []
+        
+        if column_name not in self._schema:
+            util.error_and_quit(f"Failed to find column \"{column_name}\"")
+        
+        if column_name not in self._column_indexer:
+            self._indexing_column(column_name)
+
+        return sorted(self._column_indexer[column_name].get(value, set()))
+
+    def query_index_column_value(self, column_name, value) -> "DataModel":  
+        index_list = self.query_index_column_value_indices(column_name, value)
+        if len(index_list) == 0:
+            return []
+        df = self._data.iloc[index_list]
+        return DataModel(df, columns = self._schema) 
+
+    def query_index_column_value_first(self, column_name, value) -> "Row":
+        #self.refresh_rows()
+        index_list = self.query_index_column_value_indices(column_name, value)
+        if len(index_list) == 0:
+            return None
+        pos = index_list[0]  # 这就是位置！
+        row_data = self._data.iloc[pos].values
+        return Row(row_data, self._schema, index_list[0])
 
     def fillna(self, value):
         self._data.fillna(value, inplace = True)
@@ -237,23 +270,28 @@ class DataModel:
             self._column_indexer[column_name] = {}
 
         target = self._column_indexer[column_name]
-        for index, value in enumerate(column_data):
+        # for idx_label, value in zip(self._data.index, column_data):
+        for idx_label, value in enumerate(column_data):
             if util.isna(value):
                 continue
-            if (value not in target):
+            if value not in target:
                 target[value] = []
-            target[value].append(index)
+            target[value].append(idx_label)
 
-    def search_block_id(self, block_id):
+    def search_block_start_end_indics(self, block_id):
         if util.isna(block_id):
             return None
-        return sorted(self._data.index[self._data["stmt_id"].values == block_id])
+        
+        indices = self.query_index_column_value_indices("stmt_id", block_id)
+        
+        return sorted(indices)
 
-    def read_block(self, block_id, reset_index = True):
-        block_start_end = self.search_block_id(block_id)
+    def read_block(self, block_id, reset_index = False):
+        block_start_end = self.search_block_start_end_indics(block_id)
         if block_start_end is None:
             return []
-        if len(block_start_end) < 2:
+        if len(block_start_end) != 2:
+            util.error_and_quit(f"Failed to find block \"{block_id}\"")
             return []
 
         block = self.slice(block_start_end[0] + 1, block_start_end[1])
@@ -261,8 +299,8 @@ class DataModel:
             block.reset_index()
         return block
 
-    def read_block_with_block_stmts(self, block_id, reset_index = True):
-        block_start_end = self.search_block_id(block_id)
+    def read_block_with_block_stmts(self, block_id, reset_index = False):
+        block_start_end = self.search_block_start_end_indics(block_id)
         if block_start_end is None:
             return []
         if len(block_start_end) < 2:
@@ -277,7 +315,7 @@ class DataModel:
         ids = [-1]
         for block_id in multi_block_ids:
             if not util.isna(block_id):
-                block_start_end = self.search_block_id(block_id)
+                block_start_end = self.search_block_start_end_indics(block_id)
                 if block_start_end is not None:
                     ids.extend(block_start_end)
         return max(ids)
@@ -317,21 +355,28 @@ class Row:
         object.__setattr__(self, "_index", index)
 
     def __copy__(self):
-        new_row = self._row.copy()
-        new_schema = self._schema.copy()
+        new_row = self._row
+        new_schema = self._schema
         new_index = self._index
         return Row(new_row, new_schema, new_index)
 
     def __getattr__(self, item):
+        pos = self._schema.get(item, -1)
+        if pos != -1:
+            return self._row[pos]
         if item == "copy":
             return self.__copy__
         if item == "clone":
             return self.__copy__
-        pos = self._schema.get(item, -1)
-        if pos != -1:
-            return self._row[pos]
         #util.error(f"Failed to obtain key <{item}> from the dataframe row{self._row}")
         return None
+    
+    def get_whole_str(self):
+        results = {}
+        for schema_name, pos in self._schema.items():
+            if pos != -1:
+                results[schema_name] = self._row[pos]
+        return str(results)
 
     def to_dict(self):
         result = {}

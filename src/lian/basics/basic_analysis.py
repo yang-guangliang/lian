@@ -30,6 +30,7 @@ from lian.common_structs import (
     SimplyGroupedMethodTypes,
 )
 from lian.util.loader import Loader
+from lian.util.gir_block import GIRBlockViewer
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.core.resolver import Resolver
 from lian.basics.scope_hierarchy import UnitScopeHierarchyAnalysis
@@ -41,7 +42,7 @@ from lian.basics.control_flow import ControlFlowAnalysis
 from lian.basics.stmt_def_use_analysis import StmtDefUseAnalysis
 
 
-class BasicSemanticAnalysis:
+class P1BasicSemanticAnalysis:
     def __init__(self, lian):
         self.lian = lian
         self.analysis_phases = []
@@ -60,16 +61,15 @@ class BasicSemanticAnalysis:
     def config(self):
         pass
 
-    def analyze_and_save_method_decl_format(self, method_id, method_decl_stmt, parameter_decls):
+    def analyze_and_save_method_decl_format(self, method_id, method_decl_stmt, parameter_decl_block):
         unit_id = self.loader.convert_method_id_to_unit_id(method_id)
         parameters_info = []
-        for each_parameter_stmt in parameter_decls:
-            if each_parameter_stmt.operation == "parameter_decl":
-                parameters_info.append({
-                    "stmt_id": each_parameter_stmt.stmt_id,
-                    "name": each_parameter_stmt.name,
-                    "data_type": each_parameter_stmt.data_type
-                })
+        for each_parameter_stmt in parameter_decl_block.query_operation("parameter_decl"):
+            parameters_info.append({
+                "stmt_id": each_parameter_stmt.stmt_id,
+                "name": each_parameter_stmt.name,
+                "data_type": each_parameter_stmt.data_type
+            })
         method_format = {
             "unit_id" : unit_id,
             "method_id" : method_id,
@@ -79,27 +79,25 @@ class BasicSemanticAnalysis:
         }
         self.loader.save_method_id_to_method_decl_format(method_id, method_format)
 
-    def analyze_stmt_def_use(self, method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed = False):
+    def analyze_method(self, method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed = False):
         frame = ComputeFrame(method_id = method_id, loader = self.loader)
         method_decl_stmt, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
         frame.method_decl_stmt = method_decl_stmt
+
+        parameter_decl_block = GIRBlockViewer(parameter_decls)
+        method_body_block = GIRBlockViewer(method_body)
+
+        frame.unit_gir.append_other(parameter_decl_block)
+        frame.unit_gir.append_other(method_body_block)
+
+        self.analyze_and_save_method_decl_format(method_id, method_decl_stmt, parameter_decl_block)
 
         if unit_is_analyzed:
             cfg = self.incremental_checker.fetch_cfg(method_id)
             self.loader.save_method_cfg(method_id, cfg)
         else:
-            cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decls, method_body).analyze()
-
+            cfg = ControlFlowAnalysis(self.loader, method_id, parameter_decl_block, method_body_block).analyze()
         all_cfg_nodes = set(cfg.nodes())
-
-        self.analyze_and_save_method_decl_format(method_id, method_decl_stmt, parameter_decls)
-
-        if util.is_available(parameter_decls):
-            for row in parameter_decls:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
-        if util.is_available(method_body):
-            for row in method_body:
-                frame.stmt_id_to_stmt[row.stmt_id] = row
 
         # Perform def-use analysis; This is flow-insensitive
         frame.stmt_def_use_analysis = StmtDefUseAnalysis(
@@ -111,14 +109,14 @@ class BasicSemanticAnalysis:
             external_symbol_id_collection=external_symbol_id_collection,
         )
 
-        for stmt_id in frame.stmt_id_to_stmt:
+        for stmt_id in frame.unit_gir.get_all_stmt_ids(): 
             if stmt_id in all_cfg_nodes:
-                frame.stmt_def_use_analysis.analyze_stmt(stmt_id, frame.stmt_id_to_stmt[stmt_id])
+                frame.stmt_def_use_analysis.analyze_stmt(stmt_id, frame.unit_gir.get_stmt_by_id(stmt_id))
 
         # print("frame.method_def_use_summary", frame.method_def_use_summary)
         self.loader.save_stmt_status_p1(method_id, frame.stmt_id_to_status)
         self.loader.save_symbol_state_space_p1(method_id, frame.symbol_state_space)
-        self.loader.save_method_defined_symbols(method_id, frame.defined_symbols)
+        self.loader.save_method_defined_symbols_p1(method_id, frame.defined_symbols)
         self.loader.save_method_used_symbols(method_id, frame.used_symbols)
         self.loader.save_method_defined_states_p1(frame.method_id, frame.defined_states)
         self.loader.save_method_internal_callees(method_id, frame.basic_callees)
@@ -205,6 +203,8 @@ class BasicSemanticAnalysis:
             unit_id = unit_info.module_id
             unit_list.append(unit_id)
             unit_gir = self.loader.get_unit_gir(unit_id)
+            if util.is_empty(unit_gir):
+                continue
 
             unit_scope = None
             unit_is_analyzed = False
@@ -219,13 +219,13 @@ class BasicSemanticAnalysis:
             if not unit_is_analyzed:
                 unit_scope = UnitScopeHierarchyAnalysis(self.lian, self.loader, unit_id, unit_info, unit_gir).analyze()
             self.entry_points.collect_entry_points_from_unit_scope(unit_info, unit_scope)
-            if not self.options.noextern:
+            if not self.options.nomock:
                 self.extern_system.install_mock_code_file(unit_info, unit_scope)
 
         self.loader.export_scope_hierarchy()
         self.loader.export_entry_points()
 
-        if not self.options.noextern:
+        if not self.options.nomock:
             self.extern_system.display_all_installed_rules()
 
         unit_list.reverse()
@@ -246,12 +246,11 @@ class BasicSemanticAnalysis:
             for method_id in all_unit_methods:
                 if self.options.strict_parse_mode:
                     external_symbol_id_collection = {}
-                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed)
+                    self.analyze_method(method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed)
                     self.loader.save_method_external_symbol_id_collection(method_id, external_symbol_id_collection)
                 else:
-                    self.analyze_stmt_def_use(method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed)
+                    self.analyze_method(method_id, import_analysis, external_symbol_id_collection, unit_is_analyzed)
         self.loader.save_classified_method_call(self.basic_call_graph)
         self.group_methods_by_callee_types()
-        self.loader.export()
 
         return self

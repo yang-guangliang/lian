@@ -306,11 +306,5 @@ class ReadableGir:
 # Module-level API (compat for existing callers)
 # ---------------------------
 _DEFAULT_READABLE_GIR = ReadableGir()
-
 def get_gir_str(stmt: object) -> str:
-    """
-    兼容调用方式：
-        from lian.util import readable_gir
-        readable_gir.get_gir_str(stmt)
-    """
     return _DEFAULT_READABLE_GIR.get_gir_str(stmt)

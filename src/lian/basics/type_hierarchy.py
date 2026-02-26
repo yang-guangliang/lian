@@ -93,7 +93,7 @@ class TypeHierarchy:
             )
 
     def analyze_method_in_class(self, class_decl_stmt, scope_hierarchy):
-        method_decls = scope_hierarchy.query(
+        method_decls = scope_hierarchy.slow_query(
             (scope_hierarchy.scope_id == class_decl_stmt.stmt_id) &
             ((scope_hierarchy.scope_kind == LIAN_SYMBOL_KIND.METHOD_KIND)|(scope_hierarchy.scope_kind == LIAN_SYMBOL_KIND.CLASS_KIND))
         )
@@ -118,7 +118,7 @@ class TypeHierarchy:
             return
 
         # obtain class decls
-        class_decl_stmts = scope_hierarchy.query(scope_hierarchy.scope_kind == LIAN_SYMBOL_KIND.CLASS_KIND)
+        class_decl_stmts = scope_hierarchy.query_index_column_value("scope_kind", LIAN_SYMBOL_KIND.CLASS_KIND)
 
         for each_stmt in class_decl_stmts:
             # analyze each class decl

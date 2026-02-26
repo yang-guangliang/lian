@@ -23,6 +23,18 @@ class EntryPointRule:
     args: str = ""
     return_type: str = ""
 
+    def __post_init__(self):
+        self.check_availablility()
+    
+    def check_availablility(self):
+        self.is_lang_available = util.is_available(self.lang)
+        self.is_unit_name_available = util.is_available(self.unit_name)
+        self.is_unit_path_available = util.is_available(self.unit_path)
+        self.is_method_list_available = util.is_available(self.method_list)
+        self.is_attrs_available = util.is_available(self.attrs)
+        self.is_args_available = util.is_available(self.args)
+        self.is_return_type_available = util.is_available(self.return_type)
+
 class EntryPointGenerator:
     def __init__(self, options, event_manager, loader) -> None:
         self.options = options
@@ -64,72 +76,86 @@ class EntryPointGenerator:
 
                 self._parse_config_file(os.path.join(root, file_name))
 
-    def check_entry_point_rules(self, lang, unit_id, unit_path, method_id, method_name, attrs = "", args = "", return_type = ""):
-        unit_name = os.path.basename(unit_path)
+    def filter_rule_by_unit_info(self, unit_info):
+        unit_name = os.path.basename(unit_info.unit_path)
+        candidate_rules = []
+
         for rule in self.entry_point_rules:
-            if rule.lang:
-                if rule.lang != lang:
-                    continue
-
-            if rule.unit_id >= 0:
-                if rule.unit_id != unit_id:
-                    continue
-            else:
-                if rule.unit_name:
-                    if rule.unit_name not in unit_name:
-                        continue
-                if rule.unit_path:
-                    if rule.unit_path not in unit_path:
-                        continue
-
-            if rule.method_id >= 0:
-                if rule.method_id == method_id:
-                    return True
+            # 按语言过滤
+            if rule.is_lang_available and rule.lang != unit_info.lang:
                 continue
 
-            if len(rule.method_list) > 0:
-                if method_name not in rule.method_list:
-                    continue
+            # 按 unit_id 过滤（精确匹配）
+            if rule.unit_id >= 0 and rule.unit_id != unit_info.module_id:
+                continue
 
-            if rule.attrs:
-                if len(attrs) == 0:
-                    continue
-                contained_flag = True
-                for one_attr in rule.attrs:
-                    if one_attr not in attrs:
-                        contained_flag = False
-                        break
-                if not contained_flag:
-                    continue
+            # 按 unit_name 过滤（子串包含）
+            if rule.is_unit_name_available and rule.unit_name not in unit_name:
+                continue
 
-            if rule.args:
-                if rule.args != args:
-                    continue
+            # 按 unit_path 过滤（子串包含）
+            if rule.is_unit_path_available and rule.unit_path not in unit_info.unit_path:
+                continue
 
-            if rule.return_type:
-                if rule.return_type != return_type:
-                    continue
-            return True
+            # 通过 unit 级别过滤，加入候选
+            candidate_rules.append(rule)
 
-        return False
-
-    def export(self):
-        self.loader.save_entry_points(self.entry_point_results)
-
-    def collect_entry_points_from_unit_scope(self, unit_info, unit_scope):
-        all_method_scopes = unit_scope.query(unit_scope.scope_kind.eq(LIAN_SYMBOL_KIND.METHOD_KIND))
+        return candidate_rules
+    
+    def check_rules(self, unit_info, unit_scope, candidate_rules):
+        all_method_scopes = unit_scope.query_index_column_value("scope_kind", LIAN_SYMBOL_KIND.METHOD_KIND)
         for scope in all_method_scopes:
-            name = ""
-            attrs = ""
-            if util.is_available(scope.name):
-                name = scope.name
-            if util.is_available(scope.attrs):
-                attrs = scope.attrs
-            if self.check_entry_point_rules(
-                    unit_info.lang, unit_info.module_id, unit_info.unit_path, scope.stmt_id, name, attrs
-            ):
-                self.entry_point_results.add(scope.stmt_id)
-                continue
+            name = scope.name if util.is_available(scope.name) else ""
+            attrs = scope.attrs if util.is_available(scope.attrs) else ""
+            args = ""  # 当前未从 scope 获取 args，可后续扩展
+            return_type = ""  # 同上
 
-        self.export()
+            matched = False
+            for rule in candidate_rules:
+                # 跳过已由 unit_id/unit_name/unit_path/lang 排除的规则（已在上一步处理）
+
+                # 检查 method_id（精确匹配）
+                if rule.method_id >= 0:
+                    if rule.method_id == scope.stmt_id:
+                        matched = True
+                        break
+                    else:
+                        continue  # 此规则不匹配当前 method
+
+                # 检查 method_list（名称列表）
+                if rule.is_method_list_available and name not in rule.method_list:
+                    continue
+
+                # 检查 attrs（全包含）
+                if rule.is_attrs_available:
+                    if not attrs or not all(attr in attrs for attr in rule.attrs):
+                        continue
+
+                # 检查 args（当前未实现，保留逻辑）
+                if rule.is_args_available and rule.args != args:
+                    continue
+
+                # 检查 return_type（当前未实现，保留逻辑）
+                if rule.is_return_type_available and rule.return_type != return_type:
+                    continue
+
+                # 所有条件通过
+                matched = True
+                break
+
+            if matched:
+                self.entry_point_results.add(scope.stmt_id)
+                
+    def collect_entry_points_from_unit_scope(self, unit_info, unit_scope):
+        # Step 1: 预筛选与当前 unit_info 匹配的规则
+        candidate_rules = self.filter_rule_by_unit_info(unit_info)
+        # 如果没有候选规则，直接跳过
+        if not candidate_rules:
+            return
+        
+        # Step 2: 遍历方法，仅用候选规则判断
+        self.check_rules(unit_info, unit_scope, candidate_rules)
+
+        # Step 3: 导出结果
+        self.loader.save_entry_points(self.entry_point_results)
 

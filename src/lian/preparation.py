@@ -23,7 +23,7 @@ class WorkspaceBuilder:
         self.c_like_extensions = LANG_EXTENSIONS.get('c', []) + LANG_EXTENSIONS.get('cpp', [])
         self.required_subdirs = [
             config.SOURCE_CODE_DIR, config.EXTERNS_DIR, config.FRONTEND_DIR,
-            config.SEMANTIC_DIR_P1, config.SEMANTIC_DIR_P2, config.SEMANTIC_DIR_P3,
+            config.SEMANTIC_P1_DIR, config.SEMANTIC_P2_DIR, config.SEMANTIC_P3_DIR,
             config.STATE_FLOW_GRAPH_P2_DIR, config.STATE_FLOW_GRAPH_P3_DIR,
             config.TAINT_OUTPUT_DIR,
         ]
@@ -62,10 +62,9 @@ class WorkspaceBuilder:
             except Exception as e:
                 util.error_and_quit(f"Failed to delete {file_path}. Reason: {e}")
 
-    def manage_directory(self):
-        path = os.path.abspath(self.options.workspace)
+    def prepare_directory(self, path):
         if not self.options.quiet:
-            print(f"<Workspace directory> : {path}")
+            print(f"The workspace directory : {path}")
 
         if not os.path.exists(path):
             os.makedirs(path)
@@ -73,12 +72,18 @@ class WorkspaceBuilder:
                 print(f"Directory created at: {path}")
             return
 
+    def manage_directory(self):
+        path = os.path.abspath(self.options.workspace)
+
+
         if not self.options.force:
             if not self.options.incremental:
                 util.error_and_quit(f"The target directory already exists. Use --force/-f to overwrite.")
         else:
             if not self.options.quiet:
                 util.warn(f"With the force mode flag, the workspace is being rewritten")
+
+            self.prepare_directory(path)
 
             for filename in os.listdir(path):
                 file_path = os.path.join(path, filename)
@@ -237,7 +242,7 @@ class WorkspaceBuilder:
 
         self.change_c_like_files(src_dir_path)
 
-        if not self.options.noextern:
+        if not self.options.nomock:
             externs_dir_path = os.path.join(workspace_path, config.EXTERNS_DIR)
             self.copytree_with_extension(config.EXTERNS_MOCK_CODE_DIR, externs_dir_path)
 
@@ -261,9 +266,9 @@ class ModuleSymbolsBuilder:
 
     def file_hash(self, file_path):
         sha256 = hashlib.sha256()
-        f = open(file_path, "rb")
-        for chunk in iter(lambda: f.read(4096), b""):
-            sha256.update(chunk)
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                sha256.update(chunk)
         return sha256.hexdigest()
 
     def scan_modules_by_scanning_workspace_dir(self, module_path, prefix_path,  parent_module_id = 0, is_extern = False):

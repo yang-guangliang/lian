@@ -12,16 +12,23 @@ from lian.common_structs import (
 )
 import lian.util.data_model as dm
 from lian.util.loader import Loader
+from lian.util.gir_block import GIRBlockViewer
 
 class ControlFlowAnalysis:
-    def __init__(self, loader: Loader, method_id, parameter_decls, method_body):
-        self.loader = loader
-        self.method_id = method_id
-        self.parameter_decls = parameter_decls
-        self.method_body = method_body
+    def __init__(self, loader: Loader, method_id: int, parameter_decls: GIRBlockViewer, method_body: GIRBlockViewer):
+        self.loader: Loader = loader
+        self.method_id: int = method_id
+        self.parameter_decls: GIRBlockViewer = parameter_decls
+        self.method_body: GIRBlockViewer = method_body
         self.cfg = ControlFlowGraph(self.method_id)
+
         self.label = []
         self.goto = []
+        for stmt in method_body.query_operation("label_stmt"):
+            self.label.append(stmt)
+        for stmt in method_body.query_operation("goto_stmt"):
+            self.goto.append(stmt)
+                    
         self.stmt_handlers = {
             "if_stmt"       : self.analyze_if_stmt,
             "while_stmt"    : self.analyze_while_stmt,
@@ -41,13 +48,6 @@ class ControlFlowAnalysis:
             "interface_decl": self.analyze_decl_stmt,
             "struct_decl"   : self.analyze_decl_stmt,
         }
-        for stmt in method_body:
-            if stmt.operation == "label_stmt":
-                self.label.append(stmt)
-            elif stmt.operation == "goto_stmt":
-                self.goto.append(stmt)
-
-
 
     def analyze(self):
         cfg = self.loader.get_method_cfg(self.method_id)
@@ -115,11 +115,10 @@ class ControlFlowAnalysis:
                     new_graph.add_edge(u, v, weight = old_graph[u][v][0]['weight'])
         self.cfg.graph = new_graph
 
-    def read_block(self, parent, block_id):
-        # return parent.read_block(block_id)
+    def read_block(self, block_id):
         return self.method_body.read_block(block_id)
 
-    def boundary_of_multi_blocks(self, block, block_ids):
+    def boundary_of_multi_blocks(self, block: GIRBlockViewer, block_ids):
         return block.boundary_of_multi_blocks(block_ids)
 
     def analyze_if_stmt(self, current_block, current_stmt, parent_stmts, global_special_stmts):
@@ -127,14 +126,14 @@ class ControlFlowAnalysis:
         last_stmts_of_then_body = [CFGNode(current_stmt, CONTROL_FLOW_KIND.IF_TRUE)]
         then_body_id = current_stmt.then_body
         if not util.isna(then_body_id):
-            then_body = self.read_block(current_block, then_body_id)
+            then_body = self.read_block(then_body_id)
             if len(then_body) != 0:
                 last_stmts_of_then_body = self.analyze_block(then_body, last_stmts_of_then_body, global_special_stmts)
 
         last_stmts_of_else_body = [CFGNode(current_stmt, CONTROL_FLOW_KIND.IF_FALSE)]
         else_body_id = current_stmt.else_body
         if not util.isna(else_body_id):
-            else_body = self.read_block(current_block, else_body_id)
+            else_body = self.read_block(else_body_id)
             if len(else_body) != 0:
                 last_stmts_of_else_body = self.analyze_block(else_body, last_stmts_of_else_body, global_special_stmts)
 
@@ -173,7 +172,7 @@ class ControlFlowAnalysis:
         self.link_parent_stmts_to_current_stmt(parent_stmts, current_stmt)
         new_special_stmts = []
         body_id = current_stmt.body
-        body = self.read_block(current_block, body_id)
+        body = self.read_block(body_id)
         last_stmts_of_body = self.analyze_block(
             body,
             [CFGNode(current_stmt, CONTROL_FLOW_KIND.LOOP_TRUE)],
@@ -188,7 +187,7 @@ class ControlFlowAnalysis:
             return (last_stmts, boundary)
 
         else_body_id = current_stmt.else_body
-        else_body = self.read_block(current_block, else_body_id)
+        else_body = self.read_block(else_body_id)
         boundary = self.boundary_of_multi_blocks(current_block, [body_id, else_body_id])
         last_stmts_of_else_body = self.analyze_block(
             else_body,
@@ -202,7 +201,7 @@ class ControlFlowAnalysis:
     def analyze_dowhile_stmt(self, current_block, current_stmt, parent_stmts, global_special_stmts):
         # self.link_parent_stmts_to_current_stmt(parent_stmts, current_stmt)
         body_id = current_stmt.body
-        body = self.read_block(current_block, body_id)
+        body = self.read_block(body_id)
         boundary = self.boundary_of_multi_blocks(current_block, [body_id])
 
         previous = parent_stmts[:]
@@ -227,9 +226,9 @@ class ControlFlowAnalysis:
         condition_prebody_id = current_stmt.condition_prebody
         update_body_id = current_stmt.update_body
 
-        init_body = self.read_block(current_block, init_body_id)
-        condition_prebody = self.read_block(current_block, condition_prebody_id)
-        update_body = self.read_block(current_block, update_body_id)
+        init_body = self.read_block(init_body_id)
+        condition_prebody = self.read_block(condition_prebody_id)
+        update_body = self.read_block(update_body_id) 
 
         # deal with init_body
         # util.debug("for_init_body "*5)
@@ -240,10 +239,11 @@ class ControlFlowAnalysis:
         last_stmts_condition_prebody = self.analyze_block(condition_prebody, last_stmts, global_special_stmts)
 
         # deal with for body
-        # util.debug("for_body "*5)
+        #util.debug("for_body "*5)
         body_id = current_stmt.body
-        body = self.read_block(current_block, body_id)
+        body = self.read_block(body_id)
         boundary = self.boundary_of_multi_blocks(current_block, [body_id])
+        #print("boundary", boundary)
 
         new_special_stmts = []
         last_stmts = self.analyze_block(
@@ -277,13 +277,13 @@ class ControlFlowAnalysis:
 
         body_id = current_stmt.body
         # util.debug(f"body_id=current_stmt.body: {body_id}")
-        body = self.read_block(current_block, body_id)
+        body = self.read_block(body_id)
         boundary = self.boundary_of_multi_blocks(current_block, [body_id])
 
         case_stmt_set = []
         # print("body:", body)
         if body:
-            case_stmt_set = body.query(body.parent_stmt_id.eq(body_id))
+            case_stmt_set = body.query_field("parent_stmt_id", body_id)
         # util.debug(f"case_stmt_set = body.remove_blocks():{case_stmt_set}")
 
         last_stmts_of_previous_body = []
@@ -295,7 +295,7 @@ class ControlFlowAnalysis:
             last_stmts_of_previous_body.append(case_stmt)
 
             case_body_id = case_stmt.body
-            case_body = self.read_block(current_block, case_body_id)
+            case_body = self.read_block(case_body_id)
             # util.debug(f"-==-case_body = self.read_block:\n{case_body}")
 
             last_stmts_of_previous_body = self.analyze_block(case_body, last_stmts_of_previous_body, special_stmts)
@@ -314,31 +314,31 @@ class ControlFlowAnalysis:
 
         boundary = self.boundary_of_multi_blocks(current_block, [body_id, catch_body_id, else_body_id, final_body_id])
 
-        body = self.read_block(current_block, body_id)
+        body = self.read_block(body_id)
         last_stmts_of_body = self.analyze_block(body, [CFGNode(current_stmt, CONTROL_FLOW_KIND.EMPTY)], global_special_stmts)
 
         if util.isna(catch_body_id):
             return (last_stmts_of_body, boundary)
 
-        catch_body = self.read_block(current_block, catch_body_id)
-        catch_with_init_set = catch_body.query(catch_body.parent_stmt_id.eq(catch_body_id))
+        catch_body = self.read_block(catch_body_id)
+        catch_with_init_set = catch_body.query_field("parent_stmt_id", catch_body_id)
         pre_init_stmt = last_stmts_of_body
         last_stmts_of_catch_body = []
         for stmt in catch_with_init_set:
             self.link_parent_stmts_to_current_stmt(pre_init_stmt, stmt)
             if stmt.operation == "catch_clause":
                 last_stmts_of_catch_clause = self.analyze_block(
-                    self.read_block(current_block, stmt.body), [CFGNode(stmt, CONTROL_FLOW_KIND.CATCH_TRUE)], global_special_stmts
+                    self.read_block(stmt.body), [CFGNode(stmt, CONTROL_FLOW_KIND.CATCH_TRUE)], global_special_stmts
                 )
                 last_stmts_of_catch_body.extend(last_stmts_of_catch_clause)
             pre_init_stmt = [stmt]
 
         if not util.isna(else_body_id):
-            else_body = self.read_block(current_block, else_body_id)
+            else_body = self.read_block(else_body_id)
             last_stmts_of_else_body = self.analyze_block(else_body, [CFGNode(last_stmts_of_body, CONTROL_FLOW_KIND.CATCH_FALSE)], global_special_stmts)
 
             if not util.isna(final_body_id):
-                final_body = self.read_block(current_block, final_body_id)
+                final_body = self.read_block(final_body_id)
                 last_stmts_of_final_body = self.analyze_block(
                     final_body, [CFGNode(last_stmts_of_catch_body, CONTROL_FLOW_KIND.CATCH_FINALLY)] + [CFGNode(last_stmts_of_else_body, CONTROL_FLOW_KIND.CATCH_FINALLY)], global_special_stmts
                 )
@@ -347,7 +347,7 @@ class ControlFlowAnalysis:
 
         else:
             if not util.isna(final_body_id):
-                final_body = self.read_block(current_block, final_body_id)
+                final_body = self.read_block(final_body_id)
                 last_stmts_of_final_body = self.analyze_block(
                     final_body, [CFGNode(last_stmts_of_catch_body, CONTROL_FLOW_KIND.CATCH_FINALLY)], global_special_stmts
                 )
@@ -393,25 +393,25 @@ class ControlFlowAnalysis:
         last_stmts = [current_stmt]
         static_init_id = current_stmt.static_init
         if not util.isna(static_init_id):
-            static_init_body = self.read_block(current_block, static_init_id)
+            static_init_body = self.read_block(static_init_id)
             if len(static_init_body) != 0:
                 last_stmts = self.analyze_block(static_init_body, current_stmt, global_special_stmts)
 
         init_id = current_stmt.init
         if not util.isna(init_id):
-            init_body = self.read_block(current_block, init_id)
+            init_body = self.read_block(init_id)
             if len(init_body) != 0:
                 last_stmts = self.analyze_block(init_body, last_stmts, global_special_stmts)
 
         methods_id = current_stmt.methods
         if not util.isna(methods_id):
-            methods_body = self.read_block(current_block, methods_id)
+            methods_body = self.read_block(methods_id)
             if len(methods_body) != 0:
                 last_stmts = self.analyze_block(methods_body, last_stmts, global_special_stmts)
 
         nested_id = current_stmt.nested
         if not util.isna(nested_id):
-            nested_body = self.read_block(current_block, nested_id)
+            nested_body = self.read_block(nested_id)
             if len(nested_body) != 0:
                 last_stmts = self.analyze_block(nested_body, last_stmts, global_special_stmts)
 
@@ -487,29 +487,38 @@ class ControlFlowAnalysis:
                     last_parameter_init_stmts.extend(previous)
         return last_parameter_decl_stmts + last_parameter_init_stmts
 
-    def analyze_block(self, current_block, parent_stmts = [], special_stmts = []):
+    def analyze_block(self, current_block: GIRBlockViewer, parent_stmts = [], special_stmts = []):
         """
         This function is going to deal with current block and extract its control flow graph.
         It returns the last statements inside this block.
         """
-        counter = 0
-        boundary = 0
+
         previous = parent_stmts
 
         if util.is_empty(current_block):
             return previous
+        
+        current_range = current_block.get_range()
+        pos = current_range.get_real_start_index()
+        boundary = pos
 
-        while counter < len(current_block):
-            current = current_block.access(counter)
+        #print("++++ handling ", current_block)
+
+        while pos < current_range.end:
+            current = current_block.get_stmt_by_pos(pos)
+            #print("dealing with", pos, current)
+            if util.is_empty(current):
+                pos += 1
+                continue
             handler = self.stmt_handlers.get(current.operation, None)
             if handler is None:
                 self.link_parent_stmts_to_current_stmt(previous, current)
                 previous = [current]
-                counter += 1
+                pos += 1
             else:
                 previous, boundary = handler(current_block, current, previous, special_stmts)
                 if boundary < 0:
                     break
-                counter = boundary + 1
+                pos = boundary + 1
 
         return previous

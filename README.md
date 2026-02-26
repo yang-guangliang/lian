@@ -4,9 +4,15 @@
 
 ## Background
 
+<<<<<<< HEAD
 Program analysis is a foundational technology in system security. The prior program analysis tools designed for mainstream statically typed languages (such as C/C++ and Java) are already highly mature and robust. However, in today's diverse programming language ecosystem, high-precision program analysis capabilities remain severely lacking, significantly hindering the analysis and enhancement of software security and reliability.
 
 In past, many programming languages have become extremely popular:
+=======
+In past, many languages are becomming increasingly popular, especially dynamically typed languages. Python dominates AI and data engineering, JavaScript and TypeScript power web and cross-platform applications and frameworks, and Go and Rust greatly boosts cloud service and systems programming. These languages significantly improve developer productivity, but there are also many highly dynamic runtime semantics breaking the assumptions that traditional static analysis techniques rely on.
+
+In many causes, type information is often unavailable or unstable, object layouts evolve at runtime, and control flow depends on dynamic dispatch, higher-order functions and reflective property access. As a result, conventional static analyses (originally designed for statically typed and single-language systems) struggle to maintain both precision and scalability on real-world dynamic codebases. They either over-approximate aggressively and lose precision, or become computationally intractable.
+>>>>>>> aec4bc7 (update readme)
 
 - **Python** dominates artificial intelligence and data engineering;
 - **TypeScript** became the #1 most-used language on GitHub in 2025. jointly with **JavaScript**, they power web and cross-platform application development;
@@ -14,10 +20,14 @@ In past, many programming languages have become extremely popular:
 
 Yet, traditional analysis tools still struggle to support these languages effectively:
 
+<<<<<<< HEAD
 - **Tight language binding**: Analysis logic is deeply coupled with the syntax and type systems of specific languages (e.g., C/C++, Java). Supporting a new language often requires rebuilding the entire system from scratch.
 - **Failure under dynamic behavior**: Analysis algorithms heavily rely on stable object layouts and explicit type declarations. When analyzing untyped code or programs with dynamically evolving object structures, they either produce overly coarse approximations or suffer from state explosion.
 
 ## Unified Program Analysis
+=======
+Different from traditional analyses that assume stable object models and reliable type constraints, Lian takes a different path. It abstracts program behavior into a set of language-agnostic semantic primitives and performs analysis directly at this level, instead of anchoring analysis logic to surface-level syntax or type systems.
+>>>>>>> aec4bc7 (update readme)
 
 Despite vast syntactic differences across languages, program behaviors at the execution level can all be reduced to a common set of semantic operations, enabling unified analysis.
 
@@ -39,8 +49,12 @@ Despite vast syntactic differences across languages, program behaviors at the ex
 
 ### System Requirements
 
+<<<<<<< HEAD
 * Linux environment  
 * Python 3.10+
+=======
+Lian currently targets Unix-like environments and requires Python 3.10 or above.
+>>>>>>> aec4bc7 (update readme)
 
 ### Download and Install
 

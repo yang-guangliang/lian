@@ -220,14 +220,27 @@ class GIRParser:
         self.count = 0
 
     def obtain_ast_parser(self, lang: lang_config.LangConfig):
-        lib = cdll.LoadLibrary(lang.so_path)
-        function_name = lang.name if lang.name != "csharp" else "c_sharp"
-        lang_function = getattr(lib, f"tree_sitter_{function_name}")
-        lang_function.restype = c_void_p
-        lang_id = lang_function()
-        lang_inter = tree_sitter.Language(lang_id)
-        tree_sitter_parser = tree_sitter.Parser(lang_inter)
-        return tree_sitter_parser
+        try:
+            lib = cdll.LoadLibrary(lang.so_path)
+            function_name = lang.name if lang.name != "csharp" else "c_sharp"
+            lang_function = getattr(lib, f"tree_sitter_{function_name}")
+            lang_function.restype = c_void_p
+            lang_id = lang_function()
+            lang_inter = tree_sitter.Language(lang_id)
+            tree_sitter_parser = tree_sitter.Parser(lang_inter)
+            return tree_sitter_parser
+        except ValueError as e:
+            if "Incompatible Language version" in str(e):
+                util.error_and_quit(
+                    f"Error: {e}\n"
+                    f"❌ The dependency 'tree-sitter' is not corrent. Please upgrade the 'tree-sitter' Python package:\n"
+                    f"      pip install -r requirements.txt\n"
+                )
+                sys.exit(-1)
+            else:
+                util.error_and_quit(f"ValueError when loading language '{lang.name}': {e}")
+        except Exception as e:
+            util.error_and_quit(f"Failed to load AST parser for language '{lang.name}': {e}")
 
     def parse(self, unit_info, file_path, lang_option, lang_table):
         """
@@ -330,9 +343,6 @@ class GIRParser:
             node["unit_id"] = unit_id
         self.loader.save_unit_gir(unit_id, flatten_nodes)
 
-    def export(self):
-        self.loader.export_gir()
-
 class LangAnalysis:
     def __init__(self, lian):
         self.options = lian.options
@@ -383,10 +393,6 @@ class LangAnalysis:
             os.path.join(self.options.workspace, config.FRONTEND_DIR)
         )
         all_units = self.loader.get_all_unit_info()
-        #all_units = [unit for unit in all_units if unit.lang !='c' or (unit.lang == 'c' and unit.unit_ext == '.i')]
-
-        if self.options.benchmark:
-            all_units = all_units.slice(0, config.MAX_BENCHMARK_TARGET)
         if len(all_units) == 0:
             util.error_and_quit("No files found for analysis.")
 
@@ -400,31 +406,22 @@ class LangAnalysis:
             for unit_info in all_units:
                 current_node_id, previous_results = unit_level_checker.previous_lang_analysis_results(unit_info, current_node_id)#
                 if previous_results:
-                    # util.debug("Incremental: Previous result found")
                     gir_parser.add_unit_gir(unit_info, previous_results)
                     current_node_id = self.adjust_node_id(current_node_id)
 
                 else:
-                    # util.debug("main not found:",unit_info.module_id)
                     units_to_analyze.append(unit_info)
 
         for unit_info in units_to_analyze:
-            # if row.symbol_type == constants.SymbolKind.UNIT_SYMBOL and row.unit_ext in extensions:
             unit_path = ""
             if self.options.strict_parse_mode:
                 unit_path = unit_info.original_path
             else:
                 unit_path = unit_info.unit_path
-            #print("unit_path:", unit_path)
             current_node_id, gir = gir_parser.deal_with_file_unit(
                 current_node_id, unit_info, unit_path, lang_table = self.lang_table
             )
             gir_parser.add_unit_gir(unit_info, gir)
             current_node_id = self.adjust_node_id(current_node_id)
-            # if self.options.debug:
-            #     gir_parser.export()
 
         self.loader.save_max_gir_id(current_node_id)
-        gir_parser.export()
-
-        self.loader.export()

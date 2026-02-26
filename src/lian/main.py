@@ -35,9 +35,9 @@ from lian.config import config, constants, lang_config
 from lian.util import util
 from lian.util.loader import Loader
 from lian.lang.lang_analysis import LangAnalysis
-from lian.basics.basic_analysis import BasicSemanticAnalysis
-from lian.core.prelim_semantics import PrelimSemanticAnalysis
-from lian.core.global_semantics import GlobalSemanticAnalysis
+from lian.basics.basic_analysis import P1BasicSemanticAnalysis
+from lian.core.prelim_semantics import P2PrelimSemanticAnalysis
+from lian.core.global_semantics import P3GlobalSemanticAnalysis
 from lian.core.resolver import Resolver
 from lian.incremental.unit_level_incremental_checker import UnitLevelIncrementalChecker
 from lian.externs.extern_system import ExternSystem
@@ -84,6 +84,8 @@ class Lian:
                     if hasattr(self.options, key):
                         setattr(self.options, key, value)
 
+        config.COMPLETE_SFG_DUMP_FLAG = self.options.complete_graph
+        
         return self
 
     def set_workspace_dir(self, default_workspace_dir = config.DEFAULT_WORKSPACE):
@@ -114,7 +116,7 @@ class Lian:
         self.update_lang_config()
 
         self.event_manager = EventManager(self.options)
-        self.loader = Loader(self.options, self.event_manager)
+        self.loader = Loader(self.options)
         self.resolver = Resolver(self.options, self.event_manager, self.loader)
         self.extern_system = ExternSystem(self.options, self.loader, self.resolver)
         self.event_manager.register_extern_system(self.extern_system)
@@ -123,7 +125,7 @@ class Lian:
         preparation.run(self.options, self.loader)
         if self.options.incremental:
             UnitLevelIncrementalChecker.init(self.options, self.event_manager, self.loader)
-        if not self.options.noextern:
+        if not self.options.nomock:
             self.extern_system.init()
 
         if util.is_available(other_init):
@@ -146,13 +148,15 @@ class Lian:
 
     def lang_analysis(self):
         LangAnalysis(self).run()
-        #self.loader.export()
+        self.loader.export()
         return self
 
     def semantic_analysis(self):
-        BasicSemanticAnalysis(self).run()
-        summary_generation = PrelimSemanticAnalysis(self).run()
-        GlobalSemanticAnalysis(self, summary_generation.analyzed_method_list).run()
+        P1BasicSemanticAnalysis(self).run()
+        analyzed_method_list = []
+        if self.options.enable_p2:
+            analyzed_method_list = P2PrelimSemanticAnalysis(self).run().analyzed_method_list
+        P3GlobalSemanticAnalysis(self, analyzed_method_list).run()
         self.loader.export()
         return self
 

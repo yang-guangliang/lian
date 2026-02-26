@@ -72,6 +72,16 @@ unit_id_to_class_id_schema = [
     "class_ids"
 ]
 
+class_id_to_stmt_id_schema = [
+    "class_id",
+    "stmt_ids"
+]
+
+method_id_to_stmt_id_schema = [
+    "method_id",
+    "stmt_ids"
+]
+
 unit_id_to_namespace_id_schema = [
     "unit_id",
     "namespace_ids"
