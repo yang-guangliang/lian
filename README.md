@@ -77,11 +77,11 @@ $ ./scripts/lian.sh -l <language> <path_to_code>
 
 ## Documentation and Support
 
-For more technical details, please refer to [Documentation](https://yang-guangliang.github.io/lian/en). Also, we provide [Lecture Notes on Program Analysis](https://yang-guangliang.github.io/lian/en/02.background/2-1.basics/) (covering fundamentals, dataflow analysis, pointer analysis, and taint analysis), as a reference.
+For more technical details, please refer to [Documentation](https://yian-lang.net/lian/en). Also, we provide [Lecture Notes on Program Analysis](https://yian-lang.net/lian/en/02.background/2-1.basics/) (covering fundamentals, dataflow analysis, pointer analysis, and taint analysis), as a reference.
 
 Feel free to submit feedback and suggestions via [Issues](https://github.com/yang-guangliang/lian/issues),[Discussions](https://github.com/yang-guangliang/lian/discussions), and [Pull Requests](https://github.com/yang-guangliang/lian/pulls)!
 
 ## Project Status
 
-Lian is an active and research-driven project. Lian is independently developed by the [SSR (System Security and Reliability) research group](https://yang-guangliang.github.io/) at Fudan University. We are committed to building a generic, scalable, and high-precision program security analysis infrastructure.
+Lian is an active and research-driven project. Lian is independently developed by the [SSR (System Security and Reliability) research group](https://yian-lang.net/guangliang) at Fudan University. We are committed to building a generic, scalable, and high-precision program security analysis infrastructure.
 
