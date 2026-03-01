@@ -72,7 +72,7 @@ $ ./scripts/lian.sh -l <language> <path_to_code>
 
 ## 文档和支持
 
-更多技术细节，请参考[中文文档](https://yang-guangliang.github.io/lian/cn)。我们也提供了[程序分析讲义](https://yang-guangliang.github.io/lian/cn/02.background/2-1.basics/)（共四章，包括基础、数据流、指针分析、污点分析），供参考。
+更多技术细节，请参考[中文文档](https://yian-lang.net/lian/cn/)。我们也提供了[程序分析讲义](https://yian-lang.net/lian/cn/02.background/2-1.basics/)（共四章，包括基础、数据流、指针分析、污点分析），供参考。
 
 欢迎通过[Issues](https://gitee.com/fdu-ssr/lian/issues)提交反馈和建议！
 
