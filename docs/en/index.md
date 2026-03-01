@@ -1,5 +1,7 @@
 # Lian Program Analysis Framework
 
+Lian is a next-generation, high-precision program analysis framework designed for multi-language environments. It aims to deliver unified and powerful program analysis capabilities across diverse programming languages, including pointer analysis, dataflow analysis, and taint analysis.
+
 ## 1 Background
 
 Program analysis is a fundamental technique for understanding program behavior, validating software correctness, and supporting system security. Over the past decades, research on traditional industrial languages such as C/C++ and Java has resulted in relatively mature program analysis methodologies and toolchains. In the C/C++ domain, tools such as SVF and Phasar support precise pointer analysis through detailed modeling of alias relations and heap objects. In the Java domain, frameworks such as Soot and WALA exploit relatively stable type systems and reference semantics to construct reusable points-to analysis infrastructures. These techniques have been widely applied in tasks such as code auditing and vulnerability analysis.
