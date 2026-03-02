@@ -509,7 +509,7 @@ class Parser(common_parser.Parser):
                 shadow_expr_list.append(shadow_expr)
 
         tmp_var = self.tmp_variable()
-        self.append_stmts(statements, node, {"new_array": {"target": tmp_var}})
+        self.append_stmts(statements, node, {"new_array": {"target": tmp_var, "attrs": ["tuple"]}})
         if len(shadow_expr_list) > 0:
             for index, item in enumerate(shadow_expr_list):
                 self.append_stmts(statements, node, {"array_write": {"array": tmp_var, "index": str(index), "source": item}})
@@ -1325,6 +1325,19 @@ class Parser(common_parser.Parser):
         self.append_stmts(statements, node, {"return_stmt": {"name": shadow_name}})
         return shadow_name
 
+    def yield_statement(self, node: Node, statements: list):
+        expressions = None
+        for child in node.named_children:
+            if child.type != "yield":
+                expressions = child
+                break
+        
+        if expressions:
+            shadow_expr = self.parse(expressions, statements)
+            self.append_stmts(statements, node, {"yield_stmt": {"target": shadow_expr}})
+        else:
+            self.append_stmts(statements, node, {"yield_stmt": {"target": ""}})
+
     def delete_statement(self, node: Node, statements: list):
         expression_list = self.find_child_by_type(node, "expression_list")
         shadow_expr = ""
@@ -2021,18 +2034,6 @@ class Parser(common_parser.Parser):
         shadow_field = self.read_node_text(field)
         return (shadow_object, shadow_field)
 
-    def yield_statement(self, node: Node, statements: list):
-        expression_list = self.find_child_by_type(node, "expression_list")
-        shadow_expr = ""
-        if expression_list:
-            if expression_list.named_child_count > 0:
-                for child in expression_list.named_children:
-                    shadow_expr = self.parse(child, statements)
-                    self.append_stmts(statements, node, {"yield_stmt": {"target": shadow_expr}})
-        else:
-            for child in node.named_children:
-                shadow_expr = self.parse(child, statements)
-                self.append_stmts(statements, node, {"yield_stmt": {"target": shadow_expr}})
 
 
     def check_statement_handler(self, node):
