@@ -320,6 +320,7 @@ class Parser(common_parser.Parser):
                                 statements.insert(
                                     len(statements) - 1, {"variable_decl": {"name": shadow_value}}
                                 )
+                                statements.extend(tmp_body)
                             else:
                                 tmp_parameter = self.tmp_variable()
                                 self.append_stmts(statements,
