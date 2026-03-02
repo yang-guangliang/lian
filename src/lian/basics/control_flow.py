@@ -303,58 +303,54 @@ class ControlFlowAnalysis:
         return (last_stmts_of_previous_body + special_stmts, boundary)
 
     def analyze_try_stmt(self, current_block, current_stmt, parent_stmts, global_special_stmts):
-        # catch_body is ignored
         self.link_parent_stmts_to_current_stmt(parent_stmts, current_stmt)
 
-        new_special_stmts = []
-        body_id = current_stmt.body
-        catch_body_id = current_stmt.catch_body
-        else_body_id = current_stmt.else_body
-        final_body_id = current_stmt.final_body
+        # 1. Try body
+        last_stmts_of_body = self.analyze_block(
+            self.read_block(current_stmt.body), [current_stmt], global_special_stmts
+        )
 
-        boundary = self.boundary_of_multi_blocks(current_block, [body_id, catch_body_id, else_body_id, final_body_id])
-
-        body = self.read_block(body_id)
-        last_stmts_of_body = self.analyze_block(body, [CFGNode(current_stmt, CONTROL_FLOW_KIND.EMPTY)], global_special_stmts)
-
-        if util.isna(catch_body_id):
-            return (last_stmts_of_body, boundary)
-
-        catch_body = self.read_block(catch_body_id)
-        catch_with_init_set = catch_body.query_field("parent_stmt_id", catch_body_id)
-        pre_init_stmt = last_stmts_of_body
+        # 2. Catch clauses
         last_stmts_of_catch_body = []
-        for stmt in catch_with_init_set:
-            self.link_parent_stmts_to_current_stmt(pre_init_stmt, stmt)
-            if stmt.operation == "catch_clause":
-                last_stmts_of_catch_clause = self.analyze_block(
-                    self.read_block(stmt.body), [CFGNode(stmt, CONTROL_FLOW_KIND.CATCH_TRUE)], global_special_stmts
-                )
-                last_stmts_of_catch_body.extend(last_stmts_of_catch_clause)
-            pre_init_stmt = [stmt]
+        catch_body_id = current_stmt.catch_body
+        if not util.isna(catch_body_id):
+            catch_block = self.read_block(catch_body_id)
+            catch_clauses = catch_block.query_field("parent_stmt_id", catch_body_id)
+            for stmt in catch_clauses:
+                # Link each catch clause directly from all ends of the try body
+                self.link_parent_stmts_to_current_stmt(last_stmts_of_body, stmt)
+                if stmt.operation == "catch_clause":
+                    last_stmts_of_catch_body.extend(
+                        self.analyze_block(
+                            self.read_block(stmt.body), [CFGNode(stmt, CONTROL_FLOW_KIND.CATCH_TRUE)], global_special_stmts
+                        )
+                    )
 
+        # 3. Else body
+        last_stmts_of_else = []
+        else_body_id = current_stmt.else_body
         if not util.isna(else_body_id):
-            else_body = self.read_block(else_body_id)
-            last_stmts_of_else_body = self.analyze_block(else_body, [CFGNode(last_stmts_of_body, CONTROL_FLOW_KIND.CATCH_FALSE)], global_special_stmts)
-
-            if not util.isna(final_body_id):
-                final_body = self.read_block(final_body_id)
-                last_stmts_of_final_body = self.analyze_block(
-                    final_body, [CFGNode(last_stmts_of_catch_body, CONTROL_FLOW_KIND.CATCH_FINALLY)] + [CFGNode(last_stmts_of_else_body, CONTROL_FLOW_KIND.CATCH_FINALLY)], global_special_stmts
-                )
-            else:
-                return (last_stmts_of_catch_body + last_stmts_of_else_body, boundary)
-
+            last_stmts_of_else = self.analyze_block(
+                self.read_block(else_body_id),
+                [CFGNode(s, CONTROL_FLOW_KIND.CATCH_FALSE) for s in last_stmts_of_body],
+                global_special_stmts
+            )
         else:
-            if not util.isna(final_body_id):
-                final_body = self.read_block(final_body_id)
-                last_stmts_of_final_body = self.analyze_block(
-                    final_body, [CFGNode(last_stmts_of_catch_body, CONTROL_FLOW_KIND.CATCH_FINALLY)], global_special_stmts
-                )
-            else:
-                return (last_stmts_of_body, boundary)
+            last_stmts_of_else = last_stmts_of_body
 
-        return (last_stmts_of_final_body, boundary)
+        # 4. Finally body
+        final_body_id = current_stmt.final_body
+        if not util.isna(final_body_id):
+            finally_parents = [CFGNode(s, CONTROL_FLOW_KIND.CATCH_FINALLY) for s in last_stmts_of_catch_body + last_stmts_of_else]
+            last_stmts_of_finally = self.analyze_block(
+                self.read_block(final_body_id), finally_parents, global_special_stmts
+            )
+            exit_stmts = last_stmts_of_finally
+        else:
+            exit_stmts = last_stmts_of_catch_body + last_stmts_of_else
+
+        boundary = self.boundary_of_multi_blocks(current_block, [current_stmt.body, catch_body_id, else_body_id, final_body_id])
+        return (exit_stmts, boundary)
 
     def analyze_method_decl_stmt(self, current_block, current_stmt, parent_stmts, global_special_stmts):
         self.link_parent_stmts_to_current_stmt(parent_stmts, current_stmt)
