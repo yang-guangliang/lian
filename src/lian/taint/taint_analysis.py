@@ -56,7 +56,7 @@ class PathFinder:
                 edge_data = self.sfg.get_edge_data(pred, u)
                 if edge_data:
                     for data in edge_data.values():
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                        if data.edge_type == SFG_EDGE_KIND.SYMBOL_IS_USED:
                             u_tag |= self.taint_manager.get_symbol_tag(pred.node_id)
             return u_tag
         return 0
@@ -78,7 +78,7 @@ class PathFinder:
                 edge_data = self.sfg.get_edge_data(source, v)
                 if edge_data:
                     for data in edge_data.values():
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                        if data.edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
                             self.taint_manager.set_states_tag([v.node_id], tag)
                             self._enqueue(worklist, in_worklist, v)
         elif source.node_type == SFG_NODE_KIND.STATE:
@@ -93,7 +93,7 @@ class PathFinder:
             edge_data = self.sfg.get_edge_data(u, v)
             if edge_data:
                 for data in edge_data.values():
-                    etype = data.get('weight').edge_type
+                    etype = data.edge_type
                     # 传播到状态或使用该变量的语句
                     if etype == SFG_EDGE_KIND.SYMBOL_STATE:
                         v_tag = self.taint_manager.get_state_tag(v.node_id)
@@ -119,7 +119,7 @@ class PathFinder:
             edge_data = self.sfg.get_edge_data(v, u)
             if edge_data:
                 for data in edge_data.values():
-                    if data.get('weight').edge_type in (SFG_EDGE_KIND.SYMBOL_STATE, SFG_EDGE_KIND.STATE_INCLUSION):
+                    if data.edge_type in (SFG_EDGE_KIND.SYMBOL_STATE, SFG_EDGE_KIND.STATE_INCLUSION):
                         v_tag = self.taint_manager.get_symbol_tag(v.node_id)
                         if (u_tag | v_tag) != v_tag:
                             self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
@@ -131,7 +131,7 @@ class PathFinder:
                 edge_data = self.sfg.get_edge_data(u, v)
                 if edge_data:
                     for data in edge_data.values():
-                        if data.get('weight').edge_type in (SFG_EDGE_KIND.STATE_INCLUSION,
+                        if data.edge_type in (SFG_EDGE_KIND.STATE_INCLUSION,
                                                             SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
                             v_tag = self.taint_manager.get_state_tag(v.node_id)
                             if (u_tag | v_tag) != v_tag:
@@ -147,7 +147,7 @@ class PathFinder:
                 if edge_data:
                     for data in edge_data.values():
                         # 传播到该语句定义的变量
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+                        if data.edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
                             v_tag = self.taint_manager.get_symbol_tag(v.node_id)
                             if (u_tag | v_tag) != v_tag:
                                 self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
@@ -167,7 +167,7 @@ class PathFinder:
                     if not edge_data:
                         continue
                     for data in edge_data.values():
-                        weight = data.get('weight')
+                        weight = data
                         if not weight:
                             continue
                         if weight.edge_type != SFG_EDGE_KIND.SYMBOL_IS_USED:
@@ -300,7 +300,7 @@ class TaintRuleApplier:
         #     return False
         # if not isinstance(stmt.attrs, str):
         #     return False
-        attrs = stmt.attrs
+        # attrs = stmt.attrs
         parameter_symbol = list(util.graph_successors(self.sfg, node))[0]
         for rule in self.rule_manager.all_sources:
             if rule.unit_path and rule.unit_path != unit_path:
@@ -656,7 +656,7 @@ class TaintRuleApplier:
                     edge_data = self.sfg.get_edge_data(pred, node)
                     if not edge_data: continue
                     for data in edge_data.values():
-                        weight = data.get('weight')
+                        weight = data
                         if weight.edge_type != SFG_EDGE_KIND.SYMBOL_IS_USED:
                             continue
 
@@ -709,7 +709,7 @@ class TaintAnalysis:
                 rules.append(rule)
         return rules
 
-    def get_stmt_used_symbol_and_state_by_pos(self, node, pos = 0):
+    def get_stmt_used_symbol_and_state_by_pos(self, node, pos = -1):
         if node.node_type != SFG_NODE_KIND.STMT:
             return None, None
         state_nodes = []
@@ -719,7 +719,8 @@ class TaintAnalysis:
             return None, None
         for predecessor in predecessors:
             edge = self.sfg.get_edge_data(predecessor, node)
-            if edge and edge[0]['weight'].pos == pos:
+
+            if edge and edge['weight'].pos == pos:
                 name_symbol_node = predecessor
         name_symbol_successors = list(util.graph_successors(self.sfg, name_symbol_node))
         for successor in name_symbol_successors:
@@ -736,13 +737,13 @@ class TaintAnalysis:
             if successor.node_id == -1 or successor.name == "":
                 continue
             edge = self.sfg.get_edge_data(node, successor)
-            if edge and edge[0]['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+            if edge and edge['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
                 define_symbol_node = successor
         define_symbol_successors = list(util.graph_successors(self.sfg, define_symbol_node))
         define_state_list = []
         for successor in define_symbol_successors:
             edge = self.sfg.get_edge_data(define_symbol_node, successor)
-            if edge and edge[0]['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+            if edge and edge['weight'].edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
                 define_state_list.append(successor)
         return define_symbol_node, define_state_list
 
@@ -837,7 +838,7 @@ class TaintAnalysis:
                     s_edge_data = self.sfg.get_edge_data(curr_state, next_state)
                     if s_edge_data:
                         for s_data in s_edge_data.values():
-                            if s_data.get('weight').edge_type in (
+                            if s_data.edge_type in (
                                     SFG_EDGE_KIND.STATE_INCLUSION,
                                     SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
                                 state_visited.add(next_state)
@@ -852,7 +853,7 @@ class TaintAnalysis:
             v_edge_data = self.sfg.get_edge_data(symbol_node, v)
             if v_edge_data:
                 for v_data in v_edge_data.values():
-                    if v_data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                    if v_data.edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
                         tag |= self.get_state_with_inclusion_tag(v)
         return tag
 
@@ -1011,7 +1012,7 @@ class TaintAnalysis:
                     edge_data = self.sfg.get_edge_data(u, v)
                     if not edge_data: continue
                     for data in edge_data.values():
-                        etype = data.get('weight').edge_type
+                        etype = data.edge_type
                         if etype in (SFG_EDGE_KIND.SYMBOL_STATE, SFG_EDGE_KIND.SYMBOL_IS_USED,
                                      SFG_EDGE_KIND.SYMBOL_FLOW, SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW):
                             visited.add(v)
@@ -1025,7 +1026,7 @@ class TaintAnalysis:
                     edge_data = self.sfg.get_edge_data(v, u)
                     if not edge_data: continue
                     for data in edge_data.values():
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
+                        if data.edge_type == SFG_EDGE_KIND.SYMBOL_STATE:
                             visited.add(v)
                             worklist.append(v)
                             break
@@ -1035,7 +1036,7 @@ class TaintAnalysis:
                     edge_data = self.sfg.get_edge_data(u, v)
                     if not edge_data: continue
                     for data in edge_data.values():
-                        etype = data.get('weight').edge_type
+                        etype = data.edge_type
                         if etype in (SFG_EDGE_KIND.STATE_INCLUSION, SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION,
                                      SFG_EDGE_KIND.STATE_COPY):
                             visited.add(v)
@@ -1049,7 +1050,7 @@ class TaintAnalysis:
                     edge_data = self.sfg.get_edge_data(u, v)
                     if not edge_data: continue
                     for data in edge_data.values():
-                        if data.get('weight').edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
+                        if data.edge_type == SFG_EDGE_KIND.SYMBOL_IS_DEFINED:
                             visited.add(v)
                             worklist.append(v)
                             break
@@ -1076,7 +1077,7 @@ class TaintAnalysis:
 
                 is_related = False
                 for data in edge_data.values():
-                    etype = data.get('weight').edge_type
+                    etype = data.edge_type
                     if u.node_type == SFG_NODE_KIND.SYMBOL:
                         # SYMBOL 是被谁定义的 (STMT -> SYMBOL) 或 从哪个 SYMBOL 流过来的 (SYMBOL -> SYMBOL)
                         if etype in (SFG_EDGE_KIND.SYMBOL_IS_DEFINED,

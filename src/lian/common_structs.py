@@ -1210,7 +1210,7 @@ class SFGNode:
     """
 
     @profile
-    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, stmt=None, name="", access_path=[]):
+    def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, stmt=None, name="ep", access_path=[]):
         # 节点类型
         self.node_type = node_type
         # 这个节点被def的stmt_id
@@ -1237,12 +1237,13 @@ class SFGNode:
         self.stmt = None
 
         if stmt is not None:
+            self.stmt = stmt
             self.line_no = stmt.start_row
             if len(name) == 0:
                 self.name = stmt.operation
 
-            if config.COMPLETE_SFG_DUMP_FLAG:
-                self.operation = readable_gir.get_gir_str(stmt)
+            # if config.COMPLETE_SFG_DUMP_FLAG:
+            self.operation = readable_gir.get_gir_str(stmt)
 
     def __hash__(self) -> int:
         return hash((self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id))
@@ -1289,10 +1290,15 @@ class SFGNode:
             self.index,
             self.node_id,
             self.context_id,
+            self.name,
+            self.stmt,
+            self.line_no,
+            self.operation,
+            self.access_path
         )
 
     def from_tuple(self, tup):
-        self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id = tup
+        self.node_type, self.def_stmt_id, self.index, self.node_id, self.context_id, self.name, self.stmt, self.line_no, self.operation, self.access_path= tup
         return self
 
 @dataclasses.dataclass
