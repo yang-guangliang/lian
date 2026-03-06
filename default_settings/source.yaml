@@ -180,4 +180,29 @@
       name: pre_dispatch
       line_num: 643
       unit_name: parallel.py
-    
+    # CVE-2025-62703
+    - operation: object_call 
+      name: 'request.form.get("value")'
+      line_num: 93
+      unit_name: flask.py
+      tag: ["%target"]
+    # CVE-2025-66448
+    - operation: parameter_decl
+      name: model
+      line_num: 112
+      unit_name: config.py
+    # CVE-2026-0761
+    - operation: parameter_decl
+      name: ic
+      line_num: 206
+      unit_name: schema.py
+    # CVE-2026-0766
+    - operation: parameter_decl
+      name: form_data
+      line_num: 354
+      unit_name: tools.py
+    # CVE-2026-24779
+    - operation: parameter_decl
+      name: url
+      line_num: 149
+      unit_name: utils.py
