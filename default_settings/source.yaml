@@ -143,7 +143,7 @@
     - operation: parameter_decl
       name: run
       line_num: 128
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-5980/test/pytorch-lightning-2.2.4/src/lightning/app/plugin/plugin.py"
+      unit_path: plugin.py
     # CVE-2024-8953
     - operation: parameter_decl
       name: request

@@ -139,8 +139,7 @@ symbol_graph_schema_p2 = [
 state_flow_graph_schema_p2 = [
     "method_id",
     "source_node",
-    "edge_type",
-    "edge_stmt_id",
+    "edge",
     "dest_node"
 ]
 

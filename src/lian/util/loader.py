@@ -1939,19 +1939,18 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
             symbol_graph.add_edge(
                 SFGNode().from_tuple(row.source_node),
                 SFGNode().from_tuple(row.dest_node),
-                SFGEdge().from_tuple(row.edge_type, row.edge_name)
+                SFGEdge().from_tuple(row.edge)
             )
         return symbol_graph.graph
 
     def flatten_item_when_saving(self, method_id, state_flow_graph: nx.DiGraph):
         edges = []
         all_edges = state_flow_graph.edges(data='weight', default=None)
-        for src_node, dst_node, edge_type in all_edges:
+        for src_node, dst_node, edge in all_edges:
             edges.append({
                 "method_id": method_id,
                 "source_node": src_node.to_tuple(),
-                "edge_type": edge_type.to_tuple(),
-                "edge_name": edge_type.name,
+                "edge": edge.to_tuple(),
                 "dest_node": dst_node.to_tuple(),
             })
         # print(edges)

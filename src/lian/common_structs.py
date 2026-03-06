@@ -1360,11 +1360,12 @@ class SFGEdge:
             self.edge_type,
             self.stmt_id,
             self.round,
+            self.pos,
+            self.name,
         )
 
-    def from_tuple(self, tup, name):
-        self.edge_type, self.stmt_id, self.round = tup
-        self.name = name
+    def from_tuple(self, tup):
+        self.edge_type, self.stmt_id, self.round, self.pos, self.name = tup
         return self
 
 @dataclasses.dataclass
