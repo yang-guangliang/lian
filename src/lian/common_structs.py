@@ -173,7 +173,7 @@ class BasicGraph:
     def has_edge(self, src, dst):
         return self.graph.has_edge(src, dst)
 
-    @profile
+    # @profile
     def add_edge(self, src_stmt, dst_stmt, weight = None):
         src_stmt_id = -1
         dst_stmt_id = -1
@@ -1209,7 +1209,7 @@ class SFGNode:
     value: the value of state node
     """
 
-    @profile
+    # @profile
     def __init__(self, node_type=-1, def_stmt_id=-1, method_id=-1, index=-1, node_id=-1, context=None, stmt=None, name="ep", access_path=[]):
         # 节点类型
         self.node_type = node_type

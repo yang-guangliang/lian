@@ -429,19 +429,36 @@ class ClassIDToMembersLoader(UnitLevelLoader):
         for class_id in class_id_to_members:
             self.save(class_id, class_id_to_members[class_id])
 
-    def save(self, class_id, class_members_dict:dict):
-        class_members_series = pd.Series(class_members_dict, dtype = object)
-        class_members_df = DataModel(class_members_series, columns=["members"])
-        self.item_cache.put(class_id, class_members_df)
+    def flatten_item_when_saving(self, class_id, item_content):
+        results = []
+        for field_name in item_content:
+            results.append({
+                "class_id": class_id,
+                "field_name": field_name,
+                "field_states": list(item_content[field_name])
+            })
+        return results
 
-        self.active_bundle[class_id] = (class_members_df, class_members_dict)
-        self.item_id_to_bundle_id[class_id] = -1
-        self.active_bundle_length += len(class_members_dict)
-
-        if self.active_bundle_length > config.MAX_ROWS:
-            self.export()
-
-        return class_members_df
+    def unflatten_item_dataframe_when_loading(self, _id, item_df):
+        field_name_to_states = {}
+        # print(777777777777777777777)
+        # print(type(item_df), item_df)
+        for row in item_df:
+            field_name_to_states[row.field_name] = set(row.field_states)
+        return field_name_to_states
+    # def save(self, class_id, class_members_dict:dict):
+    #     class_members_series = pd.Series(class_members_dict, dtype = object)
+    #     class_members_df = DataModel(class_members_series, columns=["members"])
+    #     self.item_cache.put(class_id, class_members_df)
+    #
+    #     self.active_bundle[class_id] = (class_members_df, class_members_dict)
+    #     self.item_id_to_bundle_id[class_id] = -1
+    #     self.active_bundle_length += len(class_members_dict)
+    #
+    #     if self.active_bundle_length > config.MAX_ROWS:
+    #         self.export()
+    #
+    #     return class_members_df
 
 
 class SymbolNameToScopeIDsLoader(GeneralLoader):
@@ -462,7 +479,8 @@ class SymbolNameToScopeIDsLoader(GeneralLoader):
 
     def unflatten_item_dataframe_when_loading(self, _id, item_df):
         symbol_name_to_scope_ids = {}
-        #print(type(item_df), item_df)
+        # print(777777777777777777777)
+        # print(type(item_df), item_df)
         for row in item_df:
             symbol_name_to_scope_ids[row.symbol_name] = set(row.scope_ids)
         return symbol_name_to_scope_ids
@@ -1744,7 +1762,7 @@ class TypeGraphLoader:
         DataModel(results).save(self.path)
 
 class MethodSymbolToDefinedLoader(MethodLevelAnalysisResultLoader):
-    @profile
+    # @profile
     def unflatten_item_dataframe_when_loading(self, method_id, flattened_item):
         defined_symbols = {}
         for row in flattened_item:
@@ -2664,9 +2682,9 @@ class Loader:
                 self.save_class_id_to_members(class_id, nil_members)
             return nil_members
 
-        class_members_df = class_members.get_data()
-        if util.is_available(class_members_df) and hasattr(class_members_df, "members"):
-            return class_members_df["members"].to_dict()
+        # class_members_df = class_members.get_data()
+        if util.is_available(class_members):
+            return class_members
         return nil_members
 
     def get_map_class_id_to_members(self):
