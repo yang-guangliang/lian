@@ -233,3 +233,27 @@
       line_num: 130
       unit_name: flask.py
       target: [\%arg0]
+    # CVE-2025-66448
+    - operation: object_call
+      name: cloudpickle.loads
+      line_num: 130
+      unit_name: config.py
+      target: [\%arg0]
+    # CVE-2026-0761
+    - operation: call_stmt
+      name: eval
+      line_num: 56
+      unit_name: serialize.py
+      target: [\%arg0]
+    # CVE-2026-0766
+    - operation: call_stmt
+      name: exec
+      line_num: 242
+      unit_name: plugin.py
+      target: [\%arg0]
+    # CVE-2026-24779
+    - operation: object_call
+      name: client.get
+      line_num: 64
+      unit_name: "connections.py"
+      target: [\%arg0]
