@@ -128,10 +128,6 @@
 - lang: python
   method_list: ["__init__"]
   unit_name: "parallel.py"
-# CVE-2025-64511
-- lang: python
-  method_list: ["valid_args"]
-  unit_name: "i_step_node.py"
 # CVE-2025-62703
 - lang: python
   method_list: ["_invoke"]

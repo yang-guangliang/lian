@@ -227,3 +227,9 @@
       line_num: 1015
       unit_name: parallel.py
       target: [\%arg0]
+    # CVE-2025-62703
+    - operation: object_call
+      name: cloudpickle.loads
+      line_num: 130
+      unit_name: flask.py
+      target: [\%arg0]
