@@ -1,9 +1,12 @@
 def f1():
     p = f2()
+    sink(p)
     return p
 
 def f2():
     s = source()
+    g = s
+    sink(g)
     return s
 
 def f3(x):

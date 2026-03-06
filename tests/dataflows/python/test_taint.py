@@ -1,4 +1,5 @@
-# func0()
+
+
 # def a():
 #     t = source()
 #
@@ -9,8 +10,7 @@
 # def c(p, p1):
 #     sink(p)
 #     send(p1)
-# def func0():
-#     a()
+# a()
 
 def aaa():
     a = source()
@@ -18,5 +18,9 @@ def aaa():
     bbb(n)
 def bbb(h):
     f = h
-    sink(f)
+    if n == m:
+        d = 4
+    else:
+        d = f
+    sink(d)
 aaa()
