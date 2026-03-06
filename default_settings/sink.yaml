@@ -221,3 +221,9 @@
       line_num: 301
       unit_name: "runner_app.py"
       target: [\%arg0]
+    # CVE-2022-21797
+    - operation: call_stmt
+      name: eval
+      line_num: 1015
+      unit_name: parallel.py
+      target: [\%arg0]

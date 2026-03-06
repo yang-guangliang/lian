@@ -123,6 +123,23 @@
 - lang: python
   method_list: ["install_model"]
   unit_name: "model_manager.py"
+########### 补充的 CVE ################
+# CVE-2022-21797
+- lang: python
+  method_list: ["__init__"]
+  unit_name: "parallel.py"
+# CVE-2025-64511
+- lang: python
+  method_list: ["valid_args"]
+  unit_name: "i_step_node.py"
+# CVE-2025-62703
+- lang: python
+  method_list: ["_invoke"]
+  unit_name: "flask.py"
+# CVE-2025-66448
+- lang: python
+  method_list: ["_invoke"]
+  unit_name: "flask.py"
 ######################################## 腾讯项目使用，勿删 ################################################
 - lang: python
   method_list: ['on_voice_change']

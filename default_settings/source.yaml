@@ -175,3 +175,9 @@
       name: request
       line_num: 291
       unit_name: runner_app.py
+    # CVE-2022-21797
+    - operation: parameter_decl
+      name: pre_dispatch
+      line_num: 643
+      unit_name: parallel.py
+    
