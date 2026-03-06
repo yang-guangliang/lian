@@ -310,14 +310,14 @@ class TaintRuleApplier:
             if rule.line_num and rule.line_num != int(stmt.start_row + 1):
                 continue
             if not rule.attr and rule.name == parameter_symbol.name:
-                print(rule.name)
+                # print(rule.name)
                 return True
             if rule.operation != "parameter_decl":
                 continue
             # if rule.attr and rule.attr not in attrs:
             #     continue
             if rule.name == parameter_symbol.name:
-                print(rule.name)
+                # print(rule.name)
                 return True
         return False
 
@@ -335,7 +335,7 @@ class TaintRuleApplier:
                 # 格式化访问路径
                 access_path = access_path_formatter(state_node.access_path)
                 if access_path == rule.name:
-                    print(rule.name)
+                    # print(rule.name)
                     return True
 
         return False
@@ -373,7 +373,7 @@ class TaintRuleApplier:
                 if len(access_path) == 0:
                     access_path = method_symbol_node.name
                 if access_path == name:
-                    print(rule.name)
+                    # print(rule.name)
                     apply_rule_flag = True
                     tag = self.taint_analysis.taint_manager.get_symbol_tag(tag_space_id)
                     new_tag = self.taint_analysis.taint_manager.add_and_update_tag_bv(tag_info=tag_info,
@@ -409,7 +409,7 @@ class TaintRuleApplier:
             if rule.line_num and rule.line_num != int(node.line_no + 1):
                 continue
             if rule.name in names:
-                print(rule.name)
+                # print(rule.name)
                 return True
         return False
 
@@ -893,7 +893,7 @@ class TaintAnalysis:
                 sink_tag = self.rule_applier.get_sink_tag_by_rules(sink)
 
                 if (sink_tag & tag) != 0:
-                    print("found taint sink")
+                    # print("found taint sink")
                     flow = self.path_finder.reconstruct_define_use_path(source, sink)
                     flow_list.append(flow)
 
@@ -1140,7 +1140,7 @@ class TaintAnalysis:
                     "end_line": int(stmt.end_row + 1),
                     "file_path": file_path,
                     "gir": gir_str,
-                    "stmt_id": stmt_id,
+                    "stmt_id": int(stmt_id),
                 }
                 path_parent_source_node_list.append(path_node)
                 path_parent_source_file_node_list.append(path_node_in_file)
@@ -1166,7 +1166,7 @@ class TaintAnalysis:
                     "end_line": int(stmt.end_row + 1),
                     "file_path": file_path,
                     "gir": gir_str,
-                    "stmt_id": stmt_id,
+                    "stmt_id": int(stmt_id),
                 }
                 path_parent_sink_node_list.append(path_node)
                 path_parent_sink_file_node_list.append(path_node_in_file)
@@ -1178,8 +1178,8 @@ class TaintAnalysis:
             print("\t\tData Flow:", path_parent_sink_node_list)
 
             flow_json.append({
-                "source_stmt_id": each_flow.source_stmt_id,
-                "sink_stmt_id": each_flow.sink_stmt_id,
+                "source_stmt_id": int(each_flow.source_stmt_id),
+                "sink_stmt_id": int(each_flow.sink_stmt_id),
                 "source": source_gir,
                 "sink": sink_gir,
                 "source_line": source_line_no + 1,
@@ -1213,10 +1213,10 @@ class TaintAnalysis:
             self.taint_manager = TaintEnv()
             sources = self.find_sources()
             sinks = self.find_sinks()
-            print(sources, sinks)
-            if len(sinks) > 0:
-                print(sinks[0].line_no)
-            print("entry:", self.loader.convert_method_id_to_method_name(method_id), method_id)
+            # print(sources, sinks)
+            # if len(sinks) > 0:
+            #     print(sinks[0].line_no)
+            # print("entry:", self.loader.convert_method_id_to_method_name(method_id), method_id)
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)
 
