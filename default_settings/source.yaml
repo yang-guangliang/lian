@@ -40,6 +40,16 @@
       name: path_or_url
       line_num: 434
       unit_name: routes.py
+    # CVE-2024-11822
+    - operation: parameter_decl
+      name: id
+      line_num: 72
+      unit_name: extension.py
+    # CVE-2024-11822
+    - operation: field_read
+      name: "%this.api_endpoint"
+      line_num: 25
+      unit_name: api_based_extension_requestor.py
     # CVE-2023-6730
     - operation: parameter_decl
       name: retriever_name_or_path
