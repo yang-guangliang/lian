@@ -2499,7 +2499,7 @@ class StmtStates:
                 index = self.create_state_and_add_space(
                     status,
                     stmt_id,
-                    source_symbol_id=symbol_id_state.symbol_id,
+                    source_symbol_id=symbol_id_state.source_symbol_id,
                     parent_state=symbol_id_state,
                     parent_state_index=symbol_id_index,
                     access_path=self.copy_and_extend_access_path(
