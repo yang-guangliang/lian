@@ -70,10 +70,10 @@
       target: [\%arg0]
     # CVE-2024-10044
     - operation: object_call
-      name: controller.worker_api_generate_stream
-      line_num: 339
+      name: requests.post
+      line_num: 272
       unit_name: "controller.py"
-      target: [\%target]
+      target: [\%arg0, \%arg1]
     # CVE-2024-10099
     - operation: object_call
       name: open.open.write
