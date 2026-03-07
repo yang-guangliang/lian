@@ -39,6 +39,15 @@
       unit_name: "ZipUtils.java"
       target: [\%arg0]
 
+- lang: go
+  rules:
+    # CVE-2024-12886
+    - operation: object_call
+      name: io.ReadAll
+      line_num: 1050
+      unit_name: "images.go"
+      target: [\%arg0]
+
 - lang: python
   rules:
     # CVE-2023-51449
@@ -226,4 +235,34 @@
       name: eval
       line_num: 1015
       unit_name: parallel.py
+      target: [\%arg0]
+    # CVE-2025-62703
+    - operation: object_call
+      name: cloudpickle.loads
+      line_num: 130
+      unit_name: flask.py
+      target: [\%arg0]
+    # CVE-2025-66448
+    - operation: object_call
+      name: cloudpickle.loads
+      line_num: 130
+      unit_name: config.py
+      target: [\%arg0]
+    # CVE-2026-0761
+    - operation: call_stmt
+      name: eval
+      line_num: 56
+      unit_name: serialize.py
+      target: [\%arg0]
+    # CVE-2026-0766
+    - operation: call_stmt
+      name: exec
+      line_num: 242
+      unit_name: plugin.py
+      target: [\%arg0]
+    # CVE-2026-24779
+    - operation: object_call
+      name: client.get
+      line_num: 64
+      unit_name: "connections.py"
       target: [\%arg0]
