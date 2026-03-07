@@ -236,6 +236,11 @@
       unit_name: "runner_app.py"
       target: [\%arg0]
     # CVE-2022-21797
+    - operation: field_write
+      name: "%this.pre_dispatch"
+      line_num: 657
+      unit_name: "parallel.py"
+      target: [\%target]
     - operation: call_stmt
       name: eval
       line_num: 1015

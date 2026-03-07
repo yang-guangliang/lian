@@ -134,7 +134,7 @@
 ########### 补充的 CVE ################
 # CVE-2022-21797
 - lang: python
-  method_list: ["__init__"]
+  method_list: ["__init__", "__call__"]
   unit_name: "parallel.py"
 # CVE-2025-62703
 - lang: python
