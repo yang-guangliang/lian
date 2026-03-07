@@ -54,6 +54,7 @@ class Parser(common_parser.Parser):
             "subscript"                         : self.subscript,
             "attribute"                         : self.attribute,
             "assignment"                        : self.assignment,
+            "augmented_assignment"              : self.assignment,
             "list_comprehension"                : self.list_set_dictionary_comprehension,
             "dictionary_comprehension"          : self.list_set_dictionary_comprehension,
             "set_comprehension"                 : self.list_set_dictionary_comprehension,
