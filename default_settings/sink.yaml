@@ -212,6 +212,12 @@
       line_num: 309
       unit_name: "basic.py"
       target: [\%arg0]
+    # CVE-2025-1497
+    - operation: call_stmt
+      name: exec
+      line_num: 15
+      unit_name: "executor.py"
+      target: [\%arg0]
     # CVE-2025-24357
     - operation: object_call
       name: torch.load

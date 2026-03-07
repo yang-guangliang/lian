@@ -6,11 +6,11 @@
 - lang: abc
   method_list: ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]
 
-- lang: python
-  method_list: ["from_pretrained", "a", "file", "view_image", "worker_api_generate_stream", "invoke", "init_device", "delete_images_from_list",
-                "retrieve", "start", "_create_model_version", "get_model_version_artifact_handler", "add",
-                "create_chat_completion", "queue_join", "start", "predict", "_execute_action", "run_rpc_server",
-                "execute_graph_block", "make", "generate_prompts", "_request_handler", "unpickle_object_from_file",  "a1", ]
+# - lang: python
+#   method_list: ["from_pretrained", "a", "file", "view_image", "worker_api_generate_stream", "invoke", "init_device", "delete_images_from_list",
+#                 "retrieve", "start", "_create_model_version", "get_model_version_artifact_handler", "add",
+#                 "create_chat_completion", "queue_join", "start", "predict", "_execute_action", "run_rpc_server",
+#                 "execute_graph_block", "make", "generate_prompts", "_request_handler", "unpickle_object_from_file",  "a1", ]
 - lang: python
   method_list: ["nnn"]
   unit_path: "test1/david.py"
@@ -127,6 +127,10 @@
 - lang: python
   method_list: ["install_model"]
   unit_name: "model_manager.py"
+
+- lang: python
+  method_list: ["make"]
+  unit_name: "plotai.py"
 ########### 补充的 CVE ################
 # CVE-2022-21797
 - lang: python

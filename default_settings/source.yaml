@@ -169,6 +169,11 @@
       name: data
       line_num: 117
       unit_name: v1.py
+    # CVE-2025-1497
+    - operation: parameter_decl
+      name: prompt
+      line_num: 27
+      unit_name: plotai.py
     # CVE-2025-24357
     - operation: parameter_decl
       name: model
