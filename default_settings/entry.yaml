@@ -131,6 +131,10 @@
 - lang: python
   method_list: ["make"]
   unit_name: "plotai.py"
+
+- lang: python
+  method_list: ["post"]
+  unit_name: "extension.py"
 ########### 补充的 CVE ################
 # CVE-2022-21797
 - lang: python

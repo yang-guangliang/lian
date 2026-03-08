@@ -119,6 +119,12 @@
       line_num: 107
       unit_name: "image_files_disk.py"
       target: [\%receiver]
+    # CVE-2024-11822
+    - operation: object_call
+      name: requests.request
+      line_num: 36
+      unit_name: api_based_extension_requestor.py
+      target: [\%arg1]
     # CVE-2024-11958
     - operation: object_call
       name: conn.execute

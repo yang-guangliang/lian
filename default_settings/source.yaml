@@ -94,6 +94,12 @@
       name: image_names
       line_num: 346  # 修正原始错误：移除"l ine_num"中的多余空格
       unit_name: images.py
+    # CVE-2024-11822
+    - operation: field_read
+      name: parser.parse_args
+      line_num: 82
+      unit_name: extension.py
+      tag: [\%target]
     # CVE-2024-11958
     - operation: parameter_decl
       name: str_or_query_bundle
