@@ -55,6 +55,10 @@
       name: retriever_name_or_path
       line_num: 419
       unit_name: retrieval_rag.py
+    - operation: field_read
+      name: "%this.index_path"
+      line_num: 133
+      unit_name: retrieval_rag.py
     # CVE-2023-7018
     - operation: parameter_decl
       name: pretrained_model_name_or_path
@@ -220,7 +224,7 @@
       unit_name: parallel.py
     # CVE-2025-62703
     - operation: object_call 
-      name: 'request.form.get("value")'
+      name: 'request.form.get'
       line_num: 93
       unit_name: flask.py
       tag: ["%target"]

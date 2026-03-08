@@ -68,6 +68,11 @@
       line_num: 135
       unit_name: "retrieval_rag.py"
       target: [\%arg0]
+    - operation: field_write
+      name: "%this.index_path"
+      line_num: 107
+      unit_name: "retrieval_rag.py"
+      target: [ \%target ]
     # CVE-2023-7018
     - operation: object_call
       name: pickle.load
