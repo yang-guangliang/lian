@@ -1214,8 +1214,12 @@ class TaintAnalysis:
             sources = self.find_sources()
             sinks = self.find_sinks()
             print(sources, sinks)
+            if len(sources) > 0:
+                for source in sources:
+                    print(source.name)
             if len(sinks) > 0:
-                print(sinks[0].line_no)
+                for sink in sinks:
+                    print(sink.line_no)
             print("entry:", self.loader.convert_method_id_to_method_name(method_id), method_id)
             flows = self.find_flows(sources, sinks)
             all_flows.extend(flows)

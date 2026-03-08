@@ -2,7 +2,7 @@
 - lang: python
   rules:
     - operation: call_stmt
-      name: source
+      name: sourc
       tag: ["%target"]  # 规范引号，移除多余空格
 # ######################################## 适配污点使用，勿删 ################################################
 # 25个CVE的source变量
@@ -33,7 +33,7 @@
 - lang: python
   rules:
     - operation: call_stmt
-      name: source
+      name: sourc
       tag: [ "%target" ]  # 规范引号，移除多余空格
     # CVE-2023-51449
     - operation: parameter_decl
@@ -139,8 +139,12 @@
     # CVE-2024-23731
     - operation: parameter_decl
       name: data_type
-      line_num: 139
+      line_num: 136
       unit_name: embedchain.py
+    - operation: parameter_decl
+      name: src
+      line_num: 16
+      unit_name: base_chunker.py
     # CVE-2024-34359
     - operation: parameter_decl
       name: model_path

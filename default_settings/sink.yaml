@@ -165,6 +165,11 @@
       line_num: 35
       unit_name: "openapi.py"
       target: [\%arg0]
+    - operation: object_call
+      name: chunker.create_chunks
+      line_num: 366
+      unit_name: "embedchain.py"
+      target: [\%arg1]
     # CVE-2024-34359
     - operation: field_write
       name: "%this.chat_handler"
