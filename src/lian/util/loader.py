@@ -133,7 +133,7 @@ class ModuleSymbolsLoader:
             self.module_id_to_children_ids[row.parent_module_id].add(module_id)
 
             # cache unit_path_to_id and unit_id_to_path
-            if util.is_available(row.unit_path):
+            if util.is_available(row.unit_path) and row.symbol_type == LIAN_SYMBOL_KIND.UNIT_SYMBOL:
                 self.unit_path_to_id[row.unit_path] = module_id
                 self.unit_id_to_path[module_id] = row.unit_path
 
@@ -1032,8 +1032,13 @@ class MethodLevelAnalysisResultLoader(GeneralLoader):
                     key = CallSite(key[0], key[1], key[2])
                 except (TypeError, IndexError):
                     pass
-            self.item_id_to_bundle_id[key] = data[1]
-            self.bundle_count = max(self.bundle_count, data[1] + 1)
+            try:
+                self.item_id_to_bundle_id[key] = data[1]
+                self.bundle_count = max(self.bundle_count, data[1] + 1)
+            except TypeError:
+                key = tuple(key)
+                self.item_id_to_bundle_id[key] = data[1]
+                self.bundle_count = max(self.bundle_count, data[1] + 1)
 
 class BitVectorManagerLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, _id, flattened_item):
@@ -2528,15 +2533,18 @@ class Loader:
                 #util.debug(loader.__class__.__name__ + " is restoring index")
                 try:
                     loader.restore_indexing()
-                except FileNotFoundError:
+                except (FileNotFoundError, TypeError, Exception) as e:
+                    # Ensure one loader failure doesn't block others
+                    if not isinstance(e, FileNotFoundError):
+                        util.warn(f"Failed to restore indexing for {loader.__class__.__name__}: {e}")
                     pass
-                # except TypeError as e:
-                    # util.warn(e)
             if hasattr(loader, 'restore'):
                 #util.debug(loader.__class__.__name__ + " is restoring")
                 try:
                     loader.restore()
-                except FileNotFoundError:
+                except (FileNotFoundError, Exception) as e:
+                    if not isinstance(e, FileNotFoundError):
+                        util.warn(f"Failed to restore {loader.__class__.__name__}: {e}")
                     pass
 
     ############################################################
@@ -3426,7 +3434,12 @@ class Loader:
 
     def get_yaml_info(self, unit_path: str, line_num: int):
         unit_id = self.convert_unit_path_to_unit_id(unit_path)
+        if unit_id == -1:
+            return -1
+
         unit_gir = self._gir_loader.get_item_by_id(unit_id)
+        if unit_gir is None:
+            return -1
 
         for stmt in unit_gir:
             start_row = stmt.start_row + 1
