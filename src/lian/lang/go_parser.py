@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 
 from lian.config.constants import LIAN_INTERNAL
 from lian.lang import common_parser
@@ -183,7 +183,7 @@ class Parser(common_parser.Parser):
         type_info = self.simple_type(type_node, statements)
         body_content = []
         if body_node:
-            self.literal_value(body_node, body_content)
+            self.literal_value(body_node, body_content, statements)
         tmp_var = self.tmp_variable()
 
         if type_node.type in ["array_type","slice_type"]:
@@ -200,50 +200,47 @@ class Parser(common_parser.Parser):
 
         return tmp_var
 
-    def literal_value(self, node, statements):
+    def literal_value(self, node, body_content, outer_stmts):
         for child in node.named_children:
             if self.is_comment(child):
                 continue
-            self.parse_element(child, statements)
+            self.parse_element(child, body_content, outer_stmts)
 
-    def parse_element(self, node, statements):
+    def parse_element(self, node, body_content, outer_stmts):
         for child in node.named_children:
             if self.is_comment(child):
                 continue
             if child.type == "literal_value":
-                self.literal_value(child, statements)
+                self.literal_value(child, body_content, outer_stmts)
             elif child.type == "literal_element":
-                self.parse_element(child, statements)
+                self.parse_element(child, body_content, outer_stmts)
             else:
-                ret = self.parse(child, statements)
-                statements.append(ret)
+                # intermediate stmts go to outer_stmts, only the ref goes to body_content
+                pre_stmts = []
+                ret = self.parse(child, pre_stmts)
+                outer_stmts.extend(pre_stmts)
+                body_content.append(ret)
 
     def func_literal(self, node, statements, replacement):
         new_parameters = []
-        init = []
         child = self.find_child_by_field(node, "parameters")
         if child and child.named_child_count > 0:
             for p in child.named_children:
                 if self.is_comment(p):
                     continue
 
-                self.parse(p, init)
-            if len(init) > 0:
-                new_parameters.append(init)
+                self.parse(p, new_parameters)
 
-        child = self.find_child_by_field(node, "result")
         new_parameters1 = []
+        child = self.find_child_by_field(node, "result")
         if child:
             if child.type == "parameter_list":
-                init1 = []
                 if child.named_child_count > 0:
                     for p in child.named_children:
                         if self.is_comment(p):
                             continue
 
-                        self.parse(p, init1)
-                    if len(init1) > 0:
-                        new_parameters1.append(init1)
+                        self.parse(p, new_parameters1)
             else:
                 new_parameters1 = self.simple_type(child, statements)
 
@@ -258,7 +255,7 @@ class Parser(common_parser.Parser):
 
         tmp_var = self.tmp_variable()
         self.append_stmts(statements, node,
-            {"method_decl": {"name": tmp_var, "parameters": new_parameters, "data_type": new_parameters1, "body": new_body}})
+            {"method_decl": {"name": tmp_var, "parameters": new_parameters, "data_type": str(new_parameters1), "body": new_body}})
 
         return tmp_var
 
@@ -310,43 +307,30 @@ class Parser(common_parser.Parser):
         child = self.find_child_by_field(node, "name")
         name = self.read_node_text(child)
 
-        type_parameters = []
-        type_init = []
-        child = self.find_child_by_field(node, "type_parameters")
-        if child and child.named_child_count > 0:
-            for p in child.named_children:
-                if self.is_comment(p):
-                    continue
-
-                self.parse(p, type_init)
-            if len(type_init) > 0:
-                type_parameters.append(type_init)
+        type_parameters_node = self.find_child_by_field(node, "type_parameters")
+        type_parameters = ""
+        if type_parameters_node:
+            type_parameters = self.read_node_text(type_parameters_node)[1:-1]
 
         new_parameters = []
-        init = []
         child = self.find_child_by_field(node, "parameters")
         if child and child.named_child_count > 0:
             for p in child.named_children:
                 if self.is_comment(p):
                     continue
 
-                self.parse(p, init)
-            if len(init) > 0:
-                new_parameters.append(init)
+                self.parse(p, new_parameters)
 
         new_parameters1 = []
         child = self.find_child_by_field(node, "result")
         if child:
             if child.type == "parameter_list":
-                init1 = []
                 if child.named_child_count > 0:
                     for p in child.named_children:
                         if self.is_comment(p):
                             continue
 
-                        self.parse(p, init1)
-                    if len(init1) > 0:
-                        new_parameters1.append(init1)
+                        self.parse(p, new_parameters1)
             else:
                 new_parameters1 = self.simple_type(child, statements)
 
@@ -361,48 +345,39 @@ class Parser(common_parser.Parser):
 
         self.append_stmts(statements, node,
             {"method_decl": {"name": name, "type_parameters": type_parameters,
-                             "parameters": new_parameters, "data_type": new_parameters1, "body": new_body}})
+                             "parameters": new_parameters, "data_type": str(new_parameters1), "body": new_body}})
 
     def method_declaration(self, node, statements):
         receiver_parameter = []
-        init = []
         child = self.find_child_by_field(node, "receiver")
         if child and child.named_child_count > 0:
             for p in child.named_children:
                 if self.is_comment(p):
                     continue
-                self.parse(p, init)
-            if len(init) > 0:
-                receiver_parameter.append(init)
+                self.parse(p, receiver_parameter)
 
         child = self.find_child_by_field(node, "name")
         name = self.read_node_text(child)
 
         new_parameters = []
-        init = []
         child = self.find_child_by_field(node, "parameters")
         if child and child.named_child_count > 0:
             for p in child.named_children:
                 if self.is_comment(p):
                     continue
 
-                self.parse(p, init)
-            if len(init) > 0:
-                new_parameters.append(init)
+                self.parse(p, new_parameters)
 
         new_parameters1 = []
         child = self.find_child_by_field(node, "result")
         if child:
             if child.type == "parameter_list":
-                init1 = []
                 if child.named_child_count > 0:
                     for p in child.named_children:
                         if self.is_comment(p):
                             continue
 
-                        self.parse(p, init1)
-                    if len(init1) > 0:
-                        new_parameters1.append(init1)
+                        self.parse(p, new_parameters1)
             else:
                 new_parameters1 = self.simple_type(child, statements)
 
@@ -416,8 +391,8 @@ class Parser(common_parser.Parser):
                 self.parse(stmt, new_body)
 
         self.append_stmts(statements, node,
-            {"method_decl": {"attrs": receiver_parameter, "name": name,
-                             "parameters": new_parameters, "data_type": new_parameters1, "body": new_body}})
+            {"method_decl": {"attrs": str(receiver_parameter), "name": name,
+                             "parameters": new_parameters, "data_type": str(new_parameters1), "body": new_body}})
 
     def regular_literal(self, node, statements, replacement):
         return self.read_node_text(node)
@@ -523,13 +498,13 @@ class Parser(common_parser.Parser):
 
         if channel.type == "index_expression":
             shadow_array, shadow_index = self.parse_array(channel, statements)
-            self.append_stmts(statements, node, [{"array_write": {"array": shadow_array, "index": shadow_index, "source": shadow_value}}])
+            self.append_stmts(statements, node, {"array_write": {"array": shadow_array, "index": shadow_index, "source": shadow_value}})
         elif channel.type == "selector_expression":
             shadow_object, shadow_field = self.parse_field(channel, statements)
-            self.append_stmts(statements, node, [{"field_write": {"object": shadow_object, "field": shadow_field, "source": shadow_value}}])
+            self.append_stmts(statements, node, {"field_write": {"receiver_object": shadow_object, "field": shadow_field, "source": shadow_value}})
         else:
             shadow_channel = self.parse(channel, statements)
-            self.append_stmts(statements, node, [{"assign_stmt": {"target": shadow_channel, "operand": shadow_value}}])
+            self.append_stmts(statements, node, {"assign_stmt": {"target": shadow_channel, "operand": shadow_value}})
 
         # self.append_stmts(statements, node, {"send_stmt": {"target": shadow_channel, "value": shadow_value}})
 
@@ -864,6 +839,7 @@ class Parser(common_parser.Parser):
         function = self.find_child_by_field(node, "function")
         receiver_name = None
         field_name = None
+        shadow_function = None
         if function.type == "selector_expression":
             receiver_name, field_name = self.parse_field(function, statements)
         else:
@@ -1029,33 +1005,28 @@ class Parser(common_parser.Parser):
 
                 parameters_node = self.find_child_by_field(child, "parameters")
                 new_parameters = []
-                init = []
                 if parameters_node and parameters_node.named_child_count > 0:
                     for p in parameters_node.named_children:
                         if self.is_comment(p):
                             continue
 
-                        self.parse(p, init)
-                    if len(init) > 0:
-                        new_parameters.append(init)
+                        self.parse(p, new_parameters)
 
                 result_node = self.find_child_by_field(child, "result")
                 result = []
                 if result_node:
                     if result_node.type == "parameter_list":
-                        init1 = []
                         if result_node.named_child_count > 0:
                             for p in result_node.named_children:
                                 if self.is_comment(p):
                                     continue
 
-                                self.parse(p, init1)
-                            if len(init1) > 0:
-                                result.append(init1)
+                                self.parse(p, result)
                     else:
                         result = self.simple_type(result_node, statements)
 
                 interface_body.append({"name": name_text, "parameters": new_parameters, "result": result})
+                type_info.append(interface_body)
 
             elif child.type == "struct_elem":
                 interface_body = ["struct_elem"]
@@ -1066,12 +1037,13 @@ class Parser(common_parser.Parser):
                             interface_body.append(self.struct_type(struct_child.children[1], statements))
                         else:
                             interface_body.append(self.struct_type(struct_child.children[0], statements))
+                type_info.append(interface_body)
 
             elif child.type == "constraint_elem":
                 interface_body = ["constraint_elem"]
                 interface_body.append(self.simple_type(child.children[0], statements))
+                type_info.append(interface_body)
 
-        type_info.append(interface_body)
         return type_info
 
     def array_type(self, node, statements):
@@ -1105,29 +1077,24 @@ class Parser(common_parser.Parser):
     def function_type(self, node, statements):
         type_info = ["function_type"]
         new_parameters = []
-        init = []
         child = self.find_child_by_field(node, "parameters")
         if child and child.named_child_count > 0:
             for p in child.named_children:
                 if self.is_comment(p):
                     continue
 
-                self.parse(p, init)
-            if len(init) > 0:
-                new_parameters.append(init)
-        child = self.find_child_by_field(node, "result")
+                self.parse(p, new_parameters)
+
         new_parameters1 = []
+        child = self.find_child_by_field(node, "result")
         if child:
             if child.type == "parameter_list":
-                init1 = []
                 if child.named_child_count > 0:
                     for p in child.named_children:
                         if self.is_comment(p):
                             continue
 
-                        self.parse(p, init1)
-                    if len(init1) > 0:
-                        new_parameters1.append(init1)
+                        self.parse(p, new_parameters1)
             else:
                 new_parameters1 = self.simple_type(child, statements)
         type_info.append({"parameters": new_parameters, "result": new_parameters1})

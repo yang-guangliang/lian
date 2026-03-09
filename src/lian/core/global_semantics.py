@@ -172,7 +172,9 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
 
         if not self.loader.contain_symbol_state_space_p1(method_id):
             return None
-
+        frame.cfg = self.loader.get_method_cfg(method_id)
+        if util.is_empty(frame.cfg):
+            return None
         if len(frame_stack) > 2:
             last_frame = frame_stack[-2]
             frame.call_path = last_frame.call_path.add_call(
@@ -204,9 +206,7 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
             
             return frame
 
-        frame.cfg = self.loader.get_method_cfg(method_id)
-        if util.is_empty(frame.cfg):
-            return None
+
         
         round_number = config.FIRST_ROUND
         if method_id in self.analyzed_method_list:

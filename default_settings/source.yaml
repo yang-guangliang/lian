@@ -2,7 +2,7 @@
 - lang: python
   rules:
     - operation: call_stmt
-      name: source
+      name: sourc
       tag: ["%target"]  # 规范引号，移除多余空格
 # ######################################## 适配污点使用，勿删 ################################################
 # 25个CVE的source变量
@@ -20,21 +20,44 @@
       line_num: 35
       unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2023-43654/test/serve-0.8.0/frontend/server/src/main/java/org/pytorch/serve/http/HttpRequestHandler.java"
 
+- lang: go
+  rules:
+    # CVE-2024-12886
+    - operation: var_decl
+      name: req
+      line_num: 495
+      unit_name: routes.go
+
+
 # 第三组：Python CVE 相关 Source 规则
 - lang: python
   rules:
     - operation: call_stmt
-      name: source
+      name: sourc
       tag: [ "%target" ]  # 规范引号，移除多余空格
     # CVE-2023-51449
     - operation: parameter_decl
       name: path_or_url
       line_num: 434
       unit_name: routes.py
+    # CVE-2024-11822
+    - operation: parameter_decl
+      name: id
+      line_num: 72
+      unit_name: extension.py
+    # CVE-2024-11822
+    - operation: field_read
+      name: "%this.api_endpoint"
+      line_num: 25
+      unit_name: api_based_extension_requestor.py
     # CVE-2023-6730
     - operation: parameter_decl
       name: retriever_name_or_path
       line_num: 419
+      unit_name: retrieval_rag.py
+    - operation: field_read
+      name: "%this.index_path"
+      line_num: 133
       unit_name: retrieval_rag.py
     # CVE-2023-7018
     - operation: parameter_decl
@@ -85,6 +108,12 @@
       name: image_names
       line_num: 346  # 修正原始错误：移除"l ine_num"中的多余空格
       unit_name: images.py
+    # CVE-2024-11822
+    - operation: field_read
+      name: parser.parse_args
+      line_num: 82
+      unit_name: extension.py
+      tag: [\%target]
     # CVE-2024-11958
     - operation: parameter_decl
       name: str_or_query_bundle
@@ -114,8 +143,12 @@
     # CVE-2024-23731
     - operation: parameter_decl
       name: data_type
-      line_num: 139
+      line_num: 136
       unit_name: embedchain.py
+    - operation: parameter_decl
+      name: src
+      line_num: 16
+      unit_name: base_chunker.py
     # CVE-2024-34359
     - operation: parameter_decl
       name: model_path
@@ -143,7 +176,7 @@
     - operation: parameter_decl
       name: run
       line_num: 128
-      unit_path: "/home/rong/llm-driven-sec/tests/realcases/CVE-2024-5980/test/pytorch-lightning-2.2.4/src/lightning/app/plugin/plugin.py"
+      unit_path: plugin.py
     # CVE-2024-8953
     - operation: parameter_decl
       name: request
@@ -160,6 +193,11 @@
       name: data
       line_num: 117
       unit_name: v1.py
+    # CVE-2025-1497
+    - operation: parameter_decl
+      name: prompt
+      line_num: 27
+      unit_name: plotai.py
     # CVE-2025-24357
     - operation: parameter_decl
       name: model

@@ -1038,7 +1038,7 @@ class Resolver:
                 "caller_frame"            :  caller_frame
             }
 
-    def recover_callee_name(self, method_id, stmt_id, stmt, status, s2space):
+    def recover_callee_name(self, stmt, status, s2space):
         if stmt.operation == "object_call_stmt":
             if stmt.receiver_object and not stmt.receiver_object.startswith("%vv"):
                 return stmt.receiver_object + '.' + stmt.field

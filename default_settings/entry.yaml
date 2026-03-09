@@ -6,11 +6,11 @@
 - lang: abc
   method_list: ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate", "deepRenderFunction"]
 
-- lang: python
-  method_list: ["from_pretrained", "a", "file", "view_image", "worker_api_generate_stream", "invoke", "init_device", "delete_images_from_list",
-                "retrieve", "start", "_create_model_version", "get_model_version_artifact_handler", "add",
-                "create_chat_completion", "queue_join", "start", "predict", "_execute_action", "run_rpc_server",
-                "execute_graph_block", "make", "generate_prompts", "_request_handler", "unpickle_object_from_file",  "a1", "%unit_init"]
+# - lang: python
+#   method_list: ["from_pretrained", "a", "file", "view_image", "worker_api_generate_stream", "invoke", "init_device", "delete_images_from_list",
+#                 "retrieve", "start", "_create_model_version", "get_model_version_artifact_handler", "add",
+#                 "create_chat_completion", "queue_join", "start", "predict", "_execute_action", "run_rpc_server",
+#                 "execute_graph_block", "make", "generate_prompts", "_request_handler", "unpickle_object_from_file",  "a1", ]
 - lang: python
   method_list: ["nnn"]
   unit_path: "test1/david.py"
@@ -19,6 +19,10 @@
 - lang: java
   method_list: ["channelRead0"]
   unit_name: "HttpRequestHandler.java"
+
+- lang: go
+  method_list: ["PullHandler"]
+  unit_name: "routes.go"
 
 - lang: python
   method_list: ["file", "queue_join", "predict"]
@@ -123,10 +127,18 @@
 - lang: python
   method_list: ["install_model"]
   unit_name: "model_manager.py"
+
+- lang: python
+  method_list: ["make"]
+  unit_name: "plotai.py"
+
+- lang: python
+  method_list: ["post"]
+  unit_name: "extension.py"
 ########### 补充的 CVE ################
 # CVE-2022-21797
 - lang: python
-  method_list: ["__init__"]
+  method_list: ["__init__", "__call__"]
   unit_name: "parallel.py"
 # CVE-2025-62703
 - lang: python

@@ -32,11 +32,26 @@
       line_num: 61
       unit_name: "HttpUtils.java"
       target: [\%arg0]
+    # CVE-2024-11822
+    - operation: object_call
+      name: requests.request
+      line_num: 36
+      unit_name: "api_based_extension_requestor.py"
+      target: [\%arg1]
     # CVE-2023-48299
     - operation: object_call
       name: IOUtils.copy
       line_num: 39
       unit_name: "ZipUtils.java"
+      target: [\%arg0]
+
+- lang: go
+  rules:
+    # CVE-2024-12886
+    - operation: object_call
+      name: io.ReadAll
+      line_num: 1050
+      unit_name: "images.go"
       target: [\%arg0]
 
 - lang: python
@@ -53,6 +68,11 @@
       line_num: 135
       unit_name: "retrieval_rag.py"
       target: [\%arg0]
+    - operation: field_write
+      name: "%this.index_path"
+      line_num: 107
+      unit_name: "retrieval_rag.py"
+      target: [ \%target ]
     # CVE-2023-7018
     - operation: object_call
       name: pickle.load
@@ -61,13 +81,13 @@
       target: [\%arg0]
     # CVE-2024-10044
     - operation: object_call
-      name: controller.worker_api_generate_stream
-      line_num: 339
+      name: requests.post
+      line_num: 272
       unit_name: "controller.py"
-      target: [\%target]
+      target: [\%arg0, \%arg1]
     # CVE-2024-10099
     - operation: object_call
-      name: open.open.write
+      name: f.write
       line_num: 251
       unit_name: "server.py"
       target: [\%arg0]
@@ -89,7 +109,6 @@
       target: [\%arg0]
     # CVE-2024-10940
     - operation: object_call
-      # TODO 这里的 name 有问题
       name: __init__
       line_num: 36
       unit_name: "image.py"
@@ -111,6 +130,12 @@
       line_num: 107
       unit_name: "image_files_disk.py"
       target: [\%receiver]
+    # CVE-2024-11822
+    - operation: object_call
+      name: requests.request
+      line_num: 36
+      unit_name: api_based_extension_requestor.py
+      target: [\%arg1]
     # CVE-2024-11958
     - operation: object_call
       name: conn.execute
@@ -145,6 +170,11 @@
       line_num: 35
       unit_name: "openapi.py"
       target: [\%arg0]
+    - operation: object_call
+      name: chunker.create_chunks
+      line_num: 366
+      unit_name: "embedchain.py"
+      target: [\%arg1]
     # CVE-2024-34359
     - operation: field_write
       name: "%this.chat_handler"
@@ -203,6 +233,12 @@
       line_num: 309
       unit_name: "basic.py"
       target: [\%arg0]
+    # CVE-2025-1497
+    - operation: call_stmt
+      name: exec
+      line_num: 15
+      unit_name: "executor.py"
+      target: [\%arg0]
     # CVE-2025-24357
     - operation: object_call
       name: torch.load
@@ -222,6 +258,11 @@
       unit_name: "runner_app.py"
       target: [\%arg0]
     # CVE-2022-21797
+    - operation: field_write
+      name: "%this.pre_dispatch"
+      line_num: 657
+      unit_name: "parallel.py"
+      target: [\%target]
     - operation: call_stmt
       name: eval
       line_num: 1015

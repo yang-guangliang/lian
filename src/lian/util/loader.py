@@ -133,7 +133,7 @@ class ModuleSymbolsLoader:
             self.module_id_to_children_ids[row.parent_module_id].add(module_id)
 
             # cache unit_path_to_id and unit_id_to_path
-            if util.is_available(row.unit_path):
+            if util.is_available(row.unit_path) and row.symbol_type == LIAN_SYMBOL_KIND.UNIT_SYMBOL:
                 self.unit_path_to_id[row.unit_path] = module_id
                 self.unit_id_to_path[module_id] = row.unit_path
 
@@ -429,19 +429,36 @@ class ClassIDToMembersLoader(UnitLevelLoader):
         for class_id in class_id_to_members:
             self.save(class_id, class_id_to_members[class_id])
 
-    def save(self, class_id, class_members_dict:dict):
-        class_members_series = pd.Series(class_members_dict, dtype = object)
-        class_members_df = DataModel(class_members_series, columns=["members"])
-        self.item_cache.put(class_id, class_members_df)
+    def flatten_item_when_saving(self, class_id, item_content):
+        results = []
+        for field_name in item_content:
+            results.append({
+                "class_id": class_id,
+                "field_name": field_name,
+                "field_states": list(item_content[field_name])
+            })
+        return results
 
-        self.active_bundle[class_id] = (class_members_df, class_members_dict)
-        self.item_id_to_bundle_id[class_id] = -1
-        self.active_bundle_length += len(class_members_dict)
-
-        if self.active_bundle_length > config.MAX_ROWS:
-            self.export()
-
-        return class_members_df
+    def unflatten_item_dataframe_when_loading(self, _id, item_df):
+        field_name_to_states = {}
+        # print(777777777777777777777)
+        # print(type(item_df), item_df)
+        for row in item_df:
+            field_name_to_states[row.field_name] = set(row.field_states)
+        return field_name_to_states
+    # def save(self, class_id, class_members_dict:dict):
+    #     class_members_series = pd.Series(class_members_dict, dtype = object)
+    #     class_members_df = DataModel(class_members_series, columns=["members"])
+    #     self.item_cache.put(class_id, class_members_df)
+    #
+    #     self.active_bundle[class_id] = (class_members_df, class_members_dict)
+    #     self.item_id_to_bundle_id[class_id] = -1
+    #     self.active_bundle_length += len(class_members_dict)
+    #
+    #     if self.active_bundle_length > config.MAX_ROWS:
+    #         self.export()
+    #
+    #     return class_members_df
 
 
 class SymbolNameToScopeIDsLoader(GeneralLoader):
@@ -462,7 +479,8 @@ class SymbolNameToScopeIDsLoader(GeneralLoader):
 
     def unflatten_item_dataframe_when_loading(self, _id, item_df):
         symbol_name_to_scope_ids = {}
-        #print(type(item_df), item_df)
+        # print(777777777777777777777)
+        # print(type(item_df), item_df)
         for row in item_df:
             symbol_name_to_scope_ids[row.symbol_name] = set(row.scope_ids)
         return symbol_name_to_scope_ids
@@ -1014,8 +1032,13 @@ class MethodLevelAnalysisResultLoader(GeneralLoader):
                     key = CallSite(key[0], key[1], key[2])
                 except (TypeError, IndexError):
                     pass
-            self.item_id_to_bundle_id[key] = data[1]
-            self.bundle_count = max(self.bundle_count, data[1] + 1)
+            try:
+                self.item_id_to_bundle_id[key] = data[1]
+                self.bundle_count = max(self.bundle_count, data[1] + 1)
+            except TypeError:
+                key = tuple(key)
+                self.item_id_to_bundle_id[key] = data[1]
+                self.bundle_count = max(self.bundle_count, data[1] + 1)
 
 class BitVectorManagerLoader(MethodLevelAnalysisResultLoader):
     def unflatten_item_dataframe_when_loading(self, _id, flattened_item):
@@ -1744,7 +1767,7 @@ class TypeGraphLoader:
         DataModel(results).save(self.path)
 
 class MethodSymbolToDefinedLoader(MethodLevelAnalysisResultLoader):
-    @profile
+    # @profile
     def unflatten_item_dataframe_when_loading(self, method_id, flattened_item):
         defined_symbols = {}
         for row in flattened_item:
@@ -1921,19 +1944,18 @@ class StateFlowGraphLoader(MethodLevelAnalysisResultLoader):
             symbol_graph.add_edge(
                 SFGNode().from_tuple(row.source_node),
                 SFGNode().from_tuple(row.dest_node),
-                SFGEdge().from_tuple(row.edge_type, row.edge_name)
+                SFGEdge().from_tuple(row.edge)
             )
         return symbol_graph.graph
 
     def flatten_item_when_saving(self, method_id, state_flow_graph: nx.DiGraph):
         edges = []
         all_edges = state_flow_graph.edges(data='weight', default=None)
-        for src_node, dst_node, edge_type in all_edges:
+        for src_node, dst_node, edge in all_edges:
             edges.append({
                 "method_id": method_id,
                 "source_node": src_node.to_tuple(),
-                "edge_type": edge_type.to_tuple(),
-                "edge_name": edge_type.name,
+                "edge": edge.to_tuple(),
                 "dest_node": dst_node.to_tuple(),
             })
         # print(edges)
@@ -2511,15 +2533,18 @@ class Loader:
                 #util.debug(loader.__class__.__name__ + " is restoring index")
                 try:
                     loader.restore_indexing()
-                except FileNotFoundError:
+                except (FileNotFoundError, TypeError, Exception) as e:
+                    # Ensure one loader failure doesn't block others
+                    if not isinstance(e, FileNotFoundError):
+                        util.warn(f"Failed to restore indexing for {loader.__class__.__name__}: {e}")
                     pass
-                # except TypeError as e:
-                    # util.warn(e)
             if hasattr(loader, 'restore'):
                 #util.debug(loader.__class__.__name__ + " is restoring")
                 try:
                     loader.restore()
-                except FileNotFoundError:
+                except (FileNotFoundError, Exception) as e:
+                    if not isinstance(e, FileNotFoundError):
+                        util.warn(f"Failed to restore {loader.__class__.__name__}: {e}")
                     pass
 
     ############################################################
@@ -2664,9 +2689,9 @@ class Loader:
                 self.save_class_id_to_members(class_id, nil_members)
             return nil_members
 
-        class_members_df = class_members.get_data()
-        if util.is_available(class_members_df) and hasattr(class_members_df, "members"):
-            return class_members_df["members"].to_dict()
+        # class_members_df = class_members.get_data()
+        if util.is_available(class_members):
+            return class_members
         return nil_members
 
     def get_map_class_id_to_members(self):
@@ -3409,7 +3434,12 @@ class Loader:
 
     def get_yaml_info(self, unit_path: str, line_num: int):
         unit_id = self.convert_unit_path_to_unit_id(unit_path)
+        if unit_id == -1:
+            return -1
+
         unit_gir = self._gir_loader.get_item_by_id(unit_id)
+        if unit_gir is None:
+            return -1
 
         for stmt in unit_gir:
             start_row = stmt.start_row + 1
