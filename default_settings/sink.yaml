@@ -298,3 +298,264 @@
       line_num: 64
       unit_name: "connections.py"
       target: [\%arg0]
+################################## 适配野外使用，勿删 #################################
+- lang: python
+  rules:
+    # CosyVoice
+    - operation: object_call
+      name: torch.load
+      line_num: 68
+      unit_name: "model.py"
+      target: [\%arg0]
+    # CosyVoice
+    - operation: object_call
+      name: torch.load
+      line_num: 59
+      unit_name: "frontend.py"
+      target: [\%arg0]
+    # CosyVoice
+    - operation: object_call
+      name: torch.load
+      line_num: 94
+      unit_name: "make_parquet_list.py"
+      target: [\%arg0]
+    # CosyVoice
+    - operation: object_call
+      name: torch.load
+      line_num: 76
+      unit_name: "average_model.py"
+      target: [\%arg0]
+    # LightRAG
+    - operation: object_call
+      name: self._query
+      line_num: 3730
+      unit_name: "postgres_impl.py"
+      target: [\%arg0]
+    # LightRAG
+    - operation: object_call
+      name: self._query
+      line_num: 3774
+      unit_name: "postgres_impl.py"
+      target: [\%arg0]
+    # LightRAG
+    - operation: object_call
+      name: self._query
+      line_num: 3662
+      unit_name: "postgres_impl.py"
+      target: [\%arg0]
+    # PySyft
+    - operation: object_call
+      name: subprocess.run
+      line_num: 151
+      unit_name: "app_router.py"
+      target: [\%arg0]
+    # PySyft
+    - operation: object_call
+      name: method
+      line_num: 1186
+      unit_name: "server.py"
+      target: [\%arg0]
+    # TinyZero
+    - operation: object_call
+      name: os.system
+      line_num: 136
+      unit_name: "hdfs_io.py"
+      target: [\%arg0]
+    # adversarial-robustness-toolbox
+    - operation: call_stmt
+      name: eval
+      line_num: 93
+      unit_name: "robustness.py"
+      target: [\%arg0]
+    # adversarial-robustness-toolbox
+    - operation: object_call
+      name: torch.load
+      line_num: 89
+      unit_name: "robustness.py"
+      target: [\%arg0]
+    # adversarial-robustness-toolbox
+    - operation: call_stmt
+      name: eval
+      line_num: 102
+      unit_name: "robustness_evaluation_fgsm_pytorch.py"
+      target: [\%arg0]
+    # cognee
+    - operation: call_stmt
+      name: exec
+      line_num: 39
+      unit_name: "run_in_local_sandbox.py"
+      target: [\%arg0]
+    # docling
+    - operation: object_call
+      name: etree.parse
+      line_num: 103
+      unit_name: "jats_backend.py"
+      target: [\%arg0]
+    # docling
+    - operation: object_call
+      name: etree.fromstring
+      line_num: 286
+      unit_name: "mets_gbs_backend.py"
+      target: [\%arg0]
+    # flash-attention
+    - operation: object_call
+      name: torch.load
+      line_num: 20
+      unit_name: "checkpoint.py"
+      target: [\%arg0]
+    # flash-attention
+    - operation: object_call
+      name: torch.load
+      line_num: 34
+      unit_name: "eval.py"
+      target: [\%arg0]
+    # gpt-pilot
+    - operation: object_call
+      name: asyncio.create_subprocess_shell
+      line_num: 48
+      unit_name: "process_manager.py"
+      target: [\%arg0]
+    # guardrails
+    - operation: object_call
+      name: subprocess.check_output
+      line_num: 202
+      unit_name: "validator_package_service.py"
+      target: [\%arg0]
+    # horovod
+    - operation: object_call
+      name: cloudpickle.loads
+      line_num: 23
+      unit_name: "codec.py"
+      target: [\%arg0]
+    # imgaug
+    - operation: object_call
+      name: pickle.loads
+      line_num: 893
+      unit_name: "multicore.py"
+      target: [\%arg0]
+    # llm
+    - operation: call_stmt
+      name: exec
+      line_num: 3949
+      unit_name: "cli.py"
+      target: [\%arg0]
+    # ludwig
+    - operation: object_call
+      name: pandas.read_pickle
+      line_num: 279
+      unit_name: "data_utils.py"
+      target: [\%arg0]
+    # ludwig
+    - operation: object_call
+      name: torch.load
+      line_num: 170
+      unit_name: "ecd.py"
+      target: [\%arg0]
+    # mamba
+    - operation: object_call
+      name: torch.load
+      line_num: 18
+      unit_name: "hf.py"
+      target: [\%arg0]
+    # mem0
+    - operation: object_call
+      name: cur.execute
+      line_num: 280
+      unit_name: "pgvector.py"
+      target: [\%arg0]
+    # mem0
+    - operation: object_call
+      name: cur.execute
+      line_num: 254
+      unit_name: "pgvector.py"
+      target: [\%arg0]
+    # mem0
+    - operation: object_call
+      name: cur.execute
+      line_num: 326
+      unit_name: "pgvector.py"
+      target: [\%arg0]
+    # mem0
+    - operation: object_call
+      name: cur.execute
+      line_num: 154
+      unit_name: "pgvector.py"
+      target: [\%arg0]
+    # mem0
+    - operation: object_call
+      name: cur.executemany
+      line_num: 190
+      unit_name: "pgvector.py"
+      target: [\%arg0]
+    # ml-engineering
+    - operation: object_call
+      name: torch.load
+      line_num: 57
+      unit_name: "torch-checkpoint-shrink.py"
+      target: [\%arg0]
+    # nexent
+    - operation: object_call
+      name: Elasticsearch.delete_by_query
+      line_num: 572
+      unit_name: "elasticsearch_core.py"
+      target: [\%arg0]
+    # nexent
+    - operation: object_call
+      name: boto3.client.delete_object
+      line_num: 253
+      unit_name: "client.py"
+      target: [\%arg0]
+    # optimate
+    - operation: call_stmt
+      name: exec
+      line_num: 294
+      unit_name: "neural_magic_training.py"
+      target: [\%arg0]
+    # optimate
+    - operation: object_call
+      name: torch.load
+      line_num: 296
+      unit_name: "neural_magic_training.py"
+      target: [\%arg0]
+    # optimate
+    - operation: object_call
+      name: torch.load
+      line_num: 298
+      unit_name: "neural_magic_training.py"
+      target: [\%arg0]
+    # pytorch-lightning
+    - operation: object_call
+      name: torch.load
+      line_num: 61
+      unit_name: "cloud_io.py"
+      target: [\%arg0]
+    # qlib
+    - operation: object_call
+      name: pickle.load
+      line_num: 174
+      unit_name: "mod.py"
+      target: [\%arg0]
+    # snorkel
+    - operation: object_call
+      name: torch.load
+      line_num: 562
+      unit_name: "trainer.py"
+      target: [\%arg0]
+    # snorkel
+    - operation: object_call
+      name: pickle.load
+      line_num: 144
+      unit_name: "base_labeler.py"
+      target: [\%arg0]
+    # snorkel
+    - operation: object_call
+      name: torch.load
+      line_num: 524
+      unit_name: "multitask_classifier.py"
+      target: [\%arg0]
+    # superduper
+    - operation: call_stmt
+      name: eval
+      line_num: 993
+      unit_name: "query.py"
+      target: [\%arg0]
