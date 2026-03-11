@@ -247,23 +247,11 @@
   unit_name: "serve.py"
 # mamba
 - lang: python
-  method_list: ["MambaLMHeadModel.from_pretrained"]
+  method_list: ["%unit_init"]
   unit_name: "benchmark_generation_mamba_simple.py"
 # mem0
 - lang: python
-  method_list: ["update_memory"]
-  unit_name: "main.py"
-# mem0
-- lang: python
-  method_list: ["delete_all_memories"]
-  unit_name: "main.py"
-# mem0
-- lang: python
-  method_list: ["add_memory"]
-  unit_name: "main.py"
-# mem0
-- lang: python
-  method_list: ["delete_memory"]
+  method_list: ["update_memory", "delete_all_memories", "add_memory", "delete_memory"]
   unit_name: "main.py"
 # ml-engineering
 - lang: python

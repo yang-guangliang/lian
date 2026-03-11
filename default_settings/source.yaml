@@ -337,10 +337,11 @@
       line_num: 21
       unit_name: install.py
     # horovod
-    - operation: parameter_decl
-      name: resp.read(
+    - operation: field.read
+      name: resp.read
       line_num: 30
       unit_name: http_client.py
+      tag: ["%target"]
     # imgaug
     - operation: parameter_decl
       name: batch_loader
