@@ -966,12 +966,13 @@ class Resolver:
 
     def find_symbol_global_def_in_unit(self, unit_id, symbol_name)->dict:
         unit_symbol_decl_summary: UnitSymbolDeclSummary = self.loader.get_unit_symbol_decl_summary(unit_id)
-        root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE, {})
         global_defs = {
             LIAN_SYMBOL_KIND.CLASS_KIND  : set(),
             LIAN_SYMBOL_KIND.METHOD_KIND : set(),
             LIAN_SYMBOL_KIND.IMPORT_STMT : set()
         }
+        if unit_symbol_decl_summary.scope_id_to_symbol_info is None: return global_defs
+        root_scope_symbol_info = unit_symbol_decl_summary.scope_id_to_symbol_info.get(LIAN_INTERNAL.ROOT_SCOPE, {})
         # TODO：加上implicit_root_scope(比如if name=="main"下的scope定义)
         if symbol_name not in root_scope_symbol_info: return global_defs  # 只要定义在顶层scope中的
         symbol_row_id = root_scope_symbol_info[symbol_name]
