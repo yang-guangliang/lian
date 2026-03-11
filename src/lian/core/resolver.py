@@ -1007,7 +1007,9 @@ class Resolver:
             previous_frame:ComputeFrame = call_stack[-previous_frame_index]
             if not isinstance(previous_frame, ComputeFrame):
                 return None
-            caller_method_id, call_stmt_id, callee_method_id = previous_frame.call_site
+            caller_method_id = previous_frame.call_site.caller_id
+            call_stmt_id = previous_frame.call_site.call_stmt_id
+            callee_method_id = previous_frame.call_site.callee_id
             if caller_method_id == call_stmt_id == -1:
                 return None
             caller_method_decl = self.loader.get_method_decl_source_code(caller_method_id)
