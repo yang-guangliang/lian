@@ -297,7 +297,7 @@ class Resolver:
     def get_this_state(self, caller_frame: ComputeFrame, new_indexes: set):
         # print("进入get_this_state")
         call_stmt_id = caller_frame.stmt_worklist.peek()
-        stmt = caller_frame.stmt_id_to_stmt[call_stmt_id]
+        stmt = self.loader.get_stmt_gir(call_stmt_id)
         if stmt.operation != "call_stmt":
             return
 
@@ -926,7 +926,7 @@ class Resolver:
                     continue
 
                 if ignore_field_read_def:
-                    def_stmt = frame.stmt_id_to_stmt[symbol_def_node.stmt_id]
+                    def_stmt = self.loader.get_stmt_gir(symbol_def_node.stmt_id)
                     if def_stmt.operation != "field_read":
                         result.add(symbol_def_node.stmt_id)
                     else:
@@ -946,7 +946,7 @@ class Resolver:
         symbol_ids.update(symbol_decl_stmt_ids)
         # import等语句(见def-use阶段)会修改defined_symbol的symbol_id，需要采集到修改后的symbol_id
         for decl_stmt_id in symbol_decl_stmt_ids:
-            decl_stmt = frame.stmt_id_to_stmt[decl_stmt_id]
+            decl_stmt = self.loader.get_stmt_gir(decl_stmt_id)
             if decl_stmt.operation in IMPORT_OPERATION:
                 decl_stmt_status = frame.stmt_id_to_status[decl_stmt_id]
                 new_symbol_id = frame.symbol_state_space[decl_stmt_status.defined_symbol].symbol_id
