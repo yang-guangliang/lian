@@ -49,7 +49,9 @@ from lian.common_structs import (
     SFGEdge,
     SFG_NODE_KIND,
     SFG_EDGE_KIND,
+    CallRelevanceResult,
 )
+from lian.taint.rule_manager import RuleManager
 
 class GlobalStmtStates(StmtStates):
     def __init__(
@@ -67,6 +69,7 @@ class GlobalStmtStates(StmtStates):
         )
         self.path_manager = path_manager
         self.caller_unknown_callee_edge = caller_unknown_callee_edge
+        self._taint_rule_manager: RuleManager | None = None
 
     # def get_method_summary(self, method_id):
     #     pass
@@ -87,6 +90,145 @@ class GlobalStmtStates(StmtStates):
             path_str += f"-@-{path[i-2]}->-{path[i-1]}"
 
         print(f"current path: {path_str}")
+
+    def _get_taint_rule_manager(self) -> RuleManager | None:
+        """
+        懒加载 RuleManager，供调用相关性判定逻辑使用。
+        """
+        if self._taint_rule_manager is not None:
+            return self._taint_rule_manager
+        options = getattr(self.loader, "options", None)
+        default_settings = None
+        if options is not None:
+            default_settings = getattr(options, "default_settings", None)
+        try:
+            self._taint_rule_manager = RuleManager(default_settings)
+        except Exception:
+            self._taint_rule_manager = RuleManager()
+        return self._taint_rule_manager
+
+    def judge_call_relevance(
+        self,
+        stmt_id,
+        stmt,
+        status: StmtStatus,
+        in_states,
+        args: MethodCallArguments,
+        defined_symbol,
+        this_state_set: set[int],
+        callee_method_ids: set[int] | None = None,
+        name_symbol: Symbol | None = None,
+    ) -> CallRelevanceResult:
+        """
+        基于 taint 规则和参数/receiver 的状态，判断当前调用在污点视角下是否“值得深入”。
+        第一版实现尽量简单：优先看 taint 规则中的 name 命中情况，其次看参数/receiver 的访问路径。
+        """
+        # 仅在第三阶段 + 显式开启污点剪枝选项时生效
+        loader = getattr(self, "loader", None)
+        options = getattr(loader, "options", None) if loader is not None else None
+        if (
+            self.analysis_phase_id != ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+            or options is None
+            or not getattr(options, "enable_p3_taint_guided", False)
+        ):
+            return CallRelevanceResult(is_relevant=True, reason="P3_TAINT_GUIDED_DISABLED")
+
+        result = CallRelevanceResult(is_relevant=False, reason="INIT_IRRELEVANT")
+        rule_manager = self._get_taint_rule_manager()
+        lang = getattr(self, "lang", None)
+
+        def _match_rule_name(rule_name: str, candidate: str) -> bool:
+            if not rule_name or not candidate:
+                return False
+            if rule_name == candidate:
+                return True
+            return rule_name.endswith("." + candidate) or candidate.endswith("." + rule_name)
+
+        # 1. 基于 callee 名称与 taint 规则的直接匹配（source/sink/propagation）
+        callee_names: set[str] = set()
+        if isinstance(name_symbol, Symbol) and util.is_available(getattr(name_symbol, "name", None)):
+            callee_names.add(name_symbol.name)
+        if isinstance(name_symbol, Symbol):
+            for idx in getattr(name_symbol, "states", set()):
+                if 0 <= idx < len(self.frame.symbol_state_space):
+                    st = self.frame.symbol_state_space[idx]
+                    if isinstance(st, State):
+                        access_name = util.access_path_formatter(st.access_path)
+                        if access_name:
+                            callee_names.add(access_name)
+
+        all_rules = []
+        all_rules.extend(getattr(rule_manager, "all_sources", []))
+        all_rules.extend(getattr(rule_manager, "all_sinks", []))
+        all_rules.extend(getattr(rule_manager, "all_propagations", []))
+
+        for candidate in callee_names:
+            for rule in all_rules:
+                if getattr(rule, "lang", None) not in (lang, config.ANY_LANG):
+                    continue
+                if _match_rule_name(getattr(rule, "name", None), candidate):
+                    result.is_relevant = True
+                    result.reason = "RULE_MATCH"
+                    result.may_be_source = (getattr(rule, "kind", "") == "source")
+                    return result
+
+        # 2. 参数级相关性：检查参数/receiver 的访问路径是否命中 taint 规则
+        tainted_arg_pos = []
+        tainted_state_indexes = set()
+
+        # 2.1 位置参数
+        for pos, arg_set in enumerate(args.positional_args):
+            for arg in arg_set:
+                if not isinstance(arg, Argument):
+                    continue
+                access_path_str = util.access_path_formatter(arg.access_path)
+                for rule in rule_manager.all_sources:
+                    if getattr(rule, "lang", None) not in (lang, config.ANY_LANG):
+                        continue
+                    if _match_rule_name(getattr(rule, "name", None), access_path_str):
+                        tainted_arg_pos.append(pos)
+                        tainted_state_indexes.add(arg.index_in_space)
+                        break
+
+        # 2.2 命名参数
+        for name, arg_set in args.named_args.items():
+            for arg in arg_set:
+                if not isinstance(arg, Argument):
+                    continue
+                access_path_str = util.access_path_formatter(arg.access_path)
+                for rule in rule_manager.all_sources:
+                    if getattr(rule, "lang", None) not in (lang, config.ANY_LANG):
+                        continue
+                    if _match_rule_name(getattr(rule, "name", None), access_path_str):
+                        tainted_arg_pos.append(arg.position if arg.position >= 0 else -1)
+                        tainted_state_indexes.add(arg.index_in_space)
+                        break
+
+        # 2.3 receiver（针对 object 调用或 this）
+        for idx in this_state_set:
+            if 0 <= idx < len(self.frame.symbol_state_space):
+                st = self.frame.symbol_state_space[idx]
+                if not isinstance(st, State):
+                    continue
+                access_path_str = util.access_path_formatter(st.access_path)
+                for rule in rule_manager.all_sources:
+                    if getattr(rule, "lang", None) not in (lang, config.ANY_LANG):
+                        continue
+                    if _match_rule_name(getattr(rule, "name", None), access_path_str):
+                        result.may_have_side_effect = True
+                        tainted_state_indexes.add(idx)
+                        break
+
+        if tainted_arg_pos or tainted_state_indexes:
+            result.is_relevant = True
+            result.reason = "TAINTED_ARG_OR_RECEIVER"
+            result.relevant_arg_positions = tainted_arg_pos
+            result.relevant_state_indexes = tainted_state_indexes
+            return result
+
+        # 其余情况认为与污点传播无关
+        result.reason = "IRRELEVANT_BY_TAINT_RULES"
+        return result
 
     def compute_target_method_states(
         self, stmt_id, stmt, status, in_states,
@@ -121,6 +263,23 @@ class GlobalStmtStates(StmtStates):
             ):
                 continue
             self.frame.call_site_analyze_counter[new_call_site] = self.frame.call_site_analyze_counter.get(new_call_site, 0) + 1
+
+            # 在第三阶段 + 污点剪枝模式下，对每个具体 callee 再做一次相关性判定；
+            # 如果某个 callee 在 taint 视角下无关，则不压栈深入它。
+            if self._taint_guided_p3_enabled():
+                relevance = self.judge_call_relevance(
+                    stmt_id,
+                    stmt,
+                    status,
+                    in_states,
+                    args,
+                    target_symbol,
+                    this_state_set,
+                    {each_callee_id},
+                    None,
+                )
+                if not relevance.is_relevant:
+                    continue
 
             callee_ids_to_be_analyzed.append(each_callee_id)
             # prepare callee parameters

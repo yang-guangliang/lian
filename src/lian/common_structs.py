@@ -1570,6 +1570,36 @@ class MethodDefUseSummary:
         )
 
 @dataclasses.dataclass
+class TaintRelevanceContext:
+    """
+    描述当前函数在污点分析视角下的“相关性”上下文信息。
+    这里仅维护一些轻量的集合，用于在第三阶段判断调用是否需要深入分析。
+    """
+    tainted_state_ids: set[int] = dataclasses.field(default_factory=set)
+    tainted_symbol_ids: set[int] = dataclasses.field(default_factory=set)
+    tainted_access_paths: set[str] = dataclasses.field(default_factory=set)
+
+    sink_relevant_state_ids: set[int] = dataclasses.field(default_factory=set)
+    sink_relevant_symbol_ids: set[int] = dataclasses.field(default_factory=set)
+    receiver_sensitive_state_ids: set[int] = dataclasses.field(default_factory=set)
+
+
+@dataclasses.dataclass
+class CallRelevanceResult:
+    """
+    调用在污点视角下的相关性判定结果。
+    """
+    is_relevant: bool = True
+    reason: str = ""
+
+    relevant_arg_positions: list[int] = dataclasses.field(default_factory=list)
+    relevant_state_indexes: set[int] = dataclasses.field(default_factory=set)
+
+    may_be_source: bool = False
+    may_affect_sink_slice: bool = False
+    may_have_side_effect: bool = False
+
+@dataclasses.dataclass
 class MethodSummaryTemplate:
     key: int = -1
     parameter_symbols: dict[int, set[int]] = dataclasses.field(default_factory=dict)
@@ -1950,6 +1980,9 @@ class ComputeFrame(MetaComputeFrame):
         self.this_class_ids = this_class_ids
         self.callee_this_class_ids = []
         self.call_site_analyze_counter = call_site_analyze_counter
+
+        # 污点相关上下文，仅在第三阶段启用污点引导剪枝时才会被实际使用
+        self.taint_relevance_ctx = TaintRelevanceContext()
 
     def get_context(self):
         return self.call_site

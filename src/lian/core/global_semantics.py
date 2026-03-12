@@ -271,6 +271,10 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
 
         frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id)
 
+        # 这里可以基于 taint 规则，对当前函数的参数/返回值做一个轻量级的“污点相关”标记，
+        # 将结果写入 frame.taint_relevance_ctx。为了控制改动范围，目前先保持为空，
+        # 由后续判定逻辑在需要时动态结合 taint 规则进行判断。
+
         frame.external_symbol_id_to_initial_state_index = frame.method_summary_template.external_symbol_to_state
         frame.space_summary = self.loader.get_symbol_state_space_summary_p2(method_id)
         frame.symbol_graph.graph = self.loader.get_method_symbol_graph_p2(method_id)

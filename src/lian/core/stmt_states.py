@@ -2107,6 +2107,39 @@ class StmtStates:
                     callee_method_ids.update(out_data.callee_method_ids)
                 else:
                     return out_data
+        # 在进入 P3 的跨函数分析前，再做一轮污点相关性判断：
+        # 如果当前调用在 taint 视角下完全无关，则不再深入 callee，仅保留保守占位。
+        if self._taint_guided_p3_enabled():
+            relevance = self.frame.stmt_state_analysis.judge_call_relevance(
+                stmt_id,
+                stmt,
+                status,
+                in_states,
+                args,
+                defined_symbol,
+                this_state_set,
+                callee_method_ids,
+                name_symbol,
+            )
+            if not relevance.is_relevant:
+                if isinstance(defined_symbol, Symbol):
+                    unsolved_state_index = self.create_state_and_add_space(
+                        status,
+                        stmt_id,
+                        source_symbol_id=defined_symbol.symbol_id,
+                        state_type=STATE_TYPE_KIND.UNSOLVED,
+                        data_type=util.read_stmt_field(stmt.data_type),
+                        access_path=[
+                            AccessPoint(
+                                kind=ACCESS_POINT_KIND.CALL_RETURN,
+                                key=util.read_stmt_field(defined_symbol.name),
+                            )
+                        ],
+                    )
+                    self.update_access_path_state_id(unsolved_state_index)
+                    defined_symbol.states = {unsolved_state_index}
+                return P2ResultFlag()
+
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )
@@ -3725,6 +3758,40 @@ class StmtStates:
                     callee_method_ids.update(out_data.callee_method_ids)
                 else:
                     return out_data
+
+        # 针对 object 调用，同样在进入 P3 的跨函数分析前做一轮污点相关性判断：
+        # 如果当前调用与污点无关，则不再深入 callee，仅保留保守占位。
+        if self._taint_guided_p3_enabled():
+            relevance = self.frame.stmt_state_analysis.judge_call_relevance(
+                stmt_id,
+                stmt,
+                status,
+                in_states,
+                args,
+                defined_symbol,
+                this_state_set,
+                callee_method_ids,
+                None,  # name_symbol 在 object 调用场景下通常不使用
+            )
+            if not relevance.is_relevant:
+                if isinstance(defined_symbol, Symbol):
+                    unsolved_state_index = self.create_state_and_add_space(
+                        status,
+                        stmt_id,
+                        source_symbol_id=defined_symbol.symbol_id,
+                        state_type=STATE_TYPE_KIND.UNSOLVED,
+                        data_type=util.read_stmt_field(stmt.data_type),
+                        access_path=[
+                            AccessPoint(
+                                kind=ACCESS_POINT_KIND.CALL_RETURN,
+                                key=util.read_stmt_field(defined_symbol.name),
+                            )
+                        ],
+                    )
+                    self.update_access_path_state_id(unsolved_state_index)
+                    defined_symbol.states = {unsolved_state_index}
+                return P2ResultFlag()
+
         return self.compute_target_method_states(
             stmt_id, stmt, status, in_states, callee_method_ids, defined_symbol, args, this_state_set
         )
