@@ -24,6 +24,7 @@ from lian.config.constants import (
     SFG_EDGE_KIND,
 )
 import lian.events.event_return as er
+from lian.taint.rule_manager import RuleManager
 from lian.common_structs import (
     MethodDeclParameters,
     Parameter,
@@ -57,6 +58,25 @@ from lian.common_structs import (
 from lian.core.resolver import Resolver
 
 
+_taint_rule_manager = None
+
+
+def _get_taint_rule_manager():
+    """
+    懒加载并缓存全局的 RuleManager，用于读取污点配置规则。
+    如果显式配置了 default_settings，则优先使用该路径；否则使用默认路径。
+    """
+    global _taint_rule_manager
+    if _taint_rule_manager is not None:
+        return _taint_rule_manager
+
+    default_settings = getattr(config, "DEFAULT_SETTINGS", None)
+    try:
+        _taint_rule_manager = RuleManager(default_settings)
+    except Exception:
+        # 当外部 default_settings 异常时，退回到 RuleManager 自己的默认行为
+        _taint_rule_manager = RuleManager()
+    return _taint_rule_manager
 
 class StmtStates:
     def __init__(
@@ -174,6 +194,101 @@ class StmtStates:
             "del_stmt": self.del_stmt_state,
             "unset_stmt": self.unset_stmt_state,
         }
+
+    def _taint_guided_p3_enabled(self) -> bool:
+        """
+        判断当前是否处于“第三阶段 + 启用污点引导剪枝”的模式。
+        只在 GLOBAL_SEMANTICS 阶段生效，避免影响 P2 的行为。
+
+        开关来自 loader.options.enable_p3_taint_guided，而不是全局配置。
+        """
+        if self.analysis_phase_id != ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS:
+            return False
+
+        loader = getattr(self, "loader", None)
+        if loader is None:
+            return False
+        options = getattr(loader, "options", None)
+        if options is None:
+            return False
+        return bool(getattr(options, "enable_p3_taint_guided", False))
+
+    def _recover_extern_callee_names(self, stmt, name_symbol, unsolved_callee_states):
+        """
+        针对未解析/外部调用，尽量恢复出可能的被调函数名称集合。
+
+        返回值是一个字符串集合，用于和污点规则里的 name 字段进行匹配。
+        """
+        names = set()
+
+        # call_stmt：优先使用直接的函数名 symbol
+        if isinstance(name_symbol, Symbol):
+            if util.is_available(getattr(name_symbol, "name", None)):
+                names.add(name_symbol.name)
+            for state_index in getattr(name_symbol, "states", set()):
+                if state_index < 0 or state_index >= len(self.frame.symbol_state_space):
+                    continue
+                state = self.frame.symbol_state_space[state_index]
+                if isinstance(state, State):
+                    access_name = util.access_path_formatter(state.access_path)
+                    if access_name:
+                        names.add(access_name)
+
+        # object_call_stmt 或其它动态场景：使用未解析 callee 的 access_path
+        for state_index in unsolved_callee_states:
+            if state_index < 0 or state_index >= len(self.frame.symbol_state_space):
+                continue
+            state = self.frame.symbol_state_space[state_index]
+            if not isinstance(state, State):
+                continue
+            access_name = util.access_path_formatter(state.access_path)
+            if access_name:
+                names.add(access_name)
+
+        # 如果前面都没拿到名字，最后退回到 stmt 的 name/operation 信息
+        if not names:
+            if util.is_available(getattr(stmt, "name", None)):
+                names.add(stmt.name)
+            if util.is_available(getattr(stmt, "operation", None)):
+                names.add(stmt.operation)
+
+        return names
+
+    def _extern_call_may_affect_taint(self, callee_names) -> bool:
+        """
+        针对未解析/外部调用，基于 taint 规则做一个启发式判断：
+        如果 callee 名称在任意 source/sink/propagation 规则中出现过，就认为“可能影响污点分析”。
+        """
+        if not callee_names:
+            return False
+
+        rule_manager = _get_taint_rule_manager()
+        lang = getattr(self, "lang", None)
+
+        def _match_rule_name(rule_name: str, candidate: str) -> bool:
+            if not rule_name or not candidate:
+                return False
+            if rule_name == candidate:
+                return True
+            # 简单地支持 Class.method 与 method 之间的后缀/前缀匹配
+            return (
+                rule_name.endswith("." + candidate)
+                or candidate.endswith("." + rule_name)
+            )
+
+        all_rules = []
+        all_rules.extend(getattr(rule_manager, "all_sources", []))
+        all_rules.extend(getattr(rule_manager, "all_sinks", []))
+        all_rules.extend(getattr(rule_manager, "all_propagations", []))
+
+        for candidate in callee_names:
+            for rule in all_rules:
+                # Language must match or be ANY_LANG
+                if getattr(rule, "lang", None) not in (lang, config.ANY_LANG):
+                    continue
+                if _match_rule_name(getattr(rule, "name", None), candidate):
+                    return True
+        return False
 
     def copy_and_extend_access_path(self, original_access_path, access_point):
         new_path: list = original_access_path.copy()
@@ -1838,6 +1953,32 @@ class StmtStates:
     def trigger_extern_callee(
         self, stmt_id, stmt, status: StmtStatus, in_states, unsolved_callee_states, name_symbol, defined_symbol, args
     ):
+        # 在第三阶段中，对未解析/外部调用做一次“污点相关性”过滤：
+        # 如果按照 taint 规则判断与污点无关，则直接跳过 extern/LLM 处理，
+        # 仅为返回值创建一个保守的 UNSOLVED 状态占位。
+        if self._taint_guided_p3_enabled():
+            callee_names = self._recover_extern_callee_names(
+                stmt, name_symbol, unsolved_callee_states
+            )
+            if not self._extern_call_may_affect_taint(callee_names):
+                if isinstance(defined_symbol, Symbol):
+                    unsolved_state_index = self.create_state_and_add_space(
+                        status,
+                        stmt_id,
+                        source_symbol_id=defined_symbol.symbol_id,
+                        state_type=STATE_TYPE_KIND.UNSOLVED,
+                        data_type=util.read_stmt_field(stmt.data_type),
+                        access_path=[
+                            AccessPoint(
+                                kind=ACCESS_POINT_KIND.CALL_RETURN,
+                                key=util.read_stmt_field(defined_symbol.name),
+                            )
+                        ],
+                    )
+                    self.update_access_path_state_id(unsolved_state_index)
+                    defined_symbol.states = {unsolved_state_index}
+                return None
+
         p2result_flag = P2ResultFlag()
         event = EventData(
             self.lang,
