@@ -19,7 +19,8 @@ from lian.config.constants import (
     STATE_TYPE_KIND,
     LIAN_INTERNAL,
     CALLEE_TYPE,
-    EVENT_KIND
+    EVENT_KIND,
+    ANALYSIS_PHASE_ID
 )
 from lian.common_structs import (
     CallGraph,
