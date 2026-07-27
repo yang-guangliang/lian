@@ -1407,17 +1407,10 @@ class Parser(common_parser.Parser):
                 #self.sync_tmp_variable(statements, case_init)
                 shadow_label = self.parse(label, case_init)
                 if case_init != []:
-                    statements.insert(-1, case_init)
+                    statements[-1:-1] = case_init
 
                     # for c in case.children:
                     #     util.debug(self.read_node_text(c)+"///")
-                    '''
-                    case///
-                    2///
-                    :///
-                    c = 4;///
-                    break;///
-                    '''
 
                 # 如果该case statement中只有标签
                 if label == case.named_children[-1]:

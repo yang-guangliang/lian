@@ -326,13 +326,34 @@ class Parser:
         if self.is_expression(node):
             return self.expression(node, statements)
 
-        size = len(node.named_children)
-        for i in range(size):
-            ret = self.parse(node.named_children[i], statements, replacement)
-            if node.type == "parenthesized_expression":
-                return ret
-            if i + 1 == size:
-                return ret
+        return self.parse_unhandled_node(node, statements, replacement)
+
+    def parse_unhandled_node(self, node, statements, replacement):
+        last_result = None
+        pending = [node]
+
+        while pending:
+            current = pending.pop()
+            if (
+                self.is_comment(current)
+                or self.is_identifier(current)
+                or self.is_literal(current)
+                or self.is_declaration(current)
+                or self.is_statement(current)
+                or self.is_expression(current)
+            ):
+                last_result = self.parse(current, statements, replacement)
+                continue
+
+            children = current.named_children
+            if current.type == "parenthesized_expression":
+                children = children[:1]
+            if not children:
+                last_result = None
+                continue
+            pending.extend(reversed(children))
+
+        return last_result
 
     def start_parse(self, node, statements):
         pass
