@@ -4,7 +4,7 @@
 
 ## News
 
-* The work behind Lian has been accepted by ISSTA 2026.
+* The work behind Lian has been accepted by ISSTA 2026 "Fine-Grained Privacy Leakage Detection in OpenHarmony Apps".
 
 ## Background
 
