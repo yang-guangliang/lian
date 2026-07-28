@@ -65,13 +65,11 @@ class DataModel:
         return self.access_column(column_name)
 
     def __iter__(self):
-        self.refresh_rows()
-        index = self._data.index
-
-        counter = 0
-        for row in self._rows:
-            yield Row(row, self._schema, index[counter])
-            counter += 1
+        for index, row in zip(
+            self._data.index,
+            self._data.itertuples(index=False, name=None),
+        ):
+            yield Row(np.asarray(row, dtype=object), self._schema, index)
 
     def __len__(self):
         return len(self._data)
