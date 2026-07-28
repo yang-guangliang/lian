@@ -221,7 +221,7 @@ class GlobalStmtStates(StmtStates):
         return False
 
     def add_arg_to_param_edge(self, each_pair, status, parameter_name_symbol):
-        for node in self.sfg.graph.nodes:
+        for node in self.sfg.state_index_to_nodes.get(each_pair.arg_index_in_space, ()):
             if self.node_is_state(node) and node.index == each_pair.arg_index_in_space:
                 # `node` 是参数对应的 STATE 节点；它的直接前驱通常是 SYMBOL。
                 # 但在某些建图路径下，可能出现 STATE -> STATE 的链路（如 inclusion/copy），

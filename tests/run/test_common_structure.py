@@ -5,6 +5,7 @@ import os,sys
 import subprocess
 import tempfile
 import unittest
+from collections import deque
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,6 +21,54 @@ from lian.config import lang_config
 from lian import common_structs as common_structure
 from lian.lang import c_parser
 from lian.taint.taint_analysis import TaintAnalysis
+
+
+class TestSimpleWorkList(unittest.TestCase):
+    def test_fifo_uses_constant_time_queue_without_changing_order(self):
+        worklist = common_structure.SimpleWorkList([3, 1, 2, 1])
+
+        self.assertIsInstance(worklist.work_list, deque)
+        self.assertEqual([worklist.pop(), worklist.pop(), worklist.pop()], [3, 1, 2])
+
+    def test_fifo_insert_to_first_preserves_priority(self):
+        worklist = common_structure.SimpleWorkList([2, 3])
+
+        worklist.insert_to_first(1)
+
+        self.assertEqual([worklist.pop(), worklist.pop(), worklist.pop()], [1, 2, 3])
+
+
+class TestStateFlowGraphStateIndex(unittest.TestCase):
+    def test_tracks_state_nodes_from_both_edge_ends(self):
+        graph = common_structure.StateFlowGraph(method_id=1)
+        source_state = common_structure.SFGNode(
+            node_type=common_structure.SFG_NODE_KIND.STATE, index=10, node_id=1
+        )
+        target_state = common_structure.SFGNode(
+            node_type=common_structure.SFG_NODE_KIND.STATE, index=20, node_id=2
+        )
+
+        graph.add_edge(source_state, target_state)
+
+        self.assertEqual(graph.state_index_to_nodes[10], {source_state})
+        self.assertEqual(graph.state_index_to_nodes[20], {target_state})
+
+    def test_keeps_all_distinct_state_nodes_for_an_index_without_duplicates(self):
+        graph = common_structure.StateFlowGraph(method_id=1)
+        first_state = common_structure.SFGNode(
+            node_type=common_structure.SFG_NODE_KIND.STATE, index=10, node_id=1
+        )
+        second_state = common_structure.SFGNode(
+            node_type=common_structure.SFG_NODE_KIND.STATE, index=10, node_id=2
+        )
+        target_symbol = common_structure.SFGNode(
+            node_type=common_structure.SFG_NODE_KIND.SYMBOL, index=30, node_id=3
+        )
+
+        graph.add_edge([first_state, second_state, first_state], target_symbol)
+
+        self.assertEqual(graph.state_index_to_nodes[10], {first_state, second_state})
+        self.assertNotIn(30, graph.state_index_to_nodes)
 
 class TestSearchGraph(unittest.TestCase):
     def setUp(self):
@@ -147,6 +196,57 @@ class TestCParserArrayDataType(unittest.TestCase):
         self.assertTrue(
             all(stmt.get("data_type", "").startswith("%vv") for stmt in struct_news),
             msg=f"new_struct statements: {struct_news}",
+        )
+
+
+class TestCppParserEntrypoints(unittest.TestCase):
+    def test_cpp_qualified_method_is_available_for_entry_point_selection(self):
+        lang = next(item for item in lang_config.LANG_TABLE if item.name == "cpp")
+        lib = cdll.LoadLibrary(lang.so_path)
+        lang_fn = getattr(lib, "tree_sitter_cpp")
+        lang_fn.restype = c_void_p
+
+        parser = tree_sitter.Parser(tree_sitter.Language(lang_fn()))
+        tree = parser.parse(b"int ProfileModel::importProfilesFromZip() { return 0; }")
+        options = type("Options", (), {
+            "debug": False,
+            "print_stmts": False,
+            "strict_parse_mode": False,
+        })()
+        unit_info = type("UnitInfo", (), {"original_path": "profile_model.cpp"})()
+        statements = []
+
+        lang.parser(options, unit_info).parse_gir(tree.root_node, statements)
+
+        self.assertIn(
+            "ProfileModel::importProfilesFromZip",
+            [stmt["method_decl"]["name"] for stmt in statements if "method_decl" in stmt],
+        )
+
+    def test_cpp_constructor_declaration_without_a_type_does_not_abort_parsing(self):
+        lang = next(item for item in lang_config.LANG_TABLE if item.name == "cpp")
+        lib = cdll.LoadLibrary(lang.so_path)
+        lang_fn = getattr(lib, "tree_sitter_cpp")
+        lang_fn.restype = c_void_p
+
+        parser = tree_sitter.Parser(tree_sitter.Language(lang_fn()))
+        tree = parser.parse(
+            b"class ProfileModel { public: ProfileModel(int value); };"
+            b"int parseable_function() { return 0; }"
+        )
+        options = type("Options", (), {
+            "debug": False,
+            "print_stmts": False,
+            "strict_parse_mode": False,
+        })()
+        unit_info = type("UnitInfo", (), {"original_path": "profile_model.cpp"})()
+        statements = []
+
+        lang.parser(options, unit_info).parse_gir(tree.root_node, statements)
+
+        self.assertIn(
+            "parseable_function",
+            [stmt["method_decl"]["name"] for stmt in statements if "method_decl" in stmt],
         )
 
 

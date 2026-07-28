@@ -1176,6 +1176,9 @@ class Parser(common_parser.Parser):
         modifiers = []
         self.search_for_modifiers(node, modifiers)
         mytype = self.find_child_by_field(node, "type")
+        if mytype is None:
+            # C++ constructors and destructors are declarations without a type.
+            return
         shadow_mytype = self.read_node_text(mytype)
         self.search_for_modifiers(mytype,modifiers)
 

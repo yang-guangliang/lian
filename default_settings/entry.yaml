@@ -1,4 +1,27 @@
-- method_list: ["%unit_init"]
+# `%unit_init` remains the default entry point for non-C/C++ languages.
+# C/C++ use only main or an explicitly configured entry point.
+- lang: abc
+  method_list: ["%unit_init"]
+- lang: csharp
+  method_list: ["%unit_init"]
+- lang: go
+  method_list: ["%unit_init"]
+- lang: java
+  method_list: ["%unit_init"]
+- lang: javascript
+  method_list: ["%unit_init"]
+- lang: python
+  method_list: ["%unit_init"]
+- lang: php
+  method_list: ["%unit_init"]
+- lang: ruby
+  method_list: ["%unit_init"]
+- lang: smali
+  method_list: ["%unit_init"]
+- lang: typescript
+  method_list: ["%unit_init"]
+- lang: llvm
+  method_list: ["%unit_init"]
 
 #- lang: java
 #  method_list: ["channelRead0"]
@@ -6,11 +29,8 @@
 - lang: abc
   method_list: ["aboutToappear", "Index", "SunsPage", "SelectLocation", "RegisterPage", "LoadAd", "InitialRender", "init", "send", "Paramslambda", "requestOAIDTrackingConsentPermissions", "aboutToappear", "onChangeCallback", "onPageshow", "func_main_0", "onWindowStageCreate","onCreate", "deepRenderFunction"]
 
-# C/C++ 项目的通用入口点：main 函数。
-# 注意：没有 main 的纯库项目（比如 CBench 里很多 benchmark，包括 c-aces）
-# 这条规则匹配不到任何东西——这些项目由 entry_points.py 里的
-# collect_fallback_c_entry_points 兜底（整个项目一个入口点都没匹配到时，
-# 把所有非 static 顶层函数都当作入口点），不需要在这里为每个项目单独配置。
+# C/C++ 项目的默认入口点：main 函数。
+# 纯库项目必须在 entry.yaml 中显式配置待分析的入口；未配置时不会创建 P3 根。
 - lang: c
   method_list: ["main"]
 - lang: cpp

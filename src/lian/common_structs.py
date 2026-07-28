@@ -9,7 +9,7 @@ import pprint
 import numpy
 import copy
 import heapq
-from collections import Counter
+from collections import Counter, deque
 from itertools import count
 from collections import defaultdict
 from lian.util import readable_gir
@@ -337,6 +337,9 @@ class SimpleWorkList:
                     node: idx for idx, node in enumerate(cfg_order)
                 }
 
+        if not self.priority_dict:
+            self.work_list = deque(self.work_list)
+
     def _add_with_priority(self, item):
         if isinstance(item, (int, numpy.integer)) and int(item) <= 0:
             return
@@ -369,7 +372,10 @@ class SimpleWorkList:
         if len(self.work_list) <= 0:
             return None
 
-        result = self.work_list.pop(0)
+        if self.priority_dict:
+            result = self.work_list.pop(0)
+        else:
+            result = self.work_list.popleft()
         if isinstance(result, tuple):
             result = result[1]
         if result in self.all_data:
@@ -380,7 +386,7 @@ class SimpleWorkList:
         if self.priority_dict:
             heapq.heappush(self.work_list, (0, stmt_id))
         else:
-            self.work_list.insert(0, stmt_id)
+            self.work_list.appendleft(stmt_id)
         self.all_data.add(stmt_id)
 
     def peek(self):
@@ -1248,6 +1254,21 @@ class StateGraph(SymbolGraph):
     pass
 
 class StateFlowGraph(SymbolGraph):
+    def __init__(self, method_id):
+        super().__init__(method_id)
+        self.state_index_to_nodes = defaultdict(set)
+
+    def _index_state_node(self, node):
+        if isinstance(node, SFGNode) and node.node_type == SFG_NODE_KIND.STATE:
+            self.state_index_to_nodes[node.index].add(node)
+
+    def _add_one_edge(self, src_node, dst_node, weight):
+        super()._add_one_edge(src_node, dst_node, weight)
+        if self.graph.has_node(src_node):
+            self._index_state_node(src_node)
+        if self.graph.has_node(dst_node):
+            self._index_state_node(dst_node)
+
     def add_edge(self, src_node, dst_node, weight = None):
         if util.is_empty(dst_node):
             return
