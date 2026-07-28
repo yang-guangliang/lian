@@ -4,7 +4,7 @@
 
 ## 新闻
 
-* Lian 相关工作已被 ISSTA 2026 录取。
+* Lian关于鸿蒙安全分析的工作已被顶会ISSTA 2026收录“Fine-Grained Privacy Leakage Detection in OpenHarmony Apps”。
 
 ## 背景
 
