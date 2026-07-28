@@ -2,7 +2,7 @@
 
 莲花Lian系统是新一代面向多语言场景的高精度程序分析框架，旨在为多种语言提供统一的、强大的程序分析能力，包括指针分析、数据流分析、污点分析等。
 
-## 新闻
+## 最新进展
 
 * Lian关于鸿蒙安全分析的工作已被顶会ISSTA 2026收录“Fine-Grained Privacy Leakage Detection in OpenHarmony Apps”。
 
