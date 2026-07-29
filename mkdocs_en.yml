@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------
 site_name: Lian Program Analysis Framework
 site_url: https://yian-lang.net/lian/en
-repo_url: https://github.com/yian-lang/lian
+repo_url: https://github.com/FDU-SSR/lian
 docs_dir: docs/en
 
 theme:
