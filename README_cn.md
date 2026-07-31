@@ -28,7 +28,7 @@
 ## 特点
 
 * **源码输入**：支持源代码分析，无需编译器参与；
-* **多语言支持**：支持Python、JavaScript、Java、TypeScript、Go、ABC 字节码等静态和动态语言；
+* **多语言支持**：支持Python、JavaScript、Java、C、LLVM、TypeScript、Go、PHP、Rust MIR、鸿蒙ArkTS和ABC字节码等静态和动态语言；
 * **指针级高精度**：实现流敏感（Flow-sensitive）和上下文敏感（Context-sensitive）的指针分析；
 * **动态语义建模**：支持对原型链、高阶函数、动态属性解析的分析；
 * **安全导向**：提供强大的污点分析引擎，方便快速构建漏洞挖掘工具。
