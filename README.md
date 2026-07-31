@@ -34,7 +34,7 @@ Despite vast syntactic differences across languages, program behaviors at the ex
 ## Key Features
 
 * **Source-code input**: Analyzing source code directly. No compiler is required.  
-* **Multi-language support**: Supporting both static and dynamic languages, including Python, JavaScript, Java, TypeScript, Go, and ABC bytecode.  
+* **Multi-language support**: Supporting both static and dynamic languages, including Python, JavaScript, Java, TypeScript, Go, C, LLVM, PHP, OpenHarmony ArkTS and ABC bytecode.  
 * **Pointer-level precision**: Implementing flow-sensitive and context-sensitive pointer analysis.  
 * **Dynamic semantics modeling**: Accurately handling prototype chains, higher-order functions, and dynamic property resolution.  
 * **Security-oriented**: Providing a powerful taint analysis engine, enabling rapid development of vulnerability discovery tools.
