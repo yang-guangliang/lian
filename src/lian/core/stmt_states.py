@@ -1306,68 +1306,39 @@ class StmtStates:
                 state.access_path = access_path
             return states
 
-        def _merge_fields_for_states(summary_states_fields, arg_state_fields, access_path):
-            current_arg_state_fields = arg_state_fields.copy()
-
-            # 处理字段合并
-            for field_name in summary_states_fields:
-                if field_name not in current_arg_state_fields:
-                    current_arg_state_fields[field_name] = summary_states_fields[field_name]
-                # 如果已经存在，则 深入递归合并
-                else:
-                    # 生成更深一层的access_path
-                    new_access_path = self.copy_and_extend_access_path(
-                        original_access_path=access_path,
-                        access_point=AccessPoint(
-                            kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
-                            key=field_name
-                        )
-                    )
-                    current_arg_state_fields[field_name] = _recursively_collect_children_fields(
-                        stmt_id,
-                        stmt,
-                        status,
-                        summary_states_fields[field_name],
-                        current_arg_state_fields[field_name],
-                        source_symbol_id,
-                        new_access_path
-                    )
-
-            return current_arg_state_fields
-
-        def _recursively_collect_children_fields(
-            stmt_id, stmt, status: StmtStatus, state_set_in_summary_field: set,
-            state_set_in_arg_field: set, source_symbol_id, access_path
-        ):
-            cache_key = (
+        def _cache_key(state_set_in_summary_field, state_set_in_arg_field):
+            return (
                 stmt_id,
                 frozenset(state_set_in_summary_field),
                 frozenset(state_set_in_arg_field),
                 source_symbol_id,
             )
-            # 检查缓存
+
+        def _schedule_field_merge(
+            state_set_in_summary_field,
+            state_set_in_arg_field,
+            current_access_path,
+            stack,
+        ):
+            cache_key = _cache_key(
+                state_set_in_summary_field, state_set_in_arg_field
+            )
             if cache_key in cache:
                 cached_result = cache[cache_key]
                 if cached_result is None:
-                    # 循环依赖情况，避免无限递归
                     if state_set_in_arg_field:
-                        return state_set_in_arg_field.copy()
-                    else:
-                        return state_set_in_summary_field.copy()
-                return cached_result
+                        return True, state_set_in_arg_field.copy()
+                    return True, state_set_in_summary_field.copy()
+                return True, cached_result
 
             cache[cache_key] = None
-
-            # state_type默认为REGULAR，如果任意一个输入状态的 state_type 是 ANYTHING，则结果也标记为 ANYTHING。
             state_type = STATE_TYPE_KIND.REGULAR
-            # summary_states_fields / arg_state_fields：分别用来收集summary和arg两组状态的字段映射（字段名 → 值集合）。
             summary_states_fields = {}
             arg_state_fields = {}
             tangping_flag = False
             tangping_elements = set()
             return_set = set()
 
-            # 填充summary_states_fields
             for each_state_index in state_set_in_summary_field:
                 each_state = self.frame.symbol_state_space[each_state_index]
                 if not (each_state and isinstance(each_state, State)):
@@ -1378,13 +1349,11 @@ class StmtStates:
                     tangping_flag = True
                     tangping_elements.update(each_state.tangping_elements)
                     continue
-                # 将该State的fields中每个字段名和对应值集，合并到summary_states_fields，同名字段时将值集并集。
                 each_state_fields = each_state.fields.copy()
                 for field_name in each_state_fields:
                     util.add_to_dict_with_default_set(summary_states_fields, field_name, each_state_fields[field_name])
 
             state_id_to_states = {}
-            # 填充arg_state_fields
             for each_state_index in state_set_in_arg_field:
                 each_state = self.frame.symbol_state_space[each_state_index]
                 if not (each_state and isinstance(each_state, State)):
@@ -1398,9 +1367,7 @@ class StmtStates:
                 for field_name in each_state_fields:
                     util.add_to_dict_with_default_set(arg_state_fields, field_name, each_state_fields[field_name])
 
-            # 合并caller中同id的states
             states_with_diff_ids = set()
-            # 如果是第三阶段，把states加到states_with_diff_ids，不允许下面的for
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
                 for state_id, states in state_id_to_states.items():
                     if len(states) == 1:
@@ -1419,36 +1386,107 @@ class StmtStates:
                     state.tangping_elements = tangping_elements
                 return_set.update(states_with_diff_ids)
 
-            # 只有单侧有字段时的处理
             if not arg_state_fields or not summary_states_fields:
                 if summary_states_fields:
                     _set_attributes_on_states(
-                        states_with_diff_ids, summary_states_fields, state_type, source_symbol_id, access_path
+                        states_with_diff_ids,
+                        summary_states_fields,
+                        state_type,
+                        source_symbol_id,
+                        current_access_path,
                     )
                     return_set.update(states_with_diff_ids)
                 elif arg_state_fields:
                     _set_attributes_on_states(
-                        states_with_diff_ids, arg_state_fields, state_type, source_symbol_id, access_path
+                        states_with_diff_ids,
+                        arg_state_fields,
+                        state_type,
+                        source_symbol_id,
+                        current_access_path,
                     )
                     return_set.update(states_with_diff_ids)
                 else:
                     if not return_set:
                         return_set.update(state_set_in_summary_field)
                 cache[cache_key] = return_set
-                return return_set
+                return True, return_set
 
-            # 两侧都有字段
-            merged_fields = _merge_fields_for_states(summary_states_fields, arg_state_fields, access_path)
-            _set_attributes_on_states(states_with_diff_ids, merged_fields, state_type, source_symbol_id, access_path)
-            return_set.update(states_with_diff_ids)
+            stack.append({
+                "cache_key": cache_key,
+                "summary_items": list(summary_states_fields.items()),
+                "arg_state_fields": arg_state_fields,
+                "merged_fields": arg_state_fields.copy(),
+                "next_field_index": 0,
+                "pending_field_name": None,
+                "pending_cache_key": None,
+                "states_with_diff_ids": states_with_diff_ids,
+                "state_type": state_type,
+                "return_set": return_set,
+                "access_path": current_access_path,
+            })
+            return False, cache_key
 
-            cache[cache_key] = return_set
-            return return_set
-
-        return _recursively_collect_children_fields(
-            stmt_id, stmt, status, state_set_in_summary_field, state_set_in_arg_field,
-            source_symbol_id, access_path
+        stack = []
+        is_ready, result_or_key = _schedule_field_merge(
+            state_set_in_summary_field,
+            state_set_in_arg_field,
+            access_path,
+            stack,
         )
+        if is_ready:
+            return result_or_key
+
+        root_cache_key = result_or_key
+        while stack:
+            frame = stack[-1]
+            if frame["pending_field_name"] is not None:
+                child_result = cache[frame["pending_cache_key"]]
+                frame["merged_fields"][frame["pending_field_name"]] = child_result
+                frame["pending_field_name"] = None
+                frame["pending_cache_key"] = None
+                continue
+
+            if frame["next_field_index"] == len(frame["summary_items"]):
+                _set_attributes_on_states(
+                    frame["states_with_diff_ids"],
+                    frame["merged_fields"],
+                    frame["state_type"],
+                    source_symbol_id,
+                    frame["access_path"],
+                )
+                frame["return_set"].update(frame["states_with_diff_ids"])
+                cache[frame["cache_key"]] = frame["return_set"]
+                stack.pop()
+                continue
+
+            field_name, summary_field_states = frame["summary_items"][
+                frame["next_field_index"]
+            ]
+            frame["next_field_index"] += 1
+            if field_name not in frame["arg_state_fields"]:
+                frame["merged_fields"][field_name] = summary_field_states
+                continue
+
+            new_access_path = self.copy_and_extend_access_path(
+                original_access_path=frame["access_path"],
+                access_point=AccessPoint(
+                    kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
+                    key=field_name,
+                ),
+            )
+            is_ready, result_or_key = _schedule_field_merge(
+                summary_field_states,
+                frame["arg_state_fields"][field_name],
+                new_access_path,
+                stack,
+            )
+            if is_ready:
+                frame["merged_fields"][field_name] = result_or_key
+            else:
+                frame["pending_field_name"] = field_name
+                frame["pending_cache_key"] = result_or_key
+
+        return cache[root_cache_key]
 
     def apply_parameter_summary_to_args_states(
         self,

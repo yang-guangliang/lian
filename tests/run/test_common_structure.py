@@ -115,6 +115,118 @@ class TestStmtStateIndexValidation(unittest.TestCase):
             "an unresolved field sentinel must not discard concrete caller state",
         )
 
+    def test_field_merge_handles_deep_nested_state_graph_without_python_recursion(self):
+        depth = 600
+        state_space = common_structure.SymbolStateSpace()
+        summary_indexes = [
+            state_space.add(common_structure.State(state_id=1000 + index))
+            for index in range(depth)
+        ]
+        argument_indexes = [
+            state_space.add(common_structure.State(state_id=2000 + index))
+            for index in range(depth)
+        ]
+        for index in range(depth - 1):
+            state_space[summary_indexes[index]].fields = {
+                "next": {summary_indexes[index + 1]}
+            }
+            state_space[argument_indexes[index]].fields = {
+                "next": {argument_indexes[index + 1]}
+            }
+
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+
+        result = stmt_states.recursively_collect_children_fields(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            status=common_structure.StmtStatus(stmt_id=7),
+            state_set_in_summary_field={summary_indexes[0]},
+            state_set_in_arg_field={argument_indexes[0]},
+            source_symbol_id=11,
+            access_path=[],
+        )
+
+        self.assertEqual(result, {argument_indexes[0]})
+
+    def test_field_merge_preserves_self_referential_argument_field(self):
+        state_space = common_structure.SymbolStateSpace()
+        summary_index = state_space.add(common_structure.State(state_id=101))
+        argument_index = state_space.add(common_structure.State(state_id=201))
+        state_space[summary_index].fields = {"self": {summary_index}}
+        state_space[argument_index].fields = {"self": {argument_index}}
+
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+
+        result = stmt_states.recursively_collect_children_fields(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            status=common_structure.StmtStatus(stmt_id=7),
+            state_set_in_summary_field={summary_index},
+            state_set_in_arg_field={argument_index},
+            source_symbol_id=11,
+            access_path=[],
+        )
+
+        self.assertEqual(result, {argument_index})
+        self.assertEqual(state_space[argument_index].fields["self"], {argument_index})
+
+    def test_field_merge_preserves_nested_and_nonoverlapping_fields(self):
+        state_space = common_structure.SymbolStateSpace()
+        summary_root = state_space.add(common_structure.State(state_id=101))
+        summary_child = state_space.add(common_structure.State(state_id=102))
+        summary_leaf = state_space.add(common_structure.State(state_id=103))
+        summary_only = state_space.add(common_structure.State(state_id=104))
+        argument_root = state_space.add(common_structure.State(state_id=201))
+        argument_child = state_space.add(common_structure.State(state_id=202))
+        argument_leaf = state_space.add(common_structure.State(state_id=203))
+        argument_only = state_space.add(common_structure.State(state_id=204))
+
+        state_space[summary_root].fields = {
+            "shared": {summary_child},
+            "summary_only": {summary_only},
+        }
+        state_space[summary_child].fields = {"from_summary": {summary_leaf}}
+        state_space[argument_root].fields = {
+            "shared": {argument_child},
+            "argument_only": {argument_only},
+        }
+        state_space[argument_child].fields = {"from_argument": {argument_leaf}}
+
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+
+        result = stmt_states.recursively_collect_children_fields(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            status=common_structure.StmtStatus(stmt_id=7),
+            state_set_in_summary_field={summary_root},
+            state_set_in_arg_field={argument_root},
+            source_symbol_id=11,
+            access_path=[],
+        )
+
+        self.assertEqual(result, {argument_root})
+        self.assertEqual(
+            state_space[argument_root].fields,
+            {
+                "shared": {argument_child},
+                "summary_only": {summary_only},
+                "argument_only": {argument_only},
+            },
+        )
+        self.assertEqual(
+            state_space[argument_child].fields,
+            {
+                "from_argument": {argument_leaf},
+                "from_summary": {summary_leaf},
+            },
+        )
+
 
 class TestBinaryStateEvaluation(unittest.TestCase):
     def _compute(self, operator, left, right):
