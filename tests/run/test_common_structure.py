@@ -18,7 +18,9 @@ from pyarrow.lib import ArrowInvalid
 import tests.run.init_test as init_test
 
 from lian.config import lang_config
+from lian.config.constants import ANALYSIS_PHASE_ID
 from lian import common_structs as common_structure
+from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
 from lian.taint.taint_analysis import TaintAnalysis
 
@@ -69,6 +71,34 @@ class TestStateFlowGraphStateIndex(unittest.TestCase):
 
         self.assertEqual(graph.state_index_to_nodes[10], {first_state, second_state})
         self.assertNotIn(30, graph.state_index_to_nodes)
+
+
+class TestStmtStateIndexValidation(unittest.TestCase):
+    def test_field_merge_ignores_missing_index_without_dropping_valid_state(self):
+        state_space = common_structure.SymbolStateSpace()
+        valid_state_index = state_space.add(
+            common_structure.State(state_id=101, tangping_flag=True)
+        )
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+
+        result = stmt_states.recursively_collect_children_fields(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            status=common_structure.StmtStatus(stmt_id=7),
+            state_set_in_summary_field=set(),
+            state_set_in_arg_field={-1, valid_state_index},
+            source_symbol_id=11,
+            access_path=[],
+        )
+
+        self.assertEqual(
+            result,
+            {valid_state_index},
+            "an unresolved field sentinel must not discard concrete caller state",
+        )
+
 
 class TestSearchGraph(unittest.TestCase):
     def setUp(self):

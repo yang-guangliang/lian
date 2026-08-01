@@ -1343,10 +1343,9 @@ class StmtStates:
             # 填充arg_state_fields
             for each_state_index in state_set_in_arg_field:
                 each_state = self.frame.symbol_state_space[each_state_index]
-                util.add_to_dict_with_default_set(state_id_to_states, each_state.state_id, each_state_index)
-
                 if not (each_state and isinstance(each_state, State)):
                     continue
+                util.add_to_dict_with_default_set(state_id_to_states, each_state.state_id, each_state_index)
                 if each_state.tangping_flag:
                     tangping_flag = True
                     tangping_elements.update(each_state.tangping_elements)
