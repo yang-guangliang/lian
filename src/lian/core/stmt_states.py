@@ -476,8 +476,9 @@ class StmtStates:
         target = self.frame.symbol_state_space[index]
         if isinstance(target, Symbol):
             return in_states.get(target.symbol_id, set())
-
-        return {index}
+        if isinstance(target, State):
+            return {index}
+        return set()
 
     def find_defined_symbol_index_in_status(self, status: StmtStatus, symbol_id: int):
         candidate_indexes = [status.defined_symbol, *status.implicitly_defined_symbols]

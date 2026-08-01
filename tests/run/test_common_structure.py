@@ -74,6 +74,22 @@ class TestStateFlowGraphStateIndex(unittest.TestCase):
 
 
 class TestStmtStateIndexValidation(unittest.TestCase):
+    def test_missing_state_index_does_not_become_a_concrete_state(self):
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.frame = SimpleNamespace(
+            symbol_state_space=common_structure.SymbolStateSpace()
+        )
+
+        self.assertEqual(stmt_states.read_used_states(-1, {}), set())
+
+    def test_concrete_state_index_remains_available(self):
+        state_space = common_structure.SymbolStateSpace()
+        state_index = state_space.add(common_structure.State(state_id=101))
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+
+        self.assertEqual(stmt_states.read_used_states(state_index, {}), {state_index})
+
     def test_field_merge_ignores_missing_index_without_dropping_valid_state(self):
         state_space = common_structure.SymbolStateSpace()
         valid_state_index = state_space.add(
