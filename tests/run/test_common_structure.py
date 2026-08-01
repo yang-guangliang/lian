@@ -20,6 +20,7 @@ import tests.run.init_test as init_test
 from lian.config import lang_config
 from lian.config.constants import ANALYSIS_PHASE_ID
 from lian import common_structs as common_structure
+from lian.core.resolver import Resolver
 from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
 from lian.taint.taint_analysis import TaintAnalysis
@@ -226,6 +227,168 @@ class TestStmtStateIndexValidation(unittest.TestCase):
                 "from_summary": {summary_leaf},
             },
         )
+
+
+class TestResolverStateGraphDepth(unittest.TestCase):
+    def test_resolves_deep_state_graph_without_python_recursion(self):
+        depth = 1100
+        state_space = common_structure.SymbolStateSpace()
+        old_indexes = [None] * depth
+        for position in range(depth - 1, -1, -1):
+            fields = (
+                {} if position == depth - 1
+                else {"next": {old_indexes[position + 1]}}
+            )
+            old_indexes[position] = state_space.add(
+                common_structure.State(
+                    stmt_id=1,
+                    state_id=position + 1,
+                    fields=fields,
+                )
+            )
+
+        latest_indexes = [None] * depth
+        for position in range(depth - 1, -1, -1):
+            fields = (
+                {} if position == depth - 1
+                else {"next": {old_indexes[position + 1]}}
+            )
+            latest_indexes[position] = state_space.add(
+                common_structure.State(
+                    stmt_id=2,
+                    state_id=position + 1,
+                    fields=fields,
+                )
+            )
+
+        definitions = {
+            position + 1: {
+                common_structure.StateDefNode(
+                    index=latest_indexes[position],
+                    state_id=position + 1,
+                    stmt_id=2,
+                )
+            }
+            for position in range(depth)
+        }
+        available_definitions = set().union(*definitions.values())
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states=definitions,
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+        resolver = object.__new__(Resolver)
+
+        resolved_indexes = resolver.retrieve_latest_states(
+            frame,
+            7,
+            state_space,
+            {old_indexes[0]},
+            available_definitions,
+            {},
+        )
+
+        resolved_index = next(iter(resolved_indexes))
+        for expected_state_id in range(1, depth + 1):
+            resolved_state = state_space[resolved_index]
+            self.assertEqual(resolved_state.state_id, expected_state_id)
+            if expected_state_id < depth:
+                resolved_index = next(iter(resolved_state.fields["next"]))
+        self.assertEqual(
+            state_space[old_indexes[0]].fields,
+            {"next": {old_indexes[1]}},
+        )
+
+    def test_resolves_latest_state_cycle_without_reusing_old_edges(self):
+        state_space = common_structure.SymbolStateSpace()
+        old_first = state_space.add(
+            common_structure.State(stmt_id=1, state_id=10, fields={"next": {1}})
+        )
+        old_second = state_space.add(
+            common_structure.State(stmt_id=1, state_id=20, fields={"previous": {0}})
+        )
+        latest_first = state_space.add(
+            common_structure.State(
+                stmt_id=2, state_id=10, fields={"next": {old_second}}
+            )
+        )
+        latest_second = state_space.add(
+            common_structure.State(
+                stmt_id=2, state_id=20, fields={"previous": {old_first}}
+            )
+        )
+        first_definition = common_structure.StateDefNode(
+            index=latest_first, state_id=10, stmt_id=2
+        )
+        second_definition = common_structure.StateDefNode(
+            index=latest_second, state_id=20, stmt_id=2
+        )
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={10: {first_definition}, 20: {second_definition}},
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+        resolver = object.__new__(Resolver)
+
+        resolved_first = next(iter(resolver.retrieve_latest_states(
+            frame,
+            7,
+            state_space,
+            {old_first},
+            {first_definition, second_definition},
+            {},
+        )))
+        resolved_second = next(iter(state_space[resolved_first].fields["next"]))
+
+        self.assertNotIn(resolved_first, {old_first, latest_first})
+        self.assertNotIn(resolved_second, {old_second, latest_second})
+        self.assertEqual(
+            state_space[resolved_second].fields["previous"], {resolved_first}
+        )
+        self.assertEqual(state_space[old_first].fields, {"next": {old_second}})
+        self.assertEqual(state_space[old_second].fields, {"previous": {old_first}})
+
+    def test_resolves_field_array_and_tangping_children_consistently(self):
+        state_space = common_structure.SymbolStateSpace()
+        old_child = state_space.add(
+            common_structure.State(stmt_id=1, state_id=20, value="old")
+        )
+        parent = state_space.add(
+            common_structure.State(
+                stmt_id=1,
+                state_id=10,
+                fields={"child": {old_child}},
+                array=[{old_child}],
+                tangping_elements={old_child},
+            )
+        )
+        latest_child = state_space.add(
+            common_structure.State(stmt_id=2, state_id=20, value="latest")
+        )
+        child_definition = common_structure.StateDefNode(
+            index=latest_child, state_id=20, stmt_id=2
+        )
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={20: {child_definition}},
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+        resolver = object.__new__(Resolver)
+
+        resolved_parent_index = next(iter(resolver.retrieve_latest_states(
+            frame,
+            7,
+            state_space,
+            {parent},
+            {child_definition},
+            {},
+        )))
+        resolved_parent = state_space[resolved_parent_index]
+
+        self.assertEqual(resolved_parent.fields, {"child": {latest_child}})
+        self.assertEqual(resolved_parent.array, [{latest_child}])
+        self.assertEqual(resolved_parent.tangping_elements, {latest_child})
+        self.assertEqual(state_space[parent].fields, {"child": {old_child}})
 
 
 class TestBinaryStateEvaluation(unittest.TestCase):
