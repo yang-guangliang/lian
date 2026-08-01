@@ -3,6 +3,7 @@ import ast
 import pprint
 import re
 import copy
+import operator as python_operator
 
 from lian.events.handler_template import EventData
 from lian.util import util
@@ -55,6 +56,34 @@ from lian.common_structs import (
     SFGEdge,
 )
 from lian.core.resolver import Resolver
+
+
+_CONCRETE_BINARY_OPERATORS = {
+    "==": python_operator.eq,
+    "!=": python_operator.ne,
+    "<": python_operator.lt,
+    "<=": python_operator.le,
+    ">": python_operator.gt,
+    ">=": python_operator.ge,
+    "&&": lambda left, right: bool(left) and bool(right),
+    "||": lambda left, right: bool(left) or bool(right),
+    "and": lambda left, right: bool(left) and bool(right),
+    "or": lambda left, right: bool(left) or bool(right),
+}
+
+
+def _coerce_concrete_binary_value(value, data_type):
+    if not isinstance(value, str):
+        return value
+    if data_type == LIAN_INTERNAL.INT:
+        value = ast.literal_eval(value)
+        if not isinstance(value, (bool, int)):
+            raise ValueError("not an integer literal")
+    elif data_type == LIAN_INTERNAL.FLOAT:
+        value = ast.literal_eval(value)
+        if not isinstance(value, (int, float)):
+            raise ValueError("not a numeric literal")
+    return value
 
 
 
@@ -776,7 +805,9 @@ class StmtStates:
             return set()
 
         if not (
-            value1 and type_table.is_builtin_type(data_type1) and value2 and type_table.is_builtin_type(data_type2)):
+            value1 is not None and type_table.is_builtin_type(data_type1)
+            and value2 is not None and type_table.is_builtin_type(data_type2)
+        ):
             return set()
 
         value = None
@@ -812,14 +843,26 @@ class StmtStates:
             tmp_value1 = f'{tmp_value1}'
             tmp_value2 = f'{tmp_value2}'
 
-        try:
-            value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
-        except:
-            # value = ""
-            value = str(value1) + str(operator) + str(value2)
-            data_type = LIAN_INTERNAL.STRING
+        concrete_operator = _CONCRETE_BINARY_OPERATORS.get(operator)
+        if data_type1 == LIAN_INTERNAL.STRING or data_type2 == LIAN_INTERNAL.STRING:
+            concrete_operator = None
+        if concrete_operator is not None:
+            try:
+                concrete_value1 = _coerce_concrete_binary_value(value1, data_type1)
+                concrete_value2 = _coerce_concrete_binary_value(value2, data_type2)
+                value = concrete_operator(concrete_value1, concrete_value2)
+                data_type = LIAN_INTERNAL.INT
+            except (SyntaxError, TypeError, ValueError):
+                value = None
 
-        if value:
+        if value is None:
+            try:
+                value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
+            except Exception:
+                value = str(value1) + str(operator) + str(value2)
+                data_type = LIAN_INTERNAL.STRING
+
+        if value is not None:
             result_state_index = self.create_state_and_add_space(
                 status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id, value=value, data_type=data_type,
                 access_path=[AccessPoint(

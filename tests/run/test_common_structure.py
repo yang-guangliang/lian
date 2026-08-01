@@ -116,6 +116,66 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         )
 
 
+class TestBinaryStateEvaluation(unittest.TestCase):
+    def _compute(self, operator, left, right):
+        stmt_states = object.__new__(StmtStates)
+        status = common_structure.StmtStatus(stmt_id=7)
+        stmt_states.frame = SimpleNamespace(stmt_id_to_status={7: status})
+        captured = []
+        stmt_states.create_state_and_add_space = (
+            lambda *args, **kwargs: captured.append(kwargs) or 1
+        )
+        stmt_states.update_access_path_state_id = lambda index: None
+
+        result = stmt_states.compute_two_states(
+            SimpleNamespace(stmt_id=7, operator=operator),
+            left,
+            right,
+            common_structure.Symbol(symbol_id=9, name="result"),
+        )
+        return result, captured
+
+    def test_evaluates_c_logical_or_instead_of_materializing_expression_text(self):
+        result, captured = self._compute(
+            "||",
+            common_structure.State(value=1, data_type="%int"),
+            common_structure.State(value=0, data_type="%int"),
+        )
+
+        self.assertEqual(result, {1})
+        self.assertIs(captured[0]["value"], True)
+
+    def test_preserves_false_comparison_as_a_concrete_state(self):
+        result, captured = self._compute(
+            ">",
+            common_structure.State(value=1, data_type="%int"),
+            common_structure.State(value=2, data_type="%int"),
+        )
+
+        self.assertEqual(result, {1})
+        self.assertIs(captured[0]["value"], False)
+
+    def test_compares_numeric_state_strings_as_numbers(self):
+        result, captured = self._compute(
+            ">",
+            common_structure.State(value="10", data_type="%int"),
+            common_structure.State(value="2", data_type="%int"),
+        )
+
+        self.assertEqual(result, {1})
+        self.assertIs(captured[0]["value"], True)
+
+    def test_keeps_symbolic_string_logical_operands_symbolic(self):
+        result, captured = self._compute(
+            "||",
+            common_structure.State(value="left_expr", data_type="%string"),
+            common_structure.State(value="right_expr", data_type="%string"),
+        )
+
+        self.assertEqual(result, {1})
+        self.assertEqual(captured[0]["value"], "left_expr||right_expr")
+
+
 class TestSearchGraph(unittest.TestCase):
     def setUp(self):
         graph = nx.MultiDiGraph()
