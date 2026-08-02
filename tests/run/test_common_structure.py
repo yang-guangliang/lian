@@ -462,6 +462,25 @@ class TestGroupInStatesPredecessorLookup(unittest.TestCase):
 
 
 class TestStmtStateIndexValidation(unittest.TestCase):
+    @staticmethod
+    def make_global_field_merge(state_space, defined_state_indexes=()):
+        status = common_structure.StmtStatus(
+            stmt_id=7, defined_states=set(defined_state_indexes)
+        )
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        stmt_states.context = None
+        stmt_states.sfg = common_structure.StateFlowGraph(method_id=1)
+        stmt_states.frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={},
+            all_state_defs=set(),
+            state_bit_vector_manager=SimpleNamespace(
+                add_bit_id=lambda node: None
+            ),
+        )
+        return stmt_states, status
+
     def test_regular_empty_array_is_distinct_from_unknown_array(self):
         stmt_states = object.__new__(StmtStates)
 
@@ -782,14 +801,15 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         valid_state_index = state_space.add(
             common_structure.State(state_id=101, tangping_flag=True)
         )
-        stmt_states = object.__new__(StmtStates)
-        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
-        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {valid_state_index}
+        )
+        initial_size = len(state_space)
 
         result = stmt_states.recursively_collect_children_fields(
             stmt_id=7,
             stmt=SimpleNamespace(operation="call_stmt"),
-            status=common_structure.StmtStatus(stmt_id=7),
+            status=status,
             state_set_in_summary_field=set(),
             state_set_in_arg_field={-1, valid_state_index},
             source_symbol_id=11,
@@ -801,6 +821,8 @@ class TestStmtStateIndexValidation(unittest.TestCase):
             {valid_state_index},
             "an unresolved field sentinel must not discard concrete caller state",
         )
+        self.assertEqual(len(state_space), initial_size)
+        self.assertEqual(state_space[valid_state_index].source_symbol_id, -1)
 
     def test_field_merge_handles_deep_nested_state_graph_without_python_recursion(self):
         depth = 600
@@ -821,21 +843,33 @@ class TestStmtStateIndexValidation(unittest.TestCase):
                 "next": {argument_indexes[index + 1]}
             }
 
-        stmt_states = object.__new__(StmtStates)
-        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
-        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+        stmt_states, status = self.make_global_field_merge(
+            state_space, argument_indexes
+        )
+        initial_size = len(state_space)
 
         result = stmt_states.recursively_collect_children_fields(
             stmt_id=7,
             stmt=SimpleNamespace(operation="call_stmt"),
-            status=common_structure.StmtStatus(stmt_id=7),
+            status=status,
             state_set_in_summary_field={summary_indexes[0]},
             state_set_in_arg_field={argument_indexes[0]},
             source_symbol_id=11,
             access_path=[],
         )
 
-        self.assertEqual(result, {argument_indexes[0]})
+        resolved_index = next(iter(result))
+        for depth_index in range(depth):
+            self.assertNotIn(resolved_index, argument_indexes)
+            if depth_index + 1 < depth:
+                resolved_index = next(
+                    iter(state_space[resolved_index].fields["next"])
+                )
+        self.assertEqual(len(state_space), initial_size + depth)
+        self.assertEqual(
+            state_space[argument_indexes[0]].fields,
+            {"next": {argument_indexes[1]}},
+        )
 
     def test_field_merge_preserves_self_referential_argument_field(self):
         state_space = common_structure.SymbolStateSpace()
@@ -844,22 +878,74 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         state_space[summary_index].fields = {"self": {summary_index}}
         state_space[argument_index].fields = {"self": {argument_index}}
 
-        stmt_states = object.__new__(StmtStates)
-        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
-        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {argument_index}
+        )
 
         result = stmt_states.recursively_collect_children_fields(
             stmt_id=7,
             stmt=SimpleNamespace(operation="call_stmt"),
-            status=common_structure.StmtStatus(stmt_id=7),
+            status=status,
             state_set_in_summary_field={summary_index},
             state_set_in_arg_field={argument_index},
             source_symbol_id=11,
             access_path=[],
         )
 
-        self.assertEqual(result, {argument_index})
+        resolved_index = next(iter(result))
+        self.assertNotEqual(resolved_index, argument_index)
+        self.assertEqual(
+            state_space[resolved_index].fields["self"], {resolved_index}
+        )
         self.assertEqual(state_space[argument_index].fields["self"], {argument_index})
+
+    def test_field_merge_preserves_mutually_recursive_argument_fields(self):
+        state_space = common_structure.SymbolStateSpace()
+        summary_root = state_space.add(common_structure.State(state_id=101))
+        summary_child = state_space.add(common_structure.State(state_id=102))
+        summary_leaf = state_space.add(
+            common_structure.State(state_id=103, value="summary")
+        )
+        argument_root = state_space.add(common_structure.State(state_id=201))
+        argument_child = state_space.add(common_structure.State(state_id=202))
+        state_space[summary_root].fields = {"next": {summary_child}}
+        state_space[summary_child].fields = {
+            "back": {summary_root},
+            "from_summary": {summary_leaf},
+        }
+        state_space[argument_root].fields = {"next": {argument_child}}
+        state_space[argument_child].fields = {"back": {argument_root}}
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {argument_root, argument_child}
+        )
+
+        result = stmt_states.recursively_collect_children_fields(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            status=status,
+            state_set_in_summary_field={summary_root},
+            state_set_in_arg_field={argument_root},
+            source_symbol_id=11,
+            access_path=[],
+        )
+
+        resolved_root = next(iter(result))
+        resolved_child = next(iter(state_space[resolved_root].fields["next"]))
+        self.assertNotEqual(resolved_root, argument_root)
+        self.assertNotEqual(resolved_child, argument_child)
+        self.assertEqual(
+            state_space[resolved_child].fields,
+            {
+                "back": {resolved_root},
+                "from_summary": {summary_leaf},
+            },
+        )
+        self.assertEqual(
+            state_space[argument_root].fields, {"next": {argument_child}}
+        )
+        self.assertEqual(
+            state_space[argument_child].fields, {"back": {argument_root}}
+        )
 
     def test_field_merge_preserves_nested_and_nonoverlapping_fields(self):
         state_space = common_structure.SymbolStateSpace()
@@ -883,31 +969,103 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         }
         state_space[argument_child].fields = {"from_argument": {argument_leaf}}
 
-        stmt_states = object.__new__(StmtStates)
-        stmt_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
-        stmt_states.frame = SimpleNamespace(symbol_state_space=state_space)
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {argument_root, argument_child}
+        )
+        initial_size = len(state_space)
 
         result = stmt_states.recursively_collect_children_fields(
             stmt_id=7,
             stmt=SimpleNamespace(operation="call_stmt"),
-            status=common_structure.StmtStatus(stmt_id=7),
+            status=status,
             state_set_in_summary_field={summary_root},
             state_set_in_arg_field={argument_root},
             source_symbol_id=11,
             access_path=[],
         )
 
-        self.assertEqual(result, {argument_root})
+        resolved_root = next(iter(result))
+        resolved_child = next(
+            iter(state_space[resolved_root].fields["shared"])
+        )
+        self.assertNotEqual(resolved_root, argument_root)
+        self.assertNotEqual(resolved_child, argument_child)
         self.assertEqual(
-            state_space[argument_root].fields,
+            state_space[resolved_root].fields,
             {
-                "shared": {argument_child},
+                "shared": {resolved_child},
                 "summary_only": {summary_only},
                 "argument_only": {argument_only},
             },
         )
         self.assertEqual(
+            state_space[resolved_child].fields,
+            {
+                "from_argument": {argument_leaf},
+                "from_summary": {summary_leaf},
+            },
+        )
+        self.assertEqual(
+            state_space[argument_root].fields,
+            {
+                "shared": {argument_child},
+                "argument_only": {argument_only},
+            },
+        )
+        self.assertEqual(
             state_space[argument_child].fields,
+            {"from_argument": {argument_leaf}},
+        )
+        self.assertEqual(len(state_space), initial_size + 2)
+
+    def test_global_field_merge_does_not_mutate_shared_argument_states(self):
+        state_space = common_structure.SymbolStateSpace()
+        summary_leaf = state_space.add(
+            common_structure.State(stmt_id=2, state_id=102, value="summary")
+        )
+        summary_root = state_space.add(
+            common_structure.State(
+                stmt_id=2,
+                state_id=101,
+                fields={"from_summary": {summary_leaf}},
+            )
+        )
+        argument_leaf = state_space.add(
+            common_structure.State(stmt_id=1, state_id=202, value="argument")
+        )
+        argument_root = state_space.add(
+            common_structure.State(
+                stmt_id=1,
+                state_id=201,
+                fields={"from_argument": {argument_leaf}},
+            )
+        )
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {argument_root}
+        )
+
+        result = stmt_states.recursively_collect_children_fields(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            status=status,
+            state_set_in_summary_field={summary_root},
+            state_set_in_arg_field={argument_root},
+            source_symbol_id=11,
+            access_path=[],
+        )
+
+        resolved_root = next(iter(result))
+        self.assertNotEqual(resolved_root, argument_root)
+        self.assertEqual(state_space[resolved_root].stmt_id, 7)
+        self.assertNotIn(argument_root, status.defined_states)
+        self.assertIn(resolved_root, status.defined_states)
+        self.assertEqual(
+            state_space[argument_root].fields,
+            {"from_argument": {argument_leaf}},
+            "a shared historical state must remain immutable",
+        )
+        self.assertEqual(
+            state_space[resolved_root].fields,
             {
                 "from_argument": {argument_leaf},
                 "from_summary": {summary_leaf},
@@ -916,6 +1074,214 @@ class TestStmtStateIndexValidation(unittest.TestCase):
 
 
 class TestResolverStateGraphDepth(unittest.TestCase):
+    def test_changed_deep_path_is_not_scanned_once_per_ancestor(self):
+        class CountingStateSpace(common_structure.SymbolStateSpace):
+            def __init__(self):
+                super().__init__()
+                self.read_count = 0
+
+            def __getitem__(self, index):
+                self.read_count += 1
+                return super().__getitem__(index)
+
+        depth = 200
+        state_space = CountingStateSpace()
+        old_indexes = [
+            state_space.add(
+                common_structure.State(stmt_id=1, state_id=1000 + index)
+            )
+            for index in range(depth)
+        ]
+        for index in range(depth - 1):
+            state_space[old_indexes[index]].fields = {
+                "next": {old_indexes[index + 1]}
+            }
+        latest_leaf = state_space.add(
+            common_structure.State(
+                stmt_id=2,
+                state_id=state_space[old_indexes[-1]].state_id,
+                value="latest",
+            )
+        )
+        latest_definition = common_structure.StateDefNode(
+            index=latest_leaf,
+            state_id=state_space[latest_leaf].state_id,
+            stmt_id=2,
+        )
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={latest_definition.state_id: {latest_definition}},
+            latest_source_cache={},
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+        state_space.read_count = 0
+
+        result = object.__new__(Resolver).retrieve_latest_states(
+            frame,
+            7,
+            state_space,
+            {old_indexes[0]},
+            {latest_definition},
+            {},
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(state_space), depth * 2)
+        self.assertLess(
+            state_space.read_count,
+            depth * 20,
+            "one changed descendant must not rescan the remaining path for every ancestor",
+        )
+
+    def test_available_definition_index_observes_same_set_mutation(self):
+        state_space = common_structure.SymbolStateSpace()
+        old_state = state_space.add(
+            common_structure.State(stmt_id=1, state_id=20, value="old")
+        )
+        first_latest = state_space.add(
+            common_structure.State(stmt_id=2, state_id=20, value="first")
+        )
+        second_latest = state_space.add(
+            common_structure.State(stmt_id=3, state_id=20, value="second")
+        )
+        first_definition = common_structure.StateDefNode(
+            index=first_latest, state_id=20, stmt_id=2
+        )
+        second_definition = common_structure.StateDefNode(
+            index=second_latest, state_id=20, stmt_id=3
+        )
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={20: {first_definition, second_definition}},
+            latest_source_cache={},
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+        available_definitions = {first_definition}
+        resolver = object.__new__(Resolver)
+
+        first_result = resolver.retrieve_latest_states(
+            frame,
+            7,
+            state_space,
+            {old_state},
+            available_definitions,
+            {},
+        )
+        available_definitions.clear()
+        available_definitions.add(second_definition)
+        second_result = resolver.retrieve_latest_states(
+            frame,
+            7,
+            state_space,
+            {old_state},
+            available_definitions,
+            {},
+        )
+
+        self.assertEqual(first_result, {first_latest})
+        self.assertEqual(
+            second_result,
+            {second_latest},
+            "a mutable definition set must not reuse an index from an older snapshot",
+        )
+
+    def test_reuses_current_structured_state_without_copying_its_graph(self):
+        state_space = common_structure.SymbolStateSpace()
+        child = state_space.add(
+            common_structure.State(stmt_id=1, state_id=20, value="current")
+        )
+        root = state_space.add(
+            common_structure.State(
+                stmt_id=1, state_id=10, fields={"child": {child}}
+            )
+        )
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={},
+            latest_source_cache={},
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+
+        result = Resolver.retrieve_latest_states(
+            object.__new__(Resolver), frame, 7, state_space, {root}, set(), {}
+        )
+
+        self.assertEqual(result, {root})
+        self.assertEqual(
+            len(state_space),
+            2,
+            "an unchanged structured state is already the precise latest graph",
+        )
+
+    def test_copies_only_the_path_to_a_newer_descendant(self):
+        state_space = common_structure.SymbolStateSpace()
+        old_child = state_space.add(
+            common_structure.State(stmt_id=1, state_id=20, value="old")
+        )
+        unchanged_leaf = state_space.add(
+            common_structure.State(stmt_id=1, state_id=40, value="unchanged")
+        )
+        unchanged_branch = state_space.add(
+            common_structure.State(
+                stmt_id=1, state_id=30, fields={"leaf": {unchanged_leaf}}
+            )
+        )
+        root = state_space.add(
+            common_structure.State(
+                stmt_id=1,
+                state_id=10,
+                fields={
+                    "changed": {old_child},
+                    "unchanged": {unchanged_branch},
+                },
+            )
+        )
+        latest_child = state_space.add(
+            common_structure.State(stmt_id=2, state_id=20, value="latest")
+        )
+        latest_definition = common_structure.StateDefNode(
+            index=latest_child, state_id=20, stmt_id=2
+        )
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={20: {latest_definition}},
+            latest_source_cache={},
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+        initial_size = len(state_space)
+
+        result = Resolver.retrieve_latest_states(
+            object.__new__(Resolver),
+            frame,
+            7,
+            state_space,
+            {root},
+            {latest_definition},
+            {},
+        )
+
+        resolved_root = next(iter(result))
+        self.assertNotEqual(resolved_root, root)
+        self.assertEqual(
+            state_space[resolved_root].fields,
+            {
+                "changed": {latest_child},
+                "unchanged": {unchanged_branch},
+            },
+        )
+        self.assertEqual(
+            len(state_space),
+            initial_size + 1,
+            "only the ancestor edge that changed needs a new state",
+        )
+        self.assertEqual(
+            state_space[root].fields,
+            {
+                "changed": {old_child},
+                "unchanged": {unchanged_branch},
+            },
+        )
+
     def test_resolves_deep_state_graph_without_python_recursion(self):
         depth = 1100
         state_space = common_structure.SymbolStateSpace()

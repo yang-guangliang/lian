@@ -1265,10 +1265,13 @@ class StmtStates:
         def _set_attributes_on_states(states, fields_to_set, state_type, source_symbol_id, access_path):
             for state_index in states:
                 state: State = self.frame.symbol_state_space[state_index]
-                state.fields = fields_to_set
+                state.fields = {
+                    field_name: set(field_indexes)
+                    for field_name, field_indexes in fields_to_set.items()
+                }
                 state.state_type = state_type
                 state.source_symbol_id = source_symbol_id
-                state.access_path = access_path
+                state.access_path = copy.deepcopy(access_path)
             return states
 
         def _cache_key(state_set_in_summary_field, state_set_in_arg_field):
@@ -1300,6 +1303,7 @@ class StmtStates:
             state_type = STATE_TYPE_KIND.REGULAR
             summary_states_fields = {}
             arg_state_fields = {}
+            has_summary_state = False
             tangping_flag = False
             tangping_elements = set()
             return_set = set()
@@ -1308,6 +1312,7 @@ class StmtStates:
                 each_state = self.frame.symbol_state_space[each_state_index]
                 if not (each_state and isinstance(each_state, State)):
                     continue
+                has_summary_state = True
                 if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     state_type = STATE_TYPE_KIND.ANYTHING
                 if each_state.tangping_flag:
@@ -1341,14 +1346,28 @@ class StmtStates:
                     else:
                         states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, stmt, status))
             else:
+                if not has_summary_state:
+                    for states in state_id_to_states.values():
+                        return_set.update(states)
+                    cache[cache_key] = return_set
+                    return True, return_set
                 for state_id, states in state_id_to_states.items():
                     if len(states) == 1:
-                        states_with_diff_ids.update(states)
+                        old_state_index = next(iter(states))
+                        new_state_index = self.create_copy_of_state_and_add_space(
+                            status, stmt_id, old_state_index, stmt
+                        )
+                        if new_state_index != -1:
+                            states_with_diff_ids.add(new_state_index)
+                return_set.update(states_with_diff_ids)
+                # Publish the copied roots before descending so self-references
+                # and mutually recursive fields resolve to the new graph.
+                cache[cache_key] = return_set
             if tangping_flag:
                 for state_index in states_with_diff_ids:
                     state: State = self.frame.symbol_state_space[state_index]
                     state.tangping_flag = True
-                    state.tangping_elements = tangping_elements
+                    state.tangping_elements = tangping_elements.copy()
                 return_set.update(states_with_diff_ids)
 
             if not arg_state_fields or not summary_states_fields:
