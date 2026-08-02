@@ -136,7 +136,8 @@ class P2PrelimSemanticAnalysis:
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
-        frame.cfg = self.loader.get_method_cfg(method_id)
+        if getattr(frame, "cfg", None) is None:
+            frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
             return None
 

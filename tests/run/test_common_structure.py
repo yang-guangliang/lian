@@ -749,7 +749,7 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         frame.method_def_use_summary.used_external_symbol_ids.add(99)
         self.assertEqual(source_def_use.used_external_symbol_ids, set())
 
-    def test_frame_initialization_without_p2_does_not_shift_loader_owned_p1_artifacts(self):
+    def test_frame_initialization_without_p2_copies_p1_artifacts_and_loads_cfg_once(self):
         source_status = {7: common_structure.StmtStatus(stmt_id=7, defined_symbol=0)}
         source_space = common_structure.SymbolStateSpace()
         source_space.add(
@@ -758,6 +758,9 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         source_def_use = common_structure.MethodDefUseSummary(method_id=7)
 
         class Loader:
+            def __init__(self):
+                self.cfg_load_count = 0
+
             def convert_method_id_to_unit_id(self, method_id):
                 return 1
 
@@ -771,6 +774,7 @@ class TestP3IndexSpaceShift(unittest.TestCase):
                 return True
 
             def get_method_cfg(self, method_id):
+                self.cfg_load_count += 1
                 graph = nx.DiGraph()
                 graph.add_node(7)
                 return graph
@@ -826,6 +830,7 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         self.assertEqual(frame.symbol_state_space[1].fields, {"self": {1}})
         frame.method_def_use_summary.used_external_symbol_ids.add(99)
         self.assertEqual(source_def_use.used_external_symbol_ids, set())
+        self.assertEqual(loader.cfg_load_count, 1)
 
     def test_shifts_all_index_references_without_bit_vector_managers(self):
         status = common_structure.StmtStatus(
