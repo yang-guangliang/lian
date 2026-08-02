@@ -290,17 +290,15 @@ class DataModel:
         if column_data is None:
             column_data = self._data[column_name]
 
-        if column_name not in self._column_indexer:
-            self._column_indexer[column_name] = {}
-
-        target = self._column_indexer[column_name]
-        # for idx_label, value in zip(self._data.index, column_data):
-        for idx_label, value in enumerate(column_data):
-            if util.isna(value):
-                continue
-            if value not in target:
-                target[value] = []
-            target[value].append(idx_label)
+        values = pd.Series(column_data, copy=False)
+        grouped_indices = values.groupby(
+            values, sort=False, dropna=True, observed=True
+        ).indices
+        self._column_indexer[column_name] = {
+            value: indices.tolist()
+            for value, indices in grouped_indices.items()
+            if not util.isna(value)
+        }
 
     def search_block_start_end_indics(self, block_id):
         if util.isna(block_id):

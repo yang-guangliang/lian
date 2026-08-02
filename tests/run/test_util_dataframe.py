@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -142,6 +143,47 @@ class TestDataModel(unittest.TestCase):
 
     def test_df_loop(self):
         compare_dataframe_and_dataframeagent(self.df._data, self.df)
+
+    def test_indexing_repeated_values_avoids_per_row_python_classification(self):
+        repeated_rows = 1000
+        model = dm.DataModel(
+            {
+                "method_id": (
+                    [11] * repeated_rows
+                    + [22] * repeated_rows
+                    + [0, False, "", None, float("nan")]
+                )
+            }
+        )
+
+        with patch.object(dm.util, "isna", wraps=dm.util.isna) as isna:
+            indices = model.query_index_column_value_indices("method_id", 22)
+
+        self.assertEqual(
+            indices, list(range(repeated_rows, repeated_rows * 2))
+        )
+        self.assertLess(
+            isna.call_count,
+            20,
+            "index construction must classify distinct keys, not every row",
+        )
+        self.assertEqual(
+            model.query_index_column_value_indices("method_id", 0),
+            [repeated_rows * 2, repeated_rows * 2 + 1],
+        )
+
+    def test_index_queries_keep_positional_indices_with_custom_row_labels(self):
+        frame = pd.DataFrame(
+            {"method_id": [11, 22, 11, None]}, index=[40, 10, 30, 20]
+        )
+
+        queried = dm.DataModel(frame)
+        searched = dm.DataModel(frame.copy())
+
+        self.assertEqual(
+            queried.query_index_column_value_indices("method_id", 11), [0, 2]
+        )
+        self.assertEqual(list(searched.method_id.bundle_search(11)), [0, 2])
 
 
 if __name__ == '__main__':
