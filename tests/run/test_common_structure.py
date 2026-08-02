@@ -18,7 +18,7 @@ from pyarrow.lib import ArrowInvalid
 import tests.run.init_test as init_test
 
 from lian.config import lang_config
-from lian.config.constants import ANALYSIS_PHASE_ID
+from lian.config.constants import ANALYSIS_PHASE_ID, LIAN_INTERNAL, STATE_TYPE_KIND
 from lian import common_structs as common_structure
 from lian.core.global_semantics import P3GlobalSemanticAnalysis
 from lian.core.resolver import Resolver
@@ -76,6 +76,29 @@ class TestStateFlowGraphStateIndex(unittest.TestCase):
 
 
 class TestStmtStateIndexValidation(unittest.TestCase):
+    def test_regular_empty_array_is_distinct_from_unknown_array(self):
+        stmt_states = object.__new__(StmtStates)
+
+        known_empty = common_structure.State(
+            data_type=LIAN_INTERNAL.ARRAY,
+            state_type=STATE_TYPE_KIND.REGULAR,
+        )
+        unknown_empty = common_structure.State(
+            data_type=LIAN_INTERNAL.ARRAY,
+            state_type=STATE_TYPE_KIND.ANYTHING,
+        )
+        unknown_with_known_element = common_structure.State(
+            data_type=LIAN_INTERNAL.ARRAY,
+            state_type=STATE_TYPE_KIND.ANYTHING,
+            array=[{1}],
+        )
+
+        self.assertFalse(stmt_states.is_state_array_empty(known_empty))
+        self.assertTrue(stmt_states.is_state_array_empty(unknown_empty))
+        self.assertFalse(
+            stmt_states.is_state_array_empty(unknown_with_known_element)
+        )
+
     def test_missing_state_index_does_not_become_a_concrete_state(self):
         stmt_states = object.__new__(StmtStates)
         stmt_states.frame = SimpleNamespace(

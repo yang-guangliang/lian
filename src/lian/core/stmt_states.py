@@ -2758,12 +2758,9 @@ class StmtStates:
         return self.field_write_stmt_state(stmt_id, stmt, status, in_states)
 
     def is_state_array_empty(self, state: State):
-        if not state.array:
-            return True
-        for element in state.array:
-            if element:
-                return False
-        return True
+        if state.state_type == STATE_TYPE_KIND.REGULAR:
+            return False
+        return not any(state.array)
 
     def array_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         defined_symbol_index = status.defined_symbol
