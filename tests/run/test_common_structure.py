@@ -443,6 +443,7 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         source_space.add(
             common_structure.State(state_id=10, fields={"self": {0}})
         )
+        source_def_use = common_structure.MethodDefUseSummary(method_id=7)
         source_summary = common_structure.MethodSummaryTemplate(
             key=7, parameter_symbols={1: {0}}
         )
@@ -495,7 +496,7 @@ class TestP3IndexSpaceShift(unittest.TestCase):
                 return []
 
             def get_method_def_use_summary(self, method_id):
-                return common_structure.MethodDefUseSummary(method_id=method_id)
+                return source_def_use
 
             def get_symbol_state_space_summary_p2(self, method_id):
                 return common_structure.SymbolStateSpace()
@@ -522,7 +523,6 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         analysis.path_manager = common_structure.PathManager()
         analysis.caller_unknown_callee_edge = {}
         analysis.call_site_analyze_counter = {}
-
         initialized = analysis.init_compute_frame(frame, frame_stack, global_space)
 
         self.assertIs(initialized, frame)
@@ -532,6 +532,86 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         self.assertEqual(frame.stmt_id_to_status[7].defined_symbol, 1)
         self.assertEqual(frame.symbol_state_space[1].fields, {"self": {1}})
         self.assertEqual(frame.method_summary_template.parameter_symbols, {1: {1}})
+        frame.method_def_use_summary.used_external_symbol_ids.add(99)
+        self.assertEqual(source_def_use.used_external_symbol_ids, set())
+
+    def test_frame_initialization_without_p2_does_not_shift_loader_owned_p1_artifacts(self):
+        source_status = {7: common_structure.StmtStatus(stmt_id=7, defined_symbol=0)}
+        source_space = common_structure.SymbolStateSpace()
+        source_space.add(
+            common_structure.State(state_id=10, fields={"self": {0}})
+        )
+        source_def_use = common_structure.MethodDefUseSummary(method_id=7)
+
+        class Loader:
+            def convert_method_id_to_unit_id(self, method_id):
+                return 1
+
+            def convert_unit_id_to_lang_name(self, unit_id):
+                return "c"
+
+            def convert_method_id_to_method_name(self, method_id):
+                return "callee"
+
+            def contain_symbol_state_space_p1(self, method_id):
+                return True
+
+            def get_method_cfg(self, method_id):
+                graph = nx.DiGraph()
+                graph.add_node(7)
+                return graph
+
+            def get_splitted_method_gir(self, method_id):
+                return None, [], [SimpleNamespace(stmt_id=7, operation="return_stmt")]
+
+            def get_stmt_status_p1(self, method_id):
+                return source_status
+
+            def get_symbol_state_space_p1(self, method_id):
+                return source_space
+
+            def get_method_internal_callees(self, method_id):
+                return []
+
+            def get_method_def_use_summary(self, method_id):
+                return source_def_use
+
+            def get_method_defined_symbols_raw_p1(self, method_id):
+                return []
+
+            def get_method_defined_states_p1(self, method_id):
+                return {}
+
+        loader = Loader()
+        frame = common_structure.ComputeFrame(method_id=7, loader=loader)
+        frame_stack = common_structure.ComputeFrameStack()
+        frame_stack.add(common_structure.MetaComputeFrame())
+        frame_stack.add(frame)
+        global_space = common_structure.SymbolStateSpace()
+        global_space.add(common_structure.State(state_id=1))
+        analysis = object.__new__(P3GlobalSemanticAnalysis)
+        analysis.loader = loader
+        analysis.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        analysis.options = SimpleNamespace(
+            enable_p2=False, quiet=True, complete_graph=False
+        )
+        analysis.analyzed_method_list = set()
+        analysis.event_manager = None
+        analysis.resolver = object()
+        analysis.path_manager = common_structure.PathManager()
+        analysis.caller_unknown_callee_edge = {}
+        analysis.call_site_analyze_counter = {}
+        analysis.call_graph = None
+
+        initialized = analysis.init_compute_frame(frame, frame_stack, global_space)
+
+        self.assertIs(initialized, frame)
+        self.assertEqual(source_status[7].defined_symbol, 0)
+        self.assertEqual(source_space[0].fields, {"self": {0}})
+        self.assertEqual(frame.stmt_id_to_status[7].defined_symbol, 1)
+        self.assertEqual(frame.symbol_state_space[1].fields, {"self": {1}})
+        frame.method_def_use_summary.used_external_symbol_ids.add(99)
+        self.assertEqual(source_def_use.used_external_symbol_ids, set())
 
     def test_shifts_all_index_references_without_bit_vector_managers(self):
         status = common_structure.StmtStatus(

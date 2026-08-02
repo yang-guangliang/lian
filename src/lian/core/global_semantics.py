@@ -247,6 +247,16 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
             if super().init_compute_frame(frame, frame_stack) is None:
                 return None
 
+            frame.stmt_id_to_status = {
+                stmt_id: stmt_status.copy()
+                for stmt_id, stmt_status in frame.stmt_id_to_status.items()
+            }
+            frame.symbol_state_space = frame.symbol_state_space.copy()
+            frame.method_def_use_summary = frame.method_def_use_summary.copy()
+            frame.all_local_symbol_ids = (
+                frame.method_def_use_summary.local_symbol_ids
+            )
+
             for stmt in frame.stmt_worklist:
                 frame.stmts_with_symbol_update.add(stmt)
 
@@ -368,7 +378,14 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
         frame.symbol_state_space = global_space
         frame.stmt_id_to_callee_info = self.get_stmt_id_to_callee_info(self.loader.get_method_internal_callees(method_id))
 
-        frame.method_def_use_summary = self.loader.get_method_def_use_summary(method_id)
+        source_method_def_use = self.loader.get_method_def_use_summary(method_id)
+        frame.method_def_use_summary = (
+            source_method_def_use.copy() if source_method_def_use else None
+        )
+        frame.all_local_symbol_ids = (
+            frame.method_def_use_summary.local_symbol_ids
+            if frame.method_def_use_summary else set()
+        )
         frame.external_symbol_id_to_initial_state_index = frame.method_summary_template.external_symbol_to_state
         frame.space_summary = self.loader.get_symbol_state_space_summary_p2(method_id)
         frame.symbol_graph.graph = self.loader.get_method_symbol_graph_p2(method_id)
