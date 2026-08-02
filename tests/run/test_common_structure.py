@@ -592,6 +592,48 @@ class TestMethodSummaryIndexMapping(unittest.TestCase):
         self.assertEqual(summary.parameter_symbols, {10: {20}})
 
 
+class TestP3SummaryGeneration(unittest.TestCase):
+    def test_includes_external_state_stored_at_index_zero(self):
+        class IdentityResolver:
+            def retrieve_latest_states(
+                self, frame, stmt_id, symbol_state_space, state_indexes,
+                available_defined_states, state_index_old_to_new,
+            ):
+                return state_indexes.copy()
+
+        state_space = common_structure.SymbolStateSpace()
+        state_space.add(
+            common_structure.State(stmt_id=7, state_id=11, value="external")
+        )
+        cfg = nx.DiGraph()
+        cfg.add_node(7)
+        frame = SimpleNamespace(
+            method_def_use_summary=common_structure.MethodDefUseSummary(
+                method_id=1, defined_external_symbol_ids={99}
+            ),
+            symbol_state_space=state_space,
+            cfg=cfg,
+            unit_gir=SimpleNamespace(
+                get_stmt_by_id=lambda stmt_id: SimpleNamespace(
+                    operation="return_stmt"
+                )
+            ),
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+            symbol_bit_vector_manager=SimpleNamespace(explain=lambda bits: set()),
+            state_bit_vector_manager=SimpleNamespace(explain=lambda bits: set()),
+            external_symbol_id_to_initial_state_index={99: 0},
+        )
+        analysis = object.__new__(P3GlobalSemanticAnalysis)
+        analysis.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        analysis.resolver = IdentityResolver()
+
+        summary = analysis.generate_and_save_analysis_summary(
+            frame, common_structure.MethodSummaryTemplate(key=1)
+        )
+
+        self.assertEqual(summary.defined_external_symbols, {99: {0}})
+
+
 class TestBinaryStateEvaluation(unittest.TestCase):
     def _compute(self, operator, left, right):
         stmt_states = object.__new__(StmtStates)

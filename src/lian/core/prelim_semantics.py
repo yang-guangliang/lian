@@ -1108,7 +1108,7 @@ class P2PrelimSemanticAnalysis:
             # 补充defined_external_symbol_ids的情况，因为defined_external_symbol_ids在frame里没有symbol_def_node
             for symbol_id in def_use_summary.defined_external_symbol_ids:
                 state_index = frame.external_symbol_id_to_initial_state_index.get(symbol_id, None)
-                if state_index:
+                if state_index is not None and state_index >= 0:
                     latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, {state_index}, available_defined_states, state_index_old_to_new)
                     state_id_to_indexes = self.group_states_with_state_ids(frame, latest_states)
                     fusion_states = set()
