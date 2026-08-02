@@ -810,6 +810,53 @@ class TestP3SummaryGeneration(unittest.TestCase):
         self.assertEqual(summary.defined_external_symbols, {99: {0}})
 
 
+class TestSymbolStateSpaceAppend(unittest.TestCase):
+    def test_remaps_every_reference_without_changing_source_elements(self):
+        source_space = common_structure.SymbolStateSpace()
+        source_space.add(
+            common_structure.State(
+                state_id=10,
+                fields={"child": {1}},
+                array=[{1}],
+                tangping_elements={0},
+            )
+        )
+        source_space.add(common_structure.Symbol(symbol_id=20, states={0}))
+        target_space = common_structure.SymbolStateSpace()
+        target_space.add(common_structure.State(state_id=1))
+
+        target_space.append_space_copy(source_space)
+
+        self.assertEqual(target_space[1].fields, {"child": {2}})
+        self.assertEqual(target_space[1].array, [{2}])
+        self.assertEqual(target_space[1].tangping_elements, {1})
+        self.assertEqual(target_space[2].states, {1})
+        self.assertEqual(source_space[0].fields, {"child": {1}})
+        self.assertEqual(source_space[0].array, [{1}])
+        self.assertEqual(source_space[0].tangping_elements, {0})
+        self.assertEqual(source_space[1].states, {0})
+        self.assertEqual(target_space.state_index_to_id, {0: 1, 1: 10})
+        self.assertEqual(source_space.old_index_to_new_index, {0: 1, 1: 2})
+        self.assertEqual(source_space.new_index_to_old_index, {1: 0, 2: 1})
+
+    def test_rejects_dangling_reference_before_mutating_target_space(self):
+        source_space = common_structure.SymbolStateSpace()
+        source_space.add(common_structure.State(state_id=10))
+        source_space.add(
+            common_structure.State(state_id=11, fields={"missing": {2}})
+        )
+        target_space = common_structure.SymbolStateSpace()
+        target_space.add(common_structure.State(state_id=1))
+
+        with self.assertRaisesRegex(
+            IndexError, "symbol state space reference index 2 is out of range"
+        ):
+            target_space.append_space_copy(source_space)
+
+        self.assertEqual(len(target_space), 1)
+        self.assertEqual(target_space.state_index_to_id, {0: 1})
+
+
 class TestBinaryStateEvaluation(unittest.TestCase):
     def _compute(self, operator, left, right):
         stmt_states = object.__new__(StmtStates)

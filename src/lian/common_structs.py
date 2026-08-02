@@ -1081,39 +1081,53 @@ class SymbolStateSpace(BasicSpace, ShiftIndexResult):
 
     def append_space_copy(self, another):
         baseline_index = len(self.space)
-        copy_of_another = another.copy()
-        copy_of_another.old_index_to_new_index = {}
-        copy_of_another.new_index_to_old_index = {}
-        another_space = copy_of_another.space
-        for old_index in range(len(another_space)):
-            self.shift_indexes([old_index], baseline_index, copy_of_another)
-            element = another_space[old_index]
+        old_index_to_new_index = {
+            old_index: baseline_index + old_index
+            for old_index in range(len(another))
+        }
+        new_index_to_old_index = {
+            new_index: old_index
+            for old_index, new_index in old_index_to_new_index.items()
+        }
+
+        def shift_references(indexes):
+            is_set = isinstance(indexes, set)
+            shifted = set() if is_set else []
+            for index in indexes:
+                if index not in old_index_to_new_index:
+                    raise IndexError(
+                        f"symbol state space reference index {index} "
+                        "is out of range"
+                    )
+                if is_set:
+                    shifted.add(old_index_to_new_index[index])
+                else:
+                    shifted.append(old_index_to_new_index[index])
+            return shifted
+
+        copied_elements = []
+        for source in another:
+            element = source.copy()
             if isinstance(element, State):
-                self.shift_indexes(element.tangping_elements, baseline_index, copy_of_another)
-                element.tangping_elements = copy_of_another.new_indexes
-
-                for each_field in element.fields:
-                    self.shift_indexes(element.fields[each_field], baseline_index, copy_of_another)
-                    element.fields[each_field] = copy_of_another.new_indexes
-
-                new_array = []
-                for index_group in element.array:
-                    self.shift_indexes(index_group, baseline_index, copy_of_another)
-                    new_array.append(copy_of_another.new_indexes)
-                element.array = new_array
-
+                element.tangping_elements = shift_references(
+                    element.tangping_elements
+                )
+                element.fields = {
+                    name: shift_references(indexes)
+                    for name, indexes in element.fields.items()
+                }
+                element.array = [
+                    shift_references(indexes) for indexes in element.array
+                ]
             elif isinstance(element, Symbol):
-                # Symbol
-                self.shift_indexes(element.states, baseline_index, copy_of_another)
-                element.states = copy_of_another.new_indexes
+                element.states = shift_references(element.states)
+            copied_elements.append(element)
 
-        for new_index in sorted(copy_of_another.new_index_to_old_index.keys()):
-            old_index = copy_of_another.new_index_to_old_index[new_index]
-            element = another_space[old_index]
+        for element in copied_elements:
             self.add(element)
 
-        another.old_index_to_new_index = copy_of_another.old_index_to_new_index
-        another.new_index_to_old_index = copy_of_another.new_index_to_old_index
+        another.old_index_to_new_index = old_index_to_new_index
+        another.new_index_to_old_index = new_index_to_old_index
 
 @dataclasses.dataclass
 class StateDefNode:
