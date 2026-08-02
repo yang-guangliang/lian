@@ -309,7 +309,11 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
         first_stmts = util.find_cfg_first_nodes(frame.cfg)
         frame.stmt_worklist.add(first_stmts)
         frame.stmts_with_symbol_update.add(first_stmts)
-        defined_symbols = self.loader.get_method_defined_symbols_p2(method_id)
+        source_defined_symbols = self.loader.get_method_defined_symbols_p2(method_id)
+        defined_symbols = {
+            stmt_id: definitions.copy()
+            for stmt_id, definitions in (source_defined_symbols or {}).items()
+        }
         if defined_symbols:
             frame.defined_symbols = defined_symbols
             all_symbol_defs = set()
@@ -319,19 +323,38 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
                     all_symbol_defs.add(symbol_def)
             frame.all_symbol_defs = all_symbol_defs
 
-        defined_states = self.loader.get_method_defined_states_p2(method_id)
+        source_defined_states = self.loader.get_method_defined_states_p2(method_id)
+        defined_states = {
+            state_id: definitions.copy()
+            for state_id, definitions in (source_defined_states or {}).items()
+        }
         if defined_states:
             frame.defined_states = defined_states
 
-        # avoid changing the content of the loader
-        stmt_id_to_status = self.loader.get_stmt_status_p2(method_id)
-        symbol_state_space = self.loader.get_symbol_state_space_p2(method_id)
-        defined_symbols = self.loader.get_method_defined_symbols_p2(method_id)
-        symbol_bit_vector_manager = self.loader.get_symbol_bit_vector_p2(method_id)
-        state_bit_vector_manager = self.loader.get_state_bit_vector_p2(method_id)
+        source_status = self.loader.get_stmt_status_p2(method_id)
+        stmt_id_to_status = {
+            stmt_id: stmt_status.copy()
+            for stmt_id, stmt_status in (source_status or {}).items()
+        }
+        source_symbol_state_space = self.loader.get_symbol_state_space_p2(method_id)
+        symbol_state_space = (
+            source_symbol_state_space.copy()
+            if source_symbol_state_space else SymbolStateSpace()
+        )
+        source_symbol_bit_vector = self.loader.get_symbol_bit_vector_p2(method_id)
+        symbol_bit_vector_manager = (
+            source_symbol_bit_vector.copy() if source_symbol_bit_vector else None
+        )
+        source_state_bit_vector = self.loader.get_state_bit_vector_p2(method_id)
+        state_bit_vector_manager = (
+            source_state_bit_vector.copy() if source_state_bit_vector else None
+        )
         frame.symbol_bit_vector_manager = symbol_bit_vector_manager
         frame.state_bit_vector_manager = state_bit_vector_manager
-        method_summary_template = self.loader.get_method_summary_template(method_id)
+        source_method_summary = self.loader.get_method_summary_template(method_id)
+        method_summary_template = (
+            source_method_summary.copy() if source_method_summary else None
+        )
         frame.method_summary_template = method_summary_template
         self.adjust_index_of_status_space(len(global_space), frame, stmt_id_to_status, symbol_state_space, defined_symbols, symbol_bit_vector_manager, state_bit_vector_manager, method_summary_template)
         frame.stmt_id_to_status = stmt_id_to_status
