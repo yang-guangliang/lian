@@ -1074,6 +1074,70 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         )
 
 
+class TestResolverStateIndexValidation(unittest.TestCase):
+    def test_nested_unresolved_field_remains_symbolic(self):
+        state_space = common_structure.SymbolStateSpace()
+        concrete_child = state_space.add(
+            common_structure.State(
+                stmt_id=1,
+                state_id=20,
+                state_type=STATE_TYPE_KIND.REGULAR,
+            )
+        )
+        parent = state_space.add(
+            common_structure.State(
+                stmt_id=1,
+                state_id=10,
+                state_type=STATE_TYPE_KIND.ANYTHING,
+                source_symbol_id=99,
+                access_path=[
+                    common_structure.AccessPoint(),
+                    common_structure.AccessPoint(),
+                ],
+                fields={
+                    "unresolved": {-1},
+                    "concrete": {concrete_child},
+                },
+            )
+        )
+        frame = SimpleNamespace(symbol_state_space=state_space)
+        resolver = object.__new__(Resolver)
+        resolver.ras_result_cache = {}
+        target_indexes = {parent}
+        processing = (
+            Resolver.resolve_anything_with_same_src_symbol_in_summary_generation
+            .processing_list
+        )
+        processing.clear()
+
+        try:
+            resolved = (
+                resolver.resolve_anything_with_same_src_symbol_in_summary_generation(
+                    parent,
+                    frame,
+                    stmt_id=7,
+                    callee_id=8,
+                    parameter_symbol_id=99,
+                    deferred_index_updates=set(),
+                    set_to_update=target_indexes,
+                    arg_state_indexes=set(),
+                )
+            )
+        finally:
+            processing.clear()
+
+        self.assertEqual(resolved, parent)
+        self.assertEqual(target_indexes, {parent})
+        self.assertEqual(
+            state_space[parent].fields,
+            {
+                "unresolved": {-1},
+                "concrete": {concrete_child},
+            },
+            "an unresolved sentinel must stay symbolic without dropping concrete siblings",
+        )
+
+
 class TestResolverStateGraphDepth(unittest.TestCase):
     def test_changed_deep_path_is_not_scanned_once_per_ancestor(self):
         class CountingStateSpace(common_structure.SymbolStateSpace):

@@ -1089,6 +1089,8 @@ class Resolver:
 
         for field_name, field_indexes in state.fields.items():
             for field_index in field_indexes:
+                if field_index < 0:
+                    continue
                 field_state = caller_frame.symbol_state_space[field_index]
                 if field_state.state_type != STATE_TYPE_KIND.ANYTHING: # field_state.g=1
                     continue
