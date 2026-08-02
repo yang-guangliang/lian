@@ -25,6 +25,7 @@ from lian.config.constants import (
     IMPORT_GRAPH_EDGE_KIND,
     SYMBOL_OR_STATE,
     LIAN_SYMBOL_KIND,
+    LIAN_INTERNAL,
     GIR_COLUMNS_TO_BE_ADDED,
     ANALYSIS_PHASE_ID,
 )
@@ -47,6 +48,8 @@ from lian.common_structs import (
     MethodInternalCallee,
     SimplyGroupedMethodTypes,
     ParameterMapping,
+    Parameter,
+    MethodDeclParameters,
     AccessPoint,
     MethodSummaryInstance,
     MethodInClass,
@@ -2529,6 +2532,9 @@ class Loader:
         )
 
         self.method_header_cache = util.LRUCache(config.METHOD_HEADER_CACHE_CAPABILITY)
+        self._method_decl_parameters_cache = util.LRUCache(
+            config.METHOD_HEADER_CACHE_CAPABILITY
+        )
         self.method_body_cache = util.LRUCache(config.METHOD_BODY_CACHE_CAPABILITY)
         self.stmt_scope_cache = util.LRUCache(config.STMT_SCOPE_CACHE_CAPABILITY)
 
@@ -2560,6 +2566,43 @@ class Loader:
         result = (method_decl_stmt, method_parameters)
         self.method_header_cache.put(method_id, result)
         return result
+
+    def get_method_decl_parameters(self, method_id):
+        _, parameters_block = self.get_method_header(method_id)
+        if not parameters_block:
+            return MethodDeclParameters()
+
+        cached_item = self._method_decl_parameters_cache.get(method_id)
+        if cached_item is not None and cached_item[0] is parameters_block:
+            return cached_item[1].copy()
+
+        result = MethodDeclParameters()
+        counter = 0
+        for row in parameters_block:
+            if row.operation != "parameter_decl":
+                continue
+
+            parameter = Parameter(
+                method_id=method_id,
+                position=counter,
+                name=row.name,
+                symbol_id=row.stmt_id,
+            )
+            is_attr = not util.isna(row.attrs)
+            result.all_parameters.add(parameter)
+            if is_attr and LIAN_INTERNAL.PACKED_NAMED_PARAMETER in row.attrs:
+                result.packed_named_parameter = parameter
+            elif is_attr and LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER in row.attrs:
+                result.packed_positional_parameter = parameter
+            else:
+                result.positional_parameters.append(parameter)
+
+            counter += 1
+
+        self._method_decl_parameters_cache.put(
+            method_id, (parameters_block, result)
+        )
+        return result.copy()
 
     def _load_method_body_by_header(self, method_id, method_decl_stmt):
         if util.is_empty(method_decl_stmt):

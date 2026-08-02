@@ -2164,6 +2164,9 @@ class MethodDeclParameters:
     packed_named_parameter: object = None
     all_parameters: set = dataclasses.field(default_factory=set)
 
+    def copy(self):
+        return copy.deepcopy(self)
+
 @dataclasses.dataclass
 class Argument:
     state_id: int = -1

@@ -26,6 +26,7 @@ from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
 from lian.taint.taint_analysis import TaintAnalysis
 from lian.util import util
+from lian.util.data_model import DataModel
 from lian.util.loader import CalleeParameterMapping, Loader, SymbolStateSpaceLoader
 
 
@@ -207,6 +208,102 @@ class TestP1SymbolStateSpaceCache(unittest.TestCase):
             copied[1].fields["field"].add(99)
 
             self.assertEqual(source[1].fields, {"field": {0}})
+
+
+class CountingParameterBlock(DataModel):
+    def __init__(self, data):
+        super().__init__(data)
+        self.iteration_count = 0
+
+    def __iter__(self):
+        self.iteration_count += 1
+        yield from super().__iter__()
+
+
+class TestMethodDeclParametersCache(unittest.TestCase):
+    @staticmethod
+    def make_block(first_symbol_id):
+        return CountingParameterBlock(
+            {
+                "operation": [
+                    "parameter_decl",
+                    "parameter_decl",
+                    "parameter_decl",
+                    "return_stmt",
+                ],
+                "name": ["value", "args", "kwargs", ""],
+                "stmt_id": [
+                    first_symbol_id,
+                    first_symbol_id + 1,
+                    first_symbol_id + 2,
+                    first_symbol_id + 3,
+                ],
+                "attrs": [
+                    None,
+                    [LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER],
+                    [LIAN_INTERNAL.PACKED_NAMED_PARAMETER],
+                    None,
+                ],
+            }
+        )
+
+    def test_repeated_parameter_preparation_decodes_once_and_touches_header(self):
+        first_block = self.make_block(10)
+        current_block = [first_block]
+        header_reads = []
+        loader = object.__new__(Loader)
+        loader._method_decl_parameters_cache = util.LRUCache(100)
+
+        def get_method_header(method_id):
+            header_reads.append(method_id)
+            return object(), current_block[0]
+
+        loader.get_method_header = get_method_header
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.loader = loader
+
+        first = stmt_states.prepare_parameters(7)
+        second = stmt_states.prepare_parameters(7)
+
+        self.assertEqual(first_block.iteration_count, 1)
+        self.assertEqual(header_reads, [7, 7])
+        self.assertEqual(first.positional_parameters[0].name, "value")
+        self.assertEqual(second.positional_parameters[0].name, "value")
+        self.assertEqual(second.packed_positional_parameter.name, "args")
+        self.assertEqual(second.packed_named_parameter.name, "kwargs")
+
+    def test_cached_parameters_are_owned_and_redecoded_after_header_replacement(self):
+        first_block = self.make_block(10)
+        current_block = [first_block]
+        loader = object.__new__(Loader)
+        loader._method_decl_parameters_cache = util.LRUCache(100)
+        loader.get_method_header = lambda method_id: (object(), current_block[0])
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.loader = loader
+
+        first = stmt_states.prepare_parameters(7)
+        first.positional_parameters[0].name = "changed"
+        first.packed_positional_parameter.packed_content.append("changed")
+        first.packed_named_parameter.name = "changed"
+        second = stmt_states.prepare_parameters(7)
+
+        self.assertEqual(second.positional_parameters[0].name, "value")
+        self.assertEqual(second.packed_positional_parameter.packed_content, [])
+        self.assertEqual(second.packed_named_parameter.name, "kwargs")
+        self.assertIsNot(
+            first.positional_parameters[0], second.positional_parameters[0]
+        )
+        self.assertIn(second.positional_parameters[0], second.all_parameters)
+        self.assertIn(second.packed_positional_parameter, second.all_parameters)
+        self.assertIn(second.packed_named_parameter, second.all_parameters)
+
+        replacement_block = self.make_block(20)
+        current_block[0] = replacement_block
+        replaced = stmt_states.prepare_parameters(7)
+
+        self.assertEqual(replacement_block.iteration_count, 1)
+        self.assertEqual(replaced.positional_parameters[0].symbol_id, 20)
+        self.assertEqual(replaced.packed_named_parameter.symbol_id, 22)
 
 class TestSimpleWorkList(unittest.TestCase):
     def test_fifo_uses_constant_time_queue_without_changing_order(self):

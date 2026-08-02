@@ -1095,31 +1095,7 @@ class StmtStates:
         return MethodCallArguments(positional_args, named_args)
 
     def prepare_parameters(self, callee_id):
-        result = MethodDeclParameters()
-        _, parameters_block = self.loader.get_method_header(callee_id)
-        if not parameters_block:
-            return result
-
-        counter = 0
-        for row in parameters_block:
-            if row.operation != "parameter_decl":
-                continue
-
-            param = Parameter(
-                method_id=callee_id, position=counter, name=row.name, symbol_id=row.stmt_id
-            )
-            is_attr = not util.isna(row.attrs)
-            result.all_parameters.add(param)
-            if is_attr and LIAN_INTERNAL.PACKED_NAMED_PARAMETER in row.attrs:
-                result.packed_named_parameter = param
-            elif is_attr and LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER in row.attrs:
-                result.packed_positional_parameter = param
-            else:
-                result.positional_parameters.append(param)
-
-            counter += 1
-
-        return result
+        return self.loader.get_method_decl_parameters(callee_id)
 
     def map_arguments(
         self, args: MethodCallArguments, parameters: MethodDeclParameters,
