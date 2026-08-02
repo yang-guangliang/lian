@@ -20,6 +20,7 @@ import tests.run.init_test as init_test
 from lian.config import lang_config
 from lian.config.constants import ANALYSIS_PHASE_ID
 from lian import common_structs as common_structure
+from lian.core.global_semantics import P3GlobalSemanticAnalysis
 from lian.core.resolver import Resolver
 from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
@@ -433,6 +434,115 @@ class TestResolverStateGraphDepth(unittest.TestCase):
             self.assertEqual(
                 state_space[parent_index].fields, {"child": {latest_child}}
             )
+
+
+class TestP3IndexSpaceShift(unittest.TestCase):
+    def test_shifts_all_index_references_without_bit_vector_managers(self):
+        status = common_structure.StmtStatus(
+            stmt_id=7,
+            defined_symbol=4,
+            used_symbols=[1, -1],
+            implicitly_defined_symbols=[3],
+            implicitly_used_symbols=[2, -1],
+            defined_states={5},
+            in_state_bits={
+                common_structure.StateDefNode(index=8, state_id=80, stmt_id=7)
+            },
+        )
+        space = common_structure.SymbolStateSpace()
+        space.add(common_structure.Symbol(states={0}))
+        space.add(
+            common_structure.State(
+                fields={"field": {1}},
+                array=[{2}],
+                tangping_elements={3},
+            )
+        )
+        defined_state = common_structure.StateDefNode(
+            index=5, state_id=50, stmt_id=7
+        )
+        frame = SimpleNamespace(
+            defined_states={50: {defined_state}},
+            all_symbol_defs=set(),
+            all_state_defs={defined_state},
+        )
+        summary = common_structure.MethodSummaryTemplate(
+            parameter_symbols={1: {0}},
+            external_symbol_to_state={3: 0},
+            raw_to_new_index={0: 0},
+            index_to_default_value={0: 77},
+        )
+
+        P3GlobalSemanticAnalysis.adjust_index_of_status_space(
+            object.__new__(P3GlobalSemanticAnalysis),
+            10,
+            frame,
+            {7: status},
+            space,
+            {},
+            None,
+            None,
+            summary,
+        )
+
+        self.assertEqual(status.defined_symbol, 14)
+        self.assertEqual(status.used_symbols, [11, -1])
+        self.assertEqual(status.implicitly_used_symbols, [12, -1])
+        self.assertEqual(status.implicitly_defined_symbols, [13])
+        self.assertEqual(status.defined_states, {15})
+        self.assertEqual(
+            status.in_state_bits,
+            {common_structure.StateDefNode(index=18, state_id=80, stmt_id=7)},
+        )
+        self.assertEqual(space[0].states, {10})
+        self.assertEqual(space[1].fields, {"field": {11}})
+        self.assertEqual(space[1].array, [{12}])
+        self.assertEqual(space[1].tangping_elements, {13})
+        self.assertEqual(summary.parameter_symbols, {1: {10}})
+        self.assertEqual(summary.external_symbol_to_state, {3: 10})
+        self.assertEqual(summary.raw_to_new_index, {10: 0})
+        self.assertEqual(summary.index_to_default_value, {10: 77})
+        self.assertEqual(
+            frame.defined_states,
+            {50: {common_structure.StateDefNode(index=15, state_id=50, stmt_id=7)}},
+        )
+
+    def test_rebuilds_bit_vector_lookup_after_shifting_nodes(self):
+        symbol_node = common_structure.SymbolDefNode(
+            index=1, symbol_id=10, stmt_id=7
+        )
+        state_node = common_structure.StateDefNode(
+            index=2, state_id=20, stmt_id=7
+        )
+        symbol_bits = common_structure.BitVectorManager()
+        state_bits = common_structure.BitVectorManager()
+        symbol_bits.add_bit_id(symbol_node)
+        state_bits.add_bit_id(state_node)
+
+        P3GlobalSemanticAnalysis.adjust_index_of_status_space(
+            object.__new__(P3GlobalSemanticAnalysis),
+            10,
+            SimpleNamespace(
+                defined_states={}, all_symbol_defs=set(), all_state_defs=set()
+            ),
+            {},
+            common_structure.SymbolStateSpace(),
+            {},
+            symbol_bits,
+            state_bits,
+            common_structure.MethodSummaryTemplate(),
+        )
+
+        shifted_symbol = common_structure.SymbolDefNode(
+            index=11, symbol_id=10, stmt_id=7
+        )
+        shifted_state = common_structure.StateDefNode(
+            index=12, state_id=20, stmt_id=7
+        )
+        self.assertEqual(symbol_bits.bit_pos_to_id, {1: shifted_symbol})
+        self.assertEqual(state_bits.bit_pos_to_id, {1: shifted_state})
+        self.assertEqual(symbol_bits.find_bit_pos_by_id(shifted_symbol), 1)
+        self.assertEqual(state_bits.find_bit_pos_by_id(shifted_state), 1)
 
 
 class TestBinaryStateEvaluation(unittest.TestCase):

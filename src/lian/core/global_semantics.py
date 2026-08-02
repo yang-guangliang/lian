@@ -91,100 +91,130 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
             results[each_callee.stmt_id] = each_callee
         return results
 
-    def adjust_index_of_status_space(self, baseline_index, frame, status,space, defined_symbols, symbol_bit_vector, state_bit_vector, method_summary_template):
+    def adjust_index_of_status_space(
+        self, baseline_index, frame, status, space, defined_symbols,
+        symbol_bit_vector, state_bit_vector, method_summary_template,
+    ):
+        def shift_index(index):
+            return index if index == -1 else index + baseline_index
+
+        def shift_symbol_def(node):
+            return SymbolDefNode(
+                index=shift_index(node.index),
+                symbol_id=node.symbol_id,
+                stmt_id=node.stmt_id,
+            )
+
+        def shift_state_def(node):
+            return StateDefNode(
+                index=shift_index(node.index),
+                state_id=node.state_id,
+                stmt_id=node.stmt_id,
+            )
+
+        def shift_definition(node):
+            if isinstance(node, SymbolDefNode):
+                return shift_symbol_def(node)
+            if isinstance(node, StateDefNode):
+                return shift_state_def(node)
+            return node
+
+        def shift_definitions(nodes):
+            return {shift_definition(node) for node in nodes}
+
+        def shift_bit_vector(manager):
+            if manager is None:
+                return
+            manager.bit_pos_to_id = {
+                position: shift_definition(node)
+                for position, node in manager.bit_pos_to_id.items()
+            }
+            manager.id_to_bit_pos = {
+                node: position
+                for position, node in manager.bit_pos_to_id.items()
+            }
+
         if method_summary_template:
-            for symbol_id in method_summary_template.used_external_symbols:
-                new_index_set = set()
-                for index in method_summary_template.used_external_symbols[symbol_id]:
-                    new_index_set.add(index + baseline_index)
-                method_summary_template.used_external_symbols[symbol_id] = new_index_set
-        if symbol_bit_vector:
-            for symbol_def_nodes in symbol_bit_vector.bit_pos_to_id.values():
-                symbol_def_nodes.index += baseline_index
-        else:
-            return
+            for content_record in method_summary_template.get_important_symbol_records():
+                for symbol_id, indexes in content_record.items():
+                    content_record[symbol_id] = {
+                        shift_index(index) for index in indexes
+                    }
+            method_summary_template.external_symbol_to_state = {
+                symbol_id: shift_index(index)
+                for symbol_id, index
+                in method_summary_template.external_symbol_to_state.items()
+            }
+            method_summary_template.raw_to_new_index = {
+                shift_index(raw_index): compact_index
+                for raw_index, compact_index
+                in method_summary_template.raw_to_new_index.items()
+            }
+            method_summary_template.index_to_default_value = {
+                shift_index(raw_index): default_symbol_id
+                for raw_index, default_symbol_id
+                in method_summary_template.index_to_default_value.items()
+            }
 
-        for state_def_nodes in state_bit_vector.bit_pos_to_id.values():
-            state_def_nodes.index += baseline_index
-        # for symbol_def_nodes in defined_symbols.values():
-        #     for node in symbol_def_nodes:
-        #         node.index += baseline_index
+        shift_bit_vector(symbol_bit_vector)
+        shift_bit_vector(state_bit_vector)
+
+        if defined_symbols is not None:
+            for stmt_id, definitions in defined_symbols.items():
+                defined_symbols[stmt_id] = shift_definitions(definitions)
+        if hasattr(frame, "defined_states"):
+            frame.defined_states = {
+                state_id: shift_definitions(definitions)
+                for state_id, definitions in frame.defined_states.items()
+            }
+        if hasattr(frame, "all_symbol_defs"):
+            frame.all_symbol_defs = shift_definitions(frame.all_symbol_defs)
+        if hasattr(frame, "all_state_defs"):
+            frame.all_state_defs = shift_definitions(frame.all_state_defs)
+
         for stmt_status in status.values():
-            for each_id, value in enumerate(stmt_status.used_symbols):
-                if value != -1:
-                    stmt_status.used_symbols[each_id] = value + baseline_index
-            for each_id, value in enumerate(stmt_status.implicitly_used_symbols):
-                if value != -1:
-                    stmt_status.implicitly_used_states[each_id] = value + baseline_index
-            for each_id, value in enumerate(stmt_status.implicitly_defined_symbols):
-                stmt_status.implicitly_defined_symbols[each_id] = value + baseline_index
+            stmt_status.defined_symbol = shift_index(stmt_status.defined_symbol)
+            stmt_status.used_symbols = [
+                shift_index(index) for index in stmt_status.used_symbols
+            ]
+            stmt_status.implicitly_used_symbols = [
+                shift_index(index) for index in stmt_status.implicitly_used_symbols
+            ]
+            stmt_status.implicitly_defined_symbols = [
+                shift_index(index)
+                for index in stmt_status.implicitly_defined_symbols
+            ]
+            stmt_status.defined_states = {
+                shift_index(index) for index in stmt_status.defined_states
+            }
+            stmt_status.in_symbol_bits = shift_definitions(
+                stmt_status.in_symbol_bits
+            )
+            stmt_status.out_symbol_bits = shift_definitions(
+                stmt_status.out_symbol_bits
+            )
+            stmt_status.in_state_bits = shift_definitions(
+                stmt_status.in_state_bits
+            )
+            stmt_status.out_state_bits = shift_definitions(
+                stmt_status.out_state_bits
+            )
 
-            new_in_symbol_bits = set()
-            new_out_symbol_bits = set()
-            new_in_state_bits = set()
-            new_out_state_bits = set()
-
-            for symbol_def_node in stmt_status.in_symbol_bits:
-                new_node = SymbolDefNode(
-                    index=symbol_def_node.index + baseline_index,
-                    symbol_id=symbol_def_node.symbol_id,
-                    stmt_id=symbol_def_node.stmt_id
-                )
-                new_in_symbol_bits.add(new_node)
-
-            for symbol_def_node in stmt_status.out_symbol_bits:
-                new_node = SymbolDefNode(
-                    index=symbol_def_node.index + baseline_index,
-                    symbol_id=symbol_def_node.symbol_id,
-                    stmt_id=symbol_def_node.stmt_id
-                )
-                new_out_symbol_bits.add(new_node)
-
-            for state_def_node in stmt_status.in_state_bits:
-                new_node = StateDefNode(
-                    index=state_def_node.index + baseline_index,
-                    state_id=state_def_node.state_id,
-                    stmt_id=state_def_node.stmt_id
-                )
-                new_in_state_bits.add(new_node)
-
-            for state_def_node in stmt_status.out_state_bits:
-                new_node = StateDefNode(
-                    index=state_def_node.index + baseline_index,
-                    state_id=state_def_node.state_id,
-                    stmt_id=state_def_node.stmt_id
-                )
-                new_out_state_bits.add(new_node)
-
-
-            stmt_status.in_symbol_bits = new_in_symbol_bits
-            stmt_status.out_symbol_bits = new_out_symbol_bits
-            stmt_status.in_state_bits = new_in_state_bits
-            stmt_status.out_state_bits = new_out_state_bits
-
-            stmt_status.defined_symbol += baseline_index
-
-        for each_item in space:
-            # each_item.index += baseline_index
-
-            if isinstance(each_item, Symbol):
-                new_set = set()
-                for each_id in each_item.states:
-                    new_set.add(each_id + baseline_index)
-                each_item.states = new_set
-            else:
-                for each_id, each_status in enumerate(each_item.array):
-                    new_set = set()
-                    for index in each_status:
-                        new_set.add(index + baseline_index)
-                    each_item.array[each_id] = new_set
-                for each_field, value_set in each_item.fields.items():
-                    new_set = set()
-                    for index in value_set:
-                        new_set.add(index + baseline_index)
-                    each_item.fields[each_field] = new_set
-            # ????
-            #each_item.call_site = frame.call_path[-1]
+        for item in space:
+            if isinstance(item, Symbol):
+                item.states = {shift_index(index) for index in item.states}
+            elif isinstance(item, State):
+                item.fields = {
+                    name: {shift_index(index) for index in indexes}
+                    for name, indexes in item.fields.items()
+                }
+                item.array = [
+                    {shift_index(index) for index in indexes}
+                    for indexes in item.array
+                ]
+                item.tangping_elements = {
+                    shift_index(index) for index in item.tangping_elements
+                }
 
     def init_compute_frame(self, frame: ComputeFrame, frame_stack: ComputeFrameStack, global_space):   
         if frame.is_meta_frame:
