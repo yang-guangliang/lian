@@ -545,6 +545,53 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         self.assertEqual(state_bits.find_bit_pos_by_id(shifted_state), 1)
 
 
+class TestMethodSummaryIndexMapping(unittest.TestCase):
+    def test_composes_raw_indexes_without_remapping_overlapping_values(self):
+        summary = common_structure.MethodSummaryInstance(
+            key=common_structure.CallSite(1, 2, 3),
+            parameter_symbols={1: {3}, 2: {0}},
+            return_symbols={-1: {3}},
+        )
+
+        summary.adjust_ids({3: 0, 0: 1})
+
+        self.assertEqual(summary.parameter_symbols, {1: {3}, 2: {0}})
+        self.assertEqual(summary.return_symbols, {-1: {3}})
+        self.assertEqual(summary.raw_to_new_index, {3: 0, 0: 1})
+        self.assertEqual(
+            set(summary.to_dict()["parameter_symbols"]),
+            {(1, 3, 0), (2, 0, 1)},
+        )
+
+        summary.adjust_ids({0: 10, 1: 11})
+        p3_states = object.__new__(StmtStates)
+        p3_states.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        self.assertEqual(summary.raw_to_new_index, {3: 10, 0: 11})
+        self.assertEqual(
+            p3_states.adjust_indexes(
+                common_structure.SymbolStateSpace(), summary, {-1, 3, 0}
+            ),
+            {10, 11},
+        )
+
+    def test_copy_preserves_index_metadata_without_aliasing_records(self):
+        summary = common_structure.MethodSummaryInstance(
+            key=common_structure.CallSite(1, 2, 3),
+            parameter_symbols={10: {20}},
+            external_symbol_to_state={30: 20},
+            raw_to_new_index={40: 20},
+            index_to_default_value={20: 50},
+        )
+
+        copied = summary.copy()
+
+        self.assertEqual(copied.external_symbol_to_state, {30: 20})
+        self.assertEqual(copied.raw_to_new_index, {40: 20})
+        self.assertEqual(copied.index_to_default_value, {20: 50})
+        copied.parameter_symbols[10].add(21)
+        self.assertEqual(summary.parameter_symbols, {10: {20}})
+
+
 class TestBinaryStateEvaluation(unittest.TestCase):
     def _compute(self, operator, left, right):
         stmt_states = object.__new__(StmtStates)

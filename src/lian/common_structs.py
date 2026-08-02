@@ -1747,21 +1747,22 @@ class MethodSummaryTemplate:
         return [self.parameter_symbols, self.defined_external_symbols, self.used_external_symbols, self.return_symbols, self.key_dynamic_content, self.this_symbols]
 
     def adjust_ids(self, old_index_to_new_index):
+        previous_raw_to_new_index = self.raw_to_new_index.copy()
+        updated_raw_to_new_index = {}
         for content_record in self.get_important_symbol_records():
             for symbol_id in content_record:
-                new_index_set = set()
-                old_index_set = content_record[symbol_id].copy()
-                for raw_index in old_index_set:
-                    new_index = util.map_index_to_new_index(
-                        raw_index, old_index_to_new_index
+                for raw_index in content_record[symbol_id]:
+                    if raw_index in updated_raw_to_new_index:
+                        continue
+                    current_index = previous_raw_to_new_index.get(
+                        raw_index, raw_index
                     )
-                    self.raw_to_new_index[raw_index] = new_index
-                    new_index_set.add(new_index)
-                    if raw_index in self.index_to_default_value:
-                        default_value_symbol_id = self.index_to_default_value[raw_index]
-                        self.index_to_default_value[new_index] = default_value_symbol_id
-
-                content_record[symbol_id] = new_index_set
+                    updated_raw_to_new_index[raw_index] = (
+                        util.map_index_to_new_index(
+                            current_index, old_index_to_new_index
+                        )
+                    )
+        self.raw_to_new_index.update(updated_raw_to_new_index)
 
 @dataclasses.dataclass
 class DeferedIndexUpdate:
@@ -1809,14 +1810,17 @@ class MethodSummaryInstance(MethodSummaryTemplate):
 
     def copy(self):
         summary = MethodSummaryInstance(
-            self.call_site,
-            copy.deepcopy(self.parameter_symbols),
-            copy.deepcopy(self.defined_external_symbols),
-            copy.deepcopy(self.used_external_symbols),
-            copy.deepcopy(self.return_symbols),
-            copy.deepcopy(self.key_dynamic_content),
-            self.dynamic_call_stmts.copy(),
-            copy.deepcopy(self.this_symbols)
+            key=self.call_site,
+            parameter_symbols=copy.deepcopy(self.parameter_symbols),
+            defined_external_symbols=copy.deepcopy(self.defined_external_symbols),
+            used_external_symbols=copy.deepcopy(self.used_external_symbols),
+            return_symbols=copy.deepcopy(self.return_symbols),
+            key_dynamic_content=copy.deepcopy(self.key_dynamic_content),
+            dynamic_call_stmts=self.dynamic_call_stmts.copy(),
+            this_symbols=copy.deepcopy(self.this_symbols),
+            external_symbol_to_state=self.external_symbol_to_state.copy(),
+            raw_to_new_index=self.raw_to_new_index.copy(),
+            index_to_default_value=self.index_to_default_value.copy(),
         )
         return summary
 

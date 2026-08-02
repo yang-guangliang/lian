@@ -555,13 +555,13 @@ class StmtStates:
         return new_arg_state_index
 
     def adjust_indexes(self, callee_space: SymbolStateSpace, callee_summary: MethodSummaryTemplate, index_set: set[int]):
-        if self.analysis_phase_id != ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
-            return index_set.copy()
-
         result_indexes = set()
         for index in index_set:
             new_index = callee_summary.raw_to_new_index.get(index, index)
             if new_index == -1:
+                continue
+            if self.analysis_phase_id != ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+                result_indexes.add(new_index)
                 continue
             if new_index not in callee_space.old_index_to_new_index:
                 continue
