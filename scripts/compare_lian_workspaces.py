@@ -9,6 +9,7 @@ import decimal
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 
 import pyarrow as pa
@@ -26,7 +27,11 @@ def _json_value(value, workspace_root=None):
     if isinstance(value, (list, tuple)):
         return [_json_value(item, workspace_root) for item in value]
     if isinstance(value, str) and workspace_root:
-        return value.replace(workspace_root, "$WORKSPACE")
+        if value == workspace_root:
+            return "$WORKSPACE"
+        workspace_prefix = workspace_root + os.sep
+        if value.startswith(workspace_prefix):
+            return "$WORKSPACE" + os.sep + value[len(workspace_prefix):]
     if isinstance(value, bytes):
         return {"$bytes": base64.b64encode(value).decode("ascii")}
     if isinstance(value, (datetime.date, datetime.time, decimal.Decimal)):

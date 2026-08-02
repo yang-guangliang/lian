@@ -89,6 +89,24 @@ class WorkspaceComparatorTest(unittest.TestCase):
             self.assertEqual(result.returncode, 1)
             self.assertIn("summary.bundle0", result.stdout)
 
+    def test_workspace_name_prefix_in_non_path_value_is_not_normalized(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            left = Path(tmp_dir) / "left"
+            right = Path(tmp_dir) / "right"
+            left.mkdir()
+            right.mkdir()
+            (left / "index.json").write_text(
+                json.dumps({"label": f"{left}-metadata"}), encoding="utf8"
+            )
+            (right / "index.json").write_text(
+                json.dumps({"label": f"{right}-metadata"}), encoding="utf8"
+            )
+
+            result = self._compare(left, right)
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("index.json", result.stdout)
+
     def test_missing_artifact_is_reported(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             left = Path(tmp_dir) / "left"
