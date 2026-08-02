@@ -482,6 +482,120 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         )
         return stmt_states, status
 
+    def test_read_only_parameter_summary_does_not_copy_argument_graph(self):
+        state_space = common_structure.SymbolStateSpace()
+        child_index = state_space.add(
+            common_structure.State(stmt_id=1, state_id=102)
+        )
+        argument_indexes = {
+            state_space.add(
+                common_structure.State(
+                    stmt_id=1,
+                    state_id=state_id,
+                    fields={"child": {child_index}},
+                )
+            )
+            for state_id in (101, 103)
+        }
+        stmt_states, status = self.make_global_field_merge(
+            state_space, argument_indexes
+        )
+        stmt_states.frame.stmt_id_to_status = {7: status}
+        stmt_states.frame.state_bit_vector_manager.explain = lambda bits: set()
+        stmt_states.resolver = SimpleNamespace(
+            reset_ras_result_cache=lambda: None,
+            retrieve_latest_states=(
+                lambda frame, stmt_id, space, state_indexes, *args, **kwargs:
+                    set(state_indexes)
+            ),
+            update_deferred_index=lambda *args, **kwargs: None,
+        )
+        initial_size = len(state_space)
+        parameter_symbol_id = 11
+        summary = common_structure.MethodSummaryTemplate(
+            parameter_symbols={parameter_symbol_id: argument_indexes.copy()}
+        )
+        mappings = [
+            common_structure.ParameterMapping(
+                arg_index_in_space=argument_index,
+                arg_source_symbol_id=20,
+                parameter_symbol_id=parameter_symbol_id,
+                parameter_type=LIAN_INTERNAL.PARAMETER_DECL,
+            )
+            for argument_index in argument_indexes
+        ]
+
+        stmt_states.apply_parameter_semantic_summary(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            callee_id=13,
+            callee_summary=summary,
+            callee_space=state_space,
+            parameter_mapping_list=mappings,
+        )
+
+        self.assertEqual(
+            len(state_space),
+            initial_size,
+            "an unchanged callee parameter must not copy its argument graph",
+        )
+        self.assertEqual(status.defined_states, argument_indexes)
+
+    def test_modified_parameter_summary_still_updates_argument_graph(self):
+        state_space = common_structure.SymbolStateSpace()
+        argument_index = state_space.add(
+            common_structure.State(stmt_id=1, state_id=101)
+        )
+        changed_child_index = state_space.add(
+            common_structure.State(stmt_id=2, state_id=102)
+        )
+        changed_parameter_index = state_space.add(
+            common_structure.State(
+                stmt_id=2,
+                state_id=103,
+                fields={"changed": {changed_child_index}},
+            )
+        )
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {argument_index}
+        )
+        stmt_states.frame.stmt_id_to_status = {7: status}
+        stmt_states.frame.state_bit_vector_manager.explain = lambda bits: set()
+        stmt_states.resolver = SimpleNamespace(
+            reset_ras_result_cache=lambda: None,
+            retrieve_latest_states=(
+                lambda frame, stmt_id, space, state_indexes, *args, **kwargs:
+                    set(state_indexes)
+            ),
+            update_deferred_index=lambda *args, **kwargs: None,
+        )
+        summary = common_structure.MethodSummaryTemplate(
+            parameter_symbols={11: {changed_parameter_index}}
+        )
+
+        stmt_states.apply_parameter_semantic_summary(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            callee_id=13,
+            callee_summary=summary,
+            callee_space=state_space,
+            parameter_mapping_list=[
+                common_structure.ParameterMapping(
+                    arg_index_in_space=argument_index,
+                    arg_source_symbol_id=20,
+                    parameter_symbol_id=11,
+                    parameter_type=LIAN_INTERNAL.PARAMETER_DECL,
+                )
+            ],
+        )
+
+        updated_indexes = status.defined_states - {argument_index}
+        self.assertEqual(len(updated_indexes), 1)
+        updated_state = state_space[next(iter(updated_indexes))]
+        self.assertEqual(
+            updated_state.fields.get("changed"), {changed_child_index}
+        )
+
     def test_regular_empty_array_is_distinct_from_unknown_array(self):
         stmt_states = object.__new__(StmtStates)
 

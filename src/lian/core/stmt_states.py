@@ -1701,6 +1701,24 @@ class StmtStates:
         deferred_index_updates = set()
         self.resolver.reset_ras_result_cache()
 
+        parameter_arg_indexes = {}
+        parameters_ineligible_for_identity_check = set()
+        for mapping in parameter_mapping_list:
+            parameter_symbol_id = mapping.parameter_symbol_id
+            if (
+                mapping.is_default_value
+                or mapping.arg_source_symbol_id == -1
+                or mapping.arg_index_in_space < 0
+                or mapping.parameter_type != LIAN_INTERNAL.PARAMETER_DECL
+            ):
+                parameters_ineligible_for_identity_check.add(parameter_symbol_id)
+                continue
+            util.add_to_dict_with_default_set(
+                parameter_arg_indexes,
+                parameter_symbol_id,
+                mapping.arg_index_in_space,
+            )
+
         for each_mapping in parameter_mapping_list:
             if each_mapping.is_default_value:
                 self.apply_default_parameter_mapping(
@@ -1721,6 +1739,13 @@ class StmtStates:
             last_state_indexes = self.extract_callee_param_last_states(
                 each_mapping, callee_summary, callee_space
             )
+            parameter_symbol_id = each_mapping.parameter_symbol_id
+            if (
+                parameter_symbol_id not in parameters_ineligible_for_identity_check
+                and last_state_indexes
+                == parameter_arg_indexes.get(parameter_symbol_id, set())
+            ):
+                continue
             self.apply_parameter_summary_to_args_states(
                 stmt_id,
                 stmt,
