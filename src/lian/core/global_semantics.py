@@ -244,14 +244,15 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
             self.path_manager.add_path(frame.call_path)
 
         if not self.options.enable_p2:
-            if super().init_compute_frame(frame, frame_stack) is None:
+            if super().init_compute_frame(
+                frame, frame_stack, copy_p1_state_space=True
+            ) is None:
                 return None
 
             frame.stmt_id_to_status = {
                 stmt_id: stmt_status.copy()
                 for stmt_id, stmt_status in frame.stmt_id_to_status.items()
             }
-            frame.symbol_state_space = frame.symbol_state_space.copy()
             frame.method_def_use_summary = frame.method_def_use_summary.copy()
             frame.all_local_symbol_ids = (
                 frame.method_def_use_summary.local_symbol_ids

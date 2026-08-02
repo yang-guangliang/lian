@@ -131,7 +131,9 @@ class P2PrelimSemanticAnalysis:
         frame.all_state_defs = all_state_defs
         frame.state_bit_vector_manager.init(all_state_defs)
 
-    def init_compute_frame(self, frame: ComputeFrame, frame_stack):
+    def init_compute_frame(
+        self, frame: ComputeFrame, frame_stack, copy_p1_state_space=False
+    ):
         frame.has_been_inited = True
         frame.frame_stack = frame_stack
         method_id = frame.method_id
@@ -176,7 +178,14 @@ class P2PrelimSemanticAnalysis:
 
         # avoid changing the content of the loader
         frame.stmt_id_to_status = self.loader.get_stmt_status_p1(method_id)
-        frame.symbol_state_space = self.loader.get_symbol_state_space_p1(method_id)
+        if copy_p1_state_space:
+            frame.symbol_state_space = self.loader.get_symbol_state_space_p1_copy(
+                method_id
+            )
+        else:
+            frame.symbol_state_space = self.loader.get_symbol_state_space_p1(
+                method_id
+            )
         if util.is_empty(frame.symbol_state_space):
             return None
 

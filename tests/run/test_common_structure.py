@@ -25,7 +25,8 @@ from lian.core.resolver import Resolver
 from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
 from lian.taint.taint_analysis import TaintAnalysis
-from lian.util.loader import CalleeParameterMapping
+from lian.util import util
+from lian.util.loader import CalleeParameterMapping, Loader, SymbolStateSpaceLoader
 
 
 class CountingCalleeParameterMapping(CalleeParameterMapping):
@@ -90,6 +91,122 @@ class TestCalleeParameterMappingCache(unittest.TestCase):
 
             self.assertEqual(second[0].arg_access_path[0].key, "field")
             self.assertEqual(second[0].parameter_access_path.key, "0")
+
+
+class CountingSymbolStateSpaceLoader(SymbolStateSpaceLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.decode_count = 0
+        self.raw_read_count = 0
+
+    def get_raw_item_by_id(self, item_id):
+        self.raw_read_count += 1
+        return super().get_raw_item_by_id(item_id)
+
+    def unflatten_item_dataframe_when_loading(self, item_id, flattened_item):
+        self.decode_count += 1
+        return super().unflatten_item_dataframe_when_loading(item_id, flattened_item)
+
+
+class TestP1SymbolStateSpaceCache(unittest.TestCase):
+    @staticmethod
+    def make_loader(tmp_dir, raw_cache_capacity=20):
+        raw_loader = CountingSymbolStateSpaceLoader(
+            options=None,
+            item_schema=[],
+            bundle_path_summary=os.path.join(tmp_dir, "symbol_state_space"),
+            item_cache_capacity=raw_cache_capacity,
+            bundle_cache_capacity=2,
+        )
+        loader = object.__new__(Loader)
+        loader._symbol_state_space_p1_loader = raw_loader
+        loader._symbol_state_space_p1_decoded_cache = util.LRUCache(4)
+        return loader, raw_loader
+
+    @staticmethod
+    def make_space(state_id):
+        space = common_structure.SymbolStateSpace()
+        space.add(common_structure.Symbol(symbol_id=3, states={1}))
+        space.add(
+            common_structure.State(
+                state_id=state_id,
+                fields={"field": {0}},
+                array=[{0}],
+                tangping_elements={0},
+                access_path=[
+                    common_structure.AccessPoint(
+                        kind=1, key="field", state_id=state_id
+                    )
+                ],
+            )
+        )
+        return space
+
+    def test_repeated_reads_decode_a_method_only_once(self):
+        with tempfile.TemporaryDirectory(prefix="lian_p1_space_") as tmp_dir:
+            loader, raw_loader = self.make_loader(tmp_dir)
+            raw_loader.save(7, self.make_space(11))
+
+            loader.get_symbol_state_space_p1_copy(7)
+            loader.get_symbol_state_space_p1_copy(7)
+
+            self.assertEqual(raw_loader.decode_count, 1)
+            self.assertEqual(raw_loader.raw_read_count, 2)
+
+    def test_cached_reads_return_fully_independent_spaces(self):
+        with tempfile.TemporaryDirectory(prefix="lian_p1_space_") as tmp_dir:
+            loader, raw_loader = self.make_loader(tmp_dir)
+            raw_loader.save(7, self.make_space(11))
+
+            first = loader.get_symbol_state_space_p1_copy(7)
+            first[0].states.add(99)
+            first[1].fields["field"].add(99)
+            first[1].array[0].add(99)
+            first[1].tangping_elements.add(99)
+            first[1].access_path[0].state_id = 99
+            second = loader.get_symbol_state_space_p1_copy(7)
+
+            self.assertEqual(second[0].states, {1})
+            self.assertEqual(second[1].fields, {"field": {0}})
+            self.assertEqual(second[1].array, [{0}])
+            self.assertEqual(second[1].tangping_elements, {0})
+            self.assertEqual(second[1].access_path[0].state_id, 11)
+
+    def test_replacing_the_raw_data_model_forces_a_new_decode(self):
+        with tempfile.TemporaryDirectory(prefix="lian_p1_space_") as tmp_dir:
+            loader, raw_loader = self.make_loader(tmp_dir)
+            raw_loader.save(7, self.make_space(11))
+            loader.get_symbol_state_space_p1_copy(7)
+
+            raw_loader.item_cache.remove(7)
+            raw_loader.active_bundle[7].data_model = None
+            loader.get_symbol_state_space_p1_copy(7)
+
+            self.assertEqual(raw_loader.decode_count, 2)
+
+    def test_decoded_cache_hits_still_refresh_the_raw_lru_order(self):
+        with tempfile.TemporaryDirectory(prefix="lian_p1_space_") as tmp_dir:
+            loader, raw_loader = self.make_loader(tmp_dir, raw_cache_capacity=2)
+            for method_id in (1, 2, 3):
+                raw_loader.save(method_id, self.make_space(method_id))
+
+            loader.get_symbol_state_space_p1_copy(1)
+            loader.get_symbol_state_space_p1_copy(2)
+            loader.get_symbol_state_space_p1_copy(1)
+            loader.get_symbol_state_space_p1_copy(3)
+
+            self.assertEqual(set(raw_loader.item_cache.cache), {1, 3})
+
+    def test_already_decoded_items_are_still_returned_as_owned_copies(self):
+        with tempfile.TemporaryDirectory(prefix="lian_p1_space_") as tmp_dir:
+            loader, raw_loader = self.make_loader(tmp_dir)
+            source = self.make_space(11)
+            raw_loader.item_cache.put(7, source)
+
+            copied = loader.get_symbol_state_space_p1_copy(7)
+            copied[1].fields["field"].add(99)
+
+            self.assertEqual(source[1].fields, {"field": {0}})
 
 class TestSimpleWorkList(unittest.TestCase):
     def test_fifo_uses_constant_time_queue_without_changing_order(self):
@@ -766,7 +883,19 @@ class TestP3IndexSpaceShift(unittest.TestCase):
 
     def test_frame_initialization_without_p2_copies_p1_artifacts_and_loads_cfg_once(self):
         source_status = {7: common_structure.StmtStatus(stmt_id=7, defined_symbol=0)}
-        source_space = common_structure.SymbolStateSpace()
+        copy_count = [0]
+
+        class CopyCountingSpace(common_structure.SymbolStateSpace):
+            def copy(self):
+                copy_count[0] += 1
+                copied = CopyCountingSpace()
+                for item in self.space:
+                    copied.add(item.copy())
+                copied.old_index_to_new_index = self.old_index_to_new_index.copy()
+                copied.new_index_to_old_index = self.new_index_to_old_index.copy()
+                return copied
+
+        source_space = CopyCountingSpace()
         source_space.add(
             common_structure.State(state_id=10, fields={"self": {0}})
         )
@@ -801,7 +930,10 @@ class TestP3IndexSpaceShift(unittest.TestCase):
                 return source_status
 
             def get_symbol_state_space_p1(self, method_id):
-                return source_space
+                return source_space.copy()
+
+            def get_symbol_state_space_p1_copy(self, method_id):
+                return source_space.copy()
 
             def get_method_internal_callees(self, method_id):
                 return []
@@ -846,6 +978,7 @@ class TestP3IndexSpaceShift(unittest.TestCase):
         frame.method_def_use_summary.used_external_symbol_ids.add(99)
         self.assertEqual(source_def_use.used_external_symbol_ids, set())
         self.assertEqual(loader.cfg_load_count, 1)
+        self.assertEqual(copy_count[0], 1)
 
     def test_shifts_all_index_references_without_bit_vector_managers(self):
         status = common_structure.StmtStatus(

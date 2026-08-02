@@ -2099,6 +2099,9 @@ class Loader:
         self._struct_field_access_cache = None
 
         self.stmt_gir_cache = util.LRUCache(capacity = config.MAX_STMT_CACHE_CAPACITY)
+        self._symbol_state_space_p1_decoded_cache = util.LRUCache(
+            capacity=config.MEDIUM_CACHE_CAPACITY
+        )
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
             options,
@@ -3010,6 +3013,26 @@ class Loader:
         return self._symbol_state_space_p1_loader.save(method_id, state_space)
     def get_symbol_state_space_p1(self, method_id):
         return self._symbol_state_space_p1_loader.get_item_by_id(method_id)
+    def get_symbol_state_space_p1_copy(self, method_id):
+        item_df = self._symbol_state_space_p1_loader.get_raw_item_by_id(method_id)
+        if item_df is None:
+            return None
+        if not isinstance(item_df, DataModel):
+            if util.is_empty(item_df):
+                item_df = DataModel([])
+            else:
+                return item_df.copy()
+
+        cached_item = self._symbol_state_space_p1_decoded_cache.get(method_id)
+        if cached_item is None or cached_item[0] is not item_df:
+            decoded_item = (
+                self._symbol_state_space_p1_loader
+                .unflatten_item_dataframe_when_loading(method_id, item_df)
+            )
+            cached_item = (item_df, decoded_item)
+            self._symbol_state_space_p1_decoded_cache.put(method_id, cached_item)
+
+        return cached_item[1].copy()
     def contain_symbol_state_space_p1(self, method_id):
         return self._symbol_state_space_p1_loader.contain(method_id)
 
