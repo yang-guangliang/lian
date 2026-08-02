@@ -271,7 +271,7 @@ class GIRParser:
         code = None
         tree = None
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 code = f.read()
         except:
             util.error("Failed to read file:", file_path)

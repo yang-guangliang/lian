@@ -25,6 +25,7 @@ from lian.core.prelim_semantics import P2PrelimSemanticAnalysis
 from lian.core.resolver import Resolver
 from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
+from lian.lang.lang_analysis import GIRParser
 from lian.taint.taint_analysis import TaintAnalysis
 from lian.util import util
 from lian.util.data_model import DataModel
@@ -2230,6 +2231,45 @@ class TestCParserArrayDataType(unittest.TestCase):
             all(stmt.get("data_type", "").startswith("%vv") for stmt in struct_news),
             msg=f"new_struct statements: {struct_news}",
         )
+
+
+class TestSourceCodeDecoding(unittest.TestCase):
+    def test_invalid_utf8_in_c_string_does_not_skip_translation_unit(self):
+        class CapturingASTParser:
+            def __init__(self):
+                self.source = None
+
+            def parse(self, source):
+                self.source = source
+                return SimpleNamespace(root_node=object())
+
+        class RecordingCParser:
+            def __init__(self, options, unit_info):
+                pass
+
+            def parse_gir(self, root_node, statements):
+                statements.append({"operation": "translation_unit"})
+
+        ast_parser = CapturingASTParser()
+        parser = GIRParser(
+            SimpleNamespace(strict_parse_mode=True),
+            event_manager=None,
+            loader=None,
+            output_path="",
+        )
+        language = SimpleNamespace(name="c", parser=RecordingCParser)
+
+        with tempfile.NamedTemporaryFile(suffix=".c") as source_file:
+            source_file.write(b'int main(void) { char *s = "\x82"; return 0; }')
+            source_file.flush()
+            with patch.object(parser, "obtain_ast_parser", return_value=ast_parser):
+                statements = parser.parse(
+                    SimpleNamespace(), source_file.name, "c", [language]
+                )
+
+        self.assertEqual(statements, [{"operation": "translation_unit"}])
+        self.assertIn(b"int main", ast_parser.source)
+        ast_parser.source.decode("utf-8")
 
 
 class TestCppParserEntrypoints(unittest.TestCase):
