@@ -9,7 +9,7 @@ from collections import deque
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 import pandas as pd
 import networkx as nx
 import tree_sitter
@@ -970,6 +970,109 @@ class TestResolverStateGraphDepth(unittest.TestCase):
             self.assertEqual(
                 state_space[parent_index].fields, {"child": {latest_child}}
             )
+
+
+class TestOversizedMethodCoverage(unittest.TestCase):
+    STMT_COUNT = 2001
+
+    @classmethod
+    def make_loader(cls):
+        stmt_ids = list(range(1, cls.STMT_COUNT + 1))
+        body = [
+            SimpleNamespace(stmt_id=stmt_id, operation="return_stmt")
+            for stmt_id in stmt_ids
+        ]
+        cfg = nx.DiGraph()
+        cfg.add_nodes_from(stmt_ids)
+        source_space = common_structure.SymbolStateSpace()
+        source_space.add(common_structure.State(stmt_id=1, state_id=10))
+
+        loader = MagicMock()
+        loader.convert_method_id_to_unit_id.return_value = 1
+        loader.convert_unit_id_to_lang_name.return_value = "c"
+        loader.convert_method_id_to_method_name.return_value = "large_method"
+        loader.contain_symbol_state_space_p1.return_value = True
+        loader.get_method_cfg.return_value = cfg
+        loader.get_splitted_method_gir.return_value = (None, [], body)
+        loader.get_stmt_status_p1.return_value = {}
+        loader.get_symbol_state_space_p1.return_value = source_space
+        loader.get_method_internal_callees.return_value = []
+        loader.get_method_def_use_summary.return_value = (
+            common_structure.MethodDefUseSummary(method_id=7)
+        )
+        loader.get_method_defined_symbols_raw_p1.return_value = []
+        loader.get_method_defined_states_p1.return_value = {}
+        loader.get_method_defined_symbols_p2.return_value = {}
+        loader.get_method_defined_states_p2.return_value = {}
+        loader.get_stmt_status_p2.return_value = {}
+        loader.get_symbol_state_space_p2.return_value = source_space
+        loader.get_symbol_bit_vector_p2.return_value = (
+            common_structure.BitVectorManager()
+        )
+        loader.get_state_bit_vector_p2.return_value = (
+            common_structure.BitVectorManager()
+        )
+        loader.get_method_summary_template.return_value = (
+            common_structure.MethodSummaryTemplate(key=7)
+        )
+        loader.get_symbol_state_space_summary_p2.return_value = (
+            common_structure.SymbolStateSpace()
+        )
+        loader.get_method_symbol_graph_p2.return_value = nx.DiGraph()
+        return loader, stmt_ids
+
+    @staticmethod
+    def make_frame_stack(frame):
+        frame_stack = common_structure.ComputeFrameStack()
+        frame_stack.add(common_structure.MetaComputeFrame())
+        frame_stack.add(frame)
+        return frame_stack
+
+    def test_prelim_initializes_every_statement_beyond_old_limit(self):
+        loader, stmt_ids = self.make_loader()
+        frame = common_structure.ComputeFrame(method_id=7, loader=loader)
+        analysis = object.__new__(P2PrelimSemanticAnalysis)
+        analysis.loader = loader
+        analysis.analysis_phase_id = ANALYSIS_PHASE_ID.PRELIM_SEMANTICS
+        analysis.options = SimpleNamespace(quiet=True, complete_graph=False)
+        analysis.event_manager = None
+        analysis.resolver = object()
+        analysis.call_graph = None
+        analysis.analyzed_method_list = set()
+
+        initialized = analysis.init_compute_frame(
+            frame, self.make_frame_stack(frame)
+        )
+
+        self.assertIs(initialized, frame)
+        self.assertEqual(set(frame.stmt_counters), set(stmt_ids))
+        self.assertEqual(len(frame.stmt_worklist), self.STMT_COUNT)
+
+    def test_global_with_p2_initializes_every_statement_beyond_old_limit(self):
+        loader, stmt_ids = self.make_loader()
+        frame = common_structure.ComputeFrame(method_id=7, loader=loader)
+        analysis = object.__new__(P3GlobalSemanticAnalysis)
+        analysis.loader = loader
+        analysis.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        analysis.options = SimpleNamespace(
+            enable_p2=True, quiet=True, complete_graph=False
+        )
+        analysis.analyzed_method_list = set()
+        analysis.event_manager = None
+        analysis.resolver = object()
+        analysis.path_manager = common_structure.PathManager()
+        analysis.caller_unknown_callee_edge = {}
+        analysis.call_site_analyze_counter = {}
+
+        initialized = analysis.init_compute_frame(
+            frame,
+            self.make_frame_stack(frame),
+            common_structure.SymbolStateSpace(),
+        )
+
+        self.assertIs(initialized, frame)
+        self.assertEqual(set(frame.stmt_counters), set(stmt_ids))
+        self.assertEqual(len(frame.stmt_worklist), self.STMT_COUNT)
 
 
 class TestP3IndexSpaceShift(unittest.TestCase):
