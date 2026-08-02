@@ -568,6 +568,7 @@ class P2PrelimSemanticAnalysis:
 
     def group_in_states(self, stmt_id, stmt, in_symbol_indexes, frame: ComputeFrame, status):
         stmt_sfg_node = None
+        stmt_in_symbol_indexes = None
 
         # all_in_states are all states of used symbols
         # all_in_states -> align -> status.used_symbols
@@ -632,14 +633,15 @@ class P2PrelimSemanticAnalysis:
                             context=frame.get_context(),
                             stmt=stmt
                         )
-                    stmt_in_nodes = util.graph_predecessors(frame.state_flow_graph.graph, stmt_sfg_node)
-                    contain_used_symbol_flag = False
-                    for each_node in stmt_in_nodes:
-                        if each_node.node_type == SFG_NODE_KIND.SYMBOL:
-                            if each_node.index == each_in_symbol_index:
-                                contain_used_symbol_flag = True
-                                break
-                    if not contain_used_symbol_flag:
+                    if stmt_in_symbol_indexes is None:
+                        stmt_in_symbol_indexes = {
+                            each_node.index
+                            for each_node in util.graph_predecessors(
+                                frame.state_flow_graph.graph, stmt_sfg_node
+                            )
+                            if each_node.node_type == SFG_NODE_KIND.SYMBOL
+                        }
+                    if each_in_symbol_index not in stmt_in_symbol_indexes:
                         for tmp_pos, tmp_used_symbol_index in enumerate(status.used_symbols + status.implicitly_used_symbols):
                             tmp_used_symbol = frame.symbol_state_space[tmp_used_symbol_index]
                             if not isinstance(tmp_used_symbol, Symbol):
@@ -654,6 +656,7 @@ class P2PrelimSemanticAnalysis:
                                         pos=tmp_pos,
                                     )
                                 )
+                                stmt_in_symbol_indexes.add(each_in_symbol_index)
 
         for symbol_id, each_symbol_in_states in symbol_id_to_state_index.items():
             # 对每个symbol的in_states按state_id合并一次，并将fusion_state添加到status.defined_states中

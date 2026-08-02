@@ -21,6 +21,7 @@ from lian.config import lang_config
 from lian.config.constants import ANALYSIS_PHASE_ID, LIAN_INTERNAL, STATE_TYPE_KIND
 from lian import common_structs as common_structure
 from lian.core.global_semantics import P3GlobalSemanticAnalysis
+from lian.core.prelim_semantics import P2PrelimSemanticAnalysis
 from lian.core.resolver import Resolver
 from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
@@ -366,6 +367,98 @@ class TestStateFlowGraphStateIndex(unittest.TestCase):
 
         self.assertEqual(graph.state_index_to_nodes[10], {first_state, second_state})
         self.assertNotIn(30, graph.state_index_to_nodes)
+
+
+class TestGroupInStatesPredecessorLookup(unittest.TestCase):
+    @staticmethod
+    def make_analysis_and_frame():
+        analysis = object.__new__(P2PrelimSemanticAnalysis)
+        analysis.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+        analysis.resolver = SimpleNamespace(
+            collect_newest_states_by_state_indexes=(
+                lambda frame, stmt_id, indexes, available_defs: set(indexes)
+            )
+        )
+
+        frame = common_structure.ComputeFrame(method_id=1)
+        first_symbol = frame.symbol_state_space.add(
+            common_structure.Symbol(
+                stmt_id=10, symbol_id=100, name="first", states={1}
+            )
+        )
+        frame.symbol_state_space.add(
+            common_structure.State(stmt_id=10, state_id=1000)
+        )
+        second_symbol = frame.symbol_state_space.add(
+            common_structure.Symbol(
+                stmt_id=20, symbol_id=200, name="second", states={3}
+            )
+        )
+        frame.symbol_state_space.add(
+            common_structure.State(stmt_id=20, state_id=2000)
+        )
+        frame.is_first_round[50] = True
+        frame.state_bit_vector_manager = SimpleNamespace(explain=lambda bits: set())
+        frame.stmt_state_analysis = SimpleNamespace(
+            fuse_states_to_one_state=(
+                lambda indexes, stmt_id, stmt, status, **kwargs: set(indexes)
+            )
+        )
+
+        stmt = SimpleNamespace(operation="test_stmt", start_row=1)
+        status = common_structure.StmtStatus(
+            stmt_id=50, used_symbols=[first_symbol, second_symbol]
+        )
+        stmt_node = common_structure.SFGNode(
+            node_type=common_structure.SFG_NODE_KIND.STMT,
+            def_stmt_id=50,
+            name=stmt.operation,
+            context=frame.get_context(),
+            stmt=stmt,
+        )
+        same_index_predecessor = common_structure.SFGNode(
+            node_type=common_structure.SFG_NODE_KIND.SYMBOL,
+            def_stmt_id=999,
+            index=first_symbol,
+            node_id=999,
+            context=frame.get_context(),
+        )
+        frame.state_flow_graph.add_edge(same_index_predecessor, stmt_node)
+        return analysis, frame, stmt, status, stmt_node, same_index_predecessor
+
+    def test_reads_stmt_predecessors_once_without_changing_index_semantics(self):
+        analysis, frame, stmt, status, stmt_node, same_index_predecessor = (
+            self.make_analysis_and_frame()
+        )
+        original_graph_predecessors = util.graph_predecessors
+
+        with patch(
+            "lian.core.prelim_semantics.util.graph_predecessors",
+            wraps=original_graph_predecessors,
+        ) as graph_predecessors:
+            analysis.group_in_states(50, stmt, status.used_symbols, frame, status)
+
+        predecessors = set(frame.state_flow_graph.graph.predecessors(stmt_node))
+        self.assertEqual(graph_predecessors.call_count, 1)
+        self.assertEqual(
+            {
+                node.index
+                for node in predecessors
+                if node.node_type == common_structure.SFG_NODE_KIND.SYMBOL
+            },
+            {0, 2},
+        )
+        self.assertIn(same_index_predecessor, predecessors)
+        self.assertNotIn(
+            common_structure.SFGNode(
+                node_type=common_structure.SFG_NODE_KIND.SYMBOL,
+                def_stmt_id=10,
+                index=0,
+                node_id=100,
+                context=frame.get_context(),
+            ),
+            predecessors,
+        )
 
 
 class TestStmtStateIndexValidation(unittest.TestCase):
