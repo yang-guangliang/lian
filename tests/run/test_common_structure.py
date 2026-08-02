@@ -450,6 +450,17 @@ class TestBinaryStateEvaluation(unittest.TestCase):
         self.assertEqual(result, {1})
         self.assertEqual(captured[0]["value"], "left_expr||right_expr")
 
+    def test_keeps_language_dependent_word_logical_operator_symbolic(self):
+        result, captured = self._compute(
+            "and",
+            common_structure.State(value=1, data_type="%int"),
+            common_structure.State(value=2, data_type="%int"),
+        )
+
+        self.assertEqual(result, {1})
+        self.assertEqual(captured[0]["value"], "1and2")
+        self.assertEqual(captured[0]["data_type"], "%string")
+
 
 class TestSearchGraph(unittest.TestCase):
     def setUp(self):

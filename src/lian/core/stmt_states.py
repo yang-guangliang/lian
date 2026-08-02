@@ -67,8 +67,6 @@ _CONCRETE_BINARY_OPERATORS = {
     ">=": python_operator.ge,
     "&&": lambda left, right: bool(left) and bool(right),
     "||": lambda left, right: bool(left) or bool(right),
-    "and": lambda left, right: bool(left) and bool(right),
-    "or": lambda left, right: bool(left) or bool(right),
 }
 
 
