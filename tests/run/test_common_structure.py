@@ -390,6 +390,50 @@ class TestResolverStateGraphDepth(unittest.TestCase):
         self.assertEqual(resolved_parent.tangping_elements, {latest_child})
         self.assertEqual(state_space[parent].fields, {"child": {old_child}})
 
+    def test_reuses_one_resolved_child_across_shared_parent_edges(self):
+        state_space = common_structure.SymbolStateSpace()
+        old_child = state_space.add(
+            common_structure.State(stmt_id=1, state_id=30, value="old")
+        )
+        first_parent = state_space.add(
+            common_structure.State(
+                stmt_id=1, state_id=10, fields={"child": {old_child}}
+            )
+        )
+        second_parent = state_space.add(
+            common_structure.State(
+                stmt_id=1, state_id=20, fields={"child": {old_child}}
+            )
+        )
+        latest_child = state_space.add(
+            common_structure.State(stmt_id=2, state_id=30, value="latest")
+        )
+        child_definition = common_structure.StateDefNode(
+            index=latest_child, state_id=30, stmt_id=2
+        )
+        frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={30: {child_definition}},
+            stmt_id_to_status={7: common_structure.StmtStatus(stmt_id=7)},
+        )
+
+        resolved_parents = Resolver.retrieve_latest_states(
+            object.__new__(Resolver),
+            frame,
+            7,
+            state_space,
+            {first_parent, second_parent},
+            {child_definition},
+            {},
+        )
+
+        self.assertEqual(len(resolved_parents), 2)
+        self.assertEqual(len(state_space), 6)
+        for parent_index in resolved_parents:
+            self.assertEqual(
+                state_space[parent_index].fields, {"child": {latest_child}}
+            )
+
 
 class TestBinaryStateEvaluation(unittest.TestCase):
     def _compute(self, operator, left, right):
