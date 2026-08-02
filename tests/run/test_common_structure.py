@@ -99,6 +99,133 @@ class TestStmtStateIndexValidation(unittest.TestCase):
             stmt_states.is_state_array_empty(unknown_with_known_element)
         )
 
+    def test_copy_keeps_large_precise_array_without_mutating_history(self):
+        state_space = common_structure.SymbolStateSpace()
+        old_index = state_space.add(
+            common_structure.State(
+                stmt_id=1,
+                state_id=101,
+                array=[{10}, {11}, {12}, {13}, {14}],
+            )
+        )
+        graph = common_structure.StateFlowGraph(method_id=1)
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.context = None
+        stmt_states.sfg = graph
+        stmt_states.frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={},
+            all_state_defs=set(),
+            state_bit_vector_manager=SimpleNamespace(add_bit_id=lambda node: None),
+        )
+        status = common_structure.StmtStatus(stmt_id=7, defined_states={old_index})
+
+        new_index = stmt_states.create_copy_of_state_and_add_space(
+            status, 7, old_index, SimpleNamespace(operation="array_write")
+        )
+
+        self.assertFalse(state_space[old_index].tangping_flag)
+        self.assertEqual(state_space[old_index].array, [{10}, {11}, {12}, {13}, {14}])
+        self.assertFalse(state_space[new_index].tangping_flag)
+        self.assertEqual(state_space[new_index].array, state_space[old_index].array)
+        self.assertIsNot(state_space[new_index].array[0], state_space[old_index].array[0])
+
+    def test_contiguous_array_growth_beyond_four_slots_stays_precise(self):
+        stmt_states, state_space, old_array_index, output_symbol = (
+            self._array_write_fixture([{20}, {21}, {22}, {23}], index_value=4)
+        )
+
+        stmt_states.array_write_stmt_state(
+            7,
+            SimpleNamespace(operation="array_write"),
+            stmt_states.frame.stmt_id_to_status[7],
+            {},
+        )
+
+        new_array_index = next(iter(output_symbol.states))
+        self.assertFalse(state_space[new_array_index].tangping_flag)
+        self.assertEqual(state_space[new_array_index].array[4], {6})
+        self.assertEqual(state_space[old_array_index].array, [{20}, {21}, {22}, {23}])
+
+    def test_array_slot_update_does_not_mutate_historical_state(self):
+        stmt_states, state_space, old_array_index, output_symbol = (
+            self._array_write_fixture([{20}], index_value=0)
+        )
+
+        stmt_states.array_write_stmt_state(
+            7,
+            SimpleNamespace(operation="array_write"),
+            stmt_states.frame.stmt_id_to_status[7],
+            {},
+        )
+
+        new_array_index = next(iter(output_symbol.states))
+        self.assertEqual(state_space[old_array_index].array, [{20}])
+        self.assertEqual(state_space[new_array_index].array, [{20, 6}])
+        self.assertIsNot(
+            state_space[new_array_index].array[0],
+            state_space[old_array_index].array[0],
+        )
+
+    def test_extremely_sparse_array_write_does_not_allocate_to_index(self):
+        stmt_states, state_space, old_array_index, output_symbol = (
+            self._array_write_fixture([{20}], index_value=1_000_000)
+        )
+
+        stmt_states.array_write_stmt_state(
+            7,
+            SimpleNamespace(operation="array_write"),
+            stmt_states.frame.stmt_id_to_status[7],
+            {},
+        )
+
+        new_array_index = next(iter(output_symbol.states))
+        self.assertTrue(state_space[new_array_index].tangping_flag)
+        self.assertLessEqual(len(state_space[new_array_index].array), 1)
+        self.assertEqual(state_space[old_array_index].array, [{20}])
+
+    def _array_write_fixture(self, array, index_value):
+        state_space = common_structure.SymbolStateSpace()
+        array_symbol_index = state_space.add(common_structure.Symbol(symbol_id=1))
+        index_symbol_index = state_space.add(common_structure.Symbol(symbol_id=2))
+        source_symbol_index = state_space.add(common_structure.Symbol(symbol_id=3))
+        output_symbol = common_structure.Symbol(symbol_id=4)
+        output_symbol_index = state_space.add(output_symbol)
+        old_array_index = state_space.add(
+            common_structure.State(stmt_id=1, state_id=101, array=array)
+        )
+        index_state_index = state_space.add(
+            common_structure.State(stmt_id=1, state_id=102, value=str(index_value))
+        )
+        source_state_index = state_space.add(
+            common_structure.State(stmt_id=1, state_id=103, value="source")
+        )
+        status = common_structure.StmtStatus(
+            stmt_id=7,
+            defined_symbol=output_symbol_index,
+            used_symbols=[array_symbol_index, index_symbol_index, source_symbol_index],
+            defined_states={old_array_index},
+        )
+        graph = common_structure.StateFlowGraph(method_id=1)
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.context = None
+        stmt_states.sfg = graph
+        stmt_states.frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={},
+            all_state_defs=set(),
+            state_bit_vector_manager=SimpleNamespace(add_bit_id=lambda node: None),
+            stmt_counters={7: 1},
+            stmt_id_to_status={7: status},
+        )
+        used_states = {
+            array_symbol_index: {old_array_index},
+            index_symbol_index: {index_state_index},
+            source_symbol_index: {source_state_index},
+        }
+        stmt_states.read_used_states = lambda symbol_index, in_states: used_states[symbol_index]
+        return stmt_states, state_space, old_array_index, output_symbol
+
     def test_missing_state_index_does_not_become_a_concrete_state(self):
         stmt_states = object.__new__(StmtStates)
         stmt_states.frame = SimpleNamespace(

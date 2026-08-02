@@ -436,13 +436,10 @@ class StmtStates:
         state = self.frame.symbol_state_space[state_index]
         if not isinstance(state, State):
             return -1
-        # Prevent unbounded field/array maps from being deep-copied repeatedly.
+        # Prevent unbounded field maps from being deep-copied repeatedly.
         if (
             (not state.tangping_flag)
-            and (
-                len(state.fields) >= config.MAX_RECORD_FIELDS
-                or len(state.array) >= config.MAX_ARRAY_ELEMENT_STATES
-            )
+            and len(state.fields) >= config.MAX_RECORD_FIELDS
         ):
             self.make_state_tangping(state)
         new_state = state.copy(stmt_id)
@@ -2921,15 +2918,17 @@ class StmtStates:
                         if each_index_value < 0:
                             each_index_value = array_length + each_index_value
 
-                        # Bound sparse/huge indices (e.g. cid_concepts[12325] = ...)
-                        # to avoid O(index) array extension blowups.
-                        if (
-                            each_index_value >= config.MAX_INDEX
-                            or each_index_value < 0
-                            or len(tmp_array) >= config.MAX_ARRAY_ELEMENT_STATES
-                        ):
+                        if each_index_value < 0:
                             tangping_flag = True
                             break
+
+                        # Only copy a slot that this write changes.  A shallow
+                        # list copy otherwise shares its sets with historical
+                        # states and mutates them in place.
+                        if each_index_value < len(tmp_array):
+                            old_slot = tmp_array[each_index_value]
+                            if old_slot is not None:
+                                tmp_array[each_index_value] = set(old_slot)
 
                         # 数组下标越界，将数组扩展
                         if not util.add_to_list_with_default_set(tmp_array, each_index_value, source_states):
