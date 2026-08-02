@@ -612,6 +612,155 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         stmt_states.read_used_states = lambda symbol_index, in_states: used_states[symbol_index]
         return stmt_states, state_space, old_array_index, output_symbol
 
+    def test_copy_keeps_large_precise_record_without_mutating_history(self):
+        fields = {f"field{index}": {100 + index} for index in range(33)}
+        state_space = common_structure.SymbolStateSpace()
+        old_index = state_space.add(
+            common_structure.State(stmt_id=1, state_id=101, fields=fields)
+        )
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.context = None
+        stmt_states.sfg = common_structure.StateFlowGraph(method_id=1)
+        stmt_states.frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={},
+            all_state_defs=set(),
+            state_bit_vector_manager=SimpleNamespace(add_bit_id=lambda node: None),
+        )
+        status = common_structure.StmtStatus(stmt_id=7, defined_states={old_index})
+
+        new_index = stmt_states.create_copy_of_state_and_add_space(
+            status, 7, old_index, SimpleNamespace(operation="field_write")
+        )
+
+        self.assertFalse(state_space[old_index].tangping_flag)
+        self.assertEqual(state_space[old_index].fields, fields)
+        self.assertFalse(state_space[new_index].tangping_flag)
+        self.assertEqual(state_space[new_index].fields, fields)
+        self.assertIsNot(
+            state_space[new_index].fields["field0"],
+            state_space[old_index].fields["field0"],
+        )
+
+    def test_known_record_field_growth_beyond_32_stays_precise(self):
+        stmt_states, state_space, receiver_index, output_symbol, source_states = (
+            self._field_write_fixture(field_count=32)
+        )
+
+        stmt_states.field_write_stmt_state(
+            7,
+            SimpleNamespace(operation="field_write"),
+            stmt_states.frame.stmt_id_to_status[7],
+            {},
+        )
+
+        new_receiver_index = next(iter(output_symbol.states))
+        self.assertFalse(state_space[receiver_index].tangping_flag)
+        self.assertEqual(len(state_space[receiver_index].fields), 32)
+        self.assertFalse(state_space[new_receiver_index].tangping_flag)
+        self.assertEqual(len(state_space[new_receiver_index].fields), 33)
+        self.assertEqual(
+            state_space[new_receiver_index].fields["field32"], source_states
+        )
+
+    def test_tangping_field_write_copies_history_and_keeps_all_sources(self):
+        stmt_states, state_space, receiver_index, output_symbol, source_states = (
+            self._field_write_fixture(tangping=True, source_count=6)
+        )
+        old_elements = state_space[receiver_index].tangping_elements.copy()
+
+        stmt_states.field_write_stmt_state(
+            7,
+            SimpleNamespace(operation="field_write"),
+            stmt_states.frame.stmt_id_to_status[7],
+            {},
+        )
+
+        new_receiver_index = next(iter(output_symbol.states))
+        self.assertNotEqual(new_receiver_index, receiver_index)
+        self.assertEqual(
+            state_space[receiver_index].tangping_elements, old_elements
+        )
+        self.assertEqual(
+            state_space[new_receiver_index].tangping_elements,
+            old_elements | source_states,
+        )
+
+    def _field_write_fixture(self, field_count=0, tangping=False, source_count=1):
+        state_space = common_structure.SymbolStateSpace()
+        receiver_symbol_index = state_space.add(
+            common_structure.Symbol(symbol_id=1)
+        )
+        field_symbol_index = state_space.add(common_structure.Symbol(symbol_id=2))
+        source_symbol_index = state_space.add(common_structure.Symbol(symbol_id=3))
+        output_symbol = common_structure.Symbol(symbol_id=4)
+        output_symbol_index = state_space.add(output_symbol)
+        field_state_index = state_space.add(
+            common_structure.State(stmt_id=1, state_id=102, value=f"field{field_count}")
+        )
+        source_states = {
+            state_space.add(
+                common_structure.State(
+                    stmt_id=1, state_id=200 + index, value=f"source{index}"
+                )
+            )
+            for index in range(source_count)
+        }
+        old_tangping_elements = set()
+        if tangping:
+            old_tangping_elements.add(
+                state_space.add(
+                    common_structure.State(
+                        stmt_id=1, state_id=300, value="historical"
+                    )
+                )
+            )
+        receiver_index = state_space.add(
+            common_structure.State(
+                stmt_id=1,
+                state_id=101,
+                fields={
+                    f"field{index}": {min(source_states)}
+                    for index in range(field_count)
+                },
+                tangping_flag=tangping,
+                tangping_elements=old_tangping_elements,
+            )
+        )
+        status = common_structure.StmtStatus(
+            stmt_id=7,
+            defined_symbol=output_symbol_index,
+            used_symbols=[
+                receiver_symbol_index,
+                field_symbol_index,
+                source_symbol_index,
+            ],
+            defined_states={receiver_index},
+        )
+        stmt_states = object.__new__(StmtStates)
+        stmt_states.context = None
+        stmt_states.lang = "c"
+        stmt_states.resolver = object()
+        stmt_states.sfg = common_structure.StateFlowGraph(method_id=1)
+        stmt_states.event_manager = SimpleNamespace(notify=lambda event: None)
+        stmt_states.frame = SimpleNamespace(
+            symbol_state_space=state_space,
+            defined_states={},
+            all_state_defs=set(),
+            state_bit_vector_manager=SimpleNamespace(add_bit_id=lambda node: None),
+            stmt_counters={7: 1},
+            stmt_id_to_status={7: status},
+        )
+        used_states = {
+            receiver_symbol_index: {receiver_index},
+            field_symbol_index: {field_state_index},
+            source_symbol_index: source_states,
+        }
+        stmt_states.read_used_states = (
+            lambda symbol_index, in_states: used_states[symbol_index]
+        )
+        return stmt_states, state_space, receiver_index, output_symbol, source_states
+
     def test_missing_state_index_does_not_become_a_concrete_state(self):
         stmt_states = object.__new__(StmtStates)
         stmt_states.frame = SimpleNamespace(
