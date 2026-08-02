@@ -783,7 +783,10 @@ class State(BasicElement):
             tangping_flag = self.tangping_flag,
             source_symbol_id = self.source_symbol_id,
             source_state_id= self.source_state_id,
-            access_path = self.access_path.copy(),
+            access_path = [
+                AccessPoint(kind=point.kind, key=point.key, state_id=point.state_id)
+                for point in self.access_path
+            ],
         )
 
     def __hash__(self):

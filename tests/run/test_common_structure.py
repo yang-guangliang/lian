@@ -106,6 +106,21 @@ class TestSimpleWorkList(unittest.TestCase):
         self.assertEqual([worklist.pop(), worklist.pop(), worklist.pop()], [1, 2, 3])
 
 
+class TestStateCopyIsolation(unittest.TestCase):
+    def test_mutating_a_copied_access_path_does_not_change_the_source_state(self):
+        source = common_structure.State(
+            state_id=10,
+            access_path=[
+                common_structure.AccessPoint(kind=1, key="field", state_id=3)
+            ],
+        )
+
+        copied = source.copy()
+        copied.access_path[0].state_id = 10
+
+        self.assertEqual(source.access_path[0].state_id, 3)
+
+
 class TestStateFlowGraphStateIndex(unittest.TestCase):
     def test_tracks_state_nodes_from_both_edge_ends(self):
         graph = common_structure.StateFlowGraph(method_id=1)
