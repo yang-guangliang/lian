@@ -25,7 +25,71 @@ from lian.core.resolver import Resolver
 from lian.core.stmt_states import StmtStates
 from lian.lang import c_parser
 from lian.taint.taint_analysis import TaintAnalysis
+from lian.util.loader import CalleeParameterMapping
 
+
+class CountingCalleeParameterMapping(CalleeParameterMapping):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.decode_count = 0
+        self.raw_read_count = 0
+
+    def get_raw_item_by_id(self, item_id):
+        self.raw_read_count += 1
+        return super().get_raw_item_by_id(item_id)
+
+    def unflatten_item_dataframe_when_loading(self, item_id, flattened_item):
+        self.decode_count += 1
+        return super().unflatten_item_dataframe_when_loading(item_id, flattened_item)
+
+
+class TestCalleeParameterMappingCache(unittest.TestCase):
+    @staticmethod
+    def make_loader(tmp_dir):
+        return CountingCalleeParameterMapping(
+            options=None,
+            item_schema=[],
+            bundle_path_summary=os.path.join(tmp_dir, "parameter_mapping"),
+            item_cache_capacity=20,
+            bundle_cache_capacity=2,
+        )
+
+    @staticmethod
+    def make_mapping(arg_state_id):
+        return common_structure.ParameterMapping(
+            arg_index_in_space=3,
+            arg_state_id=arg_state_id,
+            arg_source_symbol_id=7,
+            arg_access_path=[common_structure.AccessPoint(kind=1, key="field", state_id=11)],
+            parameter_symbol_id=13,
+            parameter_access_path=common_structure.AccessPoint(kind=2, key="0", state_id=17),
+        )
+
+    def test_repeated_reads_decode_a_call_site_only_once(self):
+        with tempfile.TemporaryDirectory(prefix="lian_parameter_mapping_") as tmp_dir:
+            loader = self.make_loader(tmp_dir)
+            call_site = common_structure.CallSite(1, 2, 3)
+            loader.save(call_site, [self.make_mapping(5)])
+
+            loader.get_item_by_id(call_site)
+            loader.get_item_by_id(call_site)
+
+            self.assertEqual(loader.decode_count, 1)
+            self.assertEqual(loader.raw_read_count, 2)
+
+    def test_cached_reads_return_independent_mutable_values(self):
+        with tempfile.TemporaryDirectory(prefix="lian_parameter_mapping_") as tmp_dir:
+            loader = self.make_loader(tmp_dir)
+            call_site = common_structure.CallSite(1, 2, 3)
+            loader.save(call_site, [self.make_mapping(5)])
+
+            first = loader.get_item_by_id(call_site)
+            first[0].arg_access_path[0].key = "changed"
+            first[0].parameter_access_path.key = "changed"
+            second = loader.get_item_by_id(call_site)
+
+            self.assertEqual(second[0].arg_access_path[0].key, "field")
+            self.assertEqual(second[0].parameter_access_path.key, "0")
 
 class TestSimpleWorkList(unittest.TestCase):
     def test_fifo_uses_constant_time_queue_without_changing_order(self):

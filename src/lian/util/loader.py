@@ -1189,6 +1189,55 @@ class SymbolStateSpaceLoader(MethodLevelAnalysisResultLoader):
 
 # TODO: convert to memory
 class CalleeParameterMapping(MethodLevelAnalysisResultLoader):
+    def __init__(self, options, item_schema, bundle_path_summary, item_cache_capacity, bundle_cache_capacity):
+        super().__init__(options, item_schema, bundle_path_summary, item_cache_capacity, bundle_cache_capacity)
+        self.decoded_item_cache = util.LRUCache(item_cache_capacity)
+
+    @staticmethod
+    def copy_parameter_mapping(parameter_mapping):
+        def copy_access_point(access_point):
+            if access_point is None:
+                return None
+            return AccessPoint(
+                kind=access_point.kind,
+                key=access_point.key,
+                state_id=access_point.state_id,
+            )
+
+        return ParameterMapping(
+            arg_index_in_space=parameter_mapping.arg_index_in_space,
+            arg_state_id=parameter_mapping.arg_state_id,
+            arg_source_symbol_id=parameter_mapping.arg_source_symbol_id,
+            arg_access_path=[copy_access_point(point) for point in parameter_mapping.arg_access_path],
+            parameter_symbol_id=parameter_mapping.parameter_symbol_id,
+            parameter_type=parameter_mapping.parameter_type,
+            parameter_access_path=copy_access_point(parameter_mapping.parameter_access_path),
+            is_default_value=parameter_mapping.is_default_value,
+        )
+
+    def get_item_by_id(self, _id):
+        item_df = self.get_raw_item_by_id(_id)
+        if item_df is None:
+            return None
+        if not isinstance(item_df, DataModel):
+            if util.is_empty(item_df):
+                item_df = DataModel([])
+            else:
+                return item_df
+
+        cached_item = self.decoded_item_cache.get(_id)
+        if cached_item is not None and cached_item[0] is item_df:
+            decoded_item = cached_item[1]
+        else:
+            decoded_item = tuple(self.unflatten_item_dataframe_when_loading(_id, item_df))
+            self.decoded_item_cache.put(_id, (item_df, decoded_item))
+
+        return [self.copy_parameter_mapping(item) for item in decoded_item]
+
+    def remove_unit_id(self, _id):
+        self.decoded_item_cache.remove(_id)
+        return super().remove_unit_id(_id)
+
     def unflatten_item_dataframe_when_loading(self, _id, flattened_item):
         parameter_mapping_list = []
         for row in flattened_item:
