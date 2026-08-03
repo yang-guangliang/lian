@@ -482,6 +482,46 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         )
         return stmt_states, status
 
+    @staticmethod
+    def make_copied_cyclic_parameter_alternatives(changed=False):
+        state_space = common_structure.SymbolStateSpace()
+        argument_roots = []
+        argument_children = []
+        summary_roots = []
+        summary_children = []
+
+        for roots, children, stmt_id in (
+            (argument_roots, argument_children, 1),
+            (summary_roots, summary_children, 2),
+        ):
+            for _ in range(3):
+                roots.append(
+                    state_space.add(
+                        common_structure.State(stmt_id=stmt_id, state_id=101)
+                    )
+                )
+                children.append(
+                    state_space.add(
+                        common_structure.State(stmt_id=stmt_id, state_id=102)
+                    )
+                )
+            for root, child in zip(roots, children):
+                state_space[root].fields = {"next": {child}}
+                state_space[child].fields = {"previous": {root}}
+
+        if changed:
+            changed_leaf = state_space.add(
+                common_structure.State(stmt_id=2, state_id=103, value="changed")
+            )
+            state_space[summary_children[1]].fields["changed"] = {changed_leaf}
+
+        return (
+            state_space,
+            set(argument_roots),
+            set(argument_children),
+            set(summary_roots),
+        )
+
     def test_read_only_parameter_summary_does_not_copy_argument_graph(self):
         state_space = common_structure.SymbolStateSpace()
         child_index = state_space.add(
@@ -600,6 +640,71 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         )
         self.assertEqual(
             status.defined_states, {argument_root, argument_child}
+        )
+
+    def test_equivalent_copied_parameter_alternatives_are_not_materialized(self):
+        (
+            state_space,
+            argument_roots,
+            argument_children,
+            summary_roots,
+        ) = self.make_copied_cyclic_parameter_alternatives()
+        original_indexes = argument_roots | argument_children
+        stmt_states, status = self.make_global_field_merge(
+            state_space, original_indexes
+        )
+        stmt_states.frame.stmt_id_to_status = {7: status}
+        stmt_states.frame.state_bit_vector_manager.explain = lambda bits: set()
+        stmt_states.resolver = SimpleNamespace(
+            reset_ras_result_cache=lambda: None,
+            retrieve_latest_states=(
+                lambda frame, stmt_id, space, state_indexes, *args, **kwargs:
+                    set(state_indexes)
+            ),
+            update_deferred_index=lambda *args, **kwargs: None,
+        )
+        initial_size = len(state_space)
+
+        stmt_states.apply_parameter_semantic_summary(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            callee_id=13,
+            callee_summary=common_structure.MethodSummaryTemplate(
+                parameter_symbols={11: summary_roots}
+            ),
+            callee_space=state_space,
+            parameter_mapping_list=[
+                common_structure.ParameterMapping(
+                    arg_index_in_space=argument_root,
+                    arg_source_symbol_id=20,
+                    parameter_symbol_id=11,
+                    parameter_type=LIAN_INTERNAL.PARAMETER_DECL,
+                )
+                for argument_root in argument_roots
+            ],
+        )
+
+        self.assertEqual(
+            len(state_space),
+            initial_size,
+            "equivalent branch alternatives must not broadcast duplicate graphs",
+        )
+        self.assertEqual(status.defined_states, original_indexes)
+
+    def test_changed_copied_parameter_alternative_is_not_equivalent(self):
+        (
+            state_space,
+            argument_roots,
+            _,
+            summary_roots,
+        ) = self.make_copied_cyclic_parameter_alternatives(changed=True)
+        stmt_states, _ = self.make_global_field_merge(state_space)
+
+        self.assertFalse(
+            stmt_states.state_graphs_are_semantically_equivalent(
+                summary_roots, argument_roots
+            ),
+            "one changed branch must keep the full parameter-summary merge",
         )
 
     def test_nested_change_in_copied_parameter_graph_is_still_applied(self):

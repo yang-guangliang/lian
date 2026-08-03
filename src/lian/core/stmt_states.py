@@ -1753,16 +1753,14 @@ class StmtStates:
                 return None
             for state_id, first_indexes_with_id in first_by_state_id.items():
                 second_indexes_with_id = second_by_state_id[state_id]
-                # Ambiguous alternatives stay on the conservative merge path.
-                if (
-                    len(first_indexes_with_id) != 1
-                    or len(second_indexes_with_id) != 1
-                ):
+                if len(first_indexes_with_id) != len(second_indexes_with_id):
                     return None
-                pairs.append(
-                    (
-                        next(iter(first_indexes_with_id)),
-                        next(iter(second_indexes_with_id)),
+                # The complete traversal below proves that this tentative
+                # one-to-one pairing preserves every state and reference edge.
+                pairs.extend(
+                    zip(
+                        sorted(first_indexes_with_id),
+                        sorted(second_indexes_with_id),
                     )
                 )
             return pairs
