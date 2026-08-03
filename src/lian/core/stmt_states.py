@@ -776,7 +776,10 @@ class StmtStates:
         defined_symbol.states = result
         return P2ResultFlag()
 
-    def compute_two_states(self, stmt, state1, state2, defined_symbol: Symbol):
+    def compute_two_states(
+        self, stmt, state1, state2, defined_symbol: Symbol,
+        result_state_cache=None
+    ):
         symbol_id = defined_symbol.symbol_id
         if util.is_empty(state1) or util.is_empty(state2):
             return set()
@@ -852,6 +855,14 @@ class StmtStates:
                 data_type = LIAN_INTERNAL.STRING
 
         if value is not None:
+            cache_key = None
+            # Binary result states carry no operand-specific provenance, so a
+            # concrete boolean needs only one state per value at this definition.
+            if result_state_cache is not None and isinstance(value, bool):
+                cache_key = (value, data_type)
+                if cache_key in result_state_cache:
+                    return {result_state_cache[cache_key]}
+
             result_state_index = self.create_state_and_add_space(
                 status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id, value=value, data_type=data_type,
                 access_path=[AccessPoint(
@@ -860,6 +871,8 @@ class StmtStates:
                 )]
             )
             self.update_access_path_state_id(result_state_index)
+            if cache_key is not None:
+                result_state_cache[cache_key] = result_state_index
 
             return {result_state_index}
 
@@ -911,6 +924,7 @@ class StmtStates:
         operand2_index = status.used_symbols[1]
         operand2_states = self.read_used_states(operand2_index, in_states)
         new_states = set()
+        result_state_cache = {}
         for operand_state_index in operand_states:
             operand_state = self.frame.symbol_state_space[operand_state_index]
             if not isinstance(operand_state, State):
@@ -926,7 +940,8 @@ class StmtStates:
 
                 new_states.update(
                     self.compute_two_states(
-                        stmt, operand_state, operand2_state, defined_symbol
+                        stmt, operand_state, operand2_state, defined_symbol,
+                        result_state_cache
                     )
                 )
 

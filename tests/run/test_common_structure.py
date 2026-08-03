@@ -2281,6 +2281,55 @@ class TestBinaryStateEvaluation(unittest.TestCase):
         self.assertEqual(captured[0]["value"], "1and2")
         self.assertEqual(captured[0]["data_type"], "%string")
 
+    def test_collapses_equivalent_cartesian_results_without_losing_distinct_values(self):
+        stmt_states = object.__new__(StmtStates)
+        space = common_structure.SymbolStateSpace()
+        left_symbol_index = space.add(
+            common_structure.Symbol(symbol_id=1, name="left")
+        )
+        right_symbol_index = space.add(
+            common_structure.Symbol(symbol_id=2, name="right")
+        )
+        result_symbol_index = space.add(
+            common_structure.Symbol(symbol_id=3, name="result")
+        )
+        left_states = {
+            space.add(common_structure.State(value=0, data_type="%int")),
+            space.add(common_structure.State(value=1, data_type="%int")),
+        }
+        right_states = {
+            space.add(common_structure.State(value=0, data_type="%int")),
+            space.add(common_structure.State(value=1, data_type="%int")),
+        }
+        status = common_structure.StmtStatus(
+            stmt_id=7,
+            defined_symbol=result_symbol_index,
+            used_symbols=[left_symbol_index, right_symbol_index],
+        )
+        stmt_states.frame = SimpleNamespace(
+            symbol_state_space=space,
+            stmt_counters={7: 1},
+            stmt_id_to_status={7: status},
+            defined_states={},
+        )
+
+        stmt_states.assign_stmt_state(
+            7,
+            SimpleNamespace(
+                stmt_id=7,
+                operation="assign_stmt",
+                operator="&&",
+                operand2="right",
+            ),
+            status,
+            {1: left_states, 2: right_states},
+        )
+
+        result_symbol = space[result_symbol_index]
+        result_states = [space[index] for index in result_symbol.states]
+        self.assertEqual(len(result_states), 2)
+        self.assertEqual({state.value for state in result_states}, {False, True})
+
 
 class TestSearchGraph(unittest.TestCase):
     def setUp(self):
