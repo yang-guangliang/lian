@@ -1701,6 +1701,136 @@ class StmtStates:
                                           new_this_states)
         status.implicitly_defined_symbols.append(index_to_add)
 
+    def state_graphs_are_semantically_equivalent(
+        self, first_state_indexes, second_state_indexes
+    ):
+        if first_state_indexes == second_state_indexes:
+            return True
+
+        state_space = self.frame.symbol_state_space
+        first_to_second = {}
+        second_to_first = {}
+        compared_pairs = set()
+
+        def get_state(index):
+            if index < 0 or index >= len(state_space):
+                return None
+            state = state_space[index]
+            return state if isinstance(state, State) else None
+
+        def pair_state_sets(first_indexes, second_indexes):
+            if len(first_indexes) != len(second_indexes):
+                return None
+
+            pairs = []
+            shared_indexes = first_indexes & second_indexes
+            for index in shared_indexes:
+                if get_state(index) is None:
+                    if index >= 0:
+                        return None
+                    continue
+                pairs.append((index, index))
+
+            first_by_state_id = {}
+            for index in first_indexes - shared_indexes:
+                state = get_state(index)
+                if state is None:
+                    return None
+                util.add_to_dict_with_default_set(
+                    first_by_state_id, state.state_id, index
+                )
+
+            second_by_state_id = {}
+            for index in second_indexes - shared_indexes:
+                state = get_state(index)
+                if state is None:
+                    return None
+                util.add_to_dict_with_default_set(
+                    second_by_state_id, state.state_id, index
+                )
+
+            if first_by_state_id.keys() != second_by_state_id.keys():
+                return None
+            for state_id, first_indexes_with_id in first_by_state_id.items():
+                second_indexes_with_id = second_by_state_id[state_id]
+                # Ambiguous alternatives stay on the conservative merge path.
+                if (
+                    len(first_indexes_with_id) != 1
+                    or len(second_indexes_with_id) != 1
+                ):
+                    return None
+                pairs.append(
+                    (
+                        next(iter(first_indexes_with_id)),
+                        next(iter(second_indexes_with_id)),
+                    )
+                )
+            return pairs
+
+        pending_pairs = pair_state_sets(
+            set(first_state_indexes), set(second_state_indexes)
+        )
+        if pending_pairs is None:
+            return False
+
+        while pending_pairs:
+            first_index, second_index = pending_pairs.pop()
+            if (
+                first_index in first_to_second
+                and first_to_second[first_index] != second_index
+            ):
+                return False
+            if (
+                second_index in second_to_first
+                and second_to_first[second_index] != first_index
+            ):
+                return False
+            first_to_second[first_index] = second_index
+            second_to_first[second_index] = first_index
+
+            pair = (first_index, second_index)
+            if pair in compared_pairs:
+                continue
+            compared_pairs.add(pair)
+
+            first_state = get_state(first_index)
+            second_state = get_state(second_index)
+            # Definition sites and access paths are caller-specific provenance,
+            # not effects transferred by a callee parameter summary.
+            if (
+                first_state.state_id != second_state.state_id
+                or first_state.symbol_or_state != second_state.symbol_or_state
+                or first_state.state_type != second_state.state_type
+                or first_state.data_type != second_state.data_type
+                or first_state.data_type_ids != second_state.data_type_ids
+                or first_state.value != second_state.value
+                or first_state.tangping_flag != second_state.tangping_flag
+                or first_state.fields.keys() != second_state.fields.keys()
+                or len(first_state.array) != len(second_state.array)
+            ):
+                return False
+
+            referenced_state_sets = [
+                (
+                    first_state.fields[field_name],
+                    second_state.fields[field_name],
+                )
+                for field_name in first_state.fields
+            ]
+            referenced_state_sets.extend(zip(first_state.array, second_state.array))
+            referenced_state_sets.append(
+                (first_state.tangping_elements, second_state.tangping_elements)
+            )
+            for first_references, second_references in referenced_state_sets:
+                pairs = pair_state_sets(
+                    set(first_references), set(second_references)
+                )
+                if pairs is None:
+                    return False
+                pending_pairs.extend(pairs)
+
+        return True
+
     def apply_parameter_semantic_summary(
         self,
         stmt_id,
@@ -1718,6 +1848,7 @@ class StmtStates:
 
         parameter_arg_indexes = {}
         parameters_ineligible_for_identity_check = set()
+        equivalent_parameter_graphs = {}
         for mapping in parameter_mapping_list:
             parameter_symbol_id = mapping.parameter_symbol_id
             if (
@@ -1757,9 +1888,22 @@ class StmtStates:
             parameter_symbol_id = each_mapping.parameter_symbol_id
             if (
                 parameter_symbol_id not in parameters_ineligible_for_identity_check
-                and last_state_indexes
-                == parameter_arg_indexes.get(parameter_symbol_id, set())
+                and parameter_symbol_id not in equivalent_parameter_graphs
             ):
+                argument_indexes = parameter_arg_indexes.get(
+                    parameter_symbol_id, set()
+                )
+                equivalent_parameter_graphs[parameter_symbol_id] = (
+                    last_state_indexes == argument_indexes
+                    or (
+                        self.analysis_phase_id
+                        == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+                        and self.state_graphs_are_semantically_equivalent(
+                            last_state_indexes, argument_indexes
+                        )
+                    )
+                )
+            if equivalent_parameter_graphs.get(parameter_symbol_id, False):
                 continue
             self.apply_parameter_summary_to_args_states(
                 stmt_id,

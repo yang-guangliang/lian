@@ -541,6 +541,135 @@ class TestStmtStateIndexValidation(unittest.TestCase):
         )
         self.assertEqual(status.defined_states, argument_indexes)
 
+    def test_equivalent_copied_parameter_graph_does_not_copy_argument_graph(self):
+        state_space = common_structure.SymbolStateSpace()
+        argument_root = state_space.add(
+            common_structure.State(stmt_id=1, state_id=101)
+        )
+        argument_child = state_space.add(
+            common_structure.State(stmt_id=1, state_id=102)
+        )
+        summary_root = state_space.add(
+            common_structure.State(stmt_id=2, state_id=101)
+        )
+        summary_child = state_space.add(
+            common_structure.State(stmt_id=2, state_id=102)
+        )
+        state_space[argument_root].fields = {"next": {argument_child}}
+        state_space[argument_child].fields = {"previous": {argument_root}}
+        state_space[summary_root].fields = {"next": {summary_child}}
+        state_space[summary_child].fields = {"previous": {summary_root}}
+
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {argument_root, argument_child}
+        )
+        stmt_states.frame.stmt_id_to_status = {7: status}
+        stmt_states.frame.state_bit_vector_manager.explain = lambda bits: set()
+        stmt_states.resolver = SimpleNamespace(
+            reset_ras_result_cache=lambda: None,
+            retrieve_latest_states=(
+                lambda frame, stmt_id, space, state_indexes, *args, **kwargs:
+                    set(state_indexes)
+            ),
+            update_deferred_index=lambda *args, **kwargs: None,
+        )
+        initial_size = len(state_space)
+
+        stmt_states.apply_parameter_semantic_summary(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            callee_id=13,
+            callee_summary=common_structure.MethodSummaryTemplate(
+                parameter_symbols={11: {summary_root}}
+            ),
+            callee_space=state_space,
+            parameter_mapping_list=[
+                common_structure.ParameterMapping(
+                    arg_index_in_space=argument_root,
+                    arg_source_symbol_id=20,
+                    parameter_symbol_id=11,
+                    parameter_type=LIAN_INTERNAL.PARAMETER_DECL,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            len(state_space),
+            initial_size,
+            "a copied but unchanged cyclic parameter graph must not be materialized",
+        )
+        self.assertEqual(
+            status.defined_states, {argument_root, argument_child}
+        )
+
+    def test_nested_change_in_copied_parameter_graph_is_still_applied(self):
+        state_space = common_structure.SymbolStateSpace()
+        argument_root = state_space.add(
+            common_structure.State(stmt_id=1, state_id=101)
+        )
+        argument_child = state_space.add(
+            common_structure.State(stmt_id=1, state_id=102)
+        )
+        summary_root = state_space.add(
+            common_structure.State(stmt_id=2, state_id=101)
+        )
+        summary_child = state_space.add(
+            common_structure.State(stmt_id=2, state_id=102)
+        )
+        summary_leaf = state_space.add(
+            common_structure.State(stmt_id=2, state_id=103, value="changed")
+        )
+        state_space[argument_root].fields = {"next": {argument_child}}
+        state_space[argument_child].fields = {"previous": {argument_root}}
+        state_space[summary_root].fields = {"next": {summary_child}}
+        state_space[summary_child].fields = {
+            "previous": {summary_root},
+            "changed": {summary_leaf},
+        }
+
+        stmt_states, status = self.make_global_field_merge(
+            state_space, {argument_root, argument_child}
+        )
+        stmt_states.frame.stmt_id_to_status = {7: status}
+        stmt_states.frame.state_bit_vector_manager.explain = lambda bits: set()
+        stmt_states.resolver = SimpleNamespace(
+            reset_ras_result_cache=lambda: None,
+            retrieve_latest_states=(
+                lambda frame, stmt_id, space, state_indexes, *args, **kwargs:
+                    set(state_indexes)
+            ),
+            update_deferred_index=lambda *args, **kwargs: None,
+        )
+
+        stmt_states.apply_parameter_semantic_summary(
+            stmt_id=7,
+            stmt=SimpleNamespace(operation="call_stmt"),
+            callee_id=13,
+            callee_summary=common_structure.MethodSummaryTemplate(
+                parameter_symbols={11: {summary_root}}
+            ),
+            callee_space=state_space,
+            parameter_mapping_list=[
+                common_structure.ParameterMapping(
+                    arg_index_in_space=argument_root,
+                    arg_source_symbol_id=20,
+                    parameter_symbol_id=11,
+                    parameter_type=LIAN_INTERNAL.PARAMETER_DECL,
+                )
+            ],
+        )
+
+        updated_root = next(
+            index
+            for index in status.defined_states
+            if index not in {argument_root, argument_child}
+            and state_space[index].state_id == 101
+        )
+        updated_child = next(iter(state_space[updated_root].fields["next"]))
+        self.assertEqual(
+            state_space[updated_child].fields["changed"], {summary_leaf}
+        )
+
     def test_modified_parameter_summary_still_updates_argument_graph(self):
         state_space = common_structure.SymbolStateSpace()
         argument_index = state_space.add(
