@@ -3,6 +3,7 @@ import ast
 import pprint
 import re
 import copy
+import operator as python_operator
 
 from lian.events.handler_template import EventData
 from lian.util import util
@@ -55,6 +56,32 @@ from lian.common_structs import (
     SFGEdge,
 )
 from lian.core.resolver import Resolver
+
+
+_CONCRETE_BINARY_OPERATORS = {
+    "==": python_operator.eq,
+    "!=": python_operator.ne,
+    "<": python_operator.lt,
+    "<=": python_operator.le,
+    ">": python_operator.gt,
+    ">=": python_operator.ge,
+    "&&": lambda left, right: bool(left) and bool(right),
+    "||": lambda left, right: bool(left) or bool(right),
+}
+
+
+def _coerce_concrete_binary_value(value, data_type):
+    if not isinstance(value, str):
+        return value
+    if data_type == LIAN_INTERNAL.INT:
+        value = ast.literal_eval(value)
+        if not isinstance(value, (bool, int)):
+            raise ValueError("not an integer literal")
+    elif data_type == LIAN_INTERNAL.FLOAT:
+        value = ast.literal_eval(value)
+        if not isinstance(value, (int, float)):
+            raise ValueError("not a numeric literal")
+    return value
 
 
 
@@ -409,15 +436,6 @@ class StmtStates:
         state = self.frame.symbol_state_space[state_index]
         if not isinstance(state, State):
             return -1
-        # Prevent unbounded field/array maps from being deep-copied repeatedly.
-        if (
-            (not state.tangping_flag)
-            and (
-                len(state.fields) >= config.MAX_RECORD_FIELDS
-                or len(state.array) >= config.MAX_ARRAY_ELEMENT_STATES
-            )
-        ):
-            self.make_state_tangping(state)
         new_state = state.copy(stmt_id)
         index = self.frame.symbol_state_space.add(new_state)
         state_id = state.state_id
@@ -476,8 +494,9 @@ class StmtStates:
         target = self.frame.symbol_state_space[index]
         if isinstance(target, Symbol):
             return in_states.get(target.symbol_id, set())
-
-        return {index}
+        if isinstance(target, State):
+            return {index}
+        return set()
 
     def find_defined_symbol_index_in_status(self, status: StmtStatus, symbol_id: int):
         candidate_indexes = [status.defined_symbol, *status.implicitly_defined_symbols]
@@ -527,13 +546,13 @@ class StmtStates:
         return new_arg_state_index
 
     def adjust_indexes(self, callee_space: SymbolStateSpace, callee_summary: MethodSummaryTemplate, index_set: set[int]):
-        if self.analysis_phase_id != ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
-            return index_set.copy()
-
         result_indexes = set()
         for index in index_set:
             new_index = callee_summary.raw_to_new_index.get(index, index)
             if new_index == -1:
+                continue
+            if self.analysis_phase_id != ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
+                result_indexes.add(new_index)
                 continue
             if new_index not in callee_space.old_index_to_new_index:
                 continue
@@ -757,7 +776,10 @@ class StmtStates:
         defined_symbol.states = result
         return P2ResultFlag()
 
-    def compute_two_states(self, stmt, state1, state2, defined_symbol: Symbol):
+    def compute_two_states(
+        self, stmt, state1, state2, defined_symbol: Symbol,
+        result_state_cache=None
+    ):
         symbol_id = defined_symbol.symbol_id
         if util.is_empty(state1) or util.is_empty(state2):
             return set()
@@ -775,7 +797,9 @@ class StmtStates:
             return set()
 
         if not (
-            value1 and type_table.is_builtin_type(data_type1) and value2 and type_table.is_builtin_type(data_type2)):
+            value1 is not None and type_table.is_builtin_type(data_type1)
+            and value2 is not None and type_table.is_builtin_type(data_type2)
+        ):
             return set()
 
         value = None
@@ -811,14 +835,34 @@ class StmtStates:
             tmp_value1 = f'{tmp_value1}'
             tmp_value2 = f'{tmp_value2}'
 
-        try:
-            value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
-        except:
-            # value = ""
-            value = str(value1) + str(operator) + str(value2)
-            data_type = LIAN_INTERNAL.STRING
+        concrete_operator = _CONCRETE_BINARY_OPERATORS.get(operator)
+        if data_type1 == LIAN_INTERNAL.STRING or data_type2 == LIAN_INTERNAL.STRING:
+            concrete_operator = None
+        if concrete_operator is not None:
+            try:
+                concrete_value1 = _coerce_concrete_binary_value(value1, data_type1)
+                concrete_value2 = _coerce_concrete_binary_value(value2, data_type2)
+                value = concrete_operator(concrete_value1, concrete_value2)
+                data_type = LIAN_INTERNAL.INT
+            except (SyntaxError, TypeError, ValueError):
+                value = None
 
-        if value:
+        if value is None:
+            try:
+                value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
+            except Exception:
+                value = str(value1) + str(operator) + str(value2)
+                data_type = LIAN_INTERNAL.STRING
+
+        if value is not None:
+            cache_key = None
+            # Binary result states carry no operand-specific provenance, so a
+            # concrete boolean needs only one state per value at this definition.
+            if result_state_cache is not None and isinstance(value, bool):
+                cache_key = (value, data_type)
+                if cache_key in result_state_cache:
+                    return {result_state_cache[cache_key]}
+
             result_state_index = self.create_state_and_add_space(
                 status, stmt_id=stmt.stmt_id, source_symbol_id=symbol_id, value=value, data_type=data_type,
                 access_path=[AccessPoint(
@@ -827,6 +871,8 @@ class StmtStates:
                 )]
             )
             self.update_access_path_state_id(result_state_index)
+            if cache_key is not None:
+                result_state_cache[cache_key] = result_state_index
 
             return {result_state_index}
 
@@ -878,6 +924,7 @@ class StmtStates:
         operand2_index = status.used_symbols[1]
         operand2_states = self.read_used_states(operand2_index, in_states)
         new_states = set()
+        result_state_cache = {}
         for operand_state_index in operand_states:
             operand_state = self.frame.symbol_state_space[operand_state_index]
             if not isinstance(operand_state, State):
@@ -893,7 +940,8 @@ class StmtStates:
 
                 new_states.update(
                     self.compute_two_states(
-                        stmt, operand_state, operand2_state, defined_symbol
+                        stmt, operand_state, operand2_state, defined_symbol,
+                        result_state_cache
                     )
                 )
 
@@ -1056,31 +1104,7 @@ class StmtStates:
         return MethodCallArguments(positional_args, named_args)
 
     def prepare_parameters(self, callee_id):
-        result = MethodDeclParameters()
-        _, parameters_block = self.loader.get_method_header(callee_id)
-        if not parameters_block:
-            return result
-
-        counter = 0
-        for row in parameters_block:
-            if row.operation != "parameter_decl":
-                continue
-
-            param = Parameter(
-                method_id=callee_id, position=counter, name=row.name, symbol_id=row.stmt_id
-            )
-            is_attr = not util.isna(row.attrs)
-            result.all_parameters.add(param)
-            if is_attr and LIAN_INTERNAL.PACKED_NAMED_PARAMETER in row.attrs:
-                result.packed_named_parameter = param
-            elif is_attr and LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER in row.attrs:
-                result.packed_positional_parameter = param
-            else:
-                result.positional_parameters.append(param)
-
-            counter += 1
-
-        return result
+        return self.loader.get_method_decl_parameters(callee_id)
 
     def map_arguments(
         self, args: MethodCallArguments, parameters: MethodDeclParameters,
@@ -1256,97 +1280,70 @@ class StmtStates:
         def _set_attributes_on_states(states, fields_to_set, state_type, source_symbol_id, access_path):
             for state_index in states:
                 state: State = self.frame.symbol_state_space[state_index]
-                state.fields = fields_to_set
+                state.fields = {
+                    field_name: set(field_indexes)
+                    for field_name, field_indexes in fields_to_set.items()
+                }
                 state.state_type = state_type
                 state.source_symbol_id = source_symbol_id
-                state.access_path = access_path
+                state.access_path = copy.deepcopy(access_path)
             return states
 
-        def _merge_fields_for_states(summary_states_fields, arg_state_fields, access_path):
-            current_arg_state_fields = arg_state_fields.copy()
-
-            # 处理字段合并
-            for field_name in summary_states_fields:
-                if field_name not in current_arg_state_fields:
-                    current_arg_state_fields[field_name] = summary_states_fields[field_name]
-                # 如果已经存在，则 深入递归合并
-                else:
-                    # 生成更深一层的access_path
-                    new_access_path = self.copy_and_extend_access_path(
-                        original_access_path=access_path,
-                        access_point=AccessPoint(
-                            kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
-                            key=field_name
-                        )
-                    )
-                    current_arg_state_fields[field_name] = _recursively_collect_children_fields(
-                        stmt_id,
-                        stmt,
-                        status,
-                        summary_states_fields[field_name],
-                        current_arg_state_fields[field_name],
-                        source_symbol_id,
-                        new_access_path
-                    )
-
-            return current_arg_state_fields
-
-        def _recursively_collect_children_fields(
-            stmt_id, stmt, status: StmtStatus, state_set_in_summary_field: set,
-            state_set_in_arg_field: set, source_symbol_id, access_path
-        ):
-            cache_key = (
+        def _cache_key(state_set_in_summary_field, state_set_in_arg_field):
+            return (
                 stmt_id,
                 frozenset(state_set_in_summary_field),
                 frozenset(state_set_in_arg_field),
                 source_symbol_id,
             )
-            # 检查缓存
+
+        def _schedule_field_merge(
+            state_set_in_summary_field,
+            state_set_in_arg_field,
+            current_access_path,
+            stack,
+        ):
+            cache_key = _cache_key(
+                state_set_in_summary_field, state_set_in_arg_field
+            )
             if cache_key in cache:
                 cached_result = cache[cache_key]
                 if cached_result is None:
-                    # 循环依赖情况，避免无限递归
                     if state_set_in_arg_field:
-                        return state_set_in_arg_field.copy()
-                    else:
-                        return state_set_in_summary_field.copy()
-                return cached_result
+                        return True, state_set_in_arg_field.copy()
+                    return True, state_set_in_summary_field.copy()
+                return True, cached_result
 
             cache[cache_key] = None
-
-            # state_type默认为REGULAR，如果任意一个输入状态的 state_type 是 ANYTHING，则结果也标记为 ANYTHING。
             state_type = STATE_TYPE_KIND.REGULAR
-            # summary_states_fields / arg_state_fields：分别用来收集summary和arg两组状态的字段映射（字段名 → 值集合）。
             summary_states_fields = {}
             arg_state_fields = {}
+            has_summary_state = False
             tangping_flag = False
             tangping_elements = set()
             return_set = set()
 
-            # 填充summary_states_fields
             for each_state_index in state_set_in_summary_field:
                 each_state = self.frame.symbol_state_space[each_state_index]
                 if not (each_state and isinstance(each_state, State)):
                     continue
+                has_summary_state = True
                 if each_state.state_type == STATE_TYPE_KIND.ANYTHING:
                     state_type = STATE_TYPE_KIND.ANYTHING
                 if each_state.tangping_flag:
                     tangping_flag = True
                     tangping_elements.update(each_state.tangping_elements)
                     continue
-                # 将该State的fields中每个字段名和对应值集，合并到summary_states_fields，同名字段时将值集并集。
                 each_state_fields = each_state.fields.copy()
                 for field_name in each_state_fields:
                     util.add_to_dict_with_default_set(summary_states_fields, field_name, each_state_fields[field_name])
 
             state_id_to_states = {}
-            # 填充arg_state_fields
             for each_state_index in state_set_in_arg_field:
                 each_state = self.frame.symbol_state_space[each_state_index]
-                util.add_to_dict_with_default_set(state_id_to_states, each_state.state_id, each_state_index)
-
                 if not (each_state and isinstance(each_state, State)):
                     continue
+                util.add_to_dict_with_default_set(state_id_to_states, each_state.state_id, each_state_index)
                 if each_state.tangping_flag:
                     tangping_flag = True
                     tangping_elements.update(each_state.tangping_elements)
@@ -1355,9 +1352,7 @@ class StmtStates:
                 for field_name in each_state_fields:
                     util.add_to_dict_with_default_set(arg_state_fields, field_name, each_state_fields[field_name])
 
-            # 合并caller中同id的states
             states_with_diff_ids = set()
-            # 如果是第三阶段，把states加到states_with_diff_ids，不允许下面的for
             if self.analysis_phase_id == ANALYSIS_PHASE_ID.PRELIM_SEMANTICS:
                 for state_id, states in state_id_to_states.items():
                     if len(states) == 1:
@@ -1366,46 +1361,131 @@ class StmtStates:
                     else:
                         states_with_diff_ids.update(self.fuse_states_to_one_state(states, stmt_id, stmt, status))
             else:
+                if not has_summary_state:
+                    for states in state_id_to_states.values():
+                        return_set.update(states)
+                    cache[cache_key] = return_set
+                    return True, return_set
                 for state_id, states in state_id_to_states.items():
                     if len(states) == 1:
-                        states_with_diff_ids.update(states)
+                        old_state_index = next(iter(states))
+                        new_state_index = self.create_copy_of_state_and_add_space(
+                            status, stmt_id, old_state_index, stmt
+                        )
+                        if new_state_index != -1:
+                            states_with_diff_ids.add(new_state_index)
+                return_set.update(states_with_diff_ids)
+                # Publish the copied roots before descending so self-references
+                # and mutually recursive fields resolve to the new graph.
+                cache[cache_key] = return_set
             if tangping_flag:
                 for state_index in states_with_diff_ids:
                     state: State = self.frame.symbol_state_space[state_index]
                     state.tangping_flag = True
-                    state.tangping_elements = tangping_elements
+                    state.tangping_elements = tangping_elements.copy()
                 return_set.update(states_with_diff_ids)
 
-            # 只有单侧有字段时的处理
             if not arg_state_fields or not summary_states_fields:
                 if summary_states_fields:
                     _set_attributes_on_states(
-                        states_with_diff_ids, summary_states_fields, state_type, source_symbol_id, access_path
+                        states_with_diff_ids,
+                        summary_states_fields,
+                        state_type,
+                        source_symbol_id,
+                        current_access_path,
                     )
                     return_set.update(states_with_diff_ids)
                 elif arg_state_fields:
                     _set_attributes_on_states(
-                        states_with_diff_ids, arg_state_fields, state_type, source_symbol_id, access_path
+                        states_with_diff_ids,
+                        arg_state_fields,
+                        state_type,
+                        source_symbol_id,
+                        current_access_path,
                     )
                     return_set.update(states_with_diff_ids)
                 else:
                     if not return_set:
                         return_set.update(state_set_in_summary_field)
                 cache[cache_key] = return_set
-                return return_set
+                return True, return_set
 
-            # 两侧都有字段
-            merged_fields = _merge_fields_for_states(summary_states_fields, arg_state_fields, access_path)
-            _set_attributes_on_states(states_with_diff_ids, merged_fields, state_type, source_symbol_id, access_path)
-            return_set.update(states_with_diff_ids)
+            stack.append({
+                "cache_key": cache_key,
+                "summary_items": list(summary_states_fields.items()),
+                "arg_state_fields": arg_state_fields,
+                "merged_fields": arg_state_fields.copy(),
+                "next_field_index": 0,
+                "pending_field_name": None,
+                "pending_cache_key": None,
+                "states_with_diff_ids": states_with_diff_ids,
+                "state_type": state_type,
+                "return_set": return_set,
+                "access_path": current_access_path,
+            })
+            return False, cache_key
 
-            cache[cache_key] = return_set
-            return return_set
-
-        return _recursively_collect_children_fields(
-            stmt_id, stmt, status, state_set_in_summary_field, state_set_in_arg_field,
-            source_symbol_id, access_path
+        stack = []
+        is_ready, result_or_key = _schedule_field_merge(
+            state_set_in_summary_field,
+            state_set_in_arg_field,
+            access_path,
+            stack,
         )
+        if is_ready:
+            return result_or_key
+
+        root_cache_key = result_or_key
+        while stack:
+            frame = stack[-1]
+            if frame["pending_field_name"] is not None:
+                child_result = cache[frame["pending_cache_key"]]
+                frame["merged_fields"][frame["pending_field_name"]] = child_result
+                frame["pending_field_name"] = None
+                frame["pending_cache_key"] = None
+                continue
+
+            if frame["next_field_index"] == len(frame["summary_items"]):
+                _set_attributes_on_states(
+                    frame["states_with_diff_ids"],
+                    frame["merged_fields"],
+                    frame["state_type"],
+                    source_symbol_id,
+                    frame["access_path"],
+                )
+                frame["return_set"].update(frame["states_with_diff_ids"])
+                cache[frame["cache_key"]] = frame["return_set"]
+                stack.pop()
+                continue
+
+            field_name, summary_field_states = frame["summary_items"][
+                frame["next_field_index"]
+            ]
+            frame["next_field_index"] += 1
+            if field_name not in frame["arg_state_fields"]:
+                frame["merged_fields"][field_name] = summary_field_states
+                continue
+
+            new_access_path = self.copy_and_extend_access_path(
+                original_access_path=frame["access_path"],
+                access_point=AccessPoint(
+                    kind=ACCESS_POINT_KIND.FIELD_ELEMENT,
+                    key=field_name,
+                ),
+            )
+            is_ready, result_or_key = _schedule_field_merge(
+                summary_field_states,
+                frame["arg_state_fields"][field_name],
+                new_access_path,
+                stack,
+            )
+            if is_ready:
+                frame["merged_fields"][field_name] = result_or_key
+            else:
+                frame["pending_field_name"] = field_name
+                frame["pending_cache_key"] = result_or_key
+
+        return cache[root_cache_key]
 
     def apply_parameter_summary_to_args_states(
         self,
@@ -1621,6 +1701,134 @@ class StmtStates:
                                           new_this_states)
         status.implicitly_defined_symbols.append(index_to_add)
 
+    def state_graphs_are_semantically_equivalent(
+        self, first_state_indexes, second_state_indexes
+    ):
+        if first_state_indexes == second_state_indexes:
+            return True
+
+        state_space = self.frame.symbol_state_space
+        first_to_second = {}
+        second_to_first = {}
+        compared_pairs = set()
+
+        def get_state(index):
+            if index < 0 or index >= len(state_space):
+                return None
+            state = state_space[index]
+            return state if isinstance(state, State) else None
+
+        def pair_state_sets(first_indexes, second_indexes):
+            if len(first_indexes) != len(second_indexes):
+                return None
+
+            pairs = []
+            shared_indexes = first_indexes & second_indexes
+            for index in shared_indexes:
+                if get_state(index) is None:
+                    if index >= 0:
+                        return None
+                    continue
+                pairs.append((index, index))
+
+            first_by_state_id = {}
+            for index in first_indexes - shared_indexes:
+                state = get_state(index)
+                if state is None:
+                    return None
+                util.add_to_dict_with_default_set(
+                    first_by_state_id, state.state_id, index
+                )
+
+            second_by_state_id = {}
+            for index in second_indexes - shared_indexes:
+                state = get_state(index)
+                if state is None:
+                    return None
+                util.add_to_dict_with_default_set(
+                    second_by_state_id, state.state_id, index
+                )
+
+            if first_by_state_id.keys() != second_by_state_id.keys():
+                return None
+            for state_id, first_indexes_with_id in first_by_state_id.items():
+                second_indexes_with_id = second_by_state_id[state_id]
+                if len(first_indexes_with_id) != len(second_indexes_with_id):
+                    return None
+                # The complete traversal below proves that this tentative
+                # one-to-one pairing preserves every state and reference edge.
+                pairs.extend(
+                    zip(
+                        sorted(first_indexes_with_id),
+                        sorted(second_indexes_with_id),
+                    )
+                )
+            return pairs
+
+        pending_pairs = pair_state_sets(
+            set(first_state_indexes), set(second_state_indexes)
+        )
+        if pending_pairs is None:
+            return False
+
+        while pending_pairs:
+            first_index, second_index = pending_pairs.pop()
+            if (
+                first_index in first_to_second
+                and first_to_second[first_index] != second_index
+            ):
+                return False
+            if (
+                second_index in second_to_first
+                and second_to_first[second_index] != first_index
+            ):
+                return False
+            first_to_second[first_index] = second_index
+            second_to_first[second_index] = first_index
+
+            pair = (first_index, second_index)
+            if pair in compared_pairs:
+                continue
+            compared_pairs.add(pair)
+
+            first_state = get_state(first_index)
+            second_state = get_state(second_index)
+            # Definition sites and access paths are caller-specific provenance,
+            # not effects transferred by a callee parameter summary.
+            if (
+                first_state.state_id != second_state.state_id
+                or first_state.symbol_or_state != second_state.symbol_or_state
+                or first_state.state_type != second_state.state_type
+                or first_state.data_type != second_state.data_type
+                or first_state.data_type_ids != second_state.data_type_ids
+                or first_state.value != second_state.value
+                or first_state.tangping_flag != second_state.tangping_flag
+                or first_state.fields.keys() != second_state.fields.keys()
+                or len(first_state.array) != len(second_state.array)
+            ):
+                return False
+
+            referenced_state_sets = [
+                (
+                    first_state.fields[field_name],
+                    second_state.fields[field_name],
+                )
+                for field_name in first_state.fields
+            ]
+            referenced_state_sets.extend(zip(first_state.array, second_state.array))
+            referenced_state_sets.append(
+                (first_state.tangping_elements, second_state.tangping_elements)
+            )
+            for first_references, second_references in referenced_state_sets:
+                pairs = pair_state_sets(
+                    set(first_references), set(second_references)
+                )
+                if pairs is None:
+                    return False
+                pending_pairs.extend(pairs)
+
+        return True
+
     def apply_parameter_semantic_summary(
         self,
         stmt_id,
@@ -1635,6 +1843,25 @@ class StmtStates:
         old_to_latest_old_arg_state = {}
         deferred_index_updates = set()
         self.resolver.reset_ras_result_cache()
+
+        parameter_arg_indexes = {}
+        parameters_ineligible_for_identity_check = set()
+        equivalent_parameter_graphs = {}
+        for mapping in parameter_mapping_list:
+            parameter_symbol_id = mapping.parameter_symbol_id
+            if (
+                mapping.is_default_value
+                or mapping.arg_source_symbol_id == -1
+                or mapping.arg_index_in_space < 0
+                or mapping.parameter_type != LIAN_INTERNAL.PARAMETER_DECL
+            ):
+                parameters_ineligible_for_identity_check.add(parameter_symbol_id)
+                continue
+            util.add_to_dict_with_default_set(
+                parameter_arg_indexes,
+                parameter_symbol_id,
+                mapping.arg_index_in_space,
+            )
 
         for each_mapping in parameter_mapping_list:
             if each_mapping.is_default_value:
@@ -1656,6 +1883,26 @@ class StmtStates:
             last_state_indexes = self.extract_callee_param_last_states(
                 each_mapping, callee_summary, callee_space
             )
+            parameter_symbol_id = each_mapping.parameter_symbol_id
+            if (
+                parameter_symbol_id not in parameters_ineligible_for_identity_check
+                and parameter_symbol_id not in equivalent_parameter_graphs
+            ):
+                argument_indexes = parameter_arg_indexes.get(
+                    parameter_symbol_id, set()
+                )
+                equivalent_parameter_graphs[parameter_symbol_id] = (
+                    last_state_indexes == argument_indexes
+                    or (
+                        self.analysis_phase_id
+                        == ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
+                        and self.state_graphs_are_semantically_equivalent(
+                            last_state_indexes, argument_indexes
+                        )
+                    )
+                )
+            if equivalent_parameter_graphs.get(parameter_symbol_id, False):
+                continue
             self.apply_parameter_summary_to_args_states(
                 stmt_id,
                 stmt,
@@ -2679,12 +2926,9 @@ class StmtStates:
         return self.field_write_stmt_state(stmt_id, stmt, status, in_states)
 
     def is_state_array_empty(self, state: State):
-        if not state.array:
-            return True
-        for element in state.array:
-            if element:
-                return False
-        return True
+        if state.state_type == STATE_TYPE_KIND.REGULAR:
+            return False
+        return not any(state.array)
 
     def array_read_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         defined_symbol_index = status.defined_symbol
@@ -2845,15 +3089,17 @@ class StmtStates:
                         if each_index_value < 0:
                             each_index_value = array_length + each_index_value
 
-                        # Bound sparse/huge indices (e.g. cid_concepts[12325] = ...)
-                        # to avoid O(index) array extension blowups.
-                        if (
-                            each_index_value >= config.MAX_INDEX
-                            or each_index_value < 0
-                            or len(tmp_array) >= config.MAX_ARRAY_ELEMENT_STATES
-                        ):
+                        if each_index_value < 0:
                             tangping_flag = True
                             break
+
+                        # Only copy a slot that this write changes.  A shallow
+                        # list copy otherwise shares its sets with historical
+                        # states and mutates them in place.
+                        if each_index_value < len(tmp_array):
+                            old_slot = tmp_array[each_index_value]
+                            if old_slot is not None:
+                                tmp_array[each_index_value] = set(old_slot)
 
                         # 数组下标越界，将数组扩展
                         if not util.add_to_list_with_default_set(tmp_array, each_index_value, source_states):
@@ -3562,35 +3808,13 @@ class StmtStates:
 
     def field_write_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
 
-        def tangping(from_state_index=None):
-            if from_state_index is None:
-                from_state_index = receiver_state_index
-            from_state = self.frame.symbol_state_space[from_state_index]
-            # Already collapsed: mutate in place and reuse to avoid O(n) state copies
-            # on huge dict/record literals (e.g. pydicom dictionaries).
-            if isinstance(from_state, State) and from_state.tangping_flag:
-                from_state.fields = {}
-                from_state.array = []
-                from_state.tangping_elements.update(source_states)
-                if len(from_state.tangping_elements) > config.MAX_ARRAY_ELEMENT_STATES:
-                    from_state.tangping_elements = set(
-                        list(from_state.tangping_elements)[:config.MAX_ARRAY_ELEMENT_STATES]
-                    )
-                defined_symbol_states.add(from_state_index)
-                return from_state
-
-            new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, from_state_index, stmt)
+        def tangping():
+            new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index, stmt)
             new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
             self.make_state_tangping(new_receiver_state)
-            new_receiver_state.fields = {}
-            new_receiver_state.array = []
             new_receiver_state.tangping_elements.update(source_states)
-            if len(new_receiver_state.tangping_elements) > config.MAX_ARRAY_ELEMENT_STATES:
-                new_receiver_state.tangping_elements = set(
-                    list(new_receiver_state.tangping_elements)[:config.MAX_ARRAY_ELEMENT_STATES]
-                )
-            status.defined_states.discard(from_state_index)
-            defined_symbol_states.discard(from_state_index)
+            status.defined_states.discard(receiver_state_index)
+            defined_symbol_states.discard(receiver_state_index)
             defined_symbol_states.add(new_receiver_state_index)
             return new_receiver_state
 
@@ -3641,17 +3865,7 @@ class StmtStates:
                     tangping()
                     continue
 
-                # Bound field/record growth to avoid O(n^2) blowup on huge dict literals
-                # (e.g. pydicom private/public DICOM dictionaries).
-                existing_fields = receiver_state.fields
                 field_key = each_field_state.value
-                if (
-                    len(existing_fields) >= config.MAX_RECORD_FIELDS
-                    and field_key not in existing_fields
-                ):
-                    tangping()
-                    continue
-
                 new_receiver_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, receiver_state_index, stmt)
                 new_receiver_state: State = self.frame.symbol_state_space[new_receiver_state_index]
 
@@ -3668,12 +3882,6 @@ class StmtStates:
                     )
 
                 new_receiver_state.fields[field_key] = source_states
-                if len(new_receiver_state.fields) >= config.MAX_RECORD_FIELDS:
-                    self.make_state_tangping(new_receiver_state)
-                    if len(new_receiver_state.tangping_elements) > config.MAX_ARRAY_ELEMENT_STATES:
-                        new_receiver_state.tangping_elements = set(
-                            list(new_receiver_state.tangping_elements)[:config.MAX_ARRAY_ELEMENT_STATES]
-                        )
                 defined_symbol_states.add(new_receiver_state_index)
 
         defined_symbol.states = defined_symbol_states

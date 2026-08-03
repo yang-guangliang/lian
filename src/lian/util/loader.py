@@ -25,6 +25,7 @@ from lian.config.constants import (
     IMPORT_GRAPH_EDGE_KIND,
     SYMBOL_OR_STATE,
     LIAN_SYMBOL_KIND,
+    LIAN_INTERNAL,
     GIR_COLUMNS_TO_BE_ADDED,
     ANALYSIS_PHASE_ID,
 )
@@ -47,6 +48,8 @@ from lian.common_structs import (
     MethodInternalCallee,
     SimplyGroupedMethodTypes,
     ParameterMapping,
+    Parameter,
+    MethodDeclParameters,
     AccessPoint,
     MethodSummaryInstance,
     MethodInClass,
@@ -1189,6 +1192,55 @@ class SymbolStateSpaceLoader(MethodLevelAnalysisResultLoader):
 
 # TODO: convert to memory
 class CalleeParameterMapping(MethodLevelAnalysisResultLoader):
+    def __init__(self, options, item_schema, bundle_path_summary, item_cache_capacity, bundle_cache_capacity):
+        super().__init__(options, item_schema, bundle_path_summary, item_cache_capacity, bundle_cache_capacity)
+        self.decoded_item_cache = util.LRUCache(item_cache_capacity)
+
+    @staticmethod
+    def copy_parameter_mapping(parameter_mapping):
+        def copy_access_point(access_point):
+            if access_point is None:
+                return None
+            return AccessPoint(
+                kind=access_point.kind,
+                key=access_point.key,
+                state_id=access_point.state_id,
+            )
+
+        return ParameterMapping(
+            arg_index_in_space=parameter_mapping.arg_index_in_space,
+            arg_state_id=parameter_mapping.arg_state_id,
+            arg_source_symbol_id=parameter_mapping.arg_source_symbol_id,
+            arg_access_path=[copy_access_point(point) for point in parameter_mapping.arg_access_path],
+            parameter_symbol_id=parameter_mapping.parameter_symbol_id,
+            parameter_type=parameter_mapping.parameter_type,
+            parameter_access_path=copy_access_point(parameter_mapping.parameter_access_path),
+            is_default_value=parameter_mapping.is_default_value,
+        )
+
+    def get_item_by_id(self, _id):
+        item_df = self.get_raw_item_by_id(_id)
+        if item_df is None:
+            return None
+        if not isinstance(item_df, DataModel):
+            if util.is_empty(item_df):
+                item_df = DataModel([])
+            else:
+                return item_df
+
+        cached_item = self.decoded_item_cache.get(_id)
+        if cached_item is not None and cached_item[0] is item_df:
+            decoded_item = cached_item[1]
+        else:
+            decoded_item = tuple(self.unflatten_item_dataframe_when_loading(_id, item_df))
+            self.decoded_item_cache.put(_id, (item_df, decoded_item))
+
+        return [self.copy_parameter_mapping(item) for item in decoded_item]
+
+    def remove_unit_id(self, _id):
+        self.decoded_item_cache.remove(_id)
+        return super().remove_unit_id(_id)
+
     def unflatten_item_dataframe_when_loading(self, _id, flattened_item):
         parameter_mapping_list = []
         for row in flattened_item:
@@ -2050,6 +2102,9 @@ class Loader:
         self._struct_field_access_cache = None
 
         self.stmt_gir_cache = util.LRUCache(capacity = config.MAX_STMT_CACHE_CAPACITY)
+        self._symbol_state_space_p1_decoded_cache = util.LRUCache(
+            capacity=config.MEDIUM_CACHE_CAPACITY
+        )
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
             options,
@@ -2477,6 +2532,9 @@ class Loader:
         )
 
         self.method_header_cache = util.LRUCache(config.METHOD_HEADER_CACHE_CAPABILITY)
+        self._method_decl_parameters_cache = util.LRUCache(
+            config.METHOD_HEADER_CACHE_CAPABILITY
+        )
         self.method_body_cache = util.LRUCache(config.METHOD_BODY_CACHE_CAPABILITY)
         self.stmt_scope_cache = util.LRUCache(config.STMT_SCOPE_CACHE_CAPABILITY)
 
@@ -2508,6 +2566,43 @@ class Loader:
         result = (method_decl_stmt, method_parameters)
         self.method_header_cache.put(method_id, result)
         return result
+
+    def get_method_decl_parameters(self, method_id):
+        _, parameters_block = self.get_method_header(method_id)
+        if not parameters_block:
+            return MethodDeclParameters()
+
+        cached_item = self._method_decl_parameters_cache.get(method_id)
+        if cached_item is not None and cached_item[0] is parameters_block:
+            return cached_item[1].copy()
+
+        result = MethodDeclParameters()
+        counter = 0
+        for row in parameters_block:
+            if row.operation != "parameter_decl":
+                continue
+
+            parameter = Parameter(
+                method_id=method_id,
+                position=counter,
+                name=row.name,
+                symbol_id=row.stmt_id,
+            )
+            is_attr = not util.isna(row.attrs)
+            result.all_parameters.add(parameter)
+            if is_attr and LIAN_INTERNAL.PACKED_NAMED_PARAMETER in row.attrs:
+                result.packed_named_parameter = parameter
+            elif is_attr and LIAN_INTERNAL.PACKED_POSITIONAL_PARAMETER in row.attrs:
+                result.packed_positional_parameter = parameter
+            else:
+                result.positional_parameters.append(parameter)
+
+            counter += 1
+
+        self._method_decl_parameters_cache.put(
+            method_id, (parameters_block, result)
+        )
+        return result.copy()
 
     def _load_method_body_by_header(self, method_id, method_decl_stmt):
         if util.is_empty(method_decl_stmt):
@@ -2961,6 +3056,26 @@ class Loader:
         return self._symbol_state_space_p1_loader.save(method_id, state_space)
     def get_symbol_state_space_p1(self, method_id):
         return self._symbol_state_space_p1_loader.get_item_by_id(method_id)
+    def get_symbol_state_space_p1_copy(self, method_id):
+        item_df = self._symbol_state_space_p1_loader.get_raw_item_by_id(method_id)
+        if item_df is None:
+            return None
+        if not isinstance(item_df, DataModel):
+            if util.is_empty(item_df):
+                item_df = DataModel([])
+            else:
+                return item_df.copy()
+
+        cached_item = self._symbol_state_space_p1_decoded_cache.get(method_id)
+        if cached_item is None or cached_item[0] is not item_df:
+            decoded_item = (
+                self._symbol_state_space_p1_loader
+                .unflatten_item_dataframe_when_loading(method_id, item_df)
+            )
+            cached_item = (item_df, decoded_item)
+            self._symbol_state_space_p1_decoded_cache.put(method_id, cached_item)
+
+        return cached_item[1].copy()
     def contain_symbol_state_space_p1(self, method_id):
         return self._symbol_state_space_p1_loader.contain(method_id)
 

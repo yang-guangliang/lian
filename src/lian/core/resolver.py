@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pprint
+from itertools import chain
 from lian.config import config
 from lian.common_structs import (
     AccessPoint,
@@ -490,52 +491,334 @@ class Resolver:
 
     #     return new_space
 
+    def _index_available_state_definitions(self, frame, available_defined_states):
+        state_id_to_indexes = {}
+        for state_def in available_defined_states:
+            if not isinstance(state_def, StateDefNode):
+                continue
+            if state_def not in frame.defined_states.get(state_def.state_id, set()):
+                continue
+            if state_def.index != -1:
+                util.add_to_dict_with_default_set(
+                    state_id_to_indexes, state_def.state_id, state_def.index
+                )
+        return state_id_to_indexes
+
+    def _reachable_states_need_resolution(
+        self,
+        symbol_state_space,
+        state_indexes,
+        available_state_indexes,
+        state_index_old_to_new,
+        unchanged_state_indexes,
+        required_state_indexes,
+    ):
+        pending = list(state_indexes)
+        visited = set()
+        parents = {}
+        required_seeds = set()
+        while pending:
+            state_index = pending.pop()
+            if state_index in required_state_indexes:
+                required_seeds.add(state_index)
+                continue
+            if state_index in visited:
+                continue
+            replacement = state_index_old_to_new.get(state_index)
+            if replacement is not None and replacement != {state_index}:
+                required_seeds.add(state_index)
+                continue
+            if state_index in unchanged_state_indexes:
+                continue
+            visited.add(state_index)
+            state = symbol_state_space[state_index]
+            if not isinstance(state, State):
+                continue
+            newest_indexes = available_state_indexes.get(state.state_id)
+            if newest_indexes is not None and newest_indexes != {state_index}:
+                required_seeds.add(state_index)
+                continue
+            for child_indexes in chain(
+                state.fields.values(),
+                state.array,
+                (state.tangping_elements,),
+            ):
+                for child_index in child_indexes:
+                    existing_parent = parents.get(child_index)
+                    if existing_parent is None:
+                        parents[child_index] = state_index
+                    elif isinstance(existing_parent, list):
+                        existing_parent.append(state_index)
+                    elif existing_parent != state_index:
+                        parents[child_index] = [
+                            existing_parent, state_index
+                        ]
+                    if child_index in required_state_indexes:
+                        required_seeds.add(child_index)
+                    elif (
+                        child_index not in unchanged_state_indexes
+                        and child_index not in visited
+                    ):
+                        pending.append(child_index)
+
+        if required_seeds:
+            required_in_traversal = set(required_seeds)
+            pending = list(required_seeds)
+            while pending:
+                state_index = pending.pop()
+                parent_indexes = parents.get(state_index)
+                if parent_indexes is None:
+                    continue
+                if not isinstance(parent_indexes, list):
+                    parent_indexes = (parent_indexes,)
+                for parent_index in parent_indexes:
+                    if parent_index in required_in_traversal:
+                        continue
+                    required_in_traversal.add(parent_index)
+                    pending.append(parent_index)
+            required_state_indexes.update(required_in_traversal)
+            unchanged_state_indexes.update(visited - required_in_traversal)
+        else:
+            unchanged_state_indexes.update(visited)
+        return any(
+            state_index in required_state_indexes
+            for state_index in state_indexes
+        )
+
     def retrieve_latest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
-        return_indexes = set()
-        for state_index in state_indexes:
-            if state_index in state_index_old_to_new: # 一个下标只处理一次
-                return_indexes.update(state_index_old_to_new[state_index])
+        available_state_indexes = self._index_available_state_definitions(
+            frame, available_defined_states
+        )
+        unchanged_state_indexes = set()
+        required_state_indexes = set()
+        result_box = {}
+        # Resolve copied parents after their children without using Python recursion.
+        worklist = [("resolve", state_indexes, result_box)]
+
+        while worklist:
+            task = worklist.pop()
+            task_kind = task[0]
+
+            if task_kind == "resolve":
+                _, current_indexes, current_result = task
+                return_indexes = set()
+                indexes_to_resolve = set()
+                for state_index in current_indexes:
+                    if state_index in state_index_old_to_new:
+                        return_indexes.update(state_index_old_to_new[state_index])
+                        continue
+                    if not isinstance(symbol_state_space[state_index], State):
+                        continue
+                    if self._reachable_states_need_resolution(
+                        symbol_state_space,
+                        {state_index},
+                        available_state_indexes,
+                        state_index_old_to_new,
+                        unchanged_state_indexes,
+                        required_state_indexes,
+                    ):
+                        indexes_to_resolve.add(state_index)
+                    else:
+                        state_index_old_to_new[state_index] = {state_index}
+                        return_indexes.add(state_index)
+
+                if not indexes_to_resolve:
+                    current_result["indexes"] = return_indexes
+                    continue
+                resolution_context = {
+                    "indexes": list(indexes_to_resolve),
+                    "next_index": 0,
+                    "return_indexes": return_indexes,
+                    "result_box": current_result,
+                }
+                worklist.append(("resolve_next_input", resolution_context))
                 continue
 
-            # 找到当前state的最新别名
-            newest_state_index_set =  self.collect_newest_states_by_state_indexes(frame, stmt_id, {state_index}, available_defined_states)
-            for newest_state_index in newest_state_index_set:
-                if newest_state_index in state_index_old_to_new:
-                    state_index_old_to_new[state_index] = state_index_old_to_new[newest_state_index]
-                    return_indexes.update(state_index_old_to_new[newest_state_index])
+            if task_kind == "resolve_next_input":
+                _, resolution_context = task
+                if resolution_context["next_index"] >= len(
+                    resolution_context["indexes"]
+                ):
+                    resolution_context["result_box"]["indexes"] = (
+                        resolution_context["return_indexes"]
+                    )
                     continue
 
-                newest_state: State = symbol_state_space[newest_state_index]
-                if not (newest_state and isinstance(newest_state, State)):
+                state_index = resolution_context["indexes"][
+                    resolution_context["next_index"]
+                ]
+                resolution_context["next_index"] += 1
+                if state_index in state_index_old_to_new:
+                    resolution_context["return_indexes"].update(
+                        state_index_old_to_new[state_index]
+                    )
+                    worklist.append(("resolve_next_input", resolution_context))
                     continue
 
-                # 其是否有小弟
-                if newest_state.fields or newest_state.array or newest_state.tangping_elements:
-                    created_state = newest_state.copy(stmt_id)  # 只有该state有小弟时，才需要创建一个新的state并修改。
+                state_id = symbol_state_space.convert_state_index_to_state_id(
+                    state_index
+                )
+                newest_state_indexes = available_state_indexes.get(
+                    state_id, {state_index}
+                )
+                state_context = {
+                    "state_index": state_index,
+                    "newest_indexes": list(newest_state_indexes),
+                    "next_newest_index": 0,
+                    "resolution_context": resolution_context,
+                }
+                worklist.append(("resolve_next_newest", state_context))
+                continue
+
+            if task_kind == "resolve_next_newest":
+                _, state_context = task
+                while state_context["next_newest_index"] < len(
+                    state_context["newest_indexes"]
+                ):
+                    newest_state_index = state_context["newest_indexes"][
+                        state_context["next_newest_index"]
+                    ]
+                    state_context["next_newest_index"] += 1
+                    state_index = state_context["state_index"]
+                    resolution_context = state_context["resolution_context"]
+
+                    if newest_state_index in state_index_old_to_new:
+                        state_index_old_to_new[state_index] = (
+                            state_index_old_to_new[newest_state_index]
+                        )
+                        resolution_context["return_indexes"].update(
+                            state_index_old_to_new[newest_state_index]
+                        )
+                        continue
+
+                    newest_state: State = symbol_state_space[newest_state_index]
+                    if not (newest_state and isinstance(newest_state, State)):
+                        continue
+
+                    if not (
+                        newest_state.fields
+                        or newest_state.array
+                        or newest_state.tangping_elements
+                    ):
+                        util.add_to_dict_with_default_set(
+                            state_index_old_to_new,
+                            state_index,
+                            newest_state_index,
+                        )
+                        util.add_to_dict_with_default_set(
+                            state_index_old_to_new,
+                            newest_state_index,
+                            newest_state_index,
+                        )
+                        resolution_context["return_indexes"].add(
+                            newest_state_index
+                        )
+                        continue
+
+                    children = [
+                        ("field", field_name, field_indexes)
+                        for field_name, field_indexes in newest_state.fields.items()
+                    ]
+                    children.extend(
+                        ("array", None, array_indexes)
+                        for array_indexes in newest_state.array
+                    )
+                    children.append(
+                        ("tangping", None, newest_state.tangping_elements)
+                    )
+                    if not any(
+                        child_indexes
+                        and self._reachable_states_need_resolution(
+                            symbol_state_space,
+                            child_indexes,
+                            available_state_indexes,
+                            state_index_old_to_new,
+                            unchanged_state_indexes,
+                            required_state_indexes,
+                        )
+                        for _, _, child_indexes in children
+                    ):
+                        util.add_to_dict_with_default_set(
+                            state_index_old_to_new,
+                            state_index,
+                            newest_state_index,
+                        )
+                        util.add_to_dict_with_default_set(
+                            state_index_old_to_new,
+                            newest_state_index,
+                            newest_state_index,
+                        )
+                        resolution_context["return_indexes"].add(
+                            newest_state_index
+                        )
+                        continue
+
+                    created_state = newest_state.copy(stmt_id)
                     return_index = symbol_state_space.add(created_state)
-                    util.add_to_dict_with_default_set(state_index_old_to_new, state_index, return_index)
-                    util.add_to_dict_with_default_set(state_index_old_to_new, newest_state_index, return_index)
-                    return_indexes.add(return_index)
+                    util.add_to_dict_with_default_set(
+                        state_index_old_to_new, state_index, return_index
+                    )
+                    util.add_to_dict_with_default_set(
+                        state_index_old_to_new, newest_state_index, return_index
+                    )
+                    resolution_context["return_indexes"].add(return_index)
 
-                    # 递归处理小弟
-                    for field_name, field_indexes in created_state.fields.items():
-                        new_indexes = self.retrieve_latest_states(frame, stmt_id, symbol_state_space, field_indexes, available_defined_states, state_index_old_to_new)
-                        created_state.fields[field_name] = new_indexes
-
-                    new_array = []
-                    for array_indexes in created_state.array:
-                        latest_array_indexes = self.retrieve_latest_states(frame, stmt_id, symbol_state_space, array_indexes, available_defined_states, state_index_old_to_new)
-                        new_array.append(latest_array_indexes)
-                        created_state.array = new_array
-
-                    created_state.tangping_elements = self.retrieve_latest_states(frame, stmt_id, symbol_state_space, created_state.tangping_elements, available_defined_states, state_index_old_to_new)
-
+                    child_context = {
+                        "created_state": created_state,
+                        "children": children,
+                        "next_child": 0,
+                        "new_array": [],
+                        "state_context": state_context,
+                    }
+                    worklist.append(("resolve_child", child_context))
+                    break
                 else:
-                    util.add_to_dict_with_default_set(state_index_old_to_new, state_index, newest_state_index)
-                    util.add_to_dict_with_default_set(state_index_old_to_new, newest_state_index, newest_state_index)
-                    return_indexes.add(newest_state_index)
+                    worklist.append((
+                        "resolve_next_input",
+                        state_context["resolution_context"],
+                    ))
+                continue
 
-        return return_indexes
+            if task_kind == "resolve_child":
+                _, child_context = task
+                if child_context["next_child"] >= len(
+                    child_context["children"]
+                ):
+                    worklist.append((
+                        "resolve_next_newest",
+                        child_context["state_context"],
+                    ))
+                    continue
+
+                child = child_context["children"][child_context["next_child"]]
+                child_context["next_child"] += 1
+                child_result = {}
+                worklist.append((
+                    "apply_child",
+                    child_context,
+                    child,
+                    child_result,
+                ))
+                worklist.append(("resolve", child[2], child_result))
+                continue
+
+            if task_kind != "apply_child":
+                raise ValueError(f"unknown state resolution task: {task_kind}")
+
+            _, child_context, child, child_result = task
+            child_kind, child_name, _ = child
+            resolved_indexes = child_result["indexes"]
+            created_state = child_context["created_state"]
+            if child_kind == "field":
+                created_state.fields[child_name] = resolved_indexes
+            elif child_kind == "array":
+                child_context["new_array"].append(resolved_indexes)
+                created_state.array = child_context["new_array"]
+            else:
+                created_state.tangping_elements = resolved_indexes
+            worklist.append(("resolve_child", child_context))
+
+        return result_box["indexes"]
 
     def get_state_from_path(self, current_space, arg_access_path: list[AccessPoint], source_state_indexes):
         if not arg_access_path:
@@ -806,6 +1089,8 @@ class Resolver:
 
         for field_name, field_indexes in state.fields.items():
             for field_index in field_indexes:
+                if field_index < 0:
+                    continue
                 field_state = caller_frame.symbol_state_space[field_index]
                 if field_state.state_type != STATE_TYPE_KIND.ANYTHING: # field_state.g=1
                     continue

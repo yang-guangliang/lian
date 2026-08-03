@@ -131,12 +131,15 @@ class P2PrelimSemanticAnalysis:
         frame.all_state_defs = all_state_defs
         frame.state_bit_vector_manager.init(all_state_defs)
 
-    def init_compute_frame(self, frame: ComputeFrame, frame_stack):
+    def init_compute_frame(
+        self, frame: ComputeFrame, frame_stack, copy_p1_state_space=False
+    ):
         frame.has_been_inited = True
         frame.frame_stack = frame_stack
         method_id = frame.method_id
 
-        frame.cfg = self.loader.get_method_cfg(method_id)
+        if getattr(frame, "cfg", None) is None:
+            frame.cfg = self.loader.get_method_cfg(method_id)
         if util.is_empty(frame.cfg):
             return None
 
@@ -144,15 +147,6 @@ class P2PrelimSemanticAnalysis:
         parameter_decl_block = GIRBlockViewer(parameter_decls)
         method_body_block = GIRBlockViewer(method_body)
         frame.unit_gir.append_other(parameter_decl_block).append_other(method_body_block)
-
-        stmt_count = len(frame.unit_gir.get_all_stmt_ids())
-        if stmt_count > config.MAX_METHOD_STMTS:
-            if not self.options.quiet:
-                print(
-                    f"Skipping oversized method <method {method_id} name: {frame.method_name}> "
-                    f"stmts={stmt_count}"
-                )
-            return None
 
         for stmt_id in frame.unit_gir.get_all_stmt_ids():
             frame.stmt_counters[stmt_id] = config.FIRST_ROUND
@@ -175,7 +169,14 @@ class P2PrelimSemanticAnalysis:
 
         # avoid changing the content of the loader
         frame.stmt_id_to_status = self.loader.get_stmt_status_p1(method_id)
-        frame.symbol_state_space = self.loader.get_symbol_state_space_p1(method_id)
+        if copy_p1_state_space:
+            frame.symbol_state_space = self.loader.get_symbol_state_space_p1_copy(
+                method_id
+            )
+        else:
+            frame.symbol_state_space = self.loader.get_symbol_state_space_p1(
+                method_id
+            )
         if util.is_empty(frame.symbol_state_space):
             return None
 
@@ -558,6 +559,7 @@ class P2PrelimSemanticAnalysis:
 
     def group_in_states(self, stmt_id, stmt, in_symbol_indexes, frame: ComputeFrame, status):
         stmt_sfg_node = None
+        stmt_in_symbol_indexes = None
 
         # all_in_states are all states of used symbols
         # all_in_states -> align -> status.used_symbols
@@ -622,14 +624,15 @@ class P2PrelimSemanticAnalysis:
                             context=frame.get_context(),
                             stmt=stmt
                         )
-                    stmt_in_nodes = util.graph_predecessors(frame.state_flow_graph.graph, stmt_sfg_node)
-                    contain_used_symbol_flag = False
-                    for each_node in stmt_in_nodes:
-                        if each_node.node_type == SFG_NODE_KIND.SYMBOL:
-                            if each_node.index == each_in_symbol_index:
-                                contain_used_symbol_flag = True
-                                break
-                    if not contain_used_symbol_flag:
+                    if stmt_in_symbol_indexes is None:
+                        stmt_in_symbol_indexes = {
+                            each_node.index
+                            for each_node in util.graph_predecessors(
+                                frame.state_flow_graph.graph, stmt_sfg_node
+                            )
+                            if each_node.node_type == SFG_NODE_KIND.SYMBOL
+                        }
+                    if each_in_symbol_index not in stmt_in_symbol_indexes:
                         for tmp_pos, tmp_used_symbol_index in enumerate(status.used_symbols + status.implicitly_used_symbols):
                             tmp_used_symbol = frame.symbol_state_space[tmp_used_symbol_index]
                             if not isinstance(tmp_used_symbol, Symbol):
@@ -644,6 +647,7 @@ class P2PrelimSemanticAnalysis:
                                         pos=tmp_pos,
                                     )
                                 )
+                                stmt_in_symbol_indexes.add(each_in_symbol_index)
 
         for symbol_id, each_symbol_in_states in symbol_id_to_state_index.items():
             # 对每个symbol的in_states按state_id合并一次，并将fusion_state添加到status.defined_states中
@@ -1108,7 +1112,7 @@ class P2PrelimSemanticAnalysis:
             # 补充defined_external_symbol_ids的情况，因为defined_external_symbol_ids在frame里没有symbol_def_node
             for symbol_id in def_use_summary.defined_external_symbol_ids:
                 state_index = frame.external_symbol_id_to_initial_state_index.get(symbol_id, None)
-                if state_index:
+                if state_index is not None and state_index >= 0:
                     latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, {state_index}, available_defined_states, state_index_old_to_new)
                     state_id_to_indexes = self.group_states_with_state_ids(frame, latest_states)
                     fusion_states = set()
