@@ -17,6 +17,12 @@ MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS                       = 1
 MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS                       = 2
 MAX_ANALYSIS_ROUND_FOR_CALL_SITE                             = 1
 
+# 精度取舍: 上下文预算。超限的调用点不再展开, 改用已有摘要近似。
+# MAX_METHOD_CONTEXT: 每个方法最多被展开分析的上下文数。
+# MAX_TOTAL_CONTEXT: 每个入口允许展开的上下文总数。
+MAX_METHOD_CONTEXT                                          = 5
+MAX_TOTAL_CONTEXT                                           = 12000
+
 FIRST_ROUND                                                  = 0
 SECOND_ROUND                                                 = 1
 
@@ -49,7 +55,8 @@ DEFAULT_SETTINGS_PATH                                        = os.path.join(ROOT
 BUNDLE_CACHE_CAPACITY                                        = 2
 LRU_CACHE_CAPACITY                                           = 20
 MIN_CACHE_CAPACITY                                           = 1
-MEDIUM_CACHE_CAPACITY                                        = 4
+MEDIUM_CACHE_CAPACITY                                        = 8
+P1_SYMBOL_STATE_SPACE_DECODED_CACHE_CAPACITY                 = 32
 
 IMPLICIT_ROOT_SCOPES_CACHE_CAPACITY                          = 10
 IMPORT_GRAPH_NODE_CACHE_CAPACITY                             = 10
@@ -172,4 +179,3 @@ METHOD_SUMMARY_TEMPLATE_PATH                                 = "method_summary_t
 METHOD_SUMMARY_INSTANCE_PATH                                 = "method_summary_instance"
 
 TAINT_FILE_NAME                                              = "taint_path.yaml"
-

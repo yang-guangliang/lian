@@ -19,6 +19,7 @@ class EntryPointRule:
     unit_name: str = ""
     method_id: int = -1
     method_list: list[str] = dataclasses.field(default_factory=list)
+    exclude_paths: list[str] = dataclasses.field(default_factory=list)
     attrs: list[str] = dataclasses.field(default_factory=list)
     args: str = ""
     return_type: str = ""
@@ -31,6 +32,7 @@ class EntryPointRule:
         self.is_unit_name_available = util.is_available(self.unit_name)
         self.is_unit_path_available = util.is_available(self.unit_path)
         self.is_method_list_available = util.is_available(self.method_list)
+        self.is_exclude_paths_available = util.is_available(self.exclude_paths)
         self.is_attrs_available = util.is_available(self.attrs)
         self.is_args_available = util.is_available(self.args)
         self.is_return_type_available = util.is_available(self.return_type)
@@ -95,6 +97,12 @@ class EntryPointGenerator:
 
             # 按 unit_path 过滤（子串包含）
             if rule.is_unit_path_available and rule.unit_path not in unit_info.unit_path:
+                continue
+
+            # 按 exclude_paths 排除（子串包含任一即跳过该 unit）
+            if rule.is_exclude_paths_available and any(
+                ex in unit_info.unit_path for ex in rule.exclude_paths
+            ):
                 continue
 
             # 通过 unit 级别过滤，加入候选

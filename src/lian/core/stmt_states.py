@@ -525,17 +525,45 @@ class StmtStates:
         self.used_symbol_id_to_indexes = {}
         return result
 
-    def copy_on_write_arg_state(self, stmt_id, stmt, status: StmtStatus, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state):
+    def copy_on_write_arg_state(
+        self,
+        stmt_id,
+        stmt,
+        status: StmtStatus,
+        old_arg_state_index,
+        old_to_new_arg_state,
+        old_to_latest_old_arg_state,
+        available_state_indexes_cache=None,
+    ):
         if old_arg_state_index in old_to_new_arg_state:
             return old_to_new_arg_state[old_arg_state_index]
+
+        available_defined_states = self.frame.state_bit_vector_manager.explain(
+            status.in_state_bits
+        )
+        available_state_indexes = None
+        if available_state_indexes_cache is not None:
+            available_state_indexes = available_state_indexes_cache.get(
+                "available_state_indexes"
+            )
+            if available_state_indexes is None:
+                available_state_indexes = (
+                    self.resolver._index_available_state_definitions(
+                        self.frame, available_defined_states
+                    )
+                )
+                available_state_indexes_cache["available_state_indexes"] = (
+                    available_state_indexes
+                )
 
         latest_old_arg_indexes = self.resolver.retrieve_latest_states(
             self.frame,
             stmt_id,
             self.frame.symbol_state_space,
             {old_arg_state_index},
-            self.frame.state_bit_vector_manager.explain(status.in_state_bits),
-            old_to_latest_old_arg_state
+            available_defined_states,
+            old_to_latest_old_arg_state,
+            available_state_indexes=available_state_indexes,
         )
         if not latest_old_arg_indexes:
             return -1
@@ -661,7 +689,12 @@ class StmtStates:
             return
         if len(state.access_path) == 0:
             return
-        state.access_path[-1].state_id = state.state_id
+        last_point = state.access_path[-1]
+        state.access_path[-1] = AccessPoint(
+            kind=last_point.kind,
+            key=last_point.key,
+            state_id=state.state_id,
+        )
 
     def forin_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
         receiver_index = status.used_symbols[0]
@@ -848,11 +881,8 @@ class StmtStates:
                 value = None
 
         if value is None:
-            try:
-                value = util.strict_eval(f"{tmp_value1} {operator} {tmp_value2}")
-            except Exception:
-                value = str(value1) + str(operator) + str(value2)
-                data_type = LIAN_INTERNAL.STRING
+            value = str(value1) + str(operator) + str(value2)
+            data_type = LIAN_INTERNAL.STRING
 
         if value is not None:
             cache_key = None
@@ -1499,12 +1529,19 @@ class StmtStates:
         callee_id=-1,
         deferred_index_updates=None,
         old_to_latest_old_arg_state=None,
+        available_state_indexes_cache=None,
     ):
         if util.is_empty(old_to_latest_old_arg_state):
             old_to_latest_old_arg_state = {}
 
         new_arg_state_index = self.copy_on_write_arg_state(
-            stmt_id, stmt, status, old_arg_state_index, old_to_new_arg_state, old_to_latest_old_arg_state
+            stmt_id,
+            stmt,
+            status,
+            old_arg_state_index,
+            old_to_new_arg_state,
+            old_to_latest_old_arg_state,
+            available_state_indexes_cache,
         )
         if new_arg_state_index == -1:
             return
@@ -1631,11 +1668,15 @@ class StmtStates:
     def resolve_anything_in_arg_fields(
         self, arg_fields, stmt_id, parameter_symbol_id, callee_id, deferred_index_updates
     ):
-        for field_name, field_states in copy.deepcopy(arg_fields).items():
-            for each_field_state_index in field_states:
+        # Resolution updates the live field sets. Snapshot only the iteration
+        # inputs instead of cloning the whole (potentially wide) field graph.
+        for field_name, field_states in tuple(arg_fields.items()):
+            for each_field_state_index in tuple(field_states):
                 if each_field_state_index < 0:
                     continue
                 each_field_state = self.frame.symbol_state_space[each_field_state_index]
+                if not isinstance(each_field_state, State):
+                    continue
                 if each_field_state.state_type != STATE_TYPE_KIND.ANYTHING:
                     continue
 
@@ -1841,6 +1882,7 @@ class StmtStates:
         status = self.frame.stmt_id_to_status[stmt_id]
         old_to_new_arg_state = {}
         old_to_latest_old_arg_state = {}
+        available_state_indexes_cache = {}
         deferred_index_updates = set()
         self.resolver.reset_ras_result_cache()
 
@@ -1874,6 +1916,7 @@ class StmtStates:
                     callee_space,
                     old_to_new_arg_state,
                     old_to_latest_old_arg_state,
+                    available_state_indexes_cache,
                 )
                 continue
 
@@ -1914,6 +1957,7 @@ class StmtStates:
                 callee_id,
                 deferred_index_updates,
                 old_to_latest_old_arg_state,
+                available_state_indexes_cache,
             )
 
         self.resolver.update_deferred_index(
@@ -1930,6 +1974,7 @@ class StmtStates:
         callee_space: SymbolStateSpace,
         old_to_new_arg_state,
         old_to_latest_old_arg_state,
+        available_state_indexes_cache=None,
     ):
         parameter_symbol_id = mapping.parameter_symbol_id
         default_value_symbol_id = mapping.arg_state_id
@@ -1966,6 +2011,7 @@ class StmtStates:
             callee_id=-1,
             deferred_index_updates=None,
             old_to_latest_old_arg_state=old_to_latest_old_arg_state,
+            available_state_indexes_cache=available_state_indexes_cache,
         )
         new_default_value_state_index = old_to_new_arg_state[tmp_default_value_state_index]
 
@@ -2858,7 +2904,7 @@ class StmtStates:
         reachable_defs = self.frame.symbol_bit_vector_manager.explain(status.in_symbol_bits)
         for state_index in address_states:
             state = self.frame.symbol_state_space[state_index]
-            if util.is_empty(state):
+            if util.is_empty(state) or not isinstance(state, State):
                 continue
             symbol_id = state.value
             if symbol_id not in self.frame.defined_symbols:

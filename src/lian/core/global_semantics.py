@@ -63,6 +63,7 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
         self.analysis_phase_id = ANALYSIS_PHASE_ID.GLOBAL_SEMANTICS
         self.caller_unknown_callee_edge = {}
         self.call_site_analyze_counter = {}
+        self.context_analyze_counter = {}
 
     def _describe_method_context(self, method_id):
         method_name = "<unknown>"
@@ -87,7 +88,7 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
 
     def get_stmt_id_to_callee_info(self, callees):
         results = {}
-        for each_callee in callees:
+        for each_callee in callees or ():
             results[each_callee.stmt_id] = each_callee
         return results
 
@@ -272,7 +273,16 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
                 complete_graph=self.options.complete_graph,
             )
 
-            self.adjust_index_of_status_space(len(global_space), frame, frame.stmt_id_to_status, frame.symbol_state_space, frame.defined_symbols, frame.symbol_bit_vector_manager, frame.state_bit_vector_manager, frame.method_summary_template)
+            self.adjust_index_of_status_space(
+                len(global_space),
+                frame,
+                frame.stmt_id_to_status,
+                frame.symbol_state_space,
+                frame.defined_symbols,
+                frame.symbol_bit_vector_manager,
+                frame.state_bit_vector_manager,
+                frame.method_summary_template,
+            )
             for item in frame.symbol_state_space:
                 global_space.add(item)
             frame.symbol_state_space = global_space
@@ -285,9 +295,7 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
         if method_id in self.analyzed_method_list:
             round_number = config.SECOND_ROUND
         _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
-        parameter_decl_block = GIRBlockViewer(parameter_decls)
-        method_body_block = GIRBlockViewer(method_body)
-        frame.unit_gir.append_other(parameter_decl_block).append_other(method_body_block)
+        frame.unit_gir = GIRBlockViewer.from_parts(parameter_decls, method_body)
 
         for stmt_id in frame.unit_gir.get_all_stmt_ids():
             frame.stmt_counters[stmt_id] = round_number
@@ -478,6 +486,7 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
                             this_class_ids = frame.callee_this_class_ids,
                             state_flow_graph = sfg,
                             call_site_analyze_counter=self.call_site_analyze_counter,
+                            context_analyze_counter=self.context_analyze_counter,
                         )
                         frame_stack.add(new_frame)
                         children_done_flag = False
@@ -535,7 +544,8 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
             loader = self.loader,
             space = global_space,
             state_flow_graph = sfg,
-            call_site_analyze_counter=self.call_site_analyze_counter
+            call_site_analyze_counter=self.call_site_analyze_counter,
+            context_analyze_counter=self.context_analyze_counter
         )
         frame_stack.add(entry_frame)
         return frame_stack
@@ -545,16 +555,23 @@ class P3GlobalSemanticAnalysis(P2PrelimSemanticAnalysis):
             print("\n########### # Phase III: Global (Top-down) Semantic Analysis ##########")
 
         if not self.options.enable_p2:
-            config.MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS = config.MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS
+            self.max_analysis_round = config.MAX_ANALYSIS_ROUND_FOR_PRELIM_ANALYSIS
         
-        for entry_point in self.loader.get_entry_points():
+        entry_points = self.loader.get_entry_points()
+        entry_count = len(entry_points)
+        for entry_index, entry_point in enumerate(entry_points, start=1):
+            if not self.options.quiet:
+                print(f"[P3] entry {entry_index}/{entry_count} started: {entry_point}")
             global_space = SymbolStateSpace()
             self.call_site_analyze_counter = {}
+            self.context_analyze_counter = {}
             sfg = StateFlowGraph(entry_point)
             frame_stack = self.init_frame_stack(entry_point, global_space, sfg)
             self.analyze_frame_stack(frame_stack, global_space, sfg)
             self.loader.save_global_sfg_by_entry_point(entry_point, sfg)
             self.save_graph_to_dot(sfg.graph, entry_point, self.analysis_phase_id, global_space)
             self.loader.save_symbol_state_space_p3(entry_point, global_space)
+            if not self.options.quiet:
+                print(f"[P3] entry {entry_index}/{entry_count} completed: {entry_point}")
 
         self.loader.save_call_paths_p3(self.path_manager.paths)
