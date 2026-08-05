@@ -585,10 +585,20 @@ class Resolver:
             for state_index in state_indexes
         )
 
-    def retrieve_latest_states(self, frame, stmt_id, symbol_state_space, state_indexes, available_defined_states, state_index_old_to_new):
-        available_state_indexes = self._index_available_state_definitions(
-            frame, available_defined_states
-        )
+    def retrieve_latest_states(
+        self,
+        frame,
+        stmt_id,
+        symbol_state_space,
+        state_indexes,
+        available_defined_states,
+        state_index_old_to_new,
+        available_state_indexes=None,
+    ):
+        if available_state_indexes is None:
+            available_state_indexes = self._index_available_state_definitions(
+                frame, available_defined_states
+            )
         unchanged_state_indexes = set()
         required_state_indexes = set()
         result_box = {}
@@ -827,44 +837,49 @@ class Resolver:
         new_source_states = source_state_indexes.copy()
         for one_point in arg_access_path:
             tmp_indexes = set()
+            point_kind = one_point.kind
             for source_state_index in new_source_states:
                 source = current_space[source_state_index]
                 if not source:
                     continue
 
-                tmp_states: set[State] = set()
+                if point_kind not in (
+                    ACCESS_POINT_KIND.FIELD_ELEMENT,
+                    ACCESS_POINT_KIND.ARRAY_ELEMENT,
+                ):
+                    tmp_indexes.add(source_state_index)
+                    continue
+
                 if isinstance(source, Symbol):
-                    for state_index in source.states:
+                    candidate_state_indexes = source.states
+                else:
+                    candidate_state_indexes = (source_state_index,)
+
+                # Keep paths as indexes: the output is index-based and hashing
+                # State objects here is pure overhead on large summaries.
+                if point_kind == ACCESS_POINT_KIND.FIELD_ELEMENT:
+                    key = one_point.key
+                    for state_index in candidate_state_indexes:
                         if state_index == -1:
                             continue
                         tmp_state = current_space[state_index]
                         if isinstance(tmp_state, Symbol):
                             continue
-                        tmp_states.add(tmp_state)
-
-                    # tmp_states = set([current_space[s] for s in source.states])
-                else:
-                    tmp_states = {source}
-
-                point_kind = one_point.kind
-                #if point_kind in (AccessPointKind.FIELD_NAME, AccessPointKind.FIELD_ELEMENT):
-                if point_kind == ACCESS_POINT_KIND.FIELD_ELEMENT:
-                    key = one_point.key
-                    for tmp_state in tmp_states:
                         fields = tmp_state.fields
                         if key in fields:
                             tmp_indexes.update(fields[key])
 
-                #elif point_kind in (AccessPointKind.ARRAY_INDEX, AccessPointKind.ARRAY_ELEMENT):
-                elif point_kind == ACCESS_POINT_KIND.ARRAY_ELEMENT:
+                else:
                     index = one_point.key
-                    for tmp_state in tmp_states:
+                    for state_index in candidate_state_indexes:
+                        if state_index == -1:
+                            continue
+                        tmp_state = current_space[state_index]
+                        if isinstance(tmp_state, Symbol):
+                            continue
                         array = tmp_state.array
                         if 0 <= index < len(array):
                             tmp_indexes.update(array[index])
-
-                else:
-                    tmp_indexes.add(source_state_index)
 
             final_indexes = set()
             for tmp_index in tmp_indexes:
@@ -1092,6 +1107,8 @@ class Resolver:
                 if field_index < 0:
                     continue
                 field_state = caller_frame.symbol_state_space[field_index]
+                if field_state is None or not isinstance(field_state, State):
+                    continue
                 if field_state.state_type != STATE_TYPE_KIND.ANYTHING: # field_state.g=1
                     continue
                 elif field_state.source_symbol_id != parameter_symbol_id: # field_state.g=external

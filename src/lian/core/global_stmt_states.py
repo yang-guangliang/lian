@@ -112,15 +112,28 @@ class GlobalStmtStates(StmtStates):
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
             callee_path = self.frame.call_path.add_callsite(new_call_site)
 
+            # 精度取舍: 上下文预算。超限的调用点不展开, 走摘要应用路径。
+            total_analyzed = self.frame.context_analyze_counter.get(("__total__",), 0)
+            budget_exceeded = (
+                self.frame.context_analyze_counter.get(each_callee_id, 0) >= config.MAX_METHOD_CONTEXT
+                or total_analyzed >= config.MAX_TOTAL_CONTEXT
+            )
+
             if(
                 self.path_manager.path_exists(callee_path) or
                 callee_path.count_cycles() > 1 or
-                each_callee_id in self.frame.call_path or
+                self.frame.frame_stack.has_method_id(each_callee_id) or
                 self.frame.content_already_analyzed.get(new_call_site, False) or
                 self.frame.call_site_analyze_counter.get(new_call_site, 0) > config.MAX_ANALYSIS_ROUND_FOR_CALL_SITE
             ):
                 continue
             self.frame.call_site_analyze_counter[new_call_site] = self.frame.call_site_analyze_counter.get(new_call_site, 0) + 1
+            if budget_exceeded:
+                # 预算拦截: 标记为已处理, 不展开; 有摘要则在第二循环应用。
+                self.frame.content_already_analyzed[new_call_site] = True
+                continue
+            self.frame.context_analyze_counter[each_callee_id] = self.frame.context_analyze_counter.get(each_callee_id, 0) + 1
+            self.frame.context_analyze_counter[("__total__",)] = total_analyzed + 1
 
             callee_ids_to_be_analyzed.append(each_callee_id)
             # prepare callee parameters

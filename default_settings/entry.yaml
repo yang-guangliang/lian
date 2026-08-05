@@ -1,5 +1,4 @@
 # `%unit_init` remains the default entry point for non-C/C++ languages.
-# C/C++ use only main or an explicitly configured entry point.
 - lang: abc
   method_list: ["%unit_init"]
 - lang: csharp
@@ -31,10 +30,83 @@
 
 # C/C++ 项目的默认入口点：main 函数。
 # 纯库项目必须在 entry.yaml 中显式配置待分析的入口；未配置时不会创建 P3 根。
+# exclude_paths：按 unit 路径子串排除测试/工具/示例文件中的 main，仅保留生产入口。
 - lang: c
   method_list: ["main"]
+  exclude_paths:
+    # 通用：单元测试文件（json_test.c、memfile_test.c 等）与测试目录
+    - "_test.c"
+    - "/test/"
+    - "/tests/"
+    - "test/unit"
+    # 工具/示例/生成器/平台
+    - "libvterm/t/"
+    - "/xxd/"
+    - "/tee/"
+    - "create_nvcmdidxs"
+    - "dosinst"
+    - "uninstall"
+    - "vimrun"
+    - "os_w32exe"
+    - "os_vms_mms"
+    - "os_win32"
+    - "po/big5corr"
+    - "po/sjiscorr"
+    # radare2 工具 main 与 #if 0 测试 main
+    - "libr/main/radiff2.c"
+    - "libr/util/rlz4.c"
+    - "binr/preload"
+    # radare2 binr/ 工具 main（保留 binr/radare2 主程序）
+    - "binr/blob"
+    - "binr/r2agent"
+    - "binr/r2bb"
+    - "binr/r2pm"
+    - "binr/r2r"
+    - "binr/rabin2"
+    - "binr/radiff2"
+    - "binr/rafind2"
+    - "binr/rafs2"
+    - "binr/ragg2"
+    - "binr/rahash2"
+    - "binr/rapatch2"
+    - "binr/rarun2"
+    - "binr/rasign2"
+    - "binr/rasm2"
+    - "binr/ravc2"
+    - "binr/rax2"
+    - "libr/arch/p/arm/gnu/floatformat.c"
+    - "libr/arch/p/i4004/gperfdb.c"
+    - "libr/arch/p/sm5xx/sm5xx.c"
+    - "libr/arch/p/evm/evm.c"
+    - "libr/arch/p/lua/lua53.c"
+    - "libr/arch/p/m68k_cs/m68kass.inc.c"
+    - "libr/arch/p/arm/armass.c"
+    - "libr/bin/format/pdb/main.c"
+    - "libr/bin/p/bin_dex.c"
+    - "libr/mangling/cxx/cp-demangle.c"
+    - "libr/cons/gen.256.c"
+    - "libr/cons/stiv.c"
+    - "shlr/java/main.c"
+    - "shlr/spp/bin/main.c"
+    - "libr/lang/p/go.c"
+    - "libr/lang/p/cpipe.c"
+    - "libr/esil/esil_compiler.c"
+    - "libr/fs/p/grub/main.c"
+    - "libr/muta/p/muta_cps2.c"
+    - "libr/socket/socket_http_server.c"
+    - "libr/debug/p/native/drx.c"
+    - "libr/util/rstr.c"
+    - "libr/util/token.c"
+    - "libr/util/uleb128.c"
+    - "libr/anal/c2/kv.c"
+    - "libr/core/p/core_writedwarf.c"
+    - "doc/indent-example.c"
 - lang: cpp
   method_list: ["main"]
+  exclude_paths:
+    - "_test.c"
+    - "/test/"
+    - "/tests/"
 
 # - lang: python
 #   method_list: ["from_pretrained", "a", "file", "view_image", "worker_api_generate_stream", "invoke", "init_device", "delete_images_from_list",

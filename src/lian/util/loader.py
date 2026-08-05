@@ -1198,25 +1198,7 @@ class CalleeParameterMapping(MethodLevelAnalysisResultLoader):
 
     @staticmethod
     def copy_parameter_mapping(parameter_mapping):
-        def copy_access_point(access_point):
-            if access_point is None:
-                return None
-            return AccessPoint(
-                kind=access_point.kind,
-                key=access_point.key,
-                state_id=access_point.state_id,
-            )
-
-        return ParameterMapping(
-            arg_index_in_space=parameter_mapping.arg_index_in_space,
-            arg_state_id=parameter_mapping.arg_state_id,
-            arg_source_symbol_id=parameter_mapping.arg_source_symbol_id,
-            arg_access_path=[copy_access_point(point) for point in parameter_mapping.arg_access_path],
-            parameter_symbol_id=parameter_mapping.parameter_symbol_id,
-            parameter_type=parameter_mapping.parameter_type,
-            parameter_access_path=copy_access_point(parameter_mapping.parameter_access_path),
-            is_default_value=parameter_mapping.is_default_value,
-        )
+        return parameter_mapping.copy()
 
     def get_item_by_id(self, _id):
         item_df = self.get_raw_item_by_id(_id)
@@ -1291,22 +1273,91 @@ class CalleeParameterMapping(MethodLevelAnalysisResultLoader):
 class MethodDefUseSummaryLoader:
     def __init__(self, path):
         self.method_summary_records = {}
+        self._normalized_summary_cache = util.LRUCache(
+            config.LRU_CACHE_CAPACITY
+        )
         self.path = path
 
+    @staticmethod
+    def _as_collection(value):
+        if value is None:
+            return ()
+        if isinstance(value, numpy.ndarray):
+            value = value.tolist()
+        if isinstance(value, (list, tuple, set)):
+            return value
+        if isinstance(value, (float, numpy.floating)) and numpy.isnan(value):
+            return ()
+        return (value,)
+
+    @classmethod
+    def _normalize_id_set(cls, values):
+        return {int(value) for value in cls._as_collection(values)}
+
+    @classmethod
+    def _normalize_parameter_symbol_ids(cls, values):
+        values = cls._as_collection(values)
+        if len(values) == 2 and all(
+            not isinstance(value, (list, tuple, numpy.ndarray))
+            for value in values
+        ):
+            values = (values,)
+
+        normalized = set()
+        for pair in values:
+            if isinstance(pair, numpy.ndarray):
+                pair = pair.tolist()
+            if not isinstance(pair, (list, tuple)):
+                raise TypeError(
+                    "parameter_symbol_ids must contain two-element sequences"
+                )
+            if len(pair) != 2:
+                raise ValueError(
+                    "parameter_symbol_ids must contain exactly two values"
+                )
+            normalized.add((int(pair[0]), int(pair[1])))
+        return normalized
+
+    @classmethod
+    def _normalize_summary(cls, summary):
+        return MethodDefUseSummary(
+            method_id=int(summary.method_id),
+            parameter_symbol_ids=cls._normalize_parameter_symbol_ids(
+                summary.parameter_symbol_ids
+            ),
+            local_symbol_ids=cls._normalize_id_set(summary.local_symbol_ids),
+            defined_external_symbol_ids=cls._normalize_id_set(
+                summary.defined_external_symbol_ids
+            ),
+            used_external_symbol_ids=cls._normalize_id_set(
+                summary.used_external_symbol_ids
+            ),
+            return_symbol_ids=cls._normalize_id_set(summary.return_symbol_ids),
+            this_symbol_id=int(summary.this_symbol_id),
+        )
+
     def get_copy(self, method_id):
-        if method_id not in self.method_summary_records:
-            return MethodDefUseSummary()
-        return self.method_summary_records[method_id].copy()
+        summary = self._normalized_summary_cache.get(method_id)
+        if summary is None:
+            raw_summary = self.method_summary_records.get(method_id)
+            if raw_summary is None:
+                return MethodDefUseSummary()
+            summary = self._normalize_summary(raw_summary)
+            self._normalized_summary_cache.put(method_id, summary)
+        return summary.copy()
     
     def get(self, method_id):
         return self.method_summary_records[method_id].get(method_id)
 
     def save(self, method_id, basic_method_summary: MethodDefUseSummary):
         self.method_summary_records[method_id] = basic_method_summary
+        self._normalized_summary_cache.remove(method_id)
 
     def restore(self):
         # read file and convert to self.all_method_def_use
         df = DataModel().load(self.path)
+        self.method_summary_records = {}
+        self._normalized_summary_cache.clean()
         for row in df:
             self.method_summary_records[row.method_id] = MethodDefUseSummary(
                 row.method_id,
@@ -2103,7 +2154,7 @@ class Loader:
 
         self.stmt_gir_cache = util.LRUCache(capacity = config.MAX_STMT_CACHE_CAPACITY)
         self._symbol_state_space_p1_decoded_cache = util.LRUCache(
-            capacity=config.MEDIUM_CACHE_CAPACITY
+            capacity=config.P1_SYMBOL_STATE_SPACE_DECODED_CACHE_CAPACITY
         )
 
         self._module_symbols_loader: ModuleSymbolsLoader = ModuleSymbolsLoader(
@@ -2609,7 +2660,7 @@ class Loader:
             return None
 
         if self.method_body_cache.contain(method_id):
-            self.method_body_cache.get(method_id)
+            return self.method_body_cache.get(method_id)
 
         unit_id = self.convert_method_id_to_unit_id(method_id)
         unit_gir = self._gir_loader.get_item_by_id(unit_id)
@@ -3056,7 +3107,12 @@ class Loader:
         return self._symbol_state_space_p1_loader.save(method_id, state_space)
     def get_symbol_state_space_p1(self, method_id):
         return self._symbol_state_space_p1_loader.get_item_by_id(method_id)
+
     def get_symbol_state_space_p1_copy(self, method_id):
+        cached_item = self._symbol_state_space_p1_decoded_cache.get(method_id)
+        if cached_item is not None:
+            return cached_item.copy()
+
         item_df = self._symbol_state_space_p1_loader.get_raw_item_by_id(method_id)
         if item_df is None:
             return None
@@ -3066,16 +3122,13 @@ class Loader:
             else:
                 return item_df.copy()
 
-        cached_item = self._symbol_state_space_p1_decoded_cache.get(method_id)
-        if cached_item is None or cached_item[0] is not item_df:
-            decoded_item = (
-                self._symbol_state_space_p1_loader
-                .unflatten_item_dataframe_when_loading(method_id, item_df)
-            )
-            cached_item = (item_df, decoded_item)
-            self._symbol_state_space_p1_decoded_cache.put(method_id, cached_item)
+        decoded_item = (
+            self._symbol_state_space_p1_loader
+            .unflatten_item_dataframe_when_loading(method_id, item_df)
+        )
+        self._symbol_state_space_p1_decoded_cache.put(method_id, decoded_item)
 
-        return cached_item[1].copy()
+        return decoded_item.copy()
     def contain_symbol_state_space_p1(self, method_id):
         return self._symbol_state_space_p1_loader.contain(method_id)
 

@@ -523,7 +523,7 @@ class ControlFlowGraph(BasicGraph):
         else:
             super().add_edge(src_stmt, dst_stmt, control_flow_type)
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class AccessPoint:
     kind: int = ACCESS_POINT_KIND.TOP_LEVEL
     key: str = ""
@@ -783,10 +783,7 @@ class State(BasicElement):
             tangping_flag = self.tangping_flag,
             source_symbol_id = self.source_symbol_id,
             source_state_id= self.source_state_id,
-            access_path = [
-                AccessPoint(kind=point.kind, key=point.key, state_id=point.state_id)
-                for point in self.access_path
-            ],
+            access_path = self.access_path.copy(),
         )
 
     def __hash__(self):
@@ -2003,7 +2000,7 @@ class MetaComputeFrame:
     is_meta_frame:bool = True
 
 class ComputeFrame(MetaComputeFrame):
-    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = [], this_class_ids = [], state_flow_graph = None, call_site_analyze_counter=None):
+    def __init__(self, method_id, caller_id = -1, call_stmt_id = -1, loader = None, space = None, params_list = None, classes_of_method = [], this_class_ids = [], state_flow_graph = None, call_site_analyze_counter=None, context_analyze_counter=None):
         super().__init__(method_id)
         if this_class_ids is None:
             this_class_ids = []
@@ -2079,6 +2076,7 @@ class ComputeFrame(MetaComputeFrame):
         self.this_class_ids = this_class_ids
         self.callee_this_class_ids = []
         self.call_site_analyze_counter = call_site_analyze_counter
+        self.context_analyze_counter = context_analyze_counter if context_analyze_counter is not None else {}
 
         self.latest_source_cache = {}
 
@@ -2288,12 +2286,37 @@ class TrieNode:
     def __init__(self):
         self.children = {}
         self.is_terminal = False
-        self.path = None
 
 class PathTrie:
     def __init__(self):
         self.root = TrieNode()
-        self.paths = set()
+
+    def iter_paths(self):
+        """Yield terminal call paths without retaining full paths in the trie."""
+        if self.root.is_terminal:
+            yield CallPath()
+
+        path = []
+        stack = [(self.root, iter(self.root.children.items()))]
+        while stack:
+            _, children = stack[-1]
+            try:
+                callsite, child = next(children)
+            except StopIteration:
+                stack.pop()
+                if stack:
+                    path.pop()
+                continue
+
+            path.append(callsite)
+            if child.is_terminal:
+                yield CallPath(tuple(path))
+            stack.append((child, iter(child.children.items())))
+
+    @property
+    def paths(self):
+        """Materialize terminal paths only for callers that need a set."""
+        return set(self.iter_paths())
 
     def add_path(self, path):
         """
@@ -2306,6 +2329,7 @@ class PathTrie:
 
         # Step 1: Traverse the new path to check for conflicts with existing paths
         node = self.root
+        terminal_prefixes = []
         for i, elem in enumerate(path.path):
             if elem not in node.children:
                 # The new path diverges here; no conflicts, so it can be added
@@ -2320,8 +2344,8 @@ class PathTrie:
                     return False
                 else:
                     # The new path is longer, and the existing path is its prefix
-                    # Remove the prefix path and continue adding the new path
-                    pass  # Processed later
+                    # Clear the old terminal marker after the new path is accepted.
+                    terminal_prefixes.append(node)
         else:
             # Completed traversal of all elements in the new path
             # Check if the current node is a terminating node
@@ -2334,33 +2358,16 @@ class PathTrie:
                 # A longer path with the new path as a prefix exists; reject the new path
                 return False
 
-        # Step 2: Find and remove existing paths that are strict prefixes of the new path
-        paths_to_remove = []
-        node = self.root
-        for i, elem in enumerate(path.path):
-            if elem not in node.children:
-                break
-            node = node.children[elem]
-
-            if node.is_terminal and i + 1 < len(path.path):
-                # Found a strict prefix path
-                paths_to_remove.append(node.path)
-
-        # Remove the prefix path
-        for p in paths_to_remove:
-            self.paths.discard(p)
-            self._mark_non_terminal(p)
-
-        # Step 3: Insert the new path
+        # Step 2: Insert the new path and remove strict-prefix terminal markers.
         node = self.root
         for elem in path.path:
             if elem not in node.children:
                 node.children[elem] = TrieNode()
             node = node.children[elem]
 
+        for prefix in terminal_prefixes:
+            prefix.is_terminal = False
         node.is_terminal = True
-        node.path = path
-        self.paths.add(path)
         return True
 
     def _mark_non_terminal(self, path):
@@ -2374,22 +2381,31 @@ class PathTrie:
             node = node.children[elem]
 
         node.is_terminal = False
-        node.path = None
 
     def path_exists(self, path):
-        return path in self.paths
+        node = self.root
+        for elem in path.path:
+            if elem not in node.children:
+                return False
+            node = node.children[elem]
+        return node.is_terminal
 
     def remove_path(self, path):
-        if path not in self.paths:
+        if not self.path_exists(path):
             return False
-        self.paths.discard(path)
         self._mark_non_terminal(path)
         return True
 
 class PathManager:
     def __init__(self):
-        self.trie = PathTrie()  # Added
-        self.paths = set()      # Public view
+        self.trie = PathTrie()
+
+    @property
+    def paths(self):
+        return self.trie.paths
+
+    def iter_paths(self):
+        return self.trie.iter_paths()
 
     def add_path(self, new_path: CallPath):
         # Retain type checking and business logic
@@ -2400,21 +2416,11 @@ class PathManager:
         if new_path.has_any_negative():
             return False
 
-        if new_path in self.paths:
-            return False
-
         # Use Trie for prefix matching
-        ok = self.trie.add_path(new_path)
-        if ok:
-            # Internal Trie paths updated
-            self.paths = set(self.trie.paths)   # Retrieve the set of terminal paths
-        return ok
+        return self.trie.add_path(new_path)
 
     def remove_path(self, removed_path):
-        ok = self.trie.remove_path(removed_path)
-        if ok:
-            self.paths = set(self.trie.paths)
-        return ok
+        return self.trie.remove_path(removed_path)
 
     def path_exists(self, path):
         return self.trie.path_exists(path)

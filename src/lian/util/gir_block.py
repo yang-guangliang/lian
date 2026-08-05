@@ -44,6 +44,19 @@ class BlockRange:
 
 
 class GIRBlockViewer:
+    @classmethod
+    def from_parts(cls, *parts):
+        """Build one viewer from ordered GIR parts with a single index scan."""
+        combined = []
+        for part in parts:
+            if part is None:
+                continue
+            if isinstance(part, GIRBlockViewer):
+                combined.extend(part)
+            else:
+                combined.extend(part)
+        return cls(unit_gir=combined)
+
     def __init__(self, unit_gir=None, parent=None, scope_range: BlockRange = None):
         # --------------------------
         # 子 block 视图构造

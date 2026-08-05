@@ -79,7 +79,7 @@ class P2PrelimSemanticAnalysis:
 
     def get_stmt_id_to_callee_info(self, callees):
         results = {}
-        for each_callee in callees:
+        for each_callee in callees or ():
             results[each_callee.stmt_id] = each_callee
         return results
 
@@ -131,9 +131,7 @@ class P2PrelimSemanticAnalysis:
         frame.all_state_defs = all_state_defs
         frame.state_bit_vector_manager.init(all_state_defs)
 
-    def init_compute_frame(
-        self, frame: ComputeFrame, frame_stack, copy_p1_state_space=False
-    ):
+    def init_compute_frame(self, frame: ComputeFrame, frame_stack, copy_p1_state_space=False):
         frame.has_been_inited = True
         frame.frame_stack = frame_stack
         method_id = frame.method_id
@@ -144,9 +142,7 @@ class P2PrelimSemanticAnalysis:
             return None
 
         _, parameter_decls, method_body = self.loader.get_splitted_method_gir(method_id)
-        parameter_decl_block = GIRBlockViewer(parameter_decls)
-        method_body_block = GIRBlockViewer(method_body)
-        frame.unit_gir.append_other(parameter_decl_block).append_other(method_body_block)
+        frame.unit_gir = GIRBlockViewer.from_parts(parameter_decls, method_body)
 
         for stmt_id in frame.unit_gir.get_all_stmt_ids():
             frame.stmt_counters[stmt_id] = config.FIRST_ROUND
@@ -1094,10 +1090,42 @@ class P2PrelimSemanticAnalysis:
 
             # 统一更新所有小弟
             state_index_old_to_new = {}
+            available_state_indexes = None
+            index_available_state_definitions = getattr(
+                self.resolver, "_index_available_state_definitions", None
+            )
+
+            def retrieve_latest_summary_states(state_indexes):
+                nonlocal available_state_indexes
+                if index_available_state_definitions is None:
+                    return self.resolver.retrieve_latest_states(
+                        frame,
+                        stmt_id,
+                        symbol_state_space,
+                        state_indexes,
+                        available_defined_states,
+                        state_index_old_to_new,
+                    )
+                if available_state_indexes is None:
+                    available_state_indexes = (
+                        index_available_state_definitions(
+                            frame, available_defined_states
+                        )
+                    )
+                return self.resolver.retrieve_latest_states(
+                    frame,
+                    stmt_id,
+                    symbol_state_space,
+                    state_indexes,
+                    available_defined_states,
+                    state_index_old_to_new,
+                    available_state_indexes=available_state_indexes,
+                )
+
             symbol_id_to_latest_state_indexes = {}
             for symbol_id in symbol_id_to_old_state_indexes:
                 old_states = symbol_id_to_old_state_indexes[symbol_id]
-                latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, old_states, available_defined_states, state_index_old_to_new)
+                latest_states = retrieve_latest_summary_states(old_states)
                 # 将latest_states中所有state_id相同的states进行合并成一个state,避免summary中保存的state过多。
                 state_id_to_indexes = self.group_states_with_state_ids(frame, latest_states)
                 fusion_states = set()
@@ -1113,7 +1141,7 @@ class P2PrelimSemanticAnalysis:
             for symbol_id in def_use_summary.defined_external_symbol_ids:
                 state_index = frame.external_symbol_id_to_initial_state_index.get(symbol_id, None)
                 if state_index is not None and state_index >= 0:
-                    latest_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, {state_index}, available_defined_states, state_index_old_to_new)
+                    latest_states = retrieve_latest_summary_states({state_index})
                     state_id_to_indexes = self.group_states_with_state_ids(frame, latest_states)
                     fusion_states = set()
                     for state_id, states_with_same_id in state_id_to_indexes.items():
@@ -1162,7 +1190,7 @@ class P2PrelimSemanticAnalysis:
                                 method_summary.index_to_default_value[each_state_index] = default_value_symbol_id
 
             # 处理return
-            new_return_states = self.resolver.retrieve_latest_states(frame, stmt_id, symbol_state_space, returned_states, available_defined_states, state_index_old_to_new)
+            new_return_states = retrieve_latest_summary_states(returned_states)
 
             if new_return_states:
                 util.add_to_dict_with_default_set(
