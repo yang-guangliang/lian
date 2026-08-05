@@ -85,6 +85,9 @@ class Lian:
                         setattr(self.options, key, value)
 
         config.COMPLETE_SFG_DUMP_FLAG = self.options.complete_graph
+        config.ENABLE_CONTEXT_BUDGET = getattr(
+            self.options, "enable_context_budget", False
+        )
         
         return self
 

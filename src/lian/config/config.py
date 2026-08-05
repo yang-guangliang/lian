@@ -18,8 +18,10 @@ MAX_ANALYSIS_ROUND_FOR_GLOBAL_ANALYSIS                       = 2
 MAX_ANALYSIS_ROUND_FOR_CALL_SITE                             = 1
 
 # 精度取舍: 上下文预算。超限的调用点不再展开, 改用已有摘要近似。
+# 默认关闭; 通过 CLI --enable-context-budget 开启。
 # MAX_METHOD_CONTEXT: 每个方法最多被展开分析的上下文数。
 # MAX_TOTAL_CONTEXT: 每个入口允许展开的上下文总数。
+ENABLE_CONTEXT_BUDGET                                        = False
 MAX_METHOD_CONTEXT                                          = 5
 MAX_TOTAL_CONTEXT                                           = 12000
 

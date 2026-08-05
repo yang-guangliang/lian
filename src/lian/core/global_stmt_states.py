@@ -112,9 +112,9 @@ class GlobalStmtStates(StmtStates):
             new_call_site = CallSite(caller_id, stmt_id, each_callee_id)
             callee_path = self.frame.call_path.add_callsite(new_call_site)
 
-            # 精度取舍: 上下文预算。超限的调用点不展开, 走摘要应用路径。
+            # 精度取舍: 上下文预算。仅 --enable-context-budget 开启时生效。
             total_analyzed = self.frame.context_analyze_counter.get(("__total__",), 0)
-            budget_exceeded = (
+            budget_exceeded = config.ENABLE_CONTEXT_BUDGET and (
                 self.frame.context_analyze_counter.get(each_callee_id, 0) >= config.MAX_METHOD_CONTEXT
                 or total_analyzed >= config.MAX_TOTAL_CONTEXT
             )

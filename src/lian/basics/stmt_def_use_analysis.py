@@ -1054,7 +1054,9 @@ class StmtDefUseAnalysis:
         self.class_decl_def_use(stmt_id, stmt)
 
     def class_decl_def_use(self, stmt_id, stmt):
-        defined_symbol = self.create_symbol_or_state_and_add_space(
+        # 类名是命名符号, 始终创建 Symbol(含匿名类如 JS %cc_xxx), 避免被
+        # create_symbol_or_state_and_add_space 按 is_variable 误判成 State。
+        defined_symbol = self.create_symbol_and_add_space(
             stmt_id, stmt.name, LIAN_INTERNAL.CLASS_DECL
         )
         self.add_status_with_symbol_id_sync(
@@ -1067,7 +1069,8 @@ class StmtDefUseAnalysis:
             is_decl_stmt = True
         )
         symbol = self.symbol_state_space[defined_symbol]
-        self.frame.method_def_use_summary.local_symbol_ids.add(symbol.symbol_id)
+        if isinstance(symbol, Symbol):
+            self.frame.method_def_use_summary.local_symbol_ids.add(symbol.symbol_id)
 
     def record_decl_def_use(self, stmt_id, stmt):
         self.class_decl_def_use(stmt_id, stmt)
