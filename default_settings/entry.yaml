@@ -40,6 +40,7 @@
     - "/tests/"
     - "test/unit"
     # 工具/示例/生成器/平台
+    - "doc/examples/"
     - "libvterm/t/"
     - "/xxd/"
     - "/tee/"

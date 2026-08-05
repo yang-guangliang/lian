@@ -45,6 +45,7 @@ class ArgsParser:
             parser.add_argument("--complete-graph", action="store_true", help="Output the sfg with more detailed information for each node")
             parser.add_argument("--enable-p2", action="store_true", help="Enable the second phase of analysis")
             parser.add_argument("--basic-semantics", action="store_true", help="Only run P1 basic structural semantic analysis")
+            parser.add_argument("--enable-context-budget", action="store_true", help="Enable P3 context budget (per-method/per-entry context limits, default off)")
 
             parser.add_argument("--nomock", action="store_true", help="Disable the external processing module")
 
@@ -81,6 +82,7 @@ class ArgsParser:
             nomock = False,
             enable_p2 = False,
             basic_semantics = False,
+            enable_context_budget = False,
         )
 
     def print_help(self):
