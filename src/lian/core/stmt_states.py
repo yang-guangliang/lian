@@ -432,11 +432,11 @@ class StmtStates:
         #         self.frame.method_def_use_summary.defined_external_symbol_ids.add(symbol_id)
         return index
 
-    def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index, stmt):
+    def create_copy_of_state_and_add_space(self, status: StmtStatus, stmt_id, state_index, stmt, array_override=None):
         state = self.frame.symbol_state_space[state_index]
         if not isinstance(state, State):
             return -1
-        new_state = state.copy(stmt_id)
+        new_state = state.copy(stmt_id, array_override=array_override)
         index = self.frame.symbol_state_space.add(new_state)
         state_id = state.state_id
         if state_id != -1:
@@ -3114,7 +3114,7 @@ class StmtStates:
                 array_state = self.frame.symbol_state_space[each_array_state_index]
                 if not isinstance(array_state, State):
                     continue
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt, array_override=array_state.array)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
 
                 self.make_state_tangping(new_array_state)
@@ -3152,7 +3152,7 @@ class StmtStates:
                             tangping_flag = True
 
                 if tangping_flag or self.is_state_array_empty(array_state):
-                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
+                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt, array_override=array_state.array)
                     new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
 
                     self.make_state_tangping(new_array_state)
@@ -3166,9 +3166,8 @@ class StmtStates:
                     defined_states.add(new_array_state_index)
 
                 elif tmp_array != array_state.array:
-                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
+                    new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt, array_override=tmp_array)
                     new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
-                    new_array_state.array = tmp_array
                     defined_states.add(new_array_state_index)
 
         defined_array_symbol.states = defined_states
@@ -3235,16 +3234,15 @@ class StmtStates:
                         break
 
             if tangping_flag:
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt, array_override=array_state.array)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                 self.make_state_tangping(new_array_state)
                 new_array_state.tangping_elements.update(source_states)
                 defined_symbol_states.add(new_array_state_index)
 
             elif tmp_array != array_state.array:
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_id, stmt, array_override=tmp_array)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
-                new_array_state.array = tmp_array
                 defined_symbol_states.add(new_array_state_index)
 
         defined_array_symbol.states = defined_symbol_states
@@ -3274,7 +3272,7 @@ class StmtStates:
             if not (array_state and isinstance(array_state, State)):
                 continue
 
-            new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_index, stmt)
+            new_target_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, array_state_index, stmt, array_override=array_state.array if array_state.tangping_flag else None)
             new_target_state: State = self.frame.symbol_state_space[new_target_state_index]
             if array_state.tangping_flag:
                 new_target_state.tangping_elements.update(source_states)
@@ -4085,7 +4083,7 @@ class StmtStates:
                         break
 
             if tangping_flag:
-                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt)
+                new_array_state_index = self.create_copy_of_state_and_add_space(status, stmt_id, each_array_state_index, stmt, array_override=each_array_state.array)
                 new_array_state: State = self.frame.symbol_state_space[new_array_state_index]
                 self.make_state_tangping(new_array_state)
                 new_array_state.tangping_elements.update(source_state_indexes)
