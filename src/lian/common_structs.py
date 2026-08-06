@@ -766,7 +766,7 @@ class State(BasicElement):
             self.tangping_elements == other.tangping_elements
         )
 
-    def copy(self, stmt_id = None):
+    def copy(self, stmt_id = None, array_override = None):
         if stmt_id is None:
             stmt_id = self.stmt_id
 
@@ -778,7 +778,7 @@ class State(BasicElement):
             data_type = self.data_type,
             value = self.value,
             fields = {key: set(value) for key, value in self.fields.items()},
-            array = [set(value) for value in self.array],
+            array = array_override if array_override is not None else [set(value) for value in self.array],
             tangping_elements= self.tangping_elements.copy(),
             tangping_flag = self.tangping_flag,
             source_symbol_id = self.source_symbol_id,
