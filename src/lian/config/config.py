@@ -54,7 +54,7 @@ MOCK_METHOD_NAME_SEPARATOR                                   = "_1_"
 DEFAULT_SETTINGS                                             = os.path.join(ROOT_DIR, "default_settings")
 DEFAULT_SETTINGS_PATH                                        = os.path.join(ROOT_DIR, DEFAULT_SETTINGS)
 
-BUNDLE_CACHE_CAPACITY                                        = 2
+BUNDLE_CACHE_CAPACITY                                        = 256
 LRU_CACHE_CAPACITY                                           = 20
 MIN_CACHE_CAPACITY                                           = 1
 MEDIUM_CACHE_CAPACITY                                        = 8
