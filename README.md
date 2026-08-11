@@ -85,6 +85,25 @@ For ABC bytecode files, use:
 $ ./scripts/lian.sh -l abc <path_to_abc_bytecode.txt>
 ```
 
+**3. Bounding context-sensitive analysis with a context budget:**
+
+The P3 top-down analysis is context-sensitive: a method called from different call sites is analyzed in separate contexts, which can lead to context explosion on large code bases. To keep the analysis tractable, Lian provides an optional *context budget*:
+
+```shell
+$ ./scripts/lian.sh --enable-context-budget -l <language> <path_to_code>
+```
+
+When enabled, the P3 analysis stops expanding a call site once either of the following limits is reached (both are defined in `src/lian/config/config.py`):
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `MAX_METHOD_CONTEXT` | `5` | Maximum number of contexts a single method may be expanded into |
+| `MAX_TOTAL_CONTEXT` | `12000` | Maximum total number of contexts expanded per entry point |
+
+Budget-blocked call sites are not expanded inline; instead, the analysis falls back to the callee's existing summary, trading a small amount of precision for bounded analysis time and memory usage.
+
+The budget is **off by default**. Enable it when analyzing large code bases becomes too slow or consumes too much memory, and tune the two constants in `src/lian/config/config.py` to balance precision and performance.
+
 ## Documentation and Support
 
 For more technical details, please refer to [Documentation](https://yian-lang.net/lian/en). Also, we provide [Lecture Notes on Program Analysis](https://yian-lang.net/lian/en/02.background/2-1.basics/) (covering fundamentals, dataflow analysis, pointer analysis, and taint analysis), as a reference.
