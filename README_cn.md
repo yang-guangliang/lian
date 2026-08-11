@@ -78,6 +78,25 @@ $ ./scripts/lian.sh -l <language> <path_to_code>
 $ ./scripts/lian.sh -l abc <字节码文件路径.txt>
 ```
 
+**3. 使用上下文预算限制上下文敏感分析：**
+
+P3 自上而下分析是上下文敏感的：同一方法被不同调用点调用时，会在不同的上下文中分别分析，在大规模代码上可能引起上下文爆炸。为了控制分析规模，Lian 提供了可选的*上下文预算*：
+
+```shell
+$ ./scripts/lian.sh --enable-context-budget -l <language> <path_to_code>
+```
+
+开启后，P3 分析在任一以下限制达到上限时停止展开调用点（两个阈值都在 `src/lian/config/config.py` 中定义）：
+
+| 参数 | 默认值 | 含义 |
+|---|---|---|
+| `MAX_METHOD_CONTEXT` | `5` | 单个方法最多被展开分析的上下文数 |
+| `MAX_TOTAL_CONTEXT` | `12000` | 每个入口点允许展开的上下文总数 |
+
+被预算拦截的调用点不再内联展开，分析会回退到被调用方法已有的摘要进行近似，用少量精度换取有界的分析时间和内存消耗。
+
+该预算**默认关闭**。当大型代码库的分析过慢或内存占用过高时再开启，并通过调整 `src/lian/config/config.py` 中的两个常量来权衡精度与性能。
+
 ## 文档与支持
 
 更多技术细节，请参考[中文文档](https://yian-lang.net/lian/cn/)。我们也提供了[程序分析讲义](https://yian-lang.net/lian/cn/02.background/2-1.basics/)（共四章，包括基础、数据流、指针分析、污点分析），供参考。
