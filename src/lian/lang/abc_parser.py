@@ -14,6 +14,9 @@ class Parser(common_parser.Parser):
     def init(self):
         self.original_name_to_tmp_name = {}
         self.current_func = None
+        self.current_func_path = ""
+        self.module_literals_by_id = {}
+        self.module_records_by_path = {}
         self.ananymous_func_to_scope = {}
         self.DECLARATION_HANDLER_MAP = {
             "function_declaration": self.function_declaration,
@@ -254,6 +257,7 @@ class Parser(common_parser.Parser):
                     )
         self.current_func = function_name
         file_path = self.read_node_text(path_node)
+        self.current_func_path = file_path
 
         parameters = []
         params_node = self.find_child_by_field(node, "parameters")
@@ -635,7 +639,24 @@ class Parser(common_parser.Parser):
         })
 
     def ldlocalmodulevar_statement(self, node, statements):
-        pass
+        slot_node = self.find_child_by_field(node, "slot")
+        if slot_node is None:
+            return
+        try:
+            slot = int(self.read_node_text(slot_node), 16)
+        except ValueError:
+            return
+        record = self.module_records_by_path.get(self.current_func_path.strip("&"), {})
+        literal = self.module_literals_by_id.get(record.get("moduleRecordIdx"), {})
+        local_exports = [
+            tag.get("local_name", "")
+            for tag in literal.get("module_tag_array", [])
+            if tag.get("tag_type") == "local_export_tag"
+        ]
+        if 0 <= slot < len(local_exports) and local_exports[slot]:
+            self.append_stmts(statements, node, {
+                "assign_stmt": {"target": "acc", "operand": local_exports[slot]}
+            })
 
     def stlexvar_statement(self, node, statements):
         lexi_env_node = self.find_child_by_field(node, "lexi_env")
@@ -1507,6 +1528,7 @@ class Parser(common_parser.Parser):
             module_tag_array.append(tag_record)
 
         module_literal["module_tag_array"] = module_tag_array
+        self.module_literals_by_id[id] = module_literal
         self.append_stmts(statements, node, {
             "module_literal": module_literal
         })
@@ -1544,6 +1566,7 @@ class Parser(common_parser.Parser):
             idnode = self.find_child_by_type(field, "hexi")
             id = self.read_node_text(idnode)
             module_record[field_name] = id
+        self.module_records_by_path[path.strip("&")] = module_record
         self.append_stmts(statements, node, {
             "module_record": module_record
         })

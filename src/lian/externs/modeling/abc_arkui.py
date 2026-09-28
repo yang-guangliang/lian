@@ -55,6 +55,10 @@ _NAVIGATION_PAYLOADS_BY_SPACE = {}
 # create 模型才能精确找到 TargetPage 对应的 initialRender。
 _COMPONENT_NAME_BY_CALLBACK_METHOD = {}
 
+# ABC 生命周期的字段读取可能生成不同的 dataSource 状态 id。条目按状态空间和
+# aboutToAppear 方法保存，供对应 initialRender 的 LazyForEach 读取。
+_LAZY_ITEMS_BY_LIFECYCLE = {}
+
 
 def _access_path_key(point):
     key = getattr(point, "key", None)
@@ -253,6 +257,20 @@ def _find_about_to_appear_before_initial_render(loader, initial_render_id):
     return set()
 
 
+def _find_constructor_before_initial_render(loader, initial_render_id):
+    """找到当前组件的构造方法；ABC 组件方法在同一单元中连续排列。"""
+    unit_id = loader.convert_method_id_to_unit_id(initial_render_id)
+    for method_id in sorted(loader.get_all_method_ids() or set(), reverse=True):
+        if method_id >= initial_render_id:
+            continue
+        if loader.convert_method_id_to_unit_id(method_id) != unit_id:
+            continue
+        name = loader.convert_method_id_to_method_name(method_id) or ""
+        if name and name[0].isupper() and not name.startswith("%"):
+            return {method_id}
+    return set()
+
+
 def _find_page_map_methods(in_data):
     loader = in_data.frame.loader
     current_class = loader.convert_method_id_to_class_id(in_data.frame.method_id)
@@ -370,6 +388,53 @@ def model_add(data):
     _publish_result(in_data, receiver_states)
 
 
+def model_data_source_add_item(data):
+    """IDataSource.addItem(item)：保存条目，供 LazyForEach.create 枚举。"""
+    in_data = data.in_data
+    frame = in_data.frame
+    receiver_ids = {
+        state.access_path[-2].state_id
+        for index in in_data.unsolved_callee_states
+        for state in [frame.symbol_state_space[index]]
+        if isinstance(state, State) and len(state.access_path) >= 2
+        and state.access_path[-2].state_id > 0
+    }
+    receiver_states = {
+        index for index, state in enumerate(frame.symbol_state_space)
+        if isinstance(state, State) and state.state_id in receiver_ids
+    }
+    if not receiver_states or not (
+        _receiver_access_path_key(in_data) == "dataSource"
+        or any(
+            "DataSource" in str(getattr(frame.symbol_state_space[index], "data_type", ""))
+            for index in receiver_states
+        )
+    ):
+        return
+    item_states = _read_arg_slot_states(in_data, 0)
+    if not item_states:
+        return
+    if frame.method_name == "aboutToAppear":
+        key = (id(frame.symbol_state_space), frame.method_id)
+        # 保留状态空间的引用，防止后续入口复用其 id 后误取旧条目。
+        space, saved_items = _LAZY_ITEMS_BY_LIFECYCLE.setdefault(
+            key, (frame.symbol_state_space, set())
+        )
+        if space is frame.symbol_state_space:
+            saved_items.update(item_states)
+    for state_index in receiver_states:
+        state = in_data.frame.symbol_state_space[state_index]
+        if not isinstance(state, State):
+            continue
+        state.tangping_elements.update(item_states)
+        for items_index in state.fields.get("items", set()):
+            items_state = in_data.frame.symbol_state_space[items_index]
+            if isinstance(items_state, State):
+                items_state.tangping_elements.update(item_states)
+                items_state.array.append(set(item_states))
+    _publish_result(in_data, receiver_states)
+
+
 def _collect_callback_method_ids(in_data, state_index):
     """取出某个实参状态里承载的方法 id（即回调）。
 
@@ -476,18 +541,22 @@ def model_callback(data):
         any(keys[-1] == "observeComponentCreation2" for keys in _callee_access_path_keys(in_data))
         and frame.loader.convert_method_id_to_method_name(frame.method_id) == "initialRender"
         and frame.caller_id < 0
-        and not getattr(frame, "_arkui_about_to_appear_called", False)
         and this_states
     ):
-        lifecycle_ids = _find_about_to_appear_before_initial_render(frame.loader, frame.method_id)
-        if lifecycle_ids:
-            data.out_data = state_analysis.compute_target_method_states(
-                in_data.stmt_id, in_data.stmt, status, in_data.in_states,
-                lifecycle_ids, defined_symbol, MethodCallArguments(), this_states,
-            )
-            if data.out_data and data.out_data.interruption_flag:
-                return
-        frame._arkui_about_to_appear_called = True
+        for marker, lifecycle_ids in (
+            ("_arkui_constructor_called", _find_constructor_before_initial_render(frame.loader, frame.method_id)),
+            ("_arkui_about_to_appear_called", _find_about_to_appear_before_initial_render(frame.loader, frame.method_id)),
+        ):
+            if getattr(frame, marker, False):
+                continue
+            if lifecycle_ids:
+                data.out_data = state_analysis.compute_target_method_states(
+                    in_data.stmt_id, in_data.stmt, status, in_data.in_states,
+                    lifecycle_ids, defined_symbol, MethodCallArguments(), this_states,
+                )
+                if data.out_data and data.out_data.interruption_flag:
+                    return
+            setattr(frame, marker, True)
 
     data.out_data = state_analysis.compute_target_method_states(
         in_data.stmt_id, in_data.stmt, status, in_data.in_states,
@@ -542,6 +611,9 @@ def model_navigation_push_path_by_name(data):
 def model_view_create(data):
     """ViewPU/ViewV2.create(component)：先触发 aboutToAppear，再首次渲染。"""
     in_data = data.in_data
+    if _is_access_path_method(in_data, "LazyForEach", "create"):
+        model_lazy_foreach_create(data)
+        return
     if not (
         _is_access_path_method(in_data, "ViewPU", "create")
         or _is_access_path_method(in_data, "ViewV2", "create")
@@ -587,6 +659,52 @@ def model_view_create(data):
         )
         if data.out_data and data.out_data.interruption_flag:
             return
+
+
+def model_lazy_foreach_create(data):
+    """LazyForEach.create：以数据源中的条目执行条目生成回调。"""
+    in_data = data.in_data
+    frame = in_data.frame
+    data_source_states = _read_arg_slot_states(in_data, 2)
+    item_states = set()
+    for state_index in data_source_states:
+        state = frame.symbol_state_space[state_index]
+        if not isinstance(state, State):
+            continue
+        item_states.update(state.tangping_elements)
+        for items_index in state.fields.get("items", set()):
+            items_state = frame.symbol_state_space[items_index]
+            if not isinstance(items_state, State):
+                continue
+            item_states.update(items_state.tangping_elements)
+            for slot in items_state.array:
+                item_states.update(slot)
+    for lifecycle_id in _find_about_to_appear_before_initial_render(frame.loader, frame.method_id):
+        saved = _LAZY_ITEMS_BY_LIFECYCLE.get((id(frame.symbol_state_space), lifecycle_id))
+        if saved and saved[0] is frame.symbol_state_space:
+            item_states.update(saved[1])
+
+    callback_method_ids = set()
+    for slot in (3, 4):
+        for state_index in _read_arg_slot_states(in_data, slot):
+            callback_method_ids.update(_collect_callback_method_ids(in_data, state_index))
+    callback_method_ids = {
+        method_id for method_id in callback_method_ids
+        if (frame.loader.convert_method_id_to_method_name(method_id) or "").startswith(
+            "__lazyForEachItem"
+        )
+    }
+    if not callback_method_ids or not item_states:
+        return
+
+    real_args = MethodCallArguments(
+        positional_args=[_build_arguments_from_states(in_data, item_states, 0)],
+        named_args=[],
+    )
+    data.out_data = in_data.state_analysis.compute_target_method_states(
+        in_data.stmt_id, in_data.stmt, in_data.status, in_data.in_states,
+        callback_method_ids, in_data.defined_symbol, real_args, set(),
+    )
 
 
 def model_nav_destination_on_ready(data):
@@ -727,8 +845,7 @@ _EMITTER_CALLBACKS = {}
 def model_emitter_register(data):
     """emitter.on/once(eventName, cb)：按事件名登记回调。
 
-    对齐 HScope AbcModeling 里对 "once"/"on"/"emit" 的处理：注册动作本身不影响
-    调用图，只是把回调记下来，等 emit 时触发。
+    蓝牙 stateChange 由系统事件触发，没有应用侧 emit；注册时也分析其回调。
     """
     in_data = data.in_data
     frame = in_data.frame
@@ -744,6 +861,14 @@ def model_emitter_register(data):
             callbacks.update(_collect_callback_method_ids(in_data, arg.index_in_space))
     if callbacks:
         _EMITTER_CALLBACKS.setdefault(event_name, set()).update(callbacks)
+        if event_name == "stateChange" and any(
+            keys[-1] == "on" and "bluetooth.access" in keys
+            for keys in _callee_access_path_keys(in_data)
+        ):
+            data.out_data = in_data.state_analysis.compute_target_method_states(
+                in_data.stmt_id, in_data.stmt, in_data.status, in_data.in_states,
+                callbacks, in_data.defined_symbol, MethodCallArguments(), set(),
+            )
 
 
 def model_emitter_emit(data):
@@ -915,6 +1040,7 @@ METHOD_NAME_TO_MODEL = {
     "set": model_set,
     "get": model_get,
     "add": model_add,
+    "addItem": model_data_source_add_item,
     # Promise.then(cb)：自身是外部方法，但必须分析 cb（汇点常在 cb 内）。
     "then": model_callback,
     # emitter 事件：按事件名把 emit 的数据交给 on/once 登记的回调。
