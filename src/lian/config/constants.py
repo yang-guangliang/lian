@@ -478,4 +478,5 @@ EVENT_KIND = util.SimpleEnum({
     "P2STATE_FIELD_WRITE_AFTER"                     : 47,
     "P2STATE_CALL_STMT_BEFORE"                      : 48,
     "P2STATE_CALL_STMT_AFTER"                       : 49,
+    "P2STATE_RETURN_STMT_AFTER"                     : 50,
 })

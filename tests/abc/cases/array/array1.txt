@@ -1,0 +1,1435 @@
+# source binary: modules.abc
+
+.language ECMAScript
+
+# ====================
+# LITERALS
+
+0 0x1b18 { 7 [ i32:3, string:"Index", i32:0, string:"4newTarget", i32:1, string:"this", i32:2, ]}
+1 0x1a69 { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]}
+10 0x18f9 { 22 [ string:"onCreate", method:#~@0>#onCreate, method_affiliate:2, string:"onDestroy", method:#~@0>#onDestroy, method_affiliate:0, string:"onWindowStageCreate", method:#~@0>#onWindowStageCreate, method_affiliate:1, string:"send_brand", method:#~@0>#send_brand, method_affiliate:0, string:"onWindowStageDestroy", method:#~@0>#onWindowStageDestroy, method_affiliate:0, string:"onForeground", method:#~@0>#onForeground, method_affiliate:0, string:"onBackground", method:#~@0>#onBackground, method_affiliate:0, i32:7, ]}
+12 0x18dc { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+13 0x18c0 { 6 [ string:"contactObjects", null_value:0, string:"pageFlag", string:"conversation", string:"content", null_value:0, ]}
+15 0x195d { 1 [ i32:0, ]}
+16 0x18a1 { 6 [ string:"bundleName", string:"com.ohos.mms", string:"abilityName", string:"com.ohos.mms.MainAbility", string:"parameters", null_value:0, ]}
+17 0x1ad8 { 12 [ string:"bundleName", string:"com.example.array1", string:"moduleName", string:"entry", string:"pagePath", string:"pages/Index", string:"pageFullPath", string:"entry/src/main/ets/pages/Index", string:"integratedHsp", string:"false", string:"moduleType", string:"followWithHap", ]}
+18 0x1a54 { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]}
+19 0x1a0f { 10 [ string:"id", i32:16777224, string:"type", i32:10002, string:"params", null_value:0, string:"bundleName", string:"com.example.array1", string:"moduleName", string:"entry", ]}
+2 0x1a42 { 4 [ string:"center", null_value:0, string:"middle", null_value:0, ]}
+20 0x1838 { 3 [ string:"EntryAbility", string:"onWindowStageCreate", string:"Contact", ]}
+4 0x1a9b { 13 [ string:"setInitiallyProvidedValue", method:#~@0>#setInitiallyProvidedValue, method_affiliate:1, string:"updateStateVars", method:#~@0>#updateStateVars, method_affiliate:1, string:"purgeVariableDependenciesOnElmtId", method:#~@0>#purgeVariableDependenciesOnElmtId, method_affiliate:1, string:"aboutToBeDeleted", method:#~@0>#aboutToBeDeleted, method_affiliate:0, i32:4, ]}
+5 0x1a7e { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+6 0x19e5 { 2 [ string:"Index", string:"initialRender", ]}
+7 0x19af { 7 [ string:"onBackup", method:#~@0>#onBackup, method_affiliate:0, string:"onRestore", method:#~@0>#onRestore, method_affiliate:1, i32:2, ]}
+8 0x19d2 { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+9 0x1966 { 1 [ string:"EntryBackupAbility", ]}
+11 0x196f { 3 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:hilog,
+		1 : @ohos:application.BackupExtensionAbility,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: BackupExtensionAbility, import_name: default, module_request: @ohos:application.BackupExtensionAbility;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: LOCAL_EXPORT, local_name: EntryBackupAbility, export_name: default;
+]}
+14 0x184b { 5 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:app.ability.UIAbility,
+		1 : @ohos:hilog,
+		2 : @ohos:deviceInfo,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: UIAbility, import_name: default, module_request: @ohos:app.ability.UIAbility;
+	ModuleTag: REGULAR_IMPORT, local_name: deviceInfo, import_name: default, module_request: @ohos:deviceInfo;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: LOCAL_EXPORT, local_name: Contact, export_name: Contact;
+	ModuleTag: LOCAL_EXPORT, local_name: EntryAbility, export_name: default;
+]}
+3 0x19f3 { 0 [
+	MODULE_REQUEST_ARRAY: {
+	};
+]}
+
+# ====================
+# RECORDS
+
+.record &entry.src.main.ets.entryability.EntryAbility& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x1838
+	u32 moduleRecordIdx = 0x184b
+}
+
+.record &entry.src.main.ets.entrybackupability.EntryBackupAbility& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x1966
+	u32 moduleRecordIdx = 0x196f
+}
+
+.record &entry.src.main.ets.pages.Index& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x19e5
+	u32 moduleRecordIdx = 0x19f3
+}
+
+.record @ohos.app {
+	u8 @native.ohos.app = 0x0
+}
+
+.record @ohos.curves {
+	u8 @native.ohos.curves = 0x0
+}
+
+.record @ohos.matrix4 {
+	u8 @native.ohos.matrix4 = 0x0
+}
+
+.record @system.app {
+	u8 @native.system.app = 0x0
+}
+
+.record @system.curves {
+	u8 @native.system.curves = 0x0
+}
+
+.record @system.matrix4 {
+	u8 @native.system.matrix4 = 0x0
+}
+
+.record @system.router {
+	u8 @native.system.router = 0x0
+}
+
+.record _ESConcurrentModuleRequestsAnnotation {
+}
+
+.record _ESSlotNumberAnnotation {
+}
+
+# ====================
+# METHODS
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x5 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0=#EntryAbility(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	copyrestargs 0x0
+	sta v3
+	lda v3
+	sta v5
+	lda v0
+	supercallspread 0x0, v5
+	sta v5
+	lda v2
+	throw.ifsupernotcorrectcall 0x1
+	lda v5
+	sta v2
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v5
+	createemptyarray 0x2
+	sta v6
+	stobjbyname 0x3, "arrayData", v5
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onBackground(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldai 0x0
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onBackground"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onCreate(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v7
+	lda v7
+	ldobjbyname 0x0, "info"
+	sta v6
+	ldai 0x0
+	sta v8
+	lda.str "testTag"
+	sta v9
+	lda.str "%{public}s"
+	sta v10
+	lda.str "Ability onCreate"
+	sta v11
+	lda v6
+	callthisrange 0x2, 0x4, v7
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onDestroy(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldai 0x0
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onDestroy"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onForeground(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldai 0x0
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onForeground"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x3c }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onWindowStageCreate(any a0, any a1, any a2, any a3) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x0
+	lda a2
+	stlexvar 0x0, 0x1
+	mov v3, a3
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v11
+	lda v11
+	ldobjbyname 0x0, "info"
+	sta v10
+	ldai 0x0
+	sta v12
+	lda.str "testTag"
+	sta v13
+	lda.str "%{public}s"
+	sta v14
+	lda.str "Ability onWindowStageCreate"
+	sta v15
+	lda v10
+	callthisrange 0x2, 0x4, v11
+	lda v3
+	sta v11
+	lda v11
+	ldobjbyname 0x4, "loadContent"
+	sta v10
+	lda.str "pages/Index"
+	sta v12
+	definefunc 0x6, &entry.src.main.ets.entryability.EntryAbility&.#~@0>@1*#:(any,any,any,any), 0x1
+	sta v13
+	lda v10
+	callthis2 0x7, v11, v12, v13
+	ldlexvar 0x0, 0x1
+	sta v11
+	lda v11
+	ldobjbyname 0x9, "arrayData"
+	sta v10
+	ldai 0x0
+	sta v11
+	lda.str "element 1 is tainted:"
+	stobjbyvalue 0xb, v10, v11
+	ldlexvar 0x0, 0x1
+	sta v11
+	lda v11
+	ldobjbyname 0xd, "arrayData"
+	sta v10
+	ldai 0x1
+	sta v11
+	lda.str "imei"
+	stobjbyvalue 0xf, v10, v11
+	ldlexvar 0x0, 0x1
+	sta v11
+	lda v11
+	ldobjbyname 0x11, "arrayData"
+	sta v10
+	ldai 0x2
+	sta v11
+	lda.str "neutral text"
+	stobjbyvalue 0x13, v10, v11
+	ldai 0x2
+	sta v8
+	createemptyarray 0x15
+	sta v10
+	sta v5
+	lda v5
+	sta v10
+	ldai 0x0
+	sta v11
+	lda.str "wer"
+	stobjbyvalue 0x16, v10, v11
+	lda v5
+	sta v10
+	ldai 0x0
+	sta v11
+	lda v11
+	ldobjbyvalue 0x18, v10
+	sta v7
+	lda v5
+	sta v10
+	lda v8
+	sta v11
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "deviceInfo"
+	sta v12
+	lda v12
+	ldobjbyname 0x1a, "brand"
+	stobjbyvalue 0x1c, v10, v11
+	createemptyarray 0x1e
+	sta v10
+	ldlocalmodulevar 0x0
+	throw.undefinedifholewithname "Contact"
+	sta v11
+	lda.str "张三"
+	sta v12
+	fldai 1.334456e+10
+	sta v13
+	newobjrange 0x1f, 0x3, v11
+	stownbyindex 0x21, v10, 0x0
+	lda v10
+	sta v6
+	createobjectwithbuffer 0x23, { 6 [ string:"bundleName", string:"com.ohos.mms", string:"abilityName", string:"com.ohos.mms.MainAbility", string:"parameters", null_value:0, ]}
+	sta v10
+	createobjectwithbuffer 0x24, { 6 [ string:"contactObjects", null_value:0, string:"pageFlag", string:"conversation", string:"content", null_value:0, ]}
+	sta v11
+	tryldglobalbyname 0x25, "JSON"
+	sta v13
+	lda v13
+	ldobjbyname 0x26, "stringify"
+	sta v12
+	lda v6
+	sta v14
+	lda v12
+	callthis1 0x28, v13, v14
+	definepropertybyname 0x2a, "contactObjects", v11
+	lda v5
+	sta v12
+	ldai 0x2
+	sta v13
+	lda v13
+	ldobjbyvalue 0x2c, v12
+	definepropertybyname 0x2e, "content", v11
+	lda v11
+	definepropertybyname 0x30, "parameters", v10
+	lda v10
+	sta v4
+	ldlexvar 0x0, 0x1
+	sta v12
+	lda v12
+	ldobjbyname 0x32, "context"
+	sta v11
+	lda v11
+	ldobjbyname 0x34, "startAbilityForResult"
+	sta v10
+	lda v4
+	sta v12
+	lda v10
+	callthis1 0x36, v11, v12
+	ldlexvar 0x0, 0x1
+	sta v11
+	lda v11
+	ldobjbyname 0x38, "send_brand"
+	sta v10
+	lda v10
+	callthis0 0x3a, v11
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onWindowStageDestroy(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldai 0x0
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onWindowStageDestroy"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#send_brand(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldai 0x3
+	sta v3
+	lda v3
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x13 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>@1*#(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda v3
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "code"
+	callruntime.isfalse 0x2
+	jnez jump_label_0
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v6
+	lda v6
+	ldobjbyname 0x4, "error"
+	sta v5
+	ldai 0x0
+	sta v7
+	lda.str "testTag"
+	sta v8
+	lda.str "Failed to load the content. Cause: %{public}s"
+	sta v9
+	tryldglobalbyname 0x6, "JSON"
+	sta v12
+	lda v12
+	ldobjbyname 0x7, "stringify"
+	sta v11
+	lda v3
+	sta v13
+	lda v11
+	callthis1 0x9, v12, v13
+	sta v10
+	sta v11
+	ldnull
+	stricteq 0xb, v11
+	jnez jump_label_1
+	lda v10
+	sta v11
+	ldundefined
+	stricteq 0xc, v11
+	jeqz jump_label_2
+jump_label_1:
+	lda.str ""
+	jmp jump_label_3
+jump_label_2:
+	lda v10
+jump_label_3:
+	sta v10
+	lda v5
+	callthisrange 0xd, 0x4, v6
+	ldundefined
+	ldundefined
+	returnundefined
+jump_label_0:
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v6
+	lda v6
+	ldobjbyname 0xf, "info"
+	sta v5
+	ldai 0x0
+	sta v7
+	lda.str "testTag"
+	sta v8
+	lda.str "Succeeded in loading the content."
+	sta v9
+	lda v5
+	callthis3 0x11, v6, v7, v8, v9
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@2=#Contact(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	lda v2
+	sta v6
+	lda v3
+	stobjbyname 0x0, "contactsName", v6
+	lda v2
+	sta v6
+	lda v4
+	stobjbyname 0x2, "telephone", v6
+	lda v2
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x6 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.func_main_0(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "UIAbility"
+	sta v6
+	defineclasswithbuffer 0x0, &entry.src.main.ets.entryability.EntryAbility&.#~@0=#EntryAbility:(any,any,any,any), { 22 [ string:"onCreate", method:#~@0>#onCreate, method_affiliate:2, string:"onDestroy", method:#~@0>#onDestroy, method_affiliate:0, string:"onWindowStageCreate", method:#~@0>#onWindowStageCreate, method_affiliate:1, string:"send_brand", method:#~@0>#send_brand, method_affiliate:0, string:"onWindowStageDestroy", method:#~@0>#onWindowStageDestroy, method_affiliate:0, string:"onForeground", method:#~@0>#onForeground, method_affiliate:0, string:"onBackground", method:#~@0>#onBackground, method_affiliate:0, i32:7, ]}, 0x0, v6
+	sta v4
+	sta v5
+	lda v4
+	ldobjbyname 0x1, "prototype"
+	sta v7
+	lda v4
+	stmodulevar 0x1
+	ldhole
+	sta v6
+	defineclasswithbuffer 0x3, &entry.src.main.ets.entryability.EntryAbility&.#~@2=#Contact:(any,any,any,any,any), { 1 [ i32:0, ]}, 0x2, v6
+	sta v4
+	sta v5
+	lda v4
+	ldobjbyname 0x4, "prototype"
+	sta v7
+	lda v4
+	stmodulevar 0x0
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0=#EntryBackupAbility(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	copyrestargs 0x0
+	sta v3
+	lda v3
+	sta v5
+	lda v0
+	supercallspread 0x0, v5
+	sta v5
+	lda v2
+	throw.ifsupernotcorrectcall 0x1
+	lda v5
+	sta v2
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xa }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0>#onBackup(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	asyncfunctionenter
+	sta v3
+try_begin_label_0:
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "onBackup ok"
+	sta v8
+	lda v4
+	callthis3 0x2, v5, v6, v7, v8
+	tryldglobalbyname 0x4, "Promise"
+	sta v5
+	lda v5
+	ldobjbyname 0x5, "resolve"
+	sta v4
+	lda v4
+	callthis0 0x7, v5
+	asyncfunctionawaituncaught v3
+	suspendgenerator v3
+	lda v3
+	resumegenerator
+	sta v5
+	lda v3
+	getresumemode
+	sta v4
+	ldai 0x1
+	eq 0x9, v4
+	jeqz jump_label_3
+	lda v5
+	throw
+jump_label_3:
+	lda v5
+	ldundefined
+	asyncfunctionresolve v3
+	return
+try_end_label_0:
+	sta v4
+	asyncfunctionreject v3
+	return
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xf }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0>#onRestore(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	asyncfunctionenter
+	sta v4
+try_begin_label_0:
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "hilog"
+	sta v6
+	lda v6
+	ldobjbyname 0x0, "info"
+	sta v5
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v7
+	lda.str "testTag"
+	sta v8
+	lda.str "onRestore ok %{public}s"
+	sta v9
+	tryldglobalbyname 0x2, "JSON"
+	sta v11
+	lda v11
+	ldobjbyname 0x3, "stringify"
+	sta v10
+	lda v3
+	sta v12
+	lda v10
+	callthis1 0x5, v11, v12
+	sta v10
+	lda v5
+	callthisrange 0x7, 0x4, v6
+	tryldglobalbyname 0x9, "Promise"
+	sta v6
+	lda v6
+	ldobjbyname 0xa, "resolve"
+	sta v5
+	lda v5
+	callthis0 0xc, v6
+	asyncfunctionawaituncaught v4
+	suspendgenerator v4
+	lda v4
+	resumegenerator
+	sta v6
+	lda v4
+	getresumemode
+	sta v5
+	ldai 0x1
+	eq 0xe, v5
+	jeqz jump_label_3
+	lda v6
+	throw
+jump_label_3:
+	lda v6
+	ldundefined
+	asyncfunctionresolve v4
+	return
+try_end_label_0:
+	sta v5
+	asyncfunctionreject v4
+	return
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x3 }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x1, { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldai 0x0
+	sta v4
+	lda v4
+	stlexvar 0x0, 0x0
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "BackupExtensionAbility"
+	sta v6
+	defineclasswithbuffer 0x0, &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0=#EntryBackupAbility:(any,any,any,any), { 7 [ string:"onBackup", method:#~@0>#onBackup, method_affiliate:0, string:"onRestore", method:#~@0>#onRestore, method_affiliate:1, i32:2, ]}, 0x0, v6
+	sta v4
+	sta v5
+	lda v4
+	ldobjbyname 0x1, "prototype"
+	sta v7
+	lda v4
+	stmodulevar 0x0
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#*#(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.pages.Index&.#*#^1(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "Index"
+	sta v4
+	ldundefined
+	sta v5
+	createemptyobject
+	sta v6
+	newobjrange 0x0, 0x3, v4
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0<#getEntryName(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda.str "Index"
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x17 }
+.function any &entry.src.main.ets.pages.Index&.#~@0=#Index(any a0, any a1, any a2, any a3, any a4, any a5, any a6, any a7, any a8) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	mov v5, a5
+	mov v6, a6
+	mov v7, a7
+	mov v8, a8
+	lda v6
+	sta v10
+	ldundefined
+	stricteq 0x0, v10
+	jeqz jump_label_0
+	ldai 0x1
+	sta v10
+	lda v10
+	neg 0x1
+	sta v6
+jump_label_0:
+	lda v7
+	sta v10
+	ldundefined
+	stricteq 0x2, v10
+	jeqz jump_label_1
+	ldundefined
+	sta v7
+jump_label_1:
+	lda v3
+	sta v10
+	lda v5
+	sta v11
+	lda v6
+	sta v12
+	lda v8
+	sta v13
+	supercallthisrange 0x3, 0x4, v10
+	sta v10
+	lda v2
+	throw.ifsupernotcorrectcall 0x1
+	lda v10
+	sta v2
+	lda v7
+	typeof 0x5
+	sta v10
+	lda.str "function"
+	stricteq 0x7, v10
+	jeqz jump_label_2
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v10
+	lda v7
+	stobjbyname 0x8, "paramsGenerator_", v10
+jump_label_2:
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v10
+	tryldglobalbyname 0xa, "ObservedPropertySimplePU"
+	sta v11
+	lda.str "Hello World"
+	sta v12
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v13
+	lda.str "message"
+	sta v14
+	newobjrange 0xb, 0x4, v11
+	stobjbyname 0xd, "__message", v10
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v11
+	lda v11
+	ldobjbyname 0xf, "setInitiallyProvidedValue"
+	sta v10
+	lda v4
+	sta v12
+	lda v10
+	callthis1 0x11, v11, v12
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v11
+	lda v11
+	ldobjbyname 0x13, "finalizeConstruction"
+	sta v10
+	lda v10
+	callthis0 0x15, v11
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x17 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#aboutToBeDeleted(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda v2
+	sta v6
+	lda v6
+	ldobjbyname 0x0, "__message"
+	sta v5
+	lda v5
+	ldobjbyname 0x2, "aboutToBeDeleted"
+	sta v4
+	lda v4
+	callthis0 0x4, v5
+	tryldglobalbyname 0x6, "SubscriberManager"
+	sta v7
+	lda v7
+	ldobjbyname 0x7, "Get"
+	sta v6
+	lda v6
+	callthis0 0x9, v7
+	sta v5
+	lda v5
+	ldobjbyname 0xb, "delete"
+	sta v4
+	lda v2
+	sta v7
+	lda v7
+	ldobjbyname 0xd, "id__"
+	sta v6
+	lda v6
+	callthis0 0xf, v7
+	sta v6
+	lda v4
+	callthis1 0x11, v5, v6
+	lda v2
+	sta v5
+	lda v5
+	ldobjbyname 0x13, "aboutToBeDeletedInternal"
+	sta v4
+	lda v4
+	callthis0 0x15, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x16 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#initialRender(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x0
+	lda a2
+	stlexvar 0x0, 0x1
+	ldlexvar 0x0, 0x1
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "observeComponentCreation2"
+	sta v4
+	definefunc 0x2, &entry.src.main.ets.pages.Index&.#~@0>@1*#:(any,any,any,any,any), 0x2
+	sta v6
+	tryldglobalbyname 0x3, "RelativeContainer"
+	sta v7
+	lda v4
+	callthis2 0x4, v5, v6, v7
+	ldlexvar 0x0, 0x1
+	sta v5
+	lda v5
+	ldobjbyname 0x6, "observeComponentCreation2"
+	sta v4
+	definefunc 0x8, &entry.src.main.ets.pages.Index&.#~@0>@1*#^1:(any,any,any,any,any), 0x2
+	sta v6
+	tryldglobalbyname 0x9, "Text"
+	sta v7
+	lda v4
+	callthis2 0xa, v5, v6, v7
+	tryldglobalbyname 0xc, "Text"
+	sta v5
+	lda v5
+	ldobjbyname 0xd, "pop"
+	sta v4
+	lda v4
+	callthis0 0xf, v5
+	tryldglobalbyname 0x11, "RelativeContainer"
+	sta v5
+	lda v5
+	ldobjbyname 0x12, "pop"
+	sta v4
+	lda v4
+	callthis0 0x14, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x6 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#message(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda v2
+	sta v6
+	lda v6
+	ldobjbyname 0x0, "__message"
+	sta v5
+	lda v5
+	ldobjbyname 0x2, "get"
+	sta v4
+	lda v4
+	callthis0 0x4, v5
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x6 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#message^1(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda v2
+	sta v7
+	lda v7
+	ldobjbyname 0x0, "__message"
+	sta v6
+	lda v6
+	ldobjbyname 0x2, "set"
+	sta v5
+	lda v3
+	sta v7
+	lda v5
+	callthis1 0x4, v6, v7
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x6 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#purgeVariableDependenciesOnElmtId(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda v2
+	sta v7
+	lda v7
+	ldobjbyname 0x0, "__message"
+	sta v6
+	lda v6
+	ldobjbyname 0x2, "purgeDependencyOnElmtId"
+	sta v5
+	lda v3
+	sta v7
+	lda v5
+	callthis1 0x4, v6, v7
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#rerender(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda v2
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "updateDirtyElements"
+	sta v4
+	lda v4
+	callthis0 0x2, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x7 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#setInitiallyProvidedValue(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda v3
+	sta v6
+	lda v6
+	ldobjbyname 0x0, "message"
+	sta v5
+	ldundefined
+	strictnoteq 0x2, v5
+	jeqz jump_label_0
+	lda v2
+	sta v5
+	lda v3
+	sta v6
+	lda v6
+	ldobjbyname 0x3, "message"
+	stobjbyname 0x5, "message", v5
+jump_label_0:
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#updateStateVars(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xf }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "RelativeContainer"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda v6
+	callthis0 0x3, v7
+	tryldglobalbyname 0x5, "RelativeContainer"
+	sta v7
+	lda v7
+	ldobjbyname 0x6, "height"
+	sta v6
+	lda.str "100%"
+	sta v8
+	lda v6
+	callthis1 0x8, v7, v8
+	tryldglobalbyname 0xa, "RelativeContainer"
+	sta v7
+	lda v7
+	ldobjbyname 0xb, "width"
+	sta v6
+	lda.str "100%"
+	sta v8
+	lda v6
+	callthis1 0xd, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x39 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#^1(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	ldlexvar 0x0, 0x1
+	sta v8
+	lda v8
+	ldobjbyname 0x3, "message"
+	sta v8
+	lda v6
+	callthis1 0x5, v7, v8
+	tryldglobalbyname 0x7, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x8, "id"
+	sta v6
+	lda.str "HelloWorld"
+	sta v8
+	lda v6
+	callthis1 0xa, v7, v8
+	tryldglobalbyname 0xc, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0xd, "fontSize"
+	sta v6
+	createobjectwithbuffer 0xf, { 10 [ string:"id", i32:16777224, string:"type", i32:10002, string:"params", null_value:0, string:"bundleName", string:"com.example.array1", string:"moduleName", string:"entry", ]}
+	sta v8
+	createemptyarray 0x10
+	sta v9
+	definepropertybyname 0x11, "params", v8
+	lda v8
+	sta v8
+	lda v6
+	callthis1 0x13, v7, v8
+	tryldglobalbyname 0x15, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x16, "fontWeight"
+	sta v6
+	tryldglobalbyname 0x18, "FontWeight"
+	sta v8
+	lda v8
+	ldobjbyname 0x19, "Bold"
+	sta v8
+	lda v6
+	callthis1 0x1b, v7, v8
+	tryldglobalbyname 0x1d, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x1e, "alignRules"
+	sta v6
+	createobjectwithbuffer 0x20, { 4 [ string:"center", null_value:0, string:"middle", null_value:0, ]}
+	sta v8
+	createobjectwithbuffer 0x21, { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]}
+	sta v9
+	tryldglobalbyname 0x22, "VerticalAlign"
+	sta v10
+	lda v10
+	ldobjbyname 0x23, "Center"
+	definepropertybyname 0x25, "align", v9
+	lda v9
+	definepropertybyname 0x27, "center", v8
+	createobjectwithbuffer 0x29, { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]}
+	sta v9
+	tryldglobalbyname 0x2a, "HorizontalAlign"
+	sta v10
+	lda v10
+	ldobjbyname 0x2b, "Center"
+	definepropertybyname 0x2d, "align", v9
+	lda v9
+	definepropertybyname 0x2f, "middle", v8
+	lda v8
+	sta v8
+	lda v6
+	callthis1 0x31, v7, v8
+	tryldglobalbyname 0x33, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x34, "onClick"
+	sta v6
+	definefunc 0x36, &entry.src.main.ets.pages.Index&.#~@0>@1*^1*#:(any,any,any), 0x0
+	sta v8
+	lda v6
+	callthis1 0x37, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*^1*#(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldlexvar 0x0, 0x1
+	sta v4
+	lda.str "Welcome"
+	stobjbyname 0x0, "message", v4
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x25 }
+.function any &entry.src.main.ets.pages.Index&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x3, { 7 [ i32:3, string:"Index", i32:0, string:"4newTarget", i32:1, string:"this", i32:2, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x1
+	lda a2
+	stlexvar 0x0, 0x2
+	lda.str "finalizeConstruction"
+	sta v5
+	tryldglobalbyname 0x0, "ViewPU"
+	sta v6
+	lda v6
+	ldobjbyname 0x1, "prototype"
+	isin 0x3, v5
+	callruntime.istrue 0x4
+	jnez jump_label_0
+	ldtrue
+	jmp jump_label_1
+jump_label_0:
+	ldfalse
+jump_label_1:
+	callruntime.isfalse 0x6
+	jnez jump_label_2
+	tryldglobalbyname 0x8, "Reflect"
+	sta v6
+	lda v6
+	ldobjbyname 0x9, "set"
+	sta v5
+	tryldglobalbyname 0xb, "ViewPU"
+	sta v7
+	lda v7
+	ldobjbyname 0xc, "prototype"
+	sta v7
+	lda.str "finalizeConstruction"
+	sta v8
+	definefunc 0xe, &entry.src.main.ets.pages.Index&.#*#:(any,any,any), 0x0
+	sta v9
+	lda v5
+	callthis3 0xf, v6, v7, v8, v9
+jump_label_2:
+	tryldglobalbyname 0x11, "ViewPU"
+	sta v7
+	defineclasswithbuffer 0x12, &entry.src.main.ets.pages.Index&.#~@0=#Index:(any,any,any,any,any,any,any,any,any), { 13 [ string:"setInitiallyProvidedValue", method:#~@0>#setInitiallyProvidedValue, method_affiliate:1, string:"updateStateVars", method:#~@0>#updateStateVars, method_affiliate:1, string:"purgeVariableDependenciesOnElmtId", method:#~@0>#purgeVariableDependenciesOnElmtId, method_affiliate:1, string:"aboutToBeDeleted", method:#~@0>#aboutToBeDeleted, method_affiliate:0, i32:4, ]}, 0x3, v7
+	sta v5
+	sta v6
+	lda v5
+	ldobjbyname 0x13, "prototype"
+	sta v8
+	lda.str "message"
+	sta v9
+	ldundefined
+	sta v10
+	lda v8
+	definemethod 0x15, &entry.src.main.ets.pages.Index&.#~@0>#message:(any,any,any), 0x0
+	sta v11
+	ldfalse
+	definegettersetterbyvalue v8, v9, v11, v10
+	lda.str "message"
+	sta v9
+	ldundefined
+	sta v10
+	lda v8
+	definemethod 0x16, &entry.src.main.ets.pages.Index&.#~@0>#message^1:(any,any,any,any), 0x1
+	sta v11
+	ldfalse
+	definegettersetterbyvalue v8, v9, v10, v11
+	lda v8
+	definemethod 0x17, &entry.src.main.ets.pages.Index&.#~@0>#initialRender:(any,any,any), 0x0
+	stownbyname 0x18, "initialRender", v8
+	lda v8
+	definemethod 0x1a, &entry.src.main.ets.pages.Index&.#~@0>#rerender:(any,any,any), 0x0
+	stownbyname 0x1b, "rerender", v8
+	lda v5
+	definemethod 0x1d, &entry.src.main.ets.pages.Index&.#~@0<#getEntryName:(any,any,any), 0x0
+	stownbyname 0x1e, "getEntryName", v5
+	lda v5
+	sta v5
+	lda v5
+	stlexvar 0x0, 0x0
+	tryldglobalbyname 0x20, "registerNamedRoute"
+	sta v5
+	definefunc 0x21, &entry.src.main.ets.pages.Index&.#*#^1:(any,any,any), 0x0
+	sta v6
+	lda.str ""
+	sta v7
+	createobjectwithbuffer 0x22, { 12 [ string:"bundleName", string:"com.example.array1", string:"moduleName", string:"entry", string:"pagePath", string:"pages/Index", string:"pageFullPath", string:"entry/src/main/ets/pages/Index", string:"integratedHsp", string:"false", string:"moduleType", string:"followWithHap", ]}
+	sta v8
+	lda v8
+	sta v8
+	lda v5
+	callargs3 0x23, v6, v7, v8
+	ldundefined
+	returnundefined
+}
+
+# ====================
+# STRING
+
+[offset:0x95e, name_value:]
+[offset:0x960, name_value:%{public}s]
+[offset:0xa28, name_value:Ability onBackground]
+[offset:0xa3e, name_value:Ability onCreate]
+[offset:0xa50, name_value:Ability onDestroy]
+[offset:0xa63, name_value:Ability onForeground]
+[offset:0xa79, name_value:Ability onWindowStageCreate]
+[offset:0xa96, name_value:Ability onWindowStageDestroy]
+[offset:0xab4, name_value:Contact]
+[offset:0xabd, name_value:Failed to load the content. Cause: %{public}s]
+[offset:0xaec, name_value:JSON]
+[offset:0xaf2, name_value:Succeeded in loading the content.]
+[offset:0xb15, name_value:UIAbility]
+[offset:0xb20, name_value:arrayData]
+[offset:0xb2b, name_value:brand]
+[offset:0xb32, name_value:code]
+[offset:0xb38, name_value:contactObjects]
+[offset:0xb48, name_value:contactsName]
+[offset:0xb56, name_value:content]
+[offset:0xb5f, name_value:context]
+[offset:0xb68, name_value:deviceInfo]
+[offset:0xb74, name_value:element 1 is tainted:]
+[offset:0xb8b, name_value:error]
+[offset:0xb92, name_value:hilog]
+[offset:0xb99, name_value:imei]
+[offset:0xb9f, name_value:info]
+[offset:0xba5, name_value:loadContent]
+[offset:0xbb2, name_value:neutral text]
+[offset:0xbc0, name_value:pages/Index]
+[offset:0xbcd, name_value:parameters]
+[offset:0xbd9, name_value:prototype]
+[offset:0xbe4, name_value:send_brand]
+[offset:0xbf0, name_value:startAbilityForResult]
+[offset:0xc07, name_value:stringify]
+[offset:0xc12, name_value:telephone]
+[offset:0xc1d, name_value:testTag]
+[offset:0xc26, name_value:wer]
+[offset:0xc2b, name_value:张三]
+[offset:0xd84, name_value:params]
+[offset:0xf80, name_value:BackupExtensionAbility]
+[offset:0xf98, name_value:DOMAIN]
+[offset:0xfa0, name_value:Promise]
+[offset:0xfa9, name_value:onBackup ok]
+[offset:0xfb6, name_value:onRestore ok %{public}s]
+[offset:0xfcf, name_value:resolve]
+[offset:0x12c2, name_value:100%]
+[offset:0x12c8, name_value:Bold]
+[offset:0x12ce, name_value:Center]
+[offset:0x12d6, name_value:FontWeight]
+[offset:0x12e2, name_value:Get]
+[offset:0x12e7, name_value:Hello World]
+[offset:0x12f4, name_value:HelloWorld]
+[offset:0x1300, name_value:HorizontalAlign]
+[offset:0x1311, name_value:Index]
+[offset:0x1318, name_value:ObservedPropertySimplePU]
+[offset:0x1332, name_value:Reflect]
+[offset:0x133b, name_value:RelativeContainer]
+[offset:0x134e, name_value:SubscriberManager]
+[offset:0x1361, name_value:Text]
+[offset:0x1367, name_value:VerticalAlign]
+[offset:0x1376, name_value:ViewPU]
+[offset:0x137e, name_value:Welcome]
+[offset:0x1387, name_value:__message]
+[offset:0x1392, name_value:aboutToBeDeleted]
+[offset:0x13a4, name_value:aboutToBeDeletedInternal]
+[offset:0x13be, name_value:align]
+[offset:0x13c5, name_value:alignRules]
+[offset:0x13d1, name_value:center]
+[offset:0x13d9, name_value:create]
+[offset:0x13e1, name_value:delete]
+[offset:0x13e9, name_value:finalizeConstruction]
+[offset:0x13ff, name_value:fontSize]
+[offset:0x1409, name_value:fontWeight]
+[offset:0x1415, name_value:function]
+[offset:0x141f, name_value:get]
+[offset:0x1424, name_value:getEntryName]
+[offset:0x1432, name_value:height]
+[offset:0x143a, name_value:id]
+[offset:0x143e, name_value:id__]
+[offset:0x1444, name_value:initialRender]
+[offset:0x1453, name_value:message]
+[offset:0x145c, name_value:middle]
+[offset:0x1464, name_value:observeComponentCreation2]
+[offset:0x147f, name_value:onClick]
+[offset:0x1488, name_value:paramsGenerator_]
+[offset:0x149a, name_value:pop]
+[offset:0x149f, name_value:purgeDependencyOnElmtId]
+[offset:0x14b8, name_value:registerNamedRoute]
+[offset:0x14cc, name_value:rerender]
+[offset:0x14d6, name_value:set]
+[offset:0x14db, name_value:setInitiallyProvidedValue]
+[offset:0x14f6, name_value:updateDirtyElements]
+[offset:0x150b, name_value:width]

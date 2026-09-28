@@ -1,0 +1,2749 @@
+# source binary: modules.abc
+
+.language ECMAScript
+
+# ====================
+# LITERALS
+
+0 0x2aea { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+10 0x2a4b { 1 [ string:"ohos.permission.CAMERA", ]}
+11 0x295c { 2 [ string:"ohos.permission.LOCATION", string:"ohos.permission.APPROXIMATELY_LOCATION", ]}
+12 0x299f { 3 [ i32:1, string:"context", i32:0, ]}
+13 0x285a { 25 [ string:"setInitiallyProvidedValue", method:#~@0>#setInitiallyProvidedValue, method_affiliate:1, string:"updateStateVars", method:#~@0>#updateStateVars, method_affiliate:1, string:"purgeVariableDependenciesOnElmtId", method:#~@0>#purgeVariableDependenciesOnElmtId, method_affiliate:1, string:"aboutToBeDeleted", method:#~@0>#aboutToBeDeleted, method_affiliate:0, string:"MenuBuilder", method:#~@0>#MenuBuilder, method_affiliate:0, string:"initialRender", method:#~@0>#initialRender, method_affiliate:0, string:"rerender", method:#~@0>#rerender, method_affiliate:0, string:"getEntryName", method:#~@0<#getEntryName, method_affiliate:0, i32:7, ]}
+14 0x2668 { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+15 0x28cb { 12 [ string:"bundleName", string:"com.example.internal", string:"moduleName", string:"entry", string:"pagePath", string:"pages/Index", string:"pageFullPath", string:"entry/src/main/ets/pages/Index", string:"integratedHsp", string:"false", string:"moduleType", string:"followWithHap", ]}
+16 0x2807 { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+17 0x29da { 1 [ string:"ScanUtil", ]}
+18 0x27dc { 4 [ string:"enableArrow", u1:1, string:"placement", null_value:0, ]}
+19 0x27aa { 7 [ i32:3, string:"Index", i32:0, string:"4newTarget", i32:1, string:"this", i32:2, ]}
+2 0x2b24 { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+23 0x2745 { 7 [ string:"onBackup", method:#~@0>#onBackup, method_affiliate:0, string:"onRestore", method:#~@0>#onRestore, method_affiliate:1, i32:2, ]}
+24 0x26fc { 1 [ string:"EntryBackupAbility", ]}
+25 0x2768 { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+27 0x25bc { 2 [ string:"EntryAbility", string:"onWindowStageCreate", ]}
+28 0x283d { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+29 0x2685 { 22 [ string:"onCreate", method:#~@0>#onCreate, method_affiliate:2, string:"onDestroy", method:#~@0>#onDestroy, method_affiliate:0, string:"onWindowStageCreate", method:#~@0>#onWindowStageCreate, method_affiliate:1, string:"onWindowStageDestroy", method:#~@0>#onWindowStageDestroy, method_affiliate:0, string:"onForeground", method:#~@0>#onForeground, method_affiliate:0, string:"onBackground", method:#~@0>#onBackground, method_affiliate:0, string:"request_permission", method:#~@0>#request_permission, method_affiliate:0, i32:7, ]}
+3 0x2a94 { 2 [ string:"enable", string:"disable", ]}
+30 0x290b { 1 [ string:"LocationUtil", ]}
+31 0x2a54 { 7 [ string:"reqPermissionsFromUser", method:#~@0<#reqPermissionsFromUser, method_affiliate:0, string:"checkAccessToken1", method:#~@0<#checkAccessToken1, method_affiliate:1, i32:0, ]}
+32 0x26e9 { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+33 0x2b07 { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+34 0x277b { 3 [ string:"Index", string:"MenuBuilder", string:"initialRender", ]}
+36 0x2824 { 6 [ string:"direction", null_value:0, string:"alignItems", null_value:0, string:"justifyContent", null_value:0, ]}
+37 0x27ee { 6 [ string:"direction", null_value:0, string:"alignItems", null_value:0, string:"justifyContent", null_value:0, ]}
+38 0x27d1 { 2 [ string:"builder", null_value:0, ]}
+4 0x2a77 { 5 [ i32:2, string:"TAG", i32:0, string:"context", i32:1, ]}
+5 0x2a39 { 4 [ string:"permissions", null_value:0, string:"authResults", null_value:0, ]}
+7 0x29b2
+8 0x297c { 7 [ string:"checkAccessToken", method:#~@0<#checkAccessToken, method_affiliate:1, string:"reqPermissionsFromUser", method:#~@0<#reqPermissionsFromUser, method_affiliate:0, i32:0, ]}
+9 0x296a { 4 [ string:"permissions", null_value:0, string:"authResults", null_value:0, ]}
+1 0x2aa2 { 4 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:hilog,
+		1 : @ohos:bluetooth.access,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: access, import_name: default, module_request: @ohos:bluetooth.access;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: LOCAL_EXPORT, local_name: disable, export_name: disable;
+	ModuleTag: LOCAL_EXPORT, local_name: enable, export_name: enable;
+]}
+20 0x2914 { 4 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:bundle.bundleManager,
+		1 : @ohos:abilityAccessCtrl,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: abilityAccessCtrl, import_name: default, module_request: @ohos:abilityAccessCtrl;
+	ModuleTag: REGULAR_IMPORT, local_name: bundleManager, import_name: default, module_request: @ohos:bundle.bundleManager;
+	ModuleTag: LOCAL_EXPORT, local_name: *default*, export_name: default;
+	ModuleTag: LOCAL_EXPORT, local_name: LocationUtil, export_name: LocationUtil;
+]}
+21 0x29e3 { 5 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:bundle.bundleManager,
+		1 : @ohos:abilityAccessCtrl,
+		2 : @ohos:hilog,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: abilityAccessCtrl, import_name: default, module_request: @ohos:abilityAccessCtrl;
+	ModuleTag: REGULAR_IMPORT, local_name: bundleManager, import_name: default, module_request: @ohos:bundle.bundleManager;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: LOCAL_EXPORT, local_name: *default*, export_name: default;
+	ModuleTag: LOCAL_EXPORT, local_name: ScanUtil, export_name: ScanUtil;
+]}
+22 0x278e { 0 [
+	MODULE_REQUEST_ARRAY: {
+	};
+]}
+26 0x2705 { 3 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:hilog,
+		1 : @ohos:application.BackupExtensionAbility,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: BackupExtensionAbility, import_name: default, module_request: @ohos:application.BackupExtensionAbility;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: LOCAL_EXPORT, local_name: EntryBackupAbility, export_name: default;
+]}
+35 0x25ca { 10 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:app.ability.ConfigurationConstant,
+		1 : @ohos:app.ability.UIAbility,
+		2 : @ohos:hilog,
+		3 : @normalized:N&&&entry/src/main/ets/util/RequestPermission&,
+		4 : @normalized:N&&&entry/src/main/ets/util/LocationUtil&,
+		5 : @normalized:N&&&entry/src/main/ets/util/ScanUtil&,
+		6 : @normalized:N&&&entry/src/main/ets/util/bluetooth&,
+		7 : @ohos:deviceInfo,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: ConfigurationConstant, import_name: default, module_request: @ohos:app.ability.ConfigurationConstant;
+	ModuleTag: REGULAR_IMPORT, local_name: LocationUtil, import_name: LocationUtil, module_request: @normalized:N&&&entry/src/main/ets/util/LocationUtil&;
+	ModuleTag: REGULAR_IMPORT, local_name: ScanUtil, import_name: ScanUtil, module_request: @normalized:N&&&entry/src/main/ets/util/ScanUtil&;
+	ModuleTag: REGULAR_IMPORT, local_name: UIAbility, import_name: default, module_request: @ohos:app.ability.UIAbility;
+	ModuleTag: REGULAR_IMPORT, local_name: deviceInfo, import_name: default, module_request: @ohos:deviceInfo;
+	ModuleTag: REGULAR_IMPORT, local_name: disable, import_name: disable, module_request: @normalized:N&&&entry/src/main/ets/util/bluetooth&;
+	ModuleTag: REGULAR_IMPORT, local_name: enable, import_name: enable, module_request: @normalized:N&&&entry/src/main/ets/util/bluetooth&;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: REGULAR_IMPORT, local_name: req, import_name: req, module_request: @normalized:N&&&entry/src/main/ets/util/RequestPermission&;
+	ModuleTag: LOCAL_EXPORT, local_name: EntryAbility, export_name: default;
+]}
+6 0x29b6 { 1 [
+	MODULE_REQUEST_ARRAY: {
+	};
+	ModuleTag: LOCAL_EXPORT, local_name: req, export_name: req;
+]}
+
+# ====================
+# RECORDS
+
+.record &entry.src.main.ets.entryability.EntryAbility& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x25bc
+	u32 moduleRecordIdx = 0x25ca
+}
+
+.record &entry.src.main.ets.entrybackupability.EntryBackupAbility& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x26fc
+	u32 moduleRecordIdx = 0x2705
+}
+
+.record &entry.src.main.ets.pages.Index& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x277b
+	u32 moduleRecordIdx = 0x278e
+}
+
+.record &entry.src.main.ets.util.LocationUtil& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x290b
+	u32 moduleRecordIdx = 0x2914
+}
+
+.record &entry.src.main.ets.util.RequestPermission& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x29b2
+	u32 moduleRecordIdx = 0x29b6
+}
+
+.record &entry.src.main.ets.util.ScanUtil& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x29da
+	u32 moduleRecordIdx = 0x29e3
+}
+
+.record &entry.src.main.ets.util.bluetooth& {
+	u8 pkgName@entry = 0x0
+	u8 isCommonjs = 0x0
+	u8 hasTopLevelAwait = 0x0
+	u8 isSharedModule = 0x0
+	u32 scopeNames = 0x2a94
+	u32 moduleRecordIdx = 0x2aa2
+}
+
+.record @ohos.app {
+	u8 @native.ohos.app = 0x0
+}
+
+.record @ohos.curves {
+	u8 @native.ohos.curves = 0x0
+}
+
+.record @ohos.matrix4 {
+	u8 @native.ohos.matrix4 = 0x0
+}
+
+.record @system.app {
+	u8 @native.system.app = 0x0
+}
+
+.record @system.curves {
+	u8 @native.system.curves = 0x0
+}
+
+.record @system.matrix4 {
+	u8 @native.system.matrix4 = 0x0
+}
+
+.record @system.router {
+	u8 @native.system.router = 0x0
+}
+
+.record _ESConcurrentModuleRequestsAnnotation {
+}
+
+.record _ESSlotNumberAnnotation {
+}
+
+# ====================
+# METHODS
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0=#EntryAbility(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	copyrestargs 0x0
+	sta v3
+	lda v3
+	sta v5
+	lda v0
+	supercallspread 0x0, v5
+	sta v5
+	lda v2
+	throw.ifsupernotcorrectcall 0x1
+	lda v5
+	sta v2
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onBackground(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onBackground"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x12 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onCreate(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	lda v2
+	sta v10
+	lda v10
+	ldobjbyname 0x0, "context"
+	sta v9
+	lda v9
+	ldobjbyname 0x2, "getApplicationContext"
+	sta v8
+	lda v8
+	callthis0 0x4, v9
+	sta v7
+	lda v7
+	ldobjbyname 0x6, "setColorMode"
+	sta v6
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "ConfigurationConstant"
+	sta v9
+	lda v9
+	ldobjbyname 0x8, "ColorMode"
+	sta v8
+	lda v8
+	ldobjbyname 0xa, "COLOR_MODE_NOT_SET"
+	sta v8
+	lda v6
+	callthis1 0xc, v7, v8
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v7
+	lda v7
+	ldobjbyname 0xe, "info"
+	sta v6
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v8
+	lda.str "testTag"
+	sta v9
+	lda.str "%{public}s"
+	sta v10
+	lda.str "Ability onCreate"
+	sta v11
+	lda v6
+	callthisrange 0x10, 0x4, v7
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onDestroy(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onDestroy"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onForeground(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onForeground"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x1e }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onWindowStageCreate(any a0, any a1, any a2, any a3) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x0
+	lda a2
+	stlexvar 0x0, 0x1
+	mov v3, a3
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v8
+	lda v8
+	ldobjbyname 0x0, "info"
+	sta v7
+	ldlexvar 0x1, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v9
+	lda.str "testTag"
+	sta v10
+	lda.str "%{public}s"
+	sta v11
+	lda.str "Ability onWindowStageCreate"
+	sta v12
+	lda v7
+	callthisrange 0x2, 0x4, v8
+	lda v3
+	sta v8
+	lda v8
+	ldobjbyname 0x4, "loadContent"
+	sta v7
+	lda.str "pages/Index"
+	sta v9
+	definefunc 0x6, &entry.src.main.ets.entryability.EntryAbility&.#~@0>@1*#:(any,any,any,any), 0x1
+	sta v10
+	lda v7
+	callthis2 0x7, v8, v9, v10
+	ldexternalmodulevar 0x6
+	throw.undefinedifholewithname "enable"
+	sta v7
+	lda v7
+	callarg0 0x9
+	ldexternalmodulevar 0x5
+	throw.undefinedifholewithname "disable"
+	sta v7
+	lda v7
+	callarg0 0xb
+	ldexternalmodulevar 0x4
+	throw.undefinedifholewithname "deviceInfo"
+	sta v7
+	lda v7
+	ldobjbyname 0xd, "brand"
+	sta v4
+	tryldglobalbyname 0xf, "Number"
+	sta v7
+	lda v4
+	sta v8
+	lda v7
+	callarg1 0x10, v8
+	sta v5
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v8
+	lda v8
+	ldobjbyname 0x12, "info"
+	sta v7
+	ldlexvar 0x1, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v9
+	lda.str "testTag"
+	sta v10
+	lda.str "Failed to load the content. Cause: %{public}s"
+	sta v11
+	lda v5
+	sta v12
+	lda v7
+	callthisrange 0x14, 0x4, v8
+	ldlexvar 0x0, 0x1
+	sta v8
+	lda v8
+	ldobjbyname 0x16, "request_permission"
+	sta v7
+	lda v7
+	callthis0 0x18, v8
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v8
+	lda v8
+	ldobjbyname 0x1a, "info"
+	sta v7
+	ldlexvar 0x1, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v9
+	lda.str "testTag"
+	sta v10
+	lda.str "%{public}s"
+	sta v11
+	lda v4
+	sta v12
+	lda v7
+	callthisrange 0x1c, 0x4, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onWindowStageDestroy(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "%{public}s"
+	sta v8
+	lda.str "Ability onWindowStageDestroy"
+	sta v9
+	lda v4
+	callthisrange 0x2, 0x4, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#request_permission(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldexternalmodulevar 0x8
+	throw.undefinedifholewithname "req"
+	sta v4
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "ScanUtil"
+	sta v5
+	lda v4
+	callarg1 0x0, v5
+	ldexternalmodulevar 0x8
+	throw.undefinedifholewithname "req"
+	sta v4
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "LocationUtil"
+	sta v5
+	lda v4
+	callarg1 0x2, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x10 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>@1*#(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda v3
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "code"
+	callruntime.isfalse 0x2
+	jnez jump_label_0
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v6
+	lda v6
+	ldobjbyname 0x3, "error"
+	sta v5
+	ldlexvar 0x1, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v7
+	lda.str "testTag"
+	sta v8
+	lda.str "Failed to load the content. Cause: %{public}s"
+	sta v9
+	tryldglobalbyname 0x5, "JSON"
+	sta v11
+	lda v11
+	ldobjbyname 0x6, "stringify"
+	sta v10
+	lda v3
+	sta v12
+	lda v10
+	callthis1 0x8, v11, v12
+	sta v10
+	lda v5
+	callthisrange 0xa, 0x4, v6
+	ldundefined
+	ldundefined
+	returnundefined
+jump_label_0:
+	ldexternalmodulevar 0x7
+	throw.undefinedifholewithname "hilog"
+	sta v6
+	lda v6
+	ldobjbyname 0xc, "info"
+	sta v5
+	ldlexvar 0x1, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v7
+	lda.str "testTag"
+	sta v8
+	lda.str "Succeeded in loading the content."
+	sta v9
+	lda v5
+	callthis3 0xe, v6, v7, v8, v9
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x3 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x1, { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldai 0x0
+	sta v4
+	lda v4
+	stlexvar 0x0, 0x0
+	ldexternalmodulevar 0x3
+	throw.undefinedifholewithname "UIAbility"
+	sta v6
+	defineclasswithbuffer 0x0, &entry.src.main.ets.entryability.EntryAbility&.#~@0=#EntryAbility:(any,any,any,any), { 22 [ string:"onCreate", method:#~@0>#onCreate, method_affiliate:2, string:"onDestroy", method:#~@0>#onDestroy, method_affiliate:0, string:"onWindowStageCreate", method:#~@0>#onWindowStageCreate, method_affiliate:1, string:"onWindowStageDestroy", method:#~@0>#onWindowStageDestroy, method_affiliate:0, string:"onForeground", method:#~@0>#onForeground, method_affiliate:0, string:"onBackground", method:#~@0>#onBackground, method_affiliate:0, string:"request_permission", method:#~@0>#request_permission, method_affiliate:0, i32:7, ]}, 0x0, v6
+	sta v4
+	sta v5
+	lda v4
+	ldobjbyname 0x1, "prototype"
+	sta v7
+	lda v4
+	stmodulevar 0x0
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0=#EntryBackupAbility(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	copyrestargs 0x0
+	sta v3
+	lda v3
+	sta v5
+	lda v0
+	supercallspread 0x0, v5
+	sta v5
+	lda v2
+	throw.ifsupernotcorrectcall 0x1
+	lda v5
+	sta v2
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xa }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0>#onBackup(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	asyncfunctionenter
+	sta v3
+try_begin_label_0:
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "hilog"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "info"
+	sta v4
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v6
+	lda.str "testTag"
+	sta v7
+	lda.str "onBackup ok"
+	sta v8
+	lda v4
+	callthis3 0x2, v5, v6, v7, v8
+	tryldglobalbyname 0x4, "Promise"
+	sta v5
+	lda v5
+	ldobjbyname 0x5, "resolve"
+	sta v4
+	lda v4
+	callthis0 0x7, v5
+	asyncfunctionawaituncaught v3
+	suspendgenerator v3
+	lda v3
+	resumegenerator
+	sta v5
+	lda v3
+	getresumemode
+	sta v4
+	ldai 0x1
+	eq 0x9, v4
+	jeqz jump_label_3
+	lda v5
+	throw
+jump_label_3:
+	lda v5
+	ldundefined
+	asyncfunctionresolve v3
+	return
+try_end_label_0:
+	sta v4
+	asyncfunctionreject v3
+	return
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xf }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0>#onRestore(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	asyncfunctionenter
+	sta v4
+try_begin_label_0:
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "hilog"
+	sta v6
+	lda v6
+	ldobjbyname 0x0, "info"
+	sta v5
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v7
+	lda.str "testTag"
+	sta v8
+	lda.str "onRestore ok %{public}s"
+	sta v9
+	tryldglobalbyname 0x2, "JSON"
+	sta v11
+	lda v11
+	ldobjbyname 0x3, "stringify"
+	sta v10
+	lda v3
+	sta v12
+	lda v10
+	callthis1 0x5, v11, v12
+	sta v10
+	lda v5
+	callthisrange 0x7, 0x4, v6
+	tryldglobalbyname 0x9, "Promise"
+	sta v6
+	lda v6
+	ldobjbyname 0xa, "resolve"
+	sta v5
+	lda v5
+	callthis0 0xc, v6
+	asyncfunctionawaituncaught v4
+	suspendgenerator v4
+	lda v4
+	resumegenerator
+	sta v6
+	lda v4
+	getresumemode
+	sta v5
+	ldai 0x1
+	eq 0xe, v5
+	jeqz jump_label_3
+	lda v6
+	throw
+jump_label_3:
+	lda v6
+	ldundefined
+	asyncfunctionresolve v4
+	return
+try_end_label_0:
+	sta v5
+	asyncfunctionreject v4
+	return
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x3 }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x1, { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldai 0x0
+	sta v4
+	lda v4
+	stlexvar 0x0, 0x0
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "BackupExtensionAbility"
+	sta v6
+	defineclasswithbuffer 0x0, &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0=#EntryBackupAbility:(any,any,any,any), { 7 [ string:"onBackup", method:#~@0>#onBackup, method_affiliate:0, string:"onRestore", method:#~@0>#onRestore, method_affiliate:1, i32:2, ]}, 0x0, v6
+	sta v4
+	sta v5
+	lda v4
+	ldobjbyname 0x1, "prototype"
+	sta v7
+	lda v4
+	stmodulevar 0x0
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#*#(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.pages.Index&.#*#^1(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "Index"
+	sta v4
+	ldundefined
+	sta v5
+	createemptyobject
+	sta v6
+	newobjrange 0x0, 0x3, v4
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0<#getEntryName(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda.str "Index"
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x12 }
+.function any &entry.src.main.ets.pages.Index&.#~@0=#Index(any a0, any a1, any a2, any a3, any a4, any a5, any a6, any a7, any a8) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	mov v5, a5
+	mov v6, a6
+	mov v7, a7
+	mov v8, a8
+	lda v6
+	sta v10
+	ldundefined
+	stricteq 0x0, v10
+	jeqz jump_label_0
+	ldai 0x1
+	sta v10
+	lda v10
+	neg 0x1
+	sta v6
+jump_label_0:
+	lda v7
+	sta v10
+	ldundefined
+	stricteq 0x2, v10
+	jeqz jump_label_1
+	ldundefined
+	sta v7
+jump_label_1:
+	lda v3
+	sta v10
+	lda v5
+	sta v11
+	lda v6
+	sta v12
+	lda v8
+	sta v13
+	supercallthisrange 0x3, 0x4, v10
+	sta v10
+	lda v2
+	throw.ifsupernotcorrectcall 0x1
+	lda v10
+	sta v2
+	lda v7
+	typeof 0x5
+	sta v10
+	lda.str "function"
+	stricteq 0x7, v10
+	jeqz jump_label_2
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v10
+	lda v7
+	stobjbyname 0x8, "paramsGenerator_", v10
+jump_label_2:
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v11
+	lda v11
+	ldobjbyname 0xa, "setInitiallyProvidedValue"
+	sta v10
+	lda v4
+	sta v12
+	lda v10
+	callthis1 0xc, v11, v12
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	sta v11
+	lda v11
+	ldobjbyname 0xe, "finalizeConstruction"
+	sta v10
+	lda v10
+	callthis0 0x10, v11
+	lda v2
+	throw.ifsupernotcorrectcall 0x0
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x39 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#MenuBuilder(any a0, any a1, any a2, any a3) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x0
+	lda a2
+	stlexvar 0x0, 0x1
+	mov v3, a3
+	lda v3
+	sta v5
+	ldundefined
+	stricteq 0x0, v5
+	jeqz jump_label_0
+	ldnull
+	sta v3
+jump_label_0:
+	ldlexvar 0x0, 0x1
+	sta v6
+	lda v6
+	ldobjbyname 0x1, "observeComponentCreation2"
+	sta v5
+	definefunc 0x3, &entry.src.main.ets.pages.Index&.#~@0>@1*#:(any,any,any,any,any), 0x2
+	sta v7
+	tryldglobalbyname 0x4, "Flex"
+	sta v8
+	lda v5
+	callthis2 0x5, v6, v7, v8
+	ldlexvar 0x0, 0x1
+	sta v6
+	lda v6
+	ldobjbyname 0x7, "observeComponentCreation2"
+	sta v5
+	definefunc 0x9, &entry.src.main.ets.pages.Index&.#~@0>@1*#^1:(any,any,any,any,any), 0x2
+	sta v7
+	tryldglobalbyname 0xa, "Text"
+	sta v8
+	lda v5
+	callthis2 0xb, v6, v7, v8
+	tryldglobalbyname 0xd, "Text"
+	sta v6
+	lda v6
+	ldobjbyname 0xe, "pop"
+	sta v5
+	lda v5
+	callthis0 0x10, v6
+	ldlexvar 0x0, 0x1
+	sta v6
+	lda v6
+	ldobjbyname 0x12, "observeComponentCreation2"
+	sta v5
+	definefunc 0x14, &entry.src.main.ets.pages.Index&.#~@0>@1*#^2:(any,any,any,any,any), 0x2
+	sta v7
+	tryldglobalbyname 0x15, "Divider"
+	sta v8
+	lda v5
+	callthis2 0x16, v6, v7, v8
+	ldlexvar 0x0, 0x1
+	sta v6
+	lda v6
+	ldobjbyname 0x18, "observeComponentCreation2"
+	sta v5
+	definefunc 0x1a, &entry.src.main.ets.pages.Index&.#~@0>@1*#^3:(any,any,any,any,any), 0x2
+	sta v7
+	tryldglobalbyname 0x1b, "Text"
+	sta v8
+	lda v5
+	callthis2 0x1c, v6, v7, v8
+	tryldglobalbyname 0x1e, "Text"
+	sta v6
+	lda v6
+	ldobjbyname 0x1f, "pop"
+	sta v5
+	lda v5
+	callthis0 0x21, v6
+	ldlexvar 0x0, 0x1
+	sta v6
+	lda v6
+	ldobjbyname 0x23, "observeComponentCreation2"
+	sta v5
+	definefunc 0x25, &entry.src.main.ets.pages.Index&.#~@0>@1*#^4:(any,any,any,any,any), 0x2
+	sta v7
+	tryldglobalbyname 0x26, "Divider"
+	sta v8
+	lda v5
+	callthis2 0x27, v6, v7, v8
+	ldlexvar 0x0, 0x1
+	sta v6
+	lda v6
+	ldobjbyname 0x29, "observeComponentCreation2"
+	sta v5
+	definefunc 0x2b, &entry.src.main.ets.pages.Index&.#~@0>@1*#^5:(any,any,any,any,any), 0x2
+	sta v7
+	tryldglobalbyname 0x2c, "Text"
+	sta v8
+	lda v5
+	callthis2 0x2d, v6, v7, v8
+	tryldglobalbyname 0x2f, "Text"
+	sta v6
+	lda v6
+	ldobjbyname 0x30, "pop"
+	sta v5
+	lda v5
+	callthis0 0x32, v6
+	tryldglobalbyname 0x34, "Flex"
+	sta v6
+	lda v6
+	ldobjbyname 0x35, "pop"
+	sta v5
+	lda v5
+	callthis0 0x37, v6
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x11 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#aboutToBeDeleted(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	tryldglobalbyname 0x0, "SubscriberManager"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "Get"
+	sta v6
+	lda v6
+	callthis0 0x3, v7
+	sta v5
+	lda v5
+	ldobjbyname 0x5, "delete"
+	sta v4
+	lda v2
+	sta v7
+	lda v7
+	ldobjbyname 0x7, "id__"
+	sta v6
+	lda v6
+	callthis0 0x9, v7
+	sta v6
+	lda v4
+	callthis1 0xb, v5, v6
+	lda v2
+	sta v5
+	lda v5
+	ldobjbyname 0xd, "aboutToBeDeletedInternal"
+	sta v4
+	lda v4
+	callthis0 0xf, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x21 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#initialRender(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x0
+	lda a2
+	stlexvar 0x0, 0x1
+	ldlexvar 0x0, 0x1
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "observeComponentCreation2"
+	sta v4
+	definefunc 0x2, &entry.src.main.ets.pages.Index&.#~@0>@2*#:(any,any,any,any,any), 0x2
+	sta v6
+	tryldglobalbyname 0x3, "Flex"
+	sta v7
+	lda v4
+	callthis2 0x4, v5, v6, v7
+	ldlexvar 0x0, 0x1
+	sta v5
+	lda v5
+	ldobjbyname 0x6, "observeComponentCreation2"
+	sta v4
+	definefunc 0x8, &entry.src.main.ets.pages.Index&.#~@0>@2*#^1:(any,any,any,any,any), 0x2
+	sta v6
+	tryldglobalbyname 0x9, "Column"
+	sta v7
+	lda v4
+	callthis2 0xa, v5, v6, v7
+	ldlexvar 0x0, 0x1
+	sta v5
+	lda v5
+	ldobjbyname 0xc, "observeComponentCreation2"
+	sta v4
+	definefunc 0xe, &entry.src.main.ets.pages.Index&.#~@0>@2*#^2:(any,any,any,any,any), 0x2
+	sta v6
+	tryldglobalbyname 0xf, "Text"
+	sta v7
+	lda v4
+	callthis2 0x10, v5, v6, v7
+	tryldglobalbyname 0x12, "Text"
+	sta v5
+	lda v5
+	ldobjbyname 0x13, "pop"
+	sta v4
+	lda v4
+	callthis0 0x15, v5
+	tryldglobalbyname 0x17, "Column"
+	sta v5
+	lda v5
+	ldobjbyname 0x18, "pop"
+	sta v4
+	lda v4
+	callthis0 0x1a, v5
+	tryldglobalbyname 0x1c, "Flex"
+	sta v5
+	lda v5
+	ldobjbyname 0x1d, "pop"
+	sta v4
+	lda v4
+	callthis0 0x1f, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#purgeVariableDependenciesOnElmtId(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#rerender(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda v2
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "updateDirtyElements"
+	sta v4
+	lda v4
+	callthis0 0x2, v5
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#setInitiallyProvidedValue(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#updateStateVars(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x1a }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Flex"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	createobjectwithbuffer 0x3, { 6 [ string:"direction", null_value:0, string:"alignItems", null_value:0, string:"justifyContent", null_value:0, ]}
+	sta v8
+	tryldglobalbyname 0x4, "FlexDirection"
+	sta v9
+	lda v9
+	ldobjbyname 0x5, "Column"
+	definepropertybyname 0x7, "direction", v8
+	tryldglobalbyname 0x9, "ItemAlign"
+	sta v9
+	lda v9
+	ldobjbyname 0xa, "Center"
+	definepropertybyname 0xc, "alignItems", v8
+	tryldglobalbyname 0xe, "FlexAlign"
+	sta v9
+	lda v9
+	ldobjbyname 0xf, "Center"
+	definepropertybyname 0x11, "justifyContent", v8
+	lda v8
+	sta v8
+	lda v6
+	callthis1 0x13, v7, v8
+	tryldglobalbyname 0x15, "Flex"
+	sta v7
+	lda v7
+	ldobjbyname 0x16, "width"
+	sta v6
+	ldai 0xc8
+	sta v8
+	lda v6
+	callthis1 0x18, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x5 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#^1(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda.str "Options"
+	sta v8
+	lda v6
+	callthis1 0x3, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x14 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#^2(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda v6
+	callthis0 0x3, v7
+	tryldglobalbyname 0x5, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0x6, "strokeWidth"
+	sta v6
+	ldai 0x2
+	sta v8
+	lda v6
+	callthis1 0x8, v7, v8
+	tryldglobalbyname 0xa, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0xb, "margin"
+	sta v6
+	ldai 0x5
+	sta v8
+	lda v6
+	callthis1 0xd, v7, v8
+	tryldglobalbyname 0xf, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0x10, "color"
+	sta v6
+	lda.str "#F0F0F0"
+	sta v8
+	lda v6
+	callthis1 0x12, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x5 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#^3(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda.str "Hide"
+	sta v8
+	lda v6
+	callthis1 0x3, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x14 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#^4(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda v6
+	callthis0 0x3, v7
+	tryldglobalbyname 0x5, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0x6, "strokeWidth"
+	sta v6
+	ldai 0x2
+	sta v8
+	lda v6
+	callthis1 0x8, v7, v8
+	tryldglobalbyname 0xa, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0xb, "margin"
+	sta v6
+	ldai 0x5
+	sta v8
+	lda v6
+	callthis1 0xd, v7, v8
+	tryldglobalbyname 0xf, "Divider"
+	sta v7
+	lda v7
+	ldobjbyname 0x10, "color"
+	sta v6
+	lda.str "#F0F0F0"
+	sta v8
+	lda v6
+	callthis1 0x12, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x5 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#^5(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda.str "Exit"
+	sta v8
+	lda v6
+	callthis1 0x3, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x1f }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@2*#(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Flex"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	createobjectwithbuffer 0x3, { 6 [ string:"direction", null_value:0, string:"alignItems", null_value:0, string:"justifyContent", null_value:0, ]}
+	sta v8
+	tryldglobalbyname 0x4, "FlexDirection"
+	sta v9
+	lda v9
+	ldobjbyname 0x5, "Column"
+	definepropertybyname 0x7, "direction", v8
+	tryldglobalbyname 0x9, "ItemAlign"
+	sta v9
+	lda v9
+	ldobjbyname 0xa, "Center"
+	definepropertybyname 0xc, "alignItems", v8
+	tryldglobalbyname 0xe, "FlexAlign"
+	sta v9
+	lda v9
+	ldobjbyname 0xf, "Center"
+	definepropertybyname 0x11, "justifyContent", v8
+	lda v8
+	sta v8
+	lda v6
+	callthis1 0x13, v7, v8
+	tryldglobalbyname 0x15, "Flex"
+	sta v7
+	lda v7
+	ldobjbyname 0x16, "width"
+	sta v6
+	lda.str "100%"
+	sta v8
+	lda v6
+	callthis1 0x18, v7, v8
+	tryldglobalbyname 0x1a, "Flex"
+	sta v7
+	lda v7
+	ldobjbyname 0x1b, "height"
+	sta v6
+	lda.str "100%"
+	sta v8
+	lda v6
+	callthis1 0x1d, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x5 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@2*#^1(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Column"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda v6
+	callthis0 0x3, v7
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x38 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@2*#^2(any a0, any a1, any a2, any a3, any a4) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	mov v4, a4
+	tryldglobalbyname 0x0, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x1, "create"
+	sta v6
+	lda.str "DirectiveMenuExample"
+	sta v8
+	lda v6
+	callthis1 0x3, v7, v8
+	tryldglobalbyname 0x5, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x6, "fontSize"
+	sta v6
+	ldai 0x14
+	sta v8
+	lda v6
+	callthis1 0x8, v7, v8
+	tryldglobalbyname 0xa, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0xb, "width"
+	sta v6
+	lda.str "100%"
+	sta v8
+	lda v6
+	callthis1 0xd, v7, v8
+	tryldglobalbyname 0xf, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x10, "height"
+	sta v6
+	lda.str "25%"
+	sta v8
+	lda v6
+	callthis1 0x12, v7, v8
+	tryldglobalbyname 0x14, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x15, "backgroundColor"
+	sta v6
+	lda.str "#F0F0F0"
+	sta v8
+	lda v6
+	callthis1 0x17, v7, v8
+	tryldglobalbyname 0x19, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x1a, "textAlign"
+	sta v6
+	tryldglobalbyname 0x1c, "TextAlign"
+	sta v8
+	lda v8
+	ldobjbyname 0x1d, "Center"
+	sta v8
+	lda v6
+	callthis1 0x1f, v7, v8
+	tryldglobalbyname 0x21, "Text"
+	sta v7
+	lda v7
+	ldobjbyname 0x22, "bindContextMenu"
+	sta v6
+	createobjectwithbuffer 0x24, { 2 [ string:"builder", null_value:0, ]}
+	sta v8
+	ldlexvar 0x0, 0x1
+	sta v11
+	lda v11
+	ldobjbyname 0x25, "MenuBuilder"
+	sta v10
+	lda v10
+	ldobjbyname 0x27, "bind"
+	sta v9
+	ldlexvar 0x0, 0x1
+	sta v11
+	lda v9
+	callthis1 0x29, v10, v11
+	definepropertybyname 0x2b, "builder", v8
+	lda v8
+	sta v8
+	tryldglobalbyname 0x2d, "ResponseType"
+	sta v9
+	lda v9
+	ldobjbyname 0x2e, "LongPress"
+	sta v9
+	createobjectwithbuffer 0x30, { 4 [ string:"enableArrow", u1:1, string:"placement", null_value:0, ]}
+	sta v10
+	tryldglobalbyname 0x31, "Placement"
+	sta v11
+	lda v11
+	ldobjbyname 0x32, "Bottom"
+	definepropertybyname 0x34, "placement", v10
+	lda v10
+	sta v10
+	lda v6
+	callthis3 0x36, v7, v8, v9, v10
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x18 }
+.function any &entry.src.main.ets.pages.Index&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x3, { 7 [ i32:3, string:"Index", i32:0, string:"4newTarget", i32:1, string:"this", i32:2, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x1
+	lda a2
+	stlexvar 0x0, 0x2
+	lda.str "finalizeConstruction"
+	sta v5
+	tryldglobalbyname 0x0, "ViewPU"
+	sta v6
+	lda v6
+	ldobjbyname 0x1, "prototype"
+	isin 0x3, v5
+	callruntime.istrue 0x4
+	jnez jump_label_0
+	ldtrue
+	jmp jump_label_1
+jump_label_0:
+	ldfalse
+jump_label_1:
+	callruntime.isfalse 0x5
+	jnez jump_label_2
+	tryldglobalbyname 0x6, "Reflect"
+	sta v6
+	lda v6
+	ldobjbyname 0x7, "set"
+	sta v5
+	tryldglobalbyname 0x9, "ViewPU"
+	sta v7
+	lda v7
+	ldobjbyname 0xa, "prototype"
+	sta v7
+	lda.str "finalizeConstruction"
+	sta v8
+	definefunc 0xc, &entry.src.main.ets.pages.Index&.#*#:(any,any,any), 0x0
+	sta v9
+	lda v5
+	callthis3 0xd, v6, v7, v8, v9
+jump_label_2:
+	tryldglobalbyname 0xf, "ViewPU"
+	sta v7
+	defineclasswithbuffer 0x10, &entry.src.main.ets.pages.Index&.#~@0=#Index:(any,any,any,any,any,any,any,any,any), { 25 [ string:"setInitiallyProvidedValue", method:#~@0>#setInitiallyProvidedValue, method_affiliate:1, string:"updateStateVars", method:#~@0>#updateStateVars, method_affiliate:1, string:"purgeVariableDependenciesOnElmtId", method:#~@0>#purgeVariableDependenciesOnElmtId, method_affiliate:1, string:"aboutToBeDeleted", method:#~@0>#aboutToBeDeleted, method_affiliate:0, string:"MenuBuilder", method:#~@0>#MenuBuilder, method_affiliate:0, string:"initialRender", method:#~@0>#initialRender, method_affiliate:0, string:"rerender", method:#~@0>#rerender, method_affiliate:0, string:"getEntryName", method:#~@0<#getEntryName, method_affiliate:0, i32:7, ]}, 0x3, v7
+	sta v5
+	sta v6
+	lda v5
+	ldobjbyname 0x11, "prototype"
+	sta v8
+	lda v5
+	sta v5
+	lda v5
+	stlexvar 0x0, 0x0
+	tryldglobalbyname 0x13, "registerNamedRoute"
+	sta v5
+	definefunc 0x14, &entry.src.main.ets.pages.Index&.#*#^1:(any,any,any), 0x0
+	sta v6
+	lda.str ""
+	sta v7
+	createobjectwithbuffer 0x15, { 12 [ string:"bundleName", string:"com.example.internal", string:"moduleName", string:"entry", string:"pagePath", string:"pages/Index", string:"pageFullPath", string:"entry/src/main/ets/pages/Index", string:"integratedHsp", string:"false", string:"moduleType", string:"followWithHap", ]}
+	sta v8
+	lda v8
+	sta v8
+	lda v5
+	callargs3 0x16, v6, v7, v8
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x34 }
+.function any &entry.src.main.ets.util.LocationUtil&.#~@0<#checkAccessToken(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	asyncfunctionenter
+	sta v7
+try_begin_label_2:
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "abilityAccessCtrl"
+	sta v9
+	lda v9
+	ldobjbyname 0x0, "createAtManager"
+	sta v8
+	lda v8
+	callthis0 0x2, v9
+	sta v4
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "abilityAccessCtrl"
+	sta v9
+	lda v9
+	ldobjbyname 0x4, "GrantStatus"
+	sta v8
+	lda v8
+	ldobjbyname 0x6, "PERMISSION_DENIED"
+	sta v5
+	ldai 0x0
+	sta v6
+try_begin_label_0:
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "bundleManager"
+	sta v11
+	lda v11
+	ldobjbyname 0x8, "getBundleInfoForSelf"
+	sta v10
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "bundleManager"
+	sta v13
+	lda v13
+	ldobjbyname 0xa, "BundleFlag"
+	sta v12
+	lda v12
+	ldobjbyname 0xc, "GET_BUNDLE_INFO_WITH_APPLICATION"
+	sta v12
+	lda v10
+	callthis1 0xe, v11, v12
+	asyncfunctionawaituncaught v7
+	suspendgenerator v7
+	lda v7
+	resumegenerator
+	sta v11
+	lda v7
+	getresumemode
+	sta v10
+	ldai 0x1
+	eq 0x10, v10
+	jeqz jump_label_10
+	lda v11
+	throw
+jump_label_10:
+	lda v11
+	sta v9
+	lda v9
+	sta v10
+	lda v10
+	ldobjbyname 0x11, "appInfo"
+	sta v8
+	lda v8
+	sta v10
+	lda v10
+	ldobjbyname 0x13, "accessTokenId"
+	sta v6
+try_end_label_0:
+	jmp handler_end_label_0_0
+handler_begin_label_0_0:
+	sta v8
+	lda v8
+	sta v9
+	tryldglobalbyname 0x15, "console"
+	sta v11
+	lda v11
+	ldobjbyname 0x16, "error"
+	sta v10
+	lda.str "Failed to get bundle info for self. Code is "
+	sta v12
+	lda v9
+	sta v13
+	lda v13
+	ldobjbyname 0x18, "code"
+	add2 0x1a, v12
+	sta v12
+	lda.str ", message is "
+	add2 0x1b, v12
+	sta v12
+	lda v9
+	sta v13
+	lda v13
+	ldobjbyname 0x1c, "message"
+	add2 0x1e, v12
+	sta v12
+	lda.str ""
+	add2 0x1f, v12
+	sta v12
+	lda v10
+	callthis1 0x20, v11, v12
+handler_end_label_0_0:
+	lda v4
+	sta v9
+	lda v9
+	ldobjbyname 0x22, "checkAccessToken"
+	sta v8
+	lda v6
+	sta v10
+	lda v3
+	sta v11
+	lda v8
+	callthis2 0x24, v9, v10, v11
+	asyncfunctionawaituncaught v7
+	suspendgenerator v7
+	lda v7
+	resumegenerator
+	sta v9
+	lda v7
+	getresumemode
+	sta v8
+	ldai 0x1
+	eq 0x26, v8
+	jeqz jump_label_11
+	lda v9
+	throw
+jump_label_11:
+	lda v9
+	sta v5
+try_end_label_1:
+	jmp handler_end_label_1_0
+handler_begin_label_1_0:
+	sta v8
+	lda v8
+	sta v9
+	tryldglobalbyname 0x27, "console"
+	sta v11
+	lda v11
+	ldobjbyname 0x28, "error"
+	sta v10
+	lda.str "Failed to check access token. Code is "
+	sta v12
+	lda v9
+	sta v13
+	lda v13
+	ldobjbyname 0x2a, "code"
+	add2 0x2c, v12
+	sta v12
+	lda.str ", message is "
+	add2 0x2d, v12
+	sta v12
+	lda v9
+	sta v13
+	lda v13
+	ldobjbyname 0x2e, "message"
+	add2 0x30, v12
+	sta v12
+	lda.str ""
+	add2 0x31, v12
+	sta v12
+	lda v10
+	callthis1 0x32, v11, v12
+handler_end_label_1_0:
+	lda v5
+	asyncfunctionresolve v7
+	return
+try_end_label_2:
+	sta v8
+	asyncfunctionreject v7
+	return
+handler_end_label_2_0:
+
+.catchall try_begin_label_0, try_end_label_0, handler_begin_label_0_0, handler_end_label_0_0
+.catchall handler_end_label_0_0, try_end_label_1, handler_begin_label_1_0, handler_end_label_1_0
+.catchall try_begin_label_2, try_end_label_2, try_end_label_2, handler_end_label_2_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x13 }
+.function any &entry.src.main.ets.util.LocationUtil&.#~@0<#reqPermissionsFromUser(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	asyncfunctionenter
+	sta v6
+try_begin_label_0:
+	createarraywithbuffer 0x0, { 2 [ string:"ohos.permission.LOCATION", string:"ohos.permission.APPROXIMATELY_LOCATION", ]}
+	sta v7
+	sta v5
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "abilityAccessCtrl"
+	sta v8
+	lda v8
+	ldobjbyname 0x1, "createAtManager"
+	sta v7
+	lda v7
+	callthis0 0x3, v8
+	sta v3
+	createobjectwithbuffer 0x5, { 4 [ string:"permissions", null_value:0, string:"authResults", null_value:0, ]}
+	sta v7
+	createemptyarray 0x6
+	sta v8
+	definepropertybyname 0x7, "permissions", v7
+	createemptyarray 0x9
+	sta v8
+	definepropertybyname 0xa, "authResults", v7
+	lda v7
+	sta v4
+	lda v3
+	sta v8
+	lda v8
+	ldobjbyname 0xc, "requestPermissionsFromUser"
+	sta v7
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "context"
+	sta v9
+	lda v5
+	sta v10
+	lda v7
+	callthis2 0xe, v8, v9, v10
+	asyncfunctionawaituncaught v6
+	suspendgenerator v6
+	lda v6
+	resumegenerator
+	sta v8
+	lda v6
+	getresumemode
+	sta v7
+	ldai 0x1
+	eq 0x10, v7
+	jeqz jump_label_3
+	lda v8
+	throw
+jump_label_3:
+	lda v8
+	sta v4
+	lda v4
+	sta v7
+	lda v7
+	ldobjbyname 0x11, "authResults"
+	asyncfunctionresolve v6
+	return
+try_end_label_0:
+	sta v7
+	asyncfunctionreject v6
+	return
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.util.LocationUtil&.#~@0=#LocationUtil(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda v2
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x8 }
+.function any &entry.src.main.ets.util.LocationUtil&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x1, { 3 [ i32:1, string:"context", i32:0, ]}
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda.str "ScanKit Permission"
+	sta v3
+	tryldglobalbyname 0x0, "getContext"
+	sta v5
+	lda v2
+	sta v6
+	lda v5
+	callarg1 0x1, v6
+	sta v5
+	lda v5
+	stlexvar 0x0, 0x0
+	ldhole
+	sta v7
+	defineclasswithbuffer 0x3, &entry.src.main.ets.util.LocationUtil&.#~@0=#LocationUtil:(any,any,any), { 7 [ string:"checkAccessToken", method:#~@0<#checkAccessToken, method_affiliate:1, string:"reqPermissionsFromUser", method:#~@0<#reqPermissionsFromUser, method_affiliate:0, i32:0, ]}, 0x0, v7
+	sta v5
+	sta v6
+	lda v5
+	ldobjbyname 0x4, "prototype"
+	sta v8
+	lda v5
+	stmodulevar 0x1
+	ldlocalmodulevar 0x1
+	throw.undefinedifholewithname "LocationUtil"
+	sta v5
+	newobjrange 0x6, 0x1, v5
+	stmodulevar 0x0
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.util.RequestPermission&.#*#req(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda v3
+	sta v7
+	lda v7
+	ldobjbyname 0x0, "reqPermissionsFromUser"
+	sta v6
+	lda v6
+	callthis0 0x2, v7
+	sta v4
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x1 }
+.function any &entry.src.main.ets.util.RequestPermission&.func_main_0(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	definefunc 0x0, &entry.src.main.ets.util.RequestPermission&.#*#req:(any,any,any,any), 0x1
+	stmodulevar 0x0
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x29 }
+.function any &entry.src.main.ets.util.ScanUtil&.#~@0<#checkAccessToken1(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	asyncfunctionenter
+	sta v7
+try_begin_label_2:
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "abilityAccessCtrl"
+	sta v9
+	lda v9
+	ldobjbyname 0x0, "createAtManager"
+	sta v8
+	lda v8
+	callthis0 0x2, v9
+	sta v4
+	ldai 0x1
+	sta v8
+	lda v8
+	neg 0x4
+	sta v5
+	ldai 0x0
+	sta v6
+try_begin_label_0:
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "bundleManager"
+	sta v11
+	lda v11
+	ldobjbyname 0x5, "getBundleInfoForSelf"
+	sta v10
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "bundleManager"
+	sta v13
+	lda v13
+	ldobjbyname 0x7, "BundleFlag"
+	sta v12
+	lda v12
+	ldobjbyname 0x9, "GET_BUNDLE_INFO_WITH_APPLICATION"
+	sta v12
+	lda v10
+	callthis1 0xb, v11, v12
+	asyncfunctionawaituncaught v7
+	suspendgenerator v7
+	lda v7
+	resumegenerator
+	sta v11
+	lda v7
+	getresumemode
+	sta v10
+	ldai 0x1
+	eq 0xd, v10
+	jeqz jump_label_10
+	lda v11
+	throw
+jump_label_10:
+	lda v11
+	sta v9
+	lda v9
+	sta v10
+	lda v10
+	ldobjbyname 0xe, "appInfo"
+	sta v8
+	lda v8
+	sta v10
+	lda v10
+	ldobjbyname 0x10, "accessTokenId"
+	sta v6
+try_end_label_0:
+	jmp handler_end_label_0_0
+handler_begin_label_0_0:
+	sta v8
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v10
+	lda v10
+	ldobjbyname 0x12, "error"
+	sta v9
+	ldai 0x1
+	sta v11
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "TAG"
+	sta v12
+	lda.str "Failed to get bundle info for self. error: %{public}s"
+	sta v13
+	tryldglobalbyname 0x14, "JSON"
+	sta v15
+	lda v15
+	ldobjbyname 0x15, "stringify"
+	sta v14
+	lda v8
+	sta v16
+	lda v14
+	callthis1 0x17, v15, v16
+	sta v14
+	lda v9
+	callthisrange 0x19, 0x4, v10
+handler_end_label_0_0:
+	lda v4
+	sta v9
+	lda v9
+	ldobjbyname 0x1b, "checkAccessToken"
+	sta v8
+	lda v6
+	sta v10
+	lda v3
+	sta v11
+	lda v8
+	callthis2 0x1d, v9, v10, v11
+	asyncfunctionawaituncaught v7
+	suspendgenerator v7
+	lda v7
+	resumegenerator
+	sta v9
+	lda v7
+	getresumemode
+	sta v8
+	ldai 0x1
+	eq 0x1f, v8
+	jeqz jump_label_11
+	lda v9
+	throw
+jump_label_11:
+	lda v9
+	sta v5
+try_end_label_1:
+	jmp handler_end_label_1_0
+handler_begin_label_1_0:
+	sta v8
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v10
+	lda v10
+	ldobjbyname 0x20, "error"
+	sta v9
+	ldai 0x1
+	sta v11
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "TAG"
+	sta v12
+	lda.str "Failed to check access token. error: %{public}s"
+	sta v13
+	tryldglobalbyname 0x22, "JSON"
+	sta v15
+	lda v15
+	ldobjbyname 0x23, "stringify"
+	sta v14
+	lda v8
+	sta v16
+	lda v14
+	callthis1 0x25, v15, v16
+	sta v14
+	lda v9
+	callthisrange 0x27, 0x4, v10
+handler_end_label_1_0:
+	lda v5
+	asyncfunctionresolve v7
+	return
+try_end_label_2:
+	sta v8
+	asyncfunctionreject v7
+	return
+handler_end_label_2_0:
+
+.catchall try_begin_label_0, try_end_label_0, handler_begin_label_0_0, handler_end_label_0_0
+.catchall handler_end_label_0_0, try_end_label_1, handler_begin_label_1_0, handler_end_label_1_0
+.catchall try_begin_label_2, try_end_label_2, try_end_label_2, handler_end_label_2_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x17 }
+.function any &entry.src.main.ets.util.ScanUtil&.#~@0<#reqPermissionsFromUser(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	asyncfunctionenter
+	sta v5
+try_begin_label_0:
+	ldexternalmodulevar 0x2
+	throw.undefinedifholewithname "hilog"
+	sta v7
+	lda v7
+	ldobjbyname 0x0, "info"
+	sta v6
+	ldai 0x1
+	sta v8
+	ldlexvar 0x0, 0x0
+	throw.undefinedifholewithname "TAG"
+	sta v9
+	lda.str "reqPermissionsFromUser start"
+	sta v10
+	lda v6
+	callthis3 0x2, v7, v8, v9, v10
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "abilityAccessCtrl"
+	sta v7
+	lda v7
+	ldobjbyname 0x4, "createAtManager"
+	sta v6
+	lda v6
+	callthis0 0x6, v7
+	sta v3
+	createobjectwithbuffer 0x8, { 4 [ string:"permissions", null_value:0, string:"authResults", null_value:0, ]}
+	sta v6
+	createemptyarray 0x9
+	sta v7
+	definepropertybyname 0xa, "permissions", v6
+	createemptyarray 0xc
+	sta v7
+	definepropertybyname 0xd, "authResults", v6
+	lda v6
+	sta v4
+	lda v3
+	sta v7
+	lda v7
+	ldobjbyname 0xf, "requestPermissionsFromUser"
+	sta v6
+	ldlexvar 0x0, 0x1
+	throw.undefinedifholewithname "context"
+	sta v8
+	createarraywithbuffer 0x11, { 1 [ string:"ohos.permission.CAMERA", ]}
+	sta v9
+	sta v9
+	lda v6
+	callthis2 0x12, v7, v8, v9
+	asyncfunctionawaituncaught v5
+	suspendgenerator v5
+	lda v5
+	resumegenerator
+	sta v7
+	lda v5
+	getresumemode
+	sta v6
+	ldai 0x1
+	eq 0x14, v6
+	jeqz jump_label_3
+	lda v7
+	throw
+jump_label_3:
+	lda v7
+	sta v4
+	lda v4
+	sta v6
+	lda v6
+	ldobjbyname 0x15, "authResults"
+	asyncfunctionresolve v5
+	return
+try_end_label_0:
+	sta v6
+	asyncfunctionreject v5
+	return
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.util.ScanUtil&.#~@0=#ScanUtil(any a0, any a1, any a2) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda v2
+	return
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x8 }
+.function any &entry.src.main.ets.util.ScanUtil&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"TAG", i32:0, string:"context", i32:1, ]}
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	lda.str "ScanKit Permission"
+	sta v4
+	lda v4
+	stlexvar 0x0, 0x0
+	tryldglobalbyname 0x0, "getContext"
+	sta v4
+	lda v2
+	sta v5
+	lda v4
+	callarg1 0x1, v5
+	sta v4
+	lda v4
+	stlexvar 0x0, 0x1
+	ldhole
+	sta v6
+	defineclasswithbuffer 0x3, &entry.src.main.ets.util.ScanUtil&.#~@0=#ScanUtil:(any,any,any), { 7 [ string:"reqPermissionsFromUser", method:#~@0<#reqPermissionsFromUser, method_affiliate:0, string:"checkAccessToken1", method:#~@0<#checkAccessToken1, method_affiliate:1, i32:0, ]}, 0x0, v6
+	sta v4
+	sta v5
+	lda v4
+	ldobjbyname 0x4, "prototype"
+	sta v7
+	lda v4
+	stmodulevar 0x1
+	ldlocalmodulevar 0x1
+	throw.undefinedifholewithname "ScanUtil"
+	sta v4
+	newobjrange 0x6, 0x1, v4
+	stmodulevar 0x0
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x14 }
+.function any &entry.src.main.ets.util.bluetooth&.#*#disable(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x0
+	lda a2
+	stlexvar 0x0, 0x1
+try_begin_label_0:
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "access"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "disableBluetooth"
+	sta v4
+	lda v4
+	callthis0 0x2, v5
+try_end_label_0:
+	jmp handler_end_label_0_0
+handler_begin_label_0_0:
+	sta v4
+	ldexternalmodulevar 0x1
+	throw.undefinedifholewithname "hilog"
+	sta v6
+	lda v6
+	ldobjbyname 0x4, "error"
+	sta v5
+	ldlexvar 0x1, 0x0
+	throw.undefinedifholewithname "DOMAIN"
+	sta v7
+	lda.str "blutooth"
+	sta v8
+	lda.str "errCode: "
+	sta v11
+	lda v4
+	sta v12
+	lda v12
+	ldobjbyname 0x6, "code"
+	add2 0x8, v11
+	sta v10
+	lda.str ", errMessage: "
+	add2 0x9, v10
+	sta v9
+	lda v4
+	sta v10
+	lda v10
+	ldobjbyname 0xa, "message"
+	add2 0xc, v9
+	sta v9
+	lda v5
+	callthis3 0xd, v6, v7, v8, v9
+handler_end_label_0_0:
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "access"
+	sta v5
+	lda v5
+	ldobjbyname 0xf, "on"
+	sta v4
+	lda.str "stateChange"
+	sta v6
+	definefunc 0x11, &entry.src.main.ets.util.bluetooth&.#*@1*#:(any,any,any,any), 0x1
+	sta v7
+	lda v4
+	callthis2 0x12, v5, v6, v7
+	ldundefined
+	returnundefined
+
+.catchall try_begin_label_0, try_end_label_0, handler_begin_label_0_0, handler_end_label_0_0
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x9 }
+.function any &entry.src.main.ets.util.bluetooth&.#*#enable(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+	mov v0, a0
+	lda a1
+	stlexvar 0x0, 0x0
+	lda a2
+	stlexvar 0x0, 0x1
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "access"
+	sta v5
+	lda v5
+	ldobjbyname 0x0, "enableBluetooth"
+	sta v4
+	lda v4
+	callthis0 0x2, v5
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "access"
+	sta v5
+	lda v5
+	ldobjbyname 0x4, "on"
+	sta v4
+	lda.str "stateChange"
+	sta v6
+	definefunc 0x6, &entry.src.main.ets.util.bluetooth&.#*@0*#:(any,any,any,any), 0x1
+	sta v7
+	lda v4
+	callthis2 0x7, v5, v6, v7
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x12 }
+.function any &entry.src.main.ets.util.bluetooth&.#*@0*#(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda.str ""
+	sta v4
+	lda v3
+	sta v6
+	ldai 0x0
+	strictnoteq 0x0, v6
+	jeqz jump_label_0
+	ldai 0x1
+	strictnoteq 0x1, v6
+	jeqz jump_label_1
+	ldai 0x2
+	strictnoteq 0x2, v6
+	jeqz jump_label_2
+	jmp jump_label_3
+jump_label_0:
+	lda v4
+	sta v7
+	lda.str "STATE_OFF"
+	add2 0x3, v7
+	sta v4
+	jmp jump_label_4
+jump_label_1:
+	lda v4
+	sta v7
+	lda.str "STATE_TURNING_ON"
+	add2 0x4, v7
+	sta v4
+	jmp jump_label_4
+jump_label_2:
+	lda v4
+	sta v7
+	lda.str "STATE_ON"
+	add2 0x5, v7
+	sta v4
+	jmp jump_label_4
+jump_label_3:
+	lda v4
+	sta v7
+	lda.str "unknown status"
+	add2 0x6, v7
+	sta v4
+	jmp jump_label_4
+jump_label_4:
+	lda v4
+	sta v7
+	lda.str "STATE_ON"
+	eq 0x7, v7
+	jeqz jump_label_5
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "access"
+	sta v8
+	lda v8
+	ldobjbyname 0x8, "off"
+	sta v7
+	lda.str "stateChange"
+	sta v9
+	lda v7
+	callthis1 0xa, v8, v9
+jump_label_5:
+	tryldglobalbyname 0xc, "console"
+	sta v8
+	lda v8
+	ldobjbyname 0xd, "info"
+	sta v7
+	lda.str "bluetooth statues: "
+	sta v9
+	lda v4
+	add2 0xf, v9
+	sta v9
+	lda v7
+	callthis1 0x10, v8, v9
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x1a }
+.function any &entry.src.main.ets.util.bluetooth&.#*@1*#(any a0, any a1, any a2, any a3) <static> {
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	mov v3, a3
+	lda.str ""
+	sta v4
+	lda v3
+	sta v6
+	ldai 0x0
+	strictnoteq 0x0, v6
+	jeqz jump_label_0
+	ldai 0x1
+	strictnoteq 0x1, v6
+	jeqz jump_label_1
+	ldai 0x2
+	strictnoteq 0x2, v6
+	jeqz jump_label_2
+	ldai 0x3
+	strictnoteq 0x3, v6
+	jeqz jump_label_3
+	ldai 0x4
+	strictnoteq 0x4, v6
+	jeqz jump_label_4
+	ldai 0x5
+	strictnoteq 0x5, v6
+	jeqz jump_label_5
+	ldai 0x6
+	strictnoteq 0x6, v6
+	jeqz jump_label_6
+	jmp jump_label_7
+jump_label_0:
+	lda v4
+	sta v7
+	lda.str "STATE_OFF"
+	add2 0x7, v7
+	sta v4
+	jmp jump_label_8
+jump_label_1:
+	lda v4
+	sta v7
+	lda.str "STATE_TURNING_ON"
+	add2 0x8, v7
+	sta v4
+	jmp jump_label_8
+jump_label_2:
+	lda v4
+	sta v7
+	lda.str "STATE_ON"
+	add2 0x9, v7
+	sta v4
+	jmp jump_label_8
+jump_label_3:
+	lda v4
+	sta v7
+	lda.str "STATE_TURNING_OFF"
+	add2 0xa, v7
+	sta v4
+	jmp jump_label_8
+jump_label_4:
+	lda v4
+	sta v7
+	lda.str "STATE_BLE_TURNING_ON"
+	add2 0xb, v7
+	sta v4
+	jmp jump_label_8
+jump_label_5:
+	lda v4
+	sta v7
+	lda.str "STATE_BLE_ON"
+	add2 0xc, v7
+	sta v4
+	jmp jump_label_8
+jump_label_6:
+	lda v4
+	sta v7
+	lda.str "STATE_BLE_TURNING_OFF"
+	add2 0xd, v7
+	sta v4
+	jmp jump_label_8
+jump_label_7:
+	lda v4
+	sta v7
+	lda.str "unknown status"
+	add2 0xe, v7
+	sta v4
+	jmp jump_label_8
+jump_label_8:
+	lda v4
+	sta v7
+	lda.str "STATE_OFF"
+	eq 0xf, v7
+	jeqz jump_label_9
+	ldexternalmodulevar 0x0
+	throw.undefinedifholewithname "access"
+	sta v8
+	lda v8
+	ldobjbyname 0x10, "off"
+	sta v7
+	lda.str "stateChange"
+	sta v9
+	lda v7
+	callthis1 0x12, v8, v9
+jump_label_9:
+	tryldglobalbyname 0x14, "console"
+	sta v8
+	lda v8
+	ldobjbyname 0x15, "info"
+	sta v7
+	lda.str "bluetooth statues: "
+	sta v9
+	lda v4
+	add2 0x17, v9
+	sta v9
+	lda v7
+	callthis1 0x18, v8, v9
+	ldundefined
+	returnundefined
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.util.bluetooth&.func_main_0(any a0, any a1, any a2) <static> {
+	newlexenvwithname 0x1, { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+	mov v0, a0
+	mov v1, a1
+	mov v2, a2
+	definefunc 0x0, &entry.src.main.ets.util.bluetooth&.#*#disable:(any,any,any), 0x0
+	stmodulevar 0x0
+	definefunc 0x1, &entry.src.main.ets.util.bluetooth&.#*#enable:(any,any,any), 0x0
+	stmodulevar 0x1
+	ldai 0x0
+	sta v4
+	lda v4
+	stlexvar 0x0, 0x0
+	ldundefined
+	returnundefined
+}
+
+# ====================
+# STRING
+
+[offset:0xee2, name_value:%{public}s]
+[offset:0xf6c, name_value:Ability onBackground]
+[offset:0xf82, name_value:Ability onCreate]
+[offset:0xf94, name_value:Ability onDestroy]
+[offset:0xfa7, name_value:Ability onForeground]
+[offset:0xfbd, name_value:Ability onWindowStageCreate]
+[offset:0xfda, name_value:Ability onWindowStageDestroy]
+[offset:0xff8, name_value:COLOR_MODE_NOT_SET]
+[offset:0x100c, name_value:ColorMode]
+[offset:0x1017, name_value:ConfigurationConstant]
+[offset:0x102e, name_value:DOMAIN]
+[offset:0x1036, name_value:Failed to load the content. Cause: %{public}s]
+[offset:0x1065, name_value:JSON]
+[offset:0x106b, name_value:LocationUtil]
+[offset:0x1079, name_value:Number]
+[offset:0x1081, name_value:ScanUtil]
+[offset:0x108b, name_value:Succeeded in loading the content.]
+[offset:0x10ae, name_value:UIAbility]
+[offset:0x10b9, name_value:brand]
+[offset:0x10c0, name_value:code]
+[offset:0x10c6, name_value:context]
+[offset:0x10cf, name_value:deviceInfo]
+[offset:0x10db, name_value:disable]
+[offset:0x10e4, name_value:enable]
+[offset:0x10ec, name_value:error]
+[offset:0x10f3, name_value:getApplicationContext]
+[offset:0x110a, name_value:hilog]
+[offset:0x1111, name_value:info]
+[offset:0x1117, name_value:loadContent]
+[offset:0x1124, name_value:pages/Index]
+[offset:0x1131, name_value:prototype]
+[offset:0x113c, name_value:req]
+[offset:0x1141, name_value:request_permission]
+[offset:0x1155, name_value:setColorMode]
+[offset:0x1163, name_value:stringify]
+[offset:0x116e, name_value:testTag]
+[offset:0x154e, name_value:BackupExtensionAbility]
+[offset:0x1566, name_value:Promise]
+[offset:0x156f, name_value:onBackup ok]
+[offset:0x157c, name_value:onRestore ok %{public}s]
+[offset:0x1595, name_value:resolve]
+[offset:0x1685, name_value:]
+[offset:0x1687, name_value:#F0F0F0]
+[offset:0x18a6, name_value:100%]
+[offset:0x18ac, name_value:25%]
+[offset:0x18b1, name_value:Bottom]
+[offset:0x18b9, name_value:Center]
+[offset:0x18c1, name_value:Column]
+[offset:0x18c9, name_value:DirectiveMenuExample]
+[offset:0x18df, name_value:Divider]
+[offset:0x18e8, name_value:Exit]
+[offset:0x18ee, name_value:Flex]
+[offset:0x18f4, name_value:FlexAlign]
+[offset:0x18ff, name_value:FlexDirection]
+[offset:0x190e, name_value:Get]
+[offset:0x1913, name_value:Hide]
+[offset:0x1919, name_value:Index]
+[offset:0x1920, name_value:ItemAlign]
+[offset:0x192b, name_value:LongPress]
+[offset:0x1936, name_value:MenuBuilder]
+[offset:0x1943, name_value:Options]
+[offset:0x194c, name_value:Placement]
+[offset:0x1957, name_value:Reflect]
+[offset:0x1960, name_value:ResponseType]
+[offset:0x196e, name_value:SubscriberManager]
+[offset:0x1981, name_value:Text]
+[offset:0x1987, name_value:TextAlign]
+[offset:0x1992, name_value:ViewPU]
+[offset:0x199a, name_value:aboutToBeDeletedInternal]
+[offset:0x19b4, name_value:alignItems]
+[offset:0x19c0, name_value:backgroundColor]
+[offset:0x19d1, name_value:bind]
+[offset:0x19d7, name_value:bindContextMenu]
+[offset:0x19e8, name_value:builder]
+[offset:0x19f1, name_value:color]
+[offset:0x19f8, name_value:create]
+[offset:0x1a00, name_value:delete]
+[offset:0x1a08, name_value:direction]
+[offset:0x1a13, name_value:finalizeConstruction]
+[offset:0x1a29, name_value:fontSize]
+[offset:0x1a33, name_value:function]
+[offset:0x1a3d, name_value:height]
+[offset:0x1a45, name_value:id__]
+[offset:0x1a4b, name_value:justifyContent]
+[offset:0x1a5b, name_value:margin]
+[offset:0x1a63, name_value:observeComponentCreation2]
+[offset:0x1a7e, name_value:paramsGenerator_]
+[offset:0x1a90, name_value:placement]
+[offset:0x1a9b, name_value:pop]
+[offset:0x1aa0, name_value:registerNamedRoute]
+[offset:0x1ab4, name_value:set]
+[offset:0x1ab9, name_value:setInitiallyProvidedValue]
+[offset:0x1ad4, name_value:strokeWidth]
+[offset:0x1ae1, name_value:textAlign]
+[offset:0x1aec, name_value:updateDirtyElements]
+[offset:0x1b01, name_value:width]
+[offset:0x1e39, name_value:, message is ]
+[offset:0x1e48, name_value:BundleFlag]
+[offset:0x1e54, name_value:Failed to check access token. Code is ]
+[offset:0x1e7c, name_value:Failed to get bundle info for self. Code is ]
+[offset:0x1eaa, name_value:GET_BUNDLE_INFO_WITH_APPLICATION]
+[offset:0x1ecc, name_value:GrantStatus]
+[offset:0x1ed9, name_value:PERMISSION_DENIED]
+[offset:0x1eec, name_value:ScanKit Permission]
+[offset:0x1f00, name_value:abilityAccessCtrl]
+[offset:0x1f13, name_value:accessTokenId]
+[offset:0x1f22, name_value:appInfo]
+[offset:0x1f2b, name_value:authResults]
+[offset:0x1f38, name_value:bundleManager]
+[offset:0x1f47, name_value:checkAccessToken]
+[offset:0x1f59, name_value:console]
+[offset:0x1f62, name_value:createAtManager]
+[offset:0x1f73, name_value:getBundleInfoForSelf]
+[offset:0x1f89, name_value:getContext]
+[offset:0x1f95, name_value:message]
+[offset:0x1f9e, name_value:permissions]
+[offset:0x1fab, name_value:requestPermissionsFromUser]
+[offset:0x207f, name_value:TAG]
+[offset:0x2106, name_value:reqPermissionsFromUser]
+[offset:0x21d0, name_value:Failed to check access token. error: %{public}s]
+[offset:0x2201, name_value:Failed to get bundle info for self. error: %{public}s]
+[offset:0x2238, name_value:reqPermissionsFromUser start]
+[offset:0x2392, name_value:, errMessage: ]
+[offset:0x23a2, name_value:STATE_BLE_ON]
+[offset:0x23b0, name_value:STATE_BLE_TURNING_OFF]
+[offset:0x23c7, name_value:STATE_BLE_TURNING_ON]
+[offset:0x23dd, name_value:STATE_OFF]
+[offset:0x23e8, name_value:STATE_ON]
+[offset:0x23f2, name_value:STATE_TURNING_OFF]
+[offset:0x2405, name_value:STATE_TURNING_ON]
+[offset:0x2417, name_value:access]
+[offset:0x241f, name_value:bluetooth statues: ]
+[offset:0x2434, name_value:blutooth]
+[offset:0x243e, name_value:disableBluetooth]
+[offset:0x2450, name_value:enableBluetooth]
+[offset:0x2461, name_value:errCode: ]
+[offset:0x246c, name_value:off]
+[offset:0x2471, name_value:on]
+[offset:0x2475, name_value:stateChange]
+[offset:0x2482, name_value:unknown status]

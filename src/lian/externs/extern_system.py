@@ -16,7 +16,7 @@ from lian.config.constants import (
     ACCESS_POINT_KIND
 )
 from lian.externs.extern_rule import Rule
-from lian.externs.modeling import js_api
+from lian.externs.modeling import abc_arkui, js_api
 from lian.common_structs import AccessPoint, InterruptionData, State, Symbol
 from lian.util import util
 
@@ -387,7 +387,12 @@ class ExternSystem:
 
             all_modelings["llvm"] = []
 
-            all_modelings["abc"] = []
+            # ArkUI 状态管理建模: 还原 ObservedProperty*PU / AppStorage 等封装类的
+            # set/get/add 语义 (参考 HScope CollectionModeling 的对应处理)
+            all_modelings["abc"] = [
+                Rule(method_name=name, model_method=func)
+                for name, func in abc_arkui.METHOD_NAME_TO_MODEL.items()
+            ]
 
             all_modelings["php"] = []
 
