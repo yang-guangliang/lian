@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import json
+import math
 import os, sys
 from collections import deque
 
@@ -88,56 +89,75 @@ class PathFinder:
         elif source.node_type == SFG_NODE_KIND.STMT:
             self._enqueue(worklist, in_worklist, source)
 
+    def _node_family(self, node):
+        """返回与该节点共享同一 node_id 的全部 SFG 节点实例。
+
+        SFG 中同一个符号/状态可能同时存在"带 context_id"与"不带 context_id"
+        的两个实例，且出边往往只挂在其中一个实例上。污点标记本身是按 node_id
+        存储的（见 TaintEnv.set_symbol_tag/set_states_tag），因此遍历时也必须
+        按 node_id 聚合，否则会漏掉挂在另一个实例上的边，导致传播链中断。
+        """
+        node_id = getattr(node, "node_id", None)
+        if node_id is None:
+            return [node]
+        family = self._node_id_index.get(node_id)
+        return family if family else [node]
+
     def _propagate_from_symbol(self, u, u_tag, worklist, in_worklist):
         """处理从 SYMBOL 节点向下的传播"""
-        for v in self.sfg.successors(u):
-            edge_data = self.sfg.get_edge_data(u, v)
-            if edge_data:
-                for data in edge_data.values():
-                    etype = data.edge_type
-                    # 传播到状态或使用该变量的语句
-                    if etype == SFG_EDGE_KIND.SYMBOL_STATE:
-                        v_tag = self.taint_manager.get_state_tag(v.node_id)
-                        if (u_tag | v_tag) != v_tag:
-                            self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
-                            self._enqueue(worklist, in_worklist, v)
-                    elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
-                        # STMT 的 tag 来自其 use 的 SYMBOL；当 SYMBOL 的 tag 发生变化时，重新处理该 STMT。
-                        self._enqueue(worklist, in_worklist, v)
-                    elif etype in (SFG_EDGE_KIND.SYMBOL_FLOW, SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW):
-                        # SYMBOL -> SYMBOL 的数据流传播
-                        if v.node_type != SFG_NODE_KIND.SYMBOL:
-                            continue
-                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
-                        if (u_tag | v_tag) != v_tag:
-                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                            self._enqueue(worklist, in_worklist, v)
-
-    def _propagate_from_state(self, u, u_tag, worklist, in_worklist):
-        """处理从 STATE 节点向下的传播"""
-        # 1. 传播到指向该值的变量 (逆向回溯)
-        for v in self.sfg.predecessors(u):
-            edge_data = self.sfg.get_edge_data(v, u)
-            if edge_data:
-                for data in edge_data.values():
-                    if data.edge_type in (SFG_EDGE_KIND.SYMBOL_STATE, SFG_EDGE_KIND.STATE_INCLUSION):
-                        v_tag = self.taint_manager.get_symbol_tag(v.node_id)
-                        if (u_tag | v_tag) != v_tag:
-                            self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
-                            self._enqueue(worklist, in_worklist, v)
-
-        # 2. 传播到其包含的子状态 (inclusion)
-        for v in self.sfg.successors(u):
-            if v.node_type == SFG_NODE_KIND.STATE:
-                edge_data = self.sfg.get_edge_data(u, v)
+        for instance in self._node_family(u):
+            for v in self.sfg.successors(instance):
+                edge_data = self.sfg.get_edge_data(instance, v)
                 if edge_data:
                     for data in edge_data.values():
-                        if data.edge_type in (SFG_EDGE_KIND.STATE_INCLUSION,
-                                                            SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
+                        etype = data.edge_type
+                        # 传播到状态或使用该变量的语句
+                        if etype == SFG_EDGE_KIND.SYMBOL_STATE:
                             v_tag = self.taint_manager.get_state_tag(v.node_id)
                             if (u_tag | v_tag) != v_tag:
                                 self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
                                 self._enqueue(worklist, in_worklist, v)
+                        elif etype == SFG_EDGE_KIND.SYMBOL_IS_USED:
+                            # STMT 的 tag 来自其 use 的 SYMBOL；当 SYMBOL 的 tag 发生变化时，重新处理该 STMT。
+                            self._enqueue(worklist, in_worklist, v)
+                        elif etype in (SFG_EDGE_KIND.SYMBOL_FLOW, SFG_EDGE_KIND.INDIRECT_SYMBOL_FLOW):
+                            # SYMBOL -> SYMBOL 的数据流传播
+                            if v.node_type != SFG_NODE_KIND.SYMBOL:
+                                continue
+                            v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                            if (u_tag | v_tag) != v_tag:
+                                self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                                self._enqueue(worklist, in_worklist, v)
+
+    def _propagate_from_state(self, u, u_tag, worklist, in_worklist):
+        """处理从 STATE 节点向下的传播"""
+        # 状态方向不使用并集：该步骤会把状态污染回写到所有持有该状态的符号，
+        # 过度扩散会破坏字段/对象敏感性（no_leak 用例会因此误报），故保持原语义。
+        # 1. 传播到指向该值的变量 (逆向回溯)
+        for instance in [u]:
+            for v in self.sfg.predecessors(instance):
+                edge_data = self.sfg.get_edge_data(v, instance)
+                if edge_data:
+                    for data in edge_data.values():
+                        if data.edge_type in (SFG_EDGE_KIND.SYMBOL_STATE, SFG_EDGE_KIND.STATE_INCLUSION):
+                            v_tag = self.taint_manager.get_symbol_tag(v.node_id)
+                            if (u_tag | v_tag) != v_tag:
+                                self.taint_manager.set_symbol_tag(v.node_id, u_tag | v_tag)
+                                self._enqueue(worklist, in_worklist, v)
+
+        # 2. 传播到其包含的子状态 (inclusion)
+        for instance in self._node_family(u):
+            for v in self.sfg.successors(instance):
+                if v.node_type == SFG_NODE_KIND.STATE:
+                    edge_data = self.sfg.get_edge_data(instance, v)
+                    if edge_data:
+                        for data in edge_data.values():
+                            if data.edge_type in (SFG_EDGE_KIND.STATE_INCLUSION,
+                                                                SFG_EDGE_KIND.INDIRECT_STATE_INCLUSION):
+                                v_tag = self.taint_manager.get_state_tag(v.node_id)
+                                if (u_tag | v_tag) != v_tag:
+                                    self.taint_manager.set_states_tag([v.node_id], u_tag | v_tag)
+                                    self._enqueue(worklist, in_worklist, v)
 
     def _propagate_from_stmt(self, u, u_tag, worklist, in_worklist):
         """处理从 STMT 节点向下的传播"""
@@ -202,6 +222,15 @@ class PathFinder:
         # 记录本轮传播中“已经实际出队并处理过”的节点。
         # 用于修复：某些节点在进入传播前已带有目标 tag，但从未入队，导致其后继语句永远不被处理。
         self._processed_nodes = set()
+        # 建立 node_id -> 节点实例列表 的索引：SFG 中同一符号/状态可能存在
+        # 带 context_id 与不带 context_id 的两个实例，出边只挂在其中一个实例上，
+        # 遍历时需按 node_id 聚合才能不漏边（详见 _node_family）。
+        self._node_id_index = {}
+        for node in self.sfg.nodes():
+            node_id = getattr(node, "node_id", None)
+            if node_id is None:
+                continue
+            self._node_id_index.setdefault(node_id, []).append(node)
         self._init_source_contamination(source, tag, worklist, in_worklist)
 
         # BFS 传播
@@ -1166,6 +1195,9 @@ class TaintAnalysis:
             for node in reversed(each_flow.parent_to_source):
                 stmt_id = node.def_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
+                # 框架调用模型可能产生无源码位置的合成状态；它们不应出现在源码路径中。
+                if stmt is None or not isinstance(stmt.start_row, (int, float)) or not math.isfinite(stmt.start_row):
+                    continue
                 if stmt.start_row == line_no:
                     continue
                 line_no = stmt.start_row
@@ -1178,7 +1210,7 @@ class TaintAnalysis:
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {
                     "start_line": int(stmt.start_row + 1),
-                    "end_line": int(stmt.end_row + 1),
+                    "end_line": int(stmt.end_row + 1) if isinstance(stmt.end_row, (int, float)) and math.isfinite(stmt.end_row) else int(stmt.start_row + 1),
                     "file_path": file_path,
                     "gir": gir_str,
                     "stmt_id": int(stmt_id),
@@ -1192,6 +1224,8 @@ class TaintAnalysis:
             for node in each_flow.parent_to_sink:
                 stmt_id = node.def_stmt_id
                 stmt = self.loader.get_stmt_gir(stmt_id)
+                if stmt is None or not isinstance(stmt.start_row, (int, float)) or not math.isfinite(stmt.start_row):
+                    continue
                 if stmt.start_row == line_no:
                     continue
                 line_no = stmt.start_row
@@ -1204,7 +1238,7 @@ class TaintAnalysis:
                 file_path = self.loader.convert_unit_id_to_unit_path(unit_id)
                 path_node_in_file = {
                     "start_line": int(stmt.start_row + 1),
-                    "end_line": int(stmt.end_row + 1),
+                    "end_line": int(stmt.end_row + 1) if isinstance(stmt.end_row, (int, float)) and math.isfinite(stmt.end_row) else int(stmt.start_row + 1),
                     "file_path": file_path,
                     "gir": gir_str,
                     "stmt_id": int(stmt_id),

@@ -14,6 +14,9 @@ class Parser(common_parser.Parser):
     def init(self):
         self.original_name_to_tmp_name = {}
         self.current_func = None
+        self.current_func_path = ""
+        self.module_literals_by_id = {}
+        self.module_records_by_path = {}
         self.ananymous_func_to_scope = {}
         self.DECLARATION_HANDLER_MAP = {
             "function_declaration": self.function_declaration,
@@ -47,6 +50,11 @@ class Parser(common_parser.Parser):
             "callthisrange_statement": self.callrange_statement,
             "callrange_statement": self.callrange_statement,
             "supercallthisrange_statement": self.callrange_statement,
+            "callthis0withname_statement": self.callthis_withname_statement,
+            "callthis1withname_statement": self.callthis_withname_statement,
+            "callthis2withname_statement": self.callthis_withname_statement,
+            "callthis3withname_statement": self.callthis_withname_statement,
+            "callthisrangewithname_statement": self.callthis_withname_statement,
             "callarg0_statement": self.call_statement,
             "callarg1_statement": self.call_statement,
             "callargs2_statement": self.call_statement,
@@ -225,16 +233,31 @@ class Parser(common_parser.Parser):
                 repeat_index = '^' + self.read_node_text(repeat_node)
             # print(self.read_node_text(repeat_node))
             if function_name_node:
-                function_name = self.read_node_text(function_name_node) + repeat_index
+                raw_function_name = self.read_node_text(function_name_node) + repeat_index
+                if self.is_anonymous_function_name(raw_function_name):
+                    function_name = self.get_or_create_anon_tmp_name(
+                        self.read_node_text(path_node) + raw_function_name
+                    )
+                else:
+                    function_name = raw_function_name
             else:
 
                 total_name = self.read_node_text(total_name_node)
-                function_name = total_name
+                full_raw_name = self.read_node_text(path_node) + total_name
 
-                if total_name in self.original_name_to_tmp_name:
-                    function_name = self.original_name_to_tmp_name[total_name]
+                if self.is_anonymous_raw_name(total_name):
+                    # 闭包的声明段可能排在 definefunc 之前：此处由声明侧建名，
+                    # 之后的 definefunc 复用同名，二者不会再对不上。
+                    function_name = self.get_or_create_anon_tmp_name(full_raw_name)
+                else:
+                    function_name = (
+                        self.original_name_to_tmp_name.get(full_raw_name)
+                        or self.original_name_to_tmp_name.get(total_name)
+                        or total_name
+                    )
         self.current_func = function_name
         file_path = self.read_node_text(path_node)
+        self.current_func_path = file_path
 
         parameters = []
         params_node = self.find_child_by_field(node, "parameters")
@@ -267,28 +290,65 @@ class Parser(common_parser.Parser):
         func_name_node = self.find_child_by_type(decl_node, "function_name_type1")
         name_node = self.find_child_by_field(func_name_node, "name")
         func_name = self.find_child_by_field(name_node, "function_name")
-        name = self.read_node_text(name_node)
-        # print(name)
+        raw_name = self.read_node_text(name_node)
+        name = raw_name
         if func_name:
             name = self.read_node_text(func_name)
-        #
-        if not self.find_child_by_field(name_node, "function_name"):
-            name = self.tmp_method()
-            # repeat_id = ""
-            # repeat_node = self.find_child_by_field(name_node, "repeat_index")
-            # if repeat_node:
-            #     repeat_id = self.read_node_text(repeat_node)
-            # name += repeat_id
-        # print(name)
+
+        # 匿名闭包按"unit 路径 + 原始名"分配临时名 %mmN：键含 unit 才不会让不同
+        # unit 的同名闭包共用一个名字；声明侧也用同一个键"建或取"，因此闭包声明
+        # 先于 definefunc 出现时两边仍会得到同一个名字（对齐 HScope 的
+        # getOrCreateAnonymousFunctionTempName(fullRawName)）。
+        path_node = self.find_child_by_field(func_name_node, "file_path")
+        full_raw_name = self.read_node_text(path_node) + raw_name
+        if (not func_name
+                or self.is_anonymous_function_name(name)
+                or self.is_anonymous_raw_name(raw_name)):
+            name = self.get_or_create_anon_tmp_name(full_raw_name)
+
         self.ananymous_func_to_scope[name] = self.current_func
 
-        self.original_name_to_tmp_name[self.read_node_text(name_node)] = name
+        self.original_name_to_tmp_name[raw_name] = name
+        self.original_name_to_tmp_name[full_raw_name] = name
         self.append_stmts(statements, node, {
             "assign_stmt": {
                 "target": "acc",
                 "operand": name
             }
         })
+
+    def get_or_create_anon_tmp_name(self, full_raw_name):
+        """按"unit 路径 + 原始名"分配/复用匿名闭包的临时名 %mmN（HScope 同款写法）。
+
+        键含 unit 路径 → 不同 unit 的同名闭包不会共用同一个名字；
+        声明侧与引用侧都调用本方法（建或取）→ 谁先被解析都不影响结果。
+        """
+        name = self.original_name_to_tmp_name.get(full_raw_name)
+        if not name:
+            name = self.tmp_method()
+            self.original_name_to_tmp_name[full_raw_name] = name
+        return name
+
+    def is_anonymous_function_name(self, name):
+        """形如 ^1 / ^a3 的匿名函数短名（对齐 HScope 的 isAnonymousOriginalFunctionName）。"""
+        if not name or not name.startswith("^"):
+            return False
+        body = name[1:]
+        return len(body) > 0 and all(ch in "0123456789abcdefABCDEF" for ch in body)
+
+    def is_anonymous_raw_name(self, raw_name):
+        """形如 #1234# / #~@0>@1*^1*# 的匿名闭包原始名。
+
+        判据是最后一个 '#' 之后为空或为 ^N —— 对齐并放宽 HScope 的
+        isAnonymousFunctionRawName（ABC 里匿名闭包名常以 '#' 结尾）。
+        """
+        if not raw_name:
+            return False
+        last_sharp = raw_name.rfind("#")
+        if last_sharp < 0:
+            return False
+        tail = raw_name[last_sharp + 1:]
+        return tail == "" or self.is_anonymous_function_name(tail)
 
     def function_body(self, node):
         body_statements = []
@@ -401,6 +461,50 @@ class Parser(common_parser.Parser):
         #             "target":this
         #         }
         #     })
+
+    def callthis_withname_statement(self, node, statements):
+        """按名字调用 this 上的方法: callthisNwithname / callthisrangewithname.
+
+        指令形式:
+            callthis0withname     <reserve>, "name", v_this
+            callthis1withname     <reserve>, "name", v_this, v_arg1
+            callthis2withname     <reserve>, "name", v_this, v_arg1, v_arg2
+            callthis3withname     <reserve>, "name", v_this, v_arg1, v_arg2, v_arg3
+            callthisrangewithname <reserve>, <args_number>, "name", v_arg_start
+
+        与不带 name 的 callthisN 相比, 方法名是静态已知的, 因此显式建模为
+        receiver_object/field, 以便调用解析与污点规则按方法名匹配。
+        """
+        name_node = self.find_child_by_field(node, "name")
+        method_name = self.read_node_text(name_node).strip('"') if name_node else ""
+
+        this_node = self.find_child_by_field(node, "this")
+        receiver = self.read_node_text(this_node) if this_node else ""
+
+        arguments = []
+        if node.type == "callthisrangewithname_statement":
+            range_node = self.find_child_by_field(node, "args_number")
+            arg_range = self.read_node_text(range_node)
+            start_node = self.find_child_by_field(node, "arg_start")
+            arg_start_id = self.var_to_argid(self.read_node_text(start_node)) + 1
+            for i in range(arg_start_id, arg_start_id + int(arg_range, 16)):
+                arguments.append(self.argid_to_var(i))
+        else:
+            for index in range(1, 4):
+                arg_node = self.find_child_by_field(node, f"arg{index}")
+                if arg_node is None:
+                    break
+                arguments.append(self.read_node_text(arg_node))
+
+        self.append_stmts(statements, node, {
+            "call_stmt": {
+                "target": "acc",
+                "name": method_name if method_name else "acc",
+                "receiver_object": receiver,
+                "field": method_name,
+                "positional_args": arguments
+            }
+        })
 
     def getiterator_statement(self, node, statements):
         self.append_stmts(statements, node, {
@@ -535,7 +639,24 @@ class Parser(common_parser.Parser):
         })
 
     def ldlocalmodulevar_statement(self, node, statements):
-        pass
+        slot_node = self.find_child_by_field(node, "slot")
+        if slot_node is None:
+            return
+        try:
+            slot = int(self.read_node_text(slot_node), 16)
+        except ValueError:
+            return
+        record = self.module_records_by_path.get(self.current_func_path.strip("&"), {})
+        literal = self.module_literals_by_id.get(record.get("moduleRecordIdx"), {})
+        local_exports = [
+            tag.get("local_name", "")
+            for tag in literal.get("module_tag_array", [])
+            if tag.get("tag_type") == "local_export_tag"
+        ]
+        if 0 <= slot < len(local_exports) and local_exports[slot]:
+            self.append_stmts(statements, node, {
+                "assign_stmt": {"target": "acc", "operand": local_exports[slot]}
+            })
 
     def stlexvar_statement(self, node, statements):
         lexi_env_node = self.find_child_by_field(node, "lexi_env")
@@ -1407,6 +1528,7 @@ class Parser(common_parser.Parser):
             module_tag_array.append(tag_record)
 
         module_literal["module_tag_array"] = module_tag_array
+        self.module_literals_by_id[id] = module_literal
         self.append_stmts(statements, node, {
             "module_literal": module_literal
         })
@@ -1444,6 +1566,7 @@ class Parser(common_parser.Parser):
             idnode = self.find_child_by_type(field, "hexi")
             id = self.read_node_text(idnode)
             module_record[field_name] = id
+        self.module_records_by_path[path.strip("&")] = module_record
         self.append_stmts(statements, node, {
             "module_record": module_record
         })

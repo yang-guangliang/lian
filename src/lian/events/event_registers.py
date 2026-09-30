@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from lian.events.default_event_handlers import (
+    abc_arkui_component,
     basic,
     js_handlers,
     init_new_file_and_object,
@@ -8,6 +9,7 @@ from lian.events.default_event_handlers import (
     this_field_write,
     add_var_decl
 )
+from lian.externs.modeling import abc_arkui
 from lian.events.handler_template import (
     EventHandlerManager,
     EventHandler
@@ -134,6 +136,12 @@ class DefaultEventHandlerManager(EventHandlerManager):
             ),
 
             EventHandler(
+                event = EVENT_KIND.P2STATE_RETURN_STMT_AFTER,
+                handler = abc_arkui.model_ability_on_create_return,
+                langs = ["abc"]
+            ),
+
+            EventHandler(
                 event = EVENT_KIND.P2STATE_CALL_STMT_BEFORE,
                 handler = this_field_write.appstorage_read_and_write,
                 langs = ["abc"]
@@ -171,8 +179,13 @@ class DefaultEventHandlerManager(EventHandlerManager):
 
             EventHandler(
                 event = EVENT_KIND.P2STATE_NEW_OBJECT_AFTER,
+                handler = abc_arkui_component.model_arkui_component_parent,
+                langs = ["abc"]
+            ),
+
+            EventHandler(
+                event = EVENT_KIND.P2STATE_NEW_OBJECT_AFTER,
                 handler = init_new_file_and_object.apply_constructor_summary,
                 langs = [config.ANY_LANG]
             ),
         ])
-

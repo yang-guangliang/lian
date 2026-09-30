@@ -657,6 +657,22 @@ class StmtStates:
         self.frame.method_summary_template.dynamic_call_stmts.add(stmt_id)
 
     def regular_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
+        if stmt.operation == "return_stmt":
+            event = EventData(
+                self.lang,
+                EVENT_KIND.P2STATE_RETURN_STMT_AFTER,
+                {
+                    "stmt_id": stmt_id,
+                    "stmt": stmt,
+                    "status": status,
+                    "in_states": in_states,
+                    "frame": self.frame,
+                    "state_analysis": self,
+                },
+            )
+            self.event_manager.notify(event)
+            if getattr(event.out_data, "interruption_flag", False):
+                return event.out_data
         return P2ResultFlag()
 
     def control_flow_stmt_state(self, stmt_id, stmt, status: StmtStatus, in_states):
