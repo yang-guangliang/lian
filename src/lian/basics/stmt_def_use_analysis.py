@@ -291,6 +291,11 @@ class StmtDefUseAnalysis:
         if util.is_empty(value):
             return -1
 
+        # new_struct and similar stmts sometimes carry a tuple data_type.
+        # Keep the constant scalar so later type checks and string ops stay valid.
+        if isinstance(value, (tuple, list, set, dict)):
+            value = str(value)
+
         if not data_type:
             data_type = type_table.determine_constant_type(value)
         if data_type == LIAN_INTERNAL.STRING:

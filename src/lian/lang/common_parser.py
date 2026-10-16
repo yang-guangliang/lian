@@ -272,14 +272,20 @@ class Parser:
         """
         添加行列信息
         """
-        if node:
-            start_line, start_col = node.start_point
-            end_line, end_col = node.end_point
-            first_key = next(iter(gir_dict))
-            gir_dict[first_key]["start_row"] = start_line
-            gir_dict[first_key]["start_col"] = start_col
-            gir_dict[first_key]["end_row"] = end_line
-            gir_dict[first_key]["end_col"] = end_col
+        # Callers sometimes hand over raw text (attribute lists, modifiers).
+        # Those are not GIR dicts and must pass through unchanged.
+        if not node or not isinstance(gir_dict, dict) or not gir_dict:
+            return gir_dict
+        first_key = next(iter(gir_dict))
+        content = gir_dict.get(first_key)
+        if not isinstance(content, dict):
+            return gir_dict
+        start_line, start_col = node.start_point
+        end_line, end_col = node.end_point
+        content["start_row"] = start_line
+        content["start_col"] = start_col
+        content["end_row"] = end_line
+        content["end_col"] = end_col
         return gir_dict
 
     def parse(self, node, statements=[], replacement=[]):
