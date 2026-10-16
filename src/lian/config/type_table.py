@@ -92,38 +92,36 @@ def get_lang_type_table(lang):
     return lang_type_table.get(lang, common_type_table0)
 
 def determine_constant_type(name):
-    result = None
-
     if util.isna(name):
-        return result
+        return None
 
     if name == LIAN_INTERNAL.NULL:
-        result = LIAN_INTERNAL.NULL
+        return LIAN_INTERNAL.NULL
 
-    elif name in [LIAN_INTERNAL.TRUE, LIAN_INTERNAL.FALSE]:
-        result = LIAN_INTERNAL.BOOL
+    if name in (LIAN_INTERNAL.TRUE, LIAN_INTERNAL.FALSE):
+        return LIAN_INTERNAL.BOOL
 
-    elif "'" in name or '"' in name:
-        result = LIAN_INTERNAL.STRING
+    # Parsers can hand over tuples (partial array/field shapes) or other
+    # non-scalars. Those are not numeric literals; int(name) raises TypeError.
+    if not isinstance(name, str):
+        return LIAN_INTERNAL.STRING
 
-    else:
-        try:
-            int(name)
-            result = LIAN_INTERNAL.INT
-        except ValueError:
-            pass
+    if "'" in name or '"' in name:
+        return LIAN_INTERNAL.STRING
 
-        if result is None:
-            try:
-                float(name)
-                result = LIAN_INTERNAL.FLOAT
-            except ValueError:
-                pass
+    try:
+        int(name)
+        return LIAN_INTERNAL.INT
+    except ValueError:
+        pass
 
-        if result is None:
-            result = LIAN_INTERNAL.STRING
+    try:
+        float(name)
+        return LIAN_INTERNAL.FLOAT
+    except ValueError:
+        pass
 
-    return result
+    return LIAN_INTERNAL.STRING
 
 def is_builtin_type(data_type):
     return data_type in built_data_types

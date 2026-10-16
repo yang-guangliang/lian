@@ -202,7 +202,7 @@ class P2PrelimSemanticAnalysis:
 
         return current_bits
 
-    def update_current_state_bit(self, bit_id: StateDefNode, frame: ComputeFrame, current_bits, new_defined_state_set: set):
+    def update_current_state_bit(self, bit_id: StateDefNode, frame: ComputeFrame, current_bits, new_defined_state_set: set, live_by_state_id=None):
         state_id = bit_id.state_id
         if bit_id not in frame.all_state_defs:
             frame.all_state_defs.add(bit_id)
@@ -210,15 +210,30 @@ class P2PrelimSemanticAnalysis:
             frame.state_bit_vector_manager.add_bit_id(bit_id)
         # 由于一条指令可能同时新定义多个state id相同的state，因此不能将同stmt id的state kill掉
         # 每一轮需要将同一语句前面几轮中相同state id的state都kill掉
-        all_def_states = frame.defined_states[state_id]
-        all_def_stmt_except_current_stmt = set()
-        for each_def_state in all_def_states:
-            # 不是本轮产生的state
-            if each_def_state.index not in new_defined_state_set:
-                all_def_stmt_except_current_stmt.add(each_def_state)
+        # 只杀掉当前 bitset 里仍可达的旧定义。全量历史会随轮次增长，
+        # 每条语句都扫一遍就是 O(N^2)，大方法上 P2 跑不完。
+        if live_by_state_id is None:
+            candidates = [
+                each_def_state for each_def_state in current_bits
+                if isinstance(each_def_state, StateDefNode) and each_def_state.state_id == state_id
+            ]
+        else:
+            candidates = live_by_state_id.get(state_id, [])
 
-        current_bits = frame.state_bit_vector_manager.kill_bit_ids(current_bits, all_def_stmt_except_current_stmt)
-        current_bits = frame.state_bit_vector_manager.gen_bit_ids(current_bits, [bit_id])
+        kept = []
+        stale = []
+        for each_def_state in candidates:
+            if each_def_state.index in new_defined_state_set:
+                kept.append(each_def_state)
+            else:
+                stale.append(each_def_state)
+        if stale:
+            current_bits.difference_update(stale)
+        current_bits.add(bit_id)
+        if bit_id not in kept:
+            kept.append(bit_id)
+        if live_by_state_id is not None:
+            live_by_state_id[state_id] = kept
 
         return current_bits
 
@@ -237,6 +252,10 @@ class P2PrelimSemanticAnalysis:
             defined_states = status.defined_states
 
         state_current_bits = status.in_state_bits
+        live_by_state_id = {}
+        for each_bit in state_current_bits:
+            if isinstance(each_bit, StateDefNode):
+                live_by_state_id.setdefault(each_bit.state_id, []).append(each_bit)
 
         # 为每个defined_state创建一个StateDefNode，并更新out_state_bits
         for defined_state_index in defined_states:
@@ -246,7 +265,9 @@ class P2PrelimSemanticAnalysis:
 
             state_id = defined_state.state_id
             state_node = StateDefNode(index=defined_state_index, state_id=state_id, stmt_id=stmt_id)
-            state_current_bits = self.update_current_state_bit(state_node, frame, state_current_bits, new_defined_state_set)
+            state_current_bits = self.update_current_state_bit(
+                state_node, frame, state_current_bits, new_defined_state_set, live_by_state_id
+            )
         status.out_state_bits = state_current_bits
 
         # 若本句语句的defined_symbol没有被解析出任何状态，生成一个UNSOLVED状态给它。并不加入到out_state_bits

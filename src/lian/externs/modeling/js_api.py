@@ -22,6 +22,10 @@ def js_call(data: EventData):
     state_analysis = in_data.state_analysis
     args = in_data.args
 
+    if not status.used_symbols:
+        return state_analysis.compute_target_method_states(
+            stmt_id, stmt, status, in_states, set(), defined_symbol, args, set()
+        )
     this_symbol_index = status.used_symbols.pop(0)
     name_symbol: Symbol = frame.symbol_state_space[this_symbol_index]
     this_states = state_analysis.read_used_states(this_symbol_index, in_states)
@@ -74,6 +78,9 @@ def js_then(data: EventData):
     for callee_state_index in unsolved_callee_states:
         callee_state = frame.symbol_state_space[callee_state_index]
         access_path = callee_state.access_path
+        # obj.then(cb) carries [receiver, then]. A bare name has no receiver.
+        if not access_path or len(access_path) < 2:
+            continue
         receiver_path = access_path[-2]
         receiver_state_id = receiver_path.state_id
         receiver_state_indexs = resolver.collect_newest_states_by_state_ids(frame, status, {receiver_state_id})

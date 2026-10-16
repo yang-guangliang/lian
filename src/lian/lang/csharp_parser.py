@@ -108,9 +108,9 @@ class Parser(common_parser.Parser):
         gir_node["nested"] = []
         for i in node.named_children:
             if i.type == "attribute_list":
-                self.attribute_list(node,gir_node["attrs"])
+                self.attribute_list(i,gir_node["attrs"])
             if i.type == "modifier":
-                self.attribute_list(node,gir_node["attrs"])
+                self.attribute_list(i,gir_node["attrs"])
 
         child = self.find_child_by_type(node, "base_list")
         gir_node["attrs"].extend(self.read_node_text(child).split())
@@ -274,8 +274,12 @@ class Parser(common_parser.Parser):
                 self.parse(child, gir_node["nested"])
             return
 
-    def attribute_list(self,node,statements):
-        self.append_stmts(statements, node, self.read_node_text(node))
+    def attribute_list(self, node, statements):
+        # Attribute and modifier lists are stored as plain strings on attrs.
+        # append_stmts() expects a GIR operation dict and crashes on text.
+        text = self.read_node_text(node).strip()
+        if text:
+            statements.append(text)
 
 
     def method_declaration(self, node, statements):

@@ -2362,6 +2362,10 @@ class StmtStates:
         # Summary  :      state-level semantic summary
 
         if len(callee_method_ids) == 0:
+            # js_call pops the callee name off a copied status. A call with no
+            # remaining operands then has an empty used_symbols list.
+            if len(status.used_symbols) == 0:
+                return P2ResultFlag()
             name_index = status.used_symbols[0]
             name_symbol = self.frame.symbol_state_space[name_index]
             if isinstance(name_symbol, State):
@@ -2379,6 +2383,8 @@ class StmtStates:
                     key=name_symbol.name
                 ))
             elif stmt.operation == "object_call_stmt":
+                if len(status.used_symbols) < 2:
+                    return P2ResultFlag()
                 field_index = status.used_symbols[1]
                 field_state = self.frame.symbol_state_space[field_index]
 
